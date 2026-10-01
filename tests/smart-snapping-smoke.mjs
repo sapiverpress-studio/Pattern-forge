@@ -71,7 +71,7 @@ page.on('pageerror', error => errors.push(String(error)));
 page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
 
 try {
-  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/app/', { waitUntil: 'networkidle' });
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden' });
   await page.locator('#symmetry').selectOption('off');

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sapiver Pattern Forge — Editor</title>
+<meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
+<meta name="application-name" content="Sapiver Pattern Forge">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2c5f54">
+<meta name="app-version" content="1.2.0-alpha.7.0">
+<link rel="stylesheet" href="/app/assets/editor.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <p class="brandEyebrow">Sapiver Press · Pattern design studio</p>
+      <h1>Sapiver Pattern Forge</h1>
+      <p class="sub">Create seamless repeat patterns or standalone doodles. Draw, place motifs and export reusable PNG, SVG or editable project files.</p>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">Your artwork stays in this browser. Save a project file for a portable backup.</div>
+  </header>
+
+  <nav class="mobileNav" aria-label="Pattern Forge sections">
+    <button type="button" class="btn" data-mobile-jump="stageWrap" aria-current="page">Design</button>
+    <button type="button" class="btn" data-mobile-jump="drop">Images</button>
+    <button type="button" class="btn" data-mobile-jump="tileSettingsDisclosure">Settings</button>
+    <button type="button" class="btn" data-mobile-jump="exportSection">Export</button>
+  </nav>
+
+  <section id="projectSetupOverlay" class="projectSetupOverlay" role="dialog" aria-modal="true" aria-labelledby="projectSetupTitle">
+    <div class="projectSetupCard">
+      <h2 id="projectSetupTitle">Start designing</h2>
+      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.</p>
+      <button id="startPractice" class="btn primary full setupChoice" type="button">Start practice mode</button>
+      <p class="setupDivider"><span>Or create a project</span></p>
+      <form id="projectSetupForm">
+        <div class="field"><label for="projectTypeInput">Project type</label><select id="projectTypeInput"><option value="pattern">Pattern Project · seamless repeat</option><option value="doodle">Doodle Project · standalone artwork</option></select></div>
+        <div class="field"><label for="projectTitleInput">Project name</label><input id="projectTitleInput" type="text" maxlength="80" required placeholder="e.g. Garden birds"></div>
+        <div class="field"><label for="projectCustomerInput">Customer (optional)</label><input id="projectCustomerInput" type="text" maxlength="80" placeholder="Name or business"></div>
+        <div class="row">
+          <div class="field"><label for="projectThemeInput">Theme (optional)</label><input id="projectThemeInput" type="text" maxlength="60" placeholder="e.g. botanical"></div>
+          <div class="field"><label for="projectVariationInput">Variation (optional)</label><input id="projectVariationInput" type="text" maxlength="60" placeholder="e.g. blue colourway"></div>
+        </div>
+        <div id="projectRepeatSetup"><div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
+        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p></div>
+        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create pattern project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
+      </form>
+      <section id="localProjectsSection" hidden>
+        <h3>Saved on this device</h3>
+        <div id="localProjectList"></div>
+        <p id="localProjectsEmpty" class="help">Your saved projects will appear here.</p>
+      </section>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="panel left">
+      <details id="drawingControlsDisclosure" class="mobileDisclosure" open>
+      <summary>Drawing controls</summary>
+      <div id="focusControls">
+      <h2>Draw and colour</h2>
+      <div class="toolRow" role="group" aria-label="Drawing tools">
+        <button class="btn active" data-tool="select">Select</button>
+        <button class="btn" data-tool="brush">Brush</button>
+        <button class="btn" data-tool="eraser">Eraser</button>
+        <button class="btn" data-tool="pan">Pan</button>
+        <button class="btn" data-tool="line">Line</button>
+        <button class="btn" data-tool="rect">Rectangle</button>
+        <button class="btn" data-tool="ellipse">Ellipse</button>
+        <button class="btn" data-tool="freefill">Freehand fill</button>
+        <button class="btn" data-tool="gradient">Gradient fill</button>
+        <button class="btn" data-tool="eyedropper">Eyedropper</button>
+      </div>
+      <div class="colorRow">
+        <label for="ink" style="margin:0">Colour</label><input id="ink" type="color" value="#2c5f54" aria-label="Drawing colour">
+        <div id="paletteSwatches" class="paletteSwatches" aria-label="Current palette"></div>
+      </div>
+      <div class="paletteActions">
+        <button id="addPaletteColour" class="btn" type="button">Add colour</button>
+        <select id="savedPaletteSelect" aria-label="Saved colour palettes"><option value="default">Forest &amp; clay</option></select>
+        <button id="savePalette" class="btn" type="button">Save palette</button>
+      </div>
+      <div class="field"><label for="brushSize">Brush / outline size <span id="brushSizeLabel">20</span> px at export</label><input id="brushSize" type="range" min="2" max="400" value="20"></div>
+      <div class="row">
+        <div class="field"><label for="brushStyle">Brush style</label><select id="brushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select></div>
+        <div class="field"><label for="stampShape">Stamp shape</label><select id="stampShape"><option value="leaf">Leaf</option><option value="star">Star</option><option value="dot">Dot</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="inkOpacity">Mark opacity <span id="inkOpacityLabel">100%</span></label><input id="inkOpacity" type="range" min="5" max="100" value="100"></div>
+        <div class="field"><label for="textureAmount">Texture <span id="textureLabel">35%</span></label><input id="textureAmount" type="range" min="0" max="100" value="35"></div>
+      </div>
+      <div class="row gradientControls">
+        <div class="field"><label for="gradientType">Gradient fill</label><select id="gradientType"><option value="linear">Linear</option><option value="radial">Radial</option></select></div>
+        <div class="field"><label for="gradientDirection">Linear direction</label><select id="gradientDirection"><option value="diagonal">Diagonal</option><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></div>
+        <div class="field"><label for="gradientEnd">Fade to</label><input id="gradientEnd" type="color" value="#e8bc52" aria-label="Gradient end colour"></div>
+      </div>
+      <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
+      <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
+      <button id="startAgain" class="btn danger" type="button" style="width:100%;margin-top:8px">Start again</button>
+      <p class="help">Start again clears placed images and drawing marks, but keeps this project’s setup, imported image library, layers and settings.</p>
+      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
+
+      <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
+      <summary id="tileSettingsSummary">Tile and placement settings</summary>
+      <div class="advancedDisclosureBody">
+      <div class="kpi"><span>Export pixels</span><b id="pixelReadout">4000 × 4000</b></div>
+      <div class="kpi"><span>PNG print metadata</span><b>300 DPI</b></div>
+      <div class="row">
+        <div class="field"><label class="settingLabel" for="gridCount"><span>Grid divisions</span><output id="gridCountValue" class="settingValue">16 × 16</output></label><select id="gridCount"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16" selected>16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></div>
+        <div class="field"><label>&nbsp;</label><label class="check"><input id="gridOn" type="checkbox" checked> Show grid</label></div>
+      </div>
+      <div class="row">
+        <div class="field"><label class="settingLabel" for="symmetry"><span>Mirror while drawing</span><output id="symmetryValue" class="settingValue">Quadrant · 4 copies</output></label><select id="symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant" selected>Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></div>
+        <div class="field"><label>&nbsp;</label><label class="check"><input id="symmetryGuides" type="checkbox" checked> Show mirror guides</label></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="constructionGuide">Construction guide</label><select id="constructionGuide"><option value="off" selected>Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></div>
+        <div class="field"><label for="guideOpacity">Guide opacity <span id="guideOpacityLabel">55%</span></label><input id="guideOpacity" type="range" min="10" max="100" value="55"></div>
+      </div>
+      <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
+      <label class="check"><input id="snapOn" type="checkbox"> Smart snapping</label>
+      <p id="snapHelp" class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
+
+      <div id="backgroundSettingsRow" class="row">
+        <div class="field">
+          <label for="bg">Background</label>
+          <input id="bg" type="color" value="#ffffff">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label class="check"><input id="transparent" type="checkbox"> Transparent</label>
+        </div>
+      </div>
+      </div>
+      </details>
+      </div>
+      </details>
+
+      <details id="imagesDisclosure" class="mobileDisclosure" open>
+      <summary>Images and motifs</summary>
+      <h3>Add your images</h3>
+      <div id="drop" class="drop">
+        <strong>Tap to choose images</strong><br>
+        PNG, JPG, WebP or SVG. Transparent PNG/SVG works best.
+        <input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple hidden>
+      </div>
+      <div id="assetGrid" class="assetGrid" style="margin-top:8px"></div>
+      <p id="assetPlacementHelp" class="help">The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.</p>
+
+      <details id="patternScatterDisclosure" class="advancedDisclosure">
+      <summary>Optional image scatter</summary>
+      <div class="advancedDisclosureBody">
+      <p class="help" style="margin-top:0">Create a repeat from randomly placed copies of your selected images.</p>
+      <div class="row">
+        <div class="field">
+          <label for="count">Copies</label>
+          <input id="count" type="number" min="1" max="500" value="28">
+        </div>
+        <div class="field">
+          <label for="seed">Seed</label>
+          <input id="seed" type="text" value="pattern-01">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="minScale">Min scale %</label>
+          <input id="minScale" type="number" min="1" max="1000" value="18">
+        </div>
+        <div class="field">
+          <label for="maxScale">Max scale %</label>
+          <input id="maxScale" type="number" min="1" max="2000" value="42">
+        </div>
+      </div>
+      <div class="field">
+        <label for="rotationAmount">Random rotation ± <span id="rotationLabel">25°</span></label>
+        <input id="rotationAmount" type="range" min="0" max="180" value="25">
+      </div>
+      <div class="btns">
+        <button id="generate" class="btn primary full">Generate seamless pattern</button>
+        <button id="shuffle" class="btn">New seed</button>
+        <button id="clear" class="btn danger">Clear artwork</button>
+      </div>
+      </div>
+      </details>
+      </details>
+    </section>
+
+    <section id="stageWrap" class="stageWrap">
+      <div class="stageBar">
+        <span id="projectNameDisplay" class="projectBadge">Tile editor</span>
+        <span id="stageDescription" class="stageDescription">4000 px master tile · seamless repeat preview</span>
+        <button id="projectMenu" class="btn" type="button">Project</button>
+        <button id="focusToggle" class="btn" type="button" aria-label="Open full screen workspace">Full screen</button>
+        <button id="focusAddImage" class="btn" type="button">Add image</button>
+        <button id="repeatPreviewToggle" class="btn" type="button" aria-pressed="false">Preview repeat</button>
+        <button id="toolsToggle" class="btn" type="button" aria-controls="focusRail" aria-expanded="false">Tools</button>
+        <button id="recentToggle" class="btn" type="button" aria-controls="focusRecents" aria-expanded="false">Recent</button>
+        <button id="infoToggle" class="btn" type="button" aria-controls="focusInfoPanel" aria-expanded="false">Info</button>
+        <button id="helpOpen" class="btn" type="button">Guide</button>
+      </div>
+      <aside id="focusRecents" class="focusRecents" aria-label="Recently used images">
+        <h3>Recently used images</h3>
+        <div id="focusRecentGrid"></div>
+        <p id="focusRecentEmpty" class="focusRecentEmpty">Choose Add image. The first image will be placed on the tile; tap a thumbnail here to add another copy.</p>
+      </aside>
+      <aside id="focusInfoPanel" class="focusInfoPanel" aria-label="Image scaling and print checks">
+        <h3>Scale selected image</h3>
+        <div id="focusSelectedSlot"></div>
+        <h3>Original artwork quality</h3>
+        <div id="focusQualitySlot"></div>
+        <h3 id="focusPrintHeading">Tile size &amp; DPI</h3>
+        <div class="focusPrintSize">
+        <div class="field"><label id="focusPrintSizeLabel" for="focusPrintSize">Printed base-tile width</label><input id="focusPrintSize" type="number" min="1" max="300" step="any" value="30"></div>
+          <div class="field"><label for="focusPrintUnit">Units</label><select id="focusPrintUnit"><option value="cm">cm</option><option value="in">in</option></select></div>
+        </div>
+        <p id="focusPrintReadout" aria-live="polite"></p>
+        <div id="platformChecks" aria-live="polite"></div>
+        <p id="focusInfoPrintNote" class="focusInfoNote">Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.</p>
+        <div class="focusInfoLinks"><a href="https://help.printful.com/hc/en-us/articles/360014065619-Can-I-submit-print-files-in-300-DPI-resolution" target="_blank" rel="noopener">Printful</a><a href="https://help.printify.com/hc/en-us/articles/4483617936657-What-type-of-print-files-does-Printify-require" target="_blank" rel="noopener">Printify</a><a href="https://support.spoonflower.com/hc/en-us/articles/204600314-Uploading-Images" target="_blank" rel="noopener">Spoonflower</a><a href="https://printshrimp.com/blogs/news/artwork-specifications" target="_blank" rel="noopener">Print Shrimp</a></div>
+      </aside>
+      <div class="mobileTools" role="group" aria-label="Quick drawing tools">
+        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="eraser">Eraser</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
+      </div>
+      <div id="focusRail" class="focusRail" hidden aria-label="Drawing and colour tools"><button id="toolsClose" class="btn" type="button" style="float:right;padding:3px 8px" aria-label="Close drawing tools">×</button></div>
+      <canvas id="editorCanvas" width="1000" height="1000" aria-label="Pattern tile editor"></canvas>
+      <div class="stageControls zoomControls"><button id="zoomOut" class="btn" aria-label="Zoom out">−</button><input id="zoom" type="range" min="50" max="400" value="100" aria-label="Zoom"><button id="zoomIn" class="btn" aria-label="Zoom in">+</button><span id="zoomLabel">100%</span><button id="fit" class="btn">Fit</button></div>
+      <div id="repeatControls" class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
+      <div class="stageHint tileHint"><label id="tileBorderLabel" class="check"><input id="showTileBorder" type="checkbox" checked> <span id="tileBorderLabelText">Show centre tile edge</span></label></div>
+      <div id="stageHelpHint" class="stageHint helpHint">Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.</div>
+    </section>
+
+    <section class="panel right">
+      <details id="layersDisclosure" class="mobileDisclosure" open>
+      <summary>Selection and layers</summary>
+      <h2>Selected artwork</h2>
+      <div id="selectedPanel" class="selectedBox">
+        <div class="empty">Tap an imported motif or drawn mark in the tile to edit it.</div>
+      </div>
+
+      <h3>Layers</h3>
+      <div class="layerPanel">
+        <div id="layerList" class="layerList" aria-label="Artwork layers"></div>
+        <div class="layerActions">
+          <button id="layerAdd" class="btn" type="button">+ Layer</button>
+          <button id="layerDuplicate" class="btn" type="button">Duplicate</button>
+          <button id="layerDelete" class="btn danger" type="button">Delete</button>
+        </div>
+        <div class="layerActions two">
+          <button id="layerUp" class="btn" type="button">Move up</button>
+          <button id="layerDown" class="btn" type="button">Move down</button>
+        </div>
+        <div class="field">
+          <label for="layerName">Layer name</label>
+          <input id="layerName" type="text" maxlength="80" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="layerOpacity">Layer opacity <span id="layerOpacityValue">100%</span></label>
+          <input id="layerOpacity" type="range" min="0" max="100" value="100">
+        </div>
+        <div class="layerFlags">
+          <label class="check"><input id="layerVisible" type="checkbox" checked> Visible</label>
+          <label class="check"><input id="layerLocked" type="checkbox"> Lock</label>
+          <label class="check"><input id="layerExport" type="checkbox" checked> Export</label>
+        </div>
+        <p id="layerSummary" class="help">Select a layer to draw into it. Layers at the top are rendered in front.</p>
+      </div>
+      </details>
+
+      <details id="previewDisclosure" class="mobileDisclosure" open>
+      <summary>Repeat preview</summary>
+      <h3 id="repeatPreviewHeading">Live repeat preview</h3>
+      <div id="preview" class="previewBox"></div>
+      <div id="previewScaleField" class="field" style="margin-top:8px">
+        <label for="previewScale">Preview repeat size <span id="previewScaleLabel">33%</span></label>
+        <input id="previewScale" type="range" min="10" max="100" value="33">
+      </div>
+      </details>
+
+      <details id="exportDisclosure" class="mobileDisclosure" open>
+      <summary>Export and save</summary>
+      <h3>Print-quality check</h3>
+      <div id="quality" class="warning ok">Add artwork to calculate effective raster resolution.</div>
+
+      <h3 id="exportSection">Export and save</h3>
+      <p id="exportFilesTitle" class="exportGroupTitle">Pattern files</p>
+      <div class="btns">
+        <button id="exportPng" class="btn primary">Export pattern as PNG</button>
+        <button id="exportSvg" class="btn">Export pattern as SVG</button>
+      </div>
+      <p class="exportNote">PNG is a pixel image. SVG is vector artwork; placed raster images remain pixel based.</p>
+      <p class="exportGroupTitle">Editable project</p>
+      <div class="btns">
+        <button id="saveProject" class="btn">Download editable project (JSON)</button>
+        <button id="openProject" class="btn">Open project file</button>
+        <button id="exportZip" class="btn full">Download project bundle (ZIP)</button>
+        <input id="projectFile" type="file" accept="application/json,.json,application/zip,.zip" hidden>
+      </div>
+      <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
+      <p id="exportDimensionsHelp" class="help">
+        PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular.
+        SVG itself is resolution-independent; raster artwork inside an SVG remains raster.
+      </p>
+
+      <p class="help">Project files include artwork used by placed motifs. Keep your original image files as separate backups.</p>
+      </details>
+    </section>
+  </main>
+
+  <dialog id="helpDialog" class="helpDialog" aria-labelledby="helpDialogTitle">
+    <div class="helpDialogHead"><h2 id="helpDialogTitle">Pattern Forge quick guide</h2><form method="dialog"><button class="btn" aria-label="Close guide">Close</button></form></div>
+    <div class="helpDialogBody">
+      <p class="helpCard"><strong>Best workspace:</strong> turn your device to landscape and choose Full screen. The central tile stays the main design area; open Tools, Recent or Info only when you need them.</p>
+      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named Pattern Project or Doodle Project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
+      <h3>Preview and export</h3><p>Pattern Projects use Preview repeat with straight, half-drop or brick layouts. Doodle Projects use one transparent standalone canvas with no automatic edge wrapping. Export PNG for reusable raster artwork or SVG for a vector document; imported raster images remain raster inside SVG.</p>
+      <h3>Save your work</h3><p>Autosave stays in this browser on this device. Download editable project (JSON) to keep the editable design, or download project bundle (ZIP) for the project, PNG and SVG together. Open a JSON or ZIP project file in Pattern Forge to continue editing.</p>
+      <h3>Print checks</h3><p>The base tile is 4000 × 4000 pixels and exports carry 300 DPI metadata. Imported image quality depends on its original resolution and chosen print size. Check the requirements for your specific product and printer before ordering.</p>
+      <h3>Keyboard</h3><p>Press Escape to leave the full-screen workspace. If the Tools panel is open, its controls remain available in the drawer.</p>
+    </div>
+  </dialog>
+
+  <footer>
+    Sapiver Press · Pattern Forge. Export quality depends on your source artwork and print settings. Check the requirements for your chosen product and print provider.
+  </footer>
+</div>
+
+<script src="/app/js/platform.js"></script>
+<script src="/app/js/editor.js"></script>
+<script src="/app/js/workspace.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1200
 const page = await context.newPage();
 
 try {
-  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/app/', { waitUntil: 'networkidle' });
   await page.locator('#startPractice').click();
   await page.waitForFunction(() => document.querySelector('#projectSetupOverlay')?.hidden === true);
 

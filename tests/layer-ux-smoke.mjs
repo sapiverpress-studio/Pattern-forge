@@ -16,10 +16,10 @@ async function selectLayer(name){
 }
 
 try{
-  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
-  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.6.5','wrong app version');
+  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.7.0','wrong app version');
 
   await page.locator('#layerAdd').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===3);

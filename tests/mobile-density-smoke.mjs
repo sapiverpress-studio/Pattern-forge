@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 function assert(condition, message){ if(!condition) throw new Error(message); }
 
 async function createProject(page, type, title){
-  await page.goto('http://127.0.0.1:4173/', {waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4173/app/', {waitUntil:'networkidle'});
   await page.locator('#projectTypeInput').selectOption(type);
   await page.locator('#projectTitleInput').fill(title);
   await page.locator('#projectSetupForm').evaluate(form=>form.requestSubmit());
@@ -28,7 +28,7 @@ try{
   page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
 
   await createProject(page,'pattern','Mobile Compact QA');
-  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.6.5','wrong app version');
+  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.7.0','wrong app version');
   let state=await disclosureState(page);
   assert(Object.values(state).every(v=>v===false),`mobile disclosures should start collapsed: ${JSON.stringify(state)}`);
   assert(await page.locator('.mobileTools').isVisible(),'mobile quick tools should remain visible');

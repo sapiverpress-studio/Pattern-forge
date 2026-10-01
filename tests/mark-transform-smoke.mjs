@@ -80,7 +80,7 @@ try {
   }
 
   const baseProject = projectWithMark({ ...baseMark });
-  await openProject(current, 'http://127.0.0.1:4173/', baseProject);
+  await openProject(current, 'http://127.0.0.1:4173/app/', baseProject);
   const currentBaseSvg = await downloadText(current, '#exportSvg');
 
   await openProject(previous, 'http://127.0.0.1:4174/', baseProject);

@@ -1,0 +1,12 @@
+{
+  "name": "Sapiver Pattern Forge",
+  "short_name": "Pattern Forge",
+  "description": "Create seamless patterns and standalone transparent artwork.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f1eb",
+  "theme_color": "#2c5f54",
+  "categories": ["design", "productivity", "graphics"]
+}

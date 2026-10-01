@@ -60,7 +60,7 @@ async function downloadText(buttonSelector) {
 }
 
 try {
-  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/app/', { waitUntil: 'networkidle' });
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden' });
 
