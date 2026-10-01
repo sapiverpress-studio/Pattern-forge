@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.6.4">
+<meta name="app-version" content="1.2.0-alpha.6.5">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -352,6 +352,8 @@
       </div>
       <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
       <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
+      <button id="startAgain" class="btn danger" type="button" style="width:100%;margin-top:8px">Start again</button>
+      <p class="help">Start again clears placed images and drawing marks, but keeps this project’s setup, imported image library, layers and settings.</p>
       <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
 
       <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
@@ -1553,6 +1555,28 @@
     state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
     state.selectedId=null;state.activeMark=null;renderAll();
   }
+  function startAgain(){
+    const itemCount=state.items.length;
+    const markCount=state.marks.length;
+    if(!itemCount&&!markCount){setStatus("Nothing to clear — the canvas is already empty.");return;}
+    const parts=[];
+    if(itemCount)parts.push(`${itemCount} placed image${itemCount===1?"":"s"}`);
+    if(markCount)parts.push(`${markCount} drawing mark${markCount===1?"":"s"}`);
+    const summary=parts.join(" and ");
+    if(!confirm(`Start again and clear ${summary}? Project setup, imported images, layers and settings will be kept. You can restore this once with Undo.`))return;
+    saveHistory();
+    state.items=[];
+    state.marks=[];
+    state.selectedId=null;
+    state.activeMark=null;
+    state.dragging=false;
+    state.resizeState=null;
+    state.transformState=null;
+    state.dragStart=null;
+    state.snapGuides={x:null,y:null};
+    renderAll();
+    setStatus(`Started again — cleared ${summary}. Project setup and image library kept.`);
+  }
   function clearSnapGuides(){state.snapGuides={x:null,y:null};}
   function smartSnapAxis(v,halfExtent){
     if(!$("snapOn").checked)return {value:v,guide:null};
@@ -2306,6 +2330,7 @@
   ["brushStyle","stampShape","gradientType","gradientDirection","gradientEnd"].forEach(id=>$(id).addEventListener("input",scheduleAutosave));
   $("undo").onclick=()=>restoreHistory(state.past,state.future);
   $("redo").onclick=()=>restoreHistory(state.future,state.past);
+  $("startAgain").onclick=startAgain;
   $("zoom").addEventListener("input",()=>setZoom(parseInt($("zoom").value,10)/100));
   $("neighborOpacity").addEventListener("input",()=>{$("neighborLabel").textContent=$("neighborOpacity").value+"%";renderAll(false,false);});
   $("zoomOut").onclick=()=>setZoom(state.zoom/1.25);
