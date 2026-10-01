@@ -23,3 +23,8 @@ The tested editor remains one shared codebase in `/app/js/editor.js` with presen
 3. Add Android icons/splash assets and package metadata.
 4. Wrap `/app/` with Capacitor or a minimal Android WebView shell.
 5. Re-run the same browser regression suite inside the Android wrapper.
+
+## Expo Android shell
+A first Expo SDK 57 Android shell now lives in `/mobile/`. It loads the hosted product through `react-native-webview`, injects the existing Pattern Forge Android bridge, supports Android back navigation, and routes generated exports to native Android file saving/share handling.
+
+The Expo project is linked to EAS project `53addbf0-0314-4e3e-9120-08fa61a0ee4a` under the `sapiverforge` owner and uses Android package `uk.co.sapiverpress.patternforge`.

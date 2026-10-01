@@ -1266,7 +1266,17 @@
     const chunk=concatArrays([u32be(9),type,data,crc]);
     return new Blob([sig,ihdr,chunk,...rest],{type:"image/png"});
   }
-  function downloadBlob(blob,name){
+  async function downloadBlob(blob,name){
+    const nativeSave=window.PatternForgePlatform?.isNativeAndroid&&window.PatternForgePlatform?.capabilities?.nativeFileSave;
+    if(nativeSave){
+      try{
+        const bytes=new Uint8Array(await blob.arrayBuffer());
+        let binary="";const chunk=0x8000;
+        for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+        const result=await window.PatternForgePlatform.invoke("saveFile",{name,mimeType:blob.type||"application/octet-stream",base64:btoa(binary)});
+        if(result?.handled)return;
+      }catch(error){console.error("Pattern Forge native save failed; falling back to browser download",error);}
+    }
     const u=URL.createObjectURL(blob),a=document.createElement("a");
     a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),2000);

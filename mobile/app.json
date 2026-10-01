@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Sapiver Pattern Forge",
+    "slug": "pattern-forge",
+    "owner": "sapiverforge",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "scheme": "sapiverpatternforge",
+    "android": {
+      "package": "uk.co.sapiverpress.patternforge",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "53addbf0-0314-4e3e-9120-08fa61a0ee4a"
+      }
+    }
+  }
+}
