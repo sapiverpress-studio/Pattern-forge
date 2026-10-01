@@ -1395,7 +1395,9 @@
     const w=worldPoint(p);
     if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
     if(state.tool==="select"){
-      const current=selectedItem();
+      let current=selectedItem();
+      const currentLayer=current?layerForArtwork(current,BASE_LAYER_IDS.motifs):null;
+      if(current&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){state.selectedId=null;current=null;}
       const handle=current&&imageHandleAt(current,w.x,w.y);
       if(handle){
         saveHistory();
@@ -1911,7 +1913,7 @@
   $("layerOpacity").addEventListener("input",()=>{$("layerOpacityValue").textContent=$("layerOpacity").value+"%";});
   $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
   $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;if(!layer.visible&&selectedItem()?.layerId===layer.id)state.selectedId=null;renderAll();});
-  $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;renderAll();});
+  $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;if(layer.locked&&selectedItem()?.layerId===layer.id)state.selectedId=null;renderAll();});
   $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
   rebuildLayerUI();
   loadSavedPalettes();rebuildPaletteUI();
