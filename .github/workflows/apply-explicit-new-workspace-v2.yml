@@ -1,0 +1,30 @@
+name: Apply explicit new workspace flow
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - dev/apply-explicit-new-workspace-v2.py
+      - .github/workflows/apply-explicit-new-workspace-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - run: python3 dev/apply-explicit-new-workspace-v2.py
+      - run: node --check app/js/editor.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- app/js/editor.js; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/js/editor.js
+          git commit -m 'Keep explicit new workspace separate from autosave'
+          git push origin HEAD:feature/canvas-first-ux-v2
