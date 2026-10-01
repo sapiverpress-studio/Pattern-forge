@@ -1,0 +1,50 @@
+name: Refine Pattern Forge alpha.5.2 eraser
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/refine-real-eraser-alpha52.py
+      - .github/workflows/refine-real-eraser-alpha52.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine-eraser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+      - name: Apply guarded refinement
+        run: python3 dev/refine-real-eraser-alpha52.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify eraser ordering guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=['data-tool="eraser">Eraser</button><button class="btn" data-tool="freefill"','let eraserNodes="";','layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;','body+=layerBody;']
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('refinement guard missing: '+repr(missing))
+          if 'layerErase' in html: raise SystemExit('whole-layer eraser accumulator remains')
+          print('eraser ordering guards present')
+          PY
+      - name: Commit eraser refinement
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Preserve post-erase drawing order in SVG and mobile tools'
+          git push origin HEAD:feature/layer-engine-v1.2
