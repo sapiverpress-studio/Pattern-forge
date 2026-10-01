@@ -1,4 +1,5 @@
 name: Pattern Forge mobile density smoke test
+# alpha.6.5 compatibility rerun
 
 on:
   push:
