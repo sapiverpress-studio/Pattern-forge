@@ -1,0 +1,71 @@
+name: Start Expo Go tunnel
+
+on:
+  push:
+    branches: [feature/expo-go-live-test]
+    paths:
+      - .github/workflows/expo-go-tunnel.yml
+  workflow_dispatch:
+
+jobs:
+  expo-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-go-live-test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Install Expo tunnel helper
+        run: npm install --global @expo/ngrok
+      - name: Start Expo Go tunnel and capture URL
+        shell: bash
+        run: |
+          cd mobile
+          export CI=1
+          nohup npx expo start --tunnel --clear > ../expo-go.log 2>&1 &
+          echo $! > ../expo-go.pid
+          cd ..
+          for i in $(seq 1 120); do
+            URL=$(grep -Eo 'exp://[^[:space:]]+' expo-go.log | head -n 1 | tr -d '\r' || true)
+            if [ -n "$URL" ]; then
+              printf '%s\n' "$URL" > expo-go-url.txt
+              echo "Expo Go URL: $URL"
+              break
+            fi
+            if ! kill -0 "$(cat expo-go.pid)" 2>/dev/null; then
+              echo 'Expo tunnel stopped before publishing a URL.'
+              cat expo-go.log
+              exit 1
+            fi
+            sleep 2
+          done
+          test -s expo-go-url.txt || { echo 'Timed out waiting for Expo Go URL'; cat expo-go.log; exit 1; }
+      - name: Upload Expo Go connection info
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-go-live-url
+          path: |
+            expo-go-url.txt
+            expo-go.log
+          retention-days: 1
+      - name: Keep tunnel available for testing
+        shell: bash
+        run: |
+          PID=$(cat expo-go.pid)
+          echo "Expo tunnel process: $PID"
+          for i in $(seq 1 5400); do
+            if ! kill -0 "$PID" 2>/dev/null; then
+              echo 'Expo tunnel stopped.'
+              cat expo-go.log
+              exit 1
+            fi
+            sleep 1
+          done
