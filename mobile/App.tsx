@@ -22,6 +22,23 @@ const PATTERN_FORGE_URL =
 
 const ALLOWED_HOST = 'sapiver-pattern-forge.netlify.app';
 
+function normaliseInternalUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl, PATTERN_FORGE_URL);
+    if (url.hostname !== ALLOWED_HOST) return null;
+    if (url.pathname === '/app/pattern/' || url.pathname === '/app/pattern') {
+      url.pathname = '/app/';
+      url.search = '?workspace=pattern';
+    } else if (url.pathname === '/app/doodle/' || url.pathname === '/app/doodle') {
+      url.pathname = '/app/';
+      url.search = '?workspace=doodle';
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 const ANDROID_BRIDGE = String.raw`
 (function () {
   if (window.PatternForgeAndroid) return true;
@@ -102,6 +119,21 @@ const ANDROID_BRIDGE = String.raw`
     });
   };
 
+
+  // Route all same-site navigation through the native shell. This avoids
+  // Android WebView getting stuck on the lightweight workspace redirect pages.
+  document.addEventListener('click', function (event) {
+    var node = event.target;
+    var anchor = node && node.closest ? node.closest('a[href]') : null;
+    if (!anchor || anchor.download) return;
+    try {
+      var target = new URL(anchor.href, window.location.href);
+      if (target.hostname !== window.location.hostname) return;
+      event.preventDefault();
+      send('navigate', { url: target.href });
+    } catch (_) {}
+  }, true);
+
   return true;
 })();
 true;
@@ -180,6 +212,7 @@ export default function App() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState(PATTERN_FORGE_URL);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -197,7 +230,14 @@ export default function App() {
       const message = JSON.parse(event.nativeEvent.data || '{}');
       if (message?.source !== 'PatternForgeAndroid') return;
 
-      if (message.action === 'saveFile') {
+      if (message.action === 'navigate') {
+        const target = normaliseInternalUrl(String(message.payload?.url || ''));
+        if (target) {
+          setLoading(true);
+          setLoadError(false);
+          setCurrentUrl(target);
+        }
+      } else if (message.action === 'saveFile') {
         await saveFile(message.payload || {});
       } else if (message.action === 'shareFile') {
         await shareFile(message.payload || {});
@@ -218,7 +258,7 @@ export default function App() {
       <View style={styles.container}>
         <WebView
           ref={webRef}
-          source={{ uri: PATTERN_FORGE_URL }}
+          source={{ uri: currentUrl }}
           injectedJavaScriptBeforeContentLoaded={ANDROID_BRIDGE}
           javaScriptEnabled
           domStorageEnabled
