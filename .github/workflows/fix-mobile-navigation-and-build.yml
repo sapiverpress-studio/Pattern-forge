@@ -1,0 +1,69 @@
+name: Fix Pattern Forge Android navigation and build APK
+
+on:
+  push:
+    branches: [feature/expo-android-app-v1]
+    paths:
+      - dev/patch-mobile-navigation.py
+      - .github/workflows/fix-mobile-navigation-and-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-android-app-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Apply navigation fix
+        run: python3 dev/patch-mobile-navigation.py
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Verify Expo app
+        working-directory: mobile
+        run: |
+          npm run typecheck
+          npx expo-doctor
+      - name: Generate Android native project
+        working-directory: mobile
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+      - name: Force JS bundle into installable test APK
+        working-directory: mobile
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx expo export:embed --platform android --entry-file index.ts --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+      - name: Build standalone debug-signed APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Verify packaged JavaScript bundle
+        run: unzip -l mobile/android/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/index.android.bundle'
+      - name: Commit Android navigation fix
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add mobile/App.tsx
+          git commit -m "Fix Android internal navigation" || exit 0
+          git push origin HEAD:feature/expo-android-app-v1
+      - name: Upload corrected APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sapiver-pattern-forge-android-navigation-fixed
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
