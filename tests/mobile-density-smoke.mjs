@@ -28,7 +28,7 @@ try{
   page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
 
   await createProject(page,'pattern','Mobile Compact QA');
-  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.6.2','wrong app version');
+  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.6.5','wrong app version');
   let state=await disclosureState(page);
   assert(Object.values(state).every(v=>v===false),`mobile disclosures should start collapsed: ${JSON.stringify(state)}`);
   assert(await page.locator('.mobileTools').isVisible(),'mobile quick tools should remain visible');
