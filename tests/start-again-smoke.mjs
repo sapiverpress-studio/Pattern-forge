@@ -91,6 +91,8 @@ try{
   await page.locator('#startAgain').click();
   await page.waitForTimeout(1400);
   await page.reload({waitUntil:'networkidle'});
+  await page.locator('#resumePrompt').waitFor({state:'visible',timeout:5000});
+  await page.locator('#continuePrevious').click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden',timeout:5000});
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===2);
   assert(JSON.stringify(await layerNames())===JSON.stringify(beforeLayers),'layers changed after reset autosave/reload');
