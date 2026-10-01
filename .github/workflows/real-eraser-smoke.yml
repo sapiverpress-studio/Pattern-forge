@@ -1,0 +1,35 @@
+name: Pattern Forge real eraser smoke test
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - tests/real-eraser-smoke.mjs
+      - .github/workflows/real-eraser-smoke.yml
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve Pattern Forge
+        run: |
+          python3 -m http.server 4173 >/tmp/pf-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 0.5; done
+          exit 1
+      - name: Run real eraser browser smoke test
+        run: node tests/real-eraser-smoke.mjs
+      - name: Re-run mark transform compatibility smoke
+        run: node tests/mark-transform-smoke.mjs
+      - name: Re-run drawn selection compatibility smoke
+        run: node tests/drawn-selection-smoke.mjs
