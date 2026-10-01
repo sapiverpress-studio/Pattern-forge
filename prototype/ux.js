@@ -21,6 +21,8 @@
     panel: 'layers'
   };
 
+  const isCompactLandscape = () => window.matchMedia('(max-width: 980px) and (orientation: landscape)').matches;
+
   const toolHints = {
     select: 'Select artwork to move, scale or rotate',
     brush: 'Draw directly on the active layer',
@@ -57,8 +59,8 @@
     return `
       <div class="panel-section">
         <div class="panel-label">Artwork layers</div>
-        <div class="layer-row active"><div class="layer-thumb"></div><div><strong>Drawing</strong><small>12 marks</small></div><button class="layer-eye">●</button></div>
-        <div class="layer-row"><div class="layer-thumb"></div><div><strong>Motifs</strong><small>4 objects</small></div><button class="layer-eye">●</button></div>
+        <div class="layer-row active"><div class="layer-thumb"></div><div><strong>Artwork</strong><small>Active layer</small></div><button class="layer-eye">●</button></div>
+        <div class="layer-row"><div class="layer-thumb"></div><div><strong>Imported images</strong><small>No items</small></div><button class="layer-eye">●</button></div>
         <button class="secondary-button" style="width:100%;margin-top:7px">+ Add layer</button>
       </div>
       <div class="panel-section">
@@ -77,7 +79,7 @@
 
   function patternPanel() {
     return `
-      <div class="panel-section"><div class="panel-label">Repeat</div><div class="repeat-preview-mini"></div></div>
+      <div class="panel-section"><div class="panel-label">Repeat structure</div><div class="repeat-preview-mini" aria-label="Neutral repeat grid preview"></div></div>
       <div class="panel-section"><button class="control-chip active" style="width:100%;margin-bottom:7px">${toolState.repeat}</button><button class="secondary-button" style="width:100%;margin-bottom:7px">Full repeat preview</button><button class="secondary-button" style="width:100%">Seam check</button></div>`;
   }
 
@@ -89,12 +91,18 @@
     $$('.dock-button').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === name));
   }
 
+  function closePanel() {
+    sidePanel.hidden = true;
+    if (isCompactLandscape()) $$('.dock-button').forEach(btn => btn.classList.remove('active'));
+  }
+
   function setTool(tool) {
     toolState.activeTool = tool;
     $$('.tool-button').forEach(btn => btn.classList.toggle('active', btn.dataset.tool === tool));
     contextBar.innerHTML = contextTemplates[tool];
     canvasHint.textContent = toolHints[tool];
-    selectionBox.hidden = tool !== 'select';
+    // No fake artwork is selected in the prototype. Real transform handles arrive with engine wiring.
+    selectionBox.hidden = true;
   }
 
   function showEditor(mode = 'pattern', name = mode === 'pattern' ? 'Untitled Pattern' : 'Untitled Doodle') {
@@ -107,6 +115,7 @@
     workspaceField.classList.toggle('pattern-workspace', mode === 'pattern');
     workspaceField.classList.toggle('doodle-workspace', mode === 'doodle');
     renderPanel('layers');
+    if (isCompactLandscape()) closePanel();
     setTool('select');
   }
 
@@ -123,7 +132,7 @@
   $('#galleryButton').addEventListener('click', showGallery);
   $('#exportButton').addEventListener('click', () => $('#exportModal').hidden = false);
   $('#previewButton').addEventListener('click', () => renderPanel(toolState.mode === 'pattern' ? 'pattern' : 'layers'));
-  $('#closePanel').addEventListener('click', () => sidePanel.hidden = true);
+  $('#closePanel').addEventListener('click', closePanel);
   $$('.tool-button').forEach(btn => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
   $$('.dock-button').forEach(btn => btn.addEventListener('click', () => renderPanel(btn.dataset.panel)));
   $$('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-backdrop').hidden = true));
