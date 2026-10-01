@@ -45,6 +45,8 @@ jobs:
           sleep 2
       - name: Start-flow mobile smoke
         run: node tests/start-flow-smoke.mjs
+      - name: Doodle landscape regression
+        run: node tests/doodle-landscape-smoke.mjs
       - name: Product workspace regression
         run: node tests/product-workspaces-smoke.mjs
       - name: Mobile density regression
