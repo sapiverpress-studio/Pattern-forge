@@ -1,0 +1,49 @@
+name: Pattern Forge eyedropper compatibility regression
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - .github/workflows/eyedropper-compatibility-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve Pattern Forge
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pattern-forge-http.log 2>&1 &
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pattern-forge-http.log
+          exit 1
+
+      - name: Run layer UI smoke test
+        run: node tests/layer-ui-smoke.mjs
+
+      - name: Run mark transform smoke test
+        run: node tests/mark-transform-smoke.mjs
+
+      - name: Run drawn selection smoke test
+        run: node tests/drawn-selection-smoke.mjs

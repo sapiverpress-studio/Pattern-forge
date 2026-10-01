@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.1.5">
+<meta name="app-version" content="1.2.0-alpha.6.1">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -172,11 +172,26 @@
   .kpi:last-child{border-bottom:0}
   .kpi b{font-variant-numeric:tabular-nums}
   .selectedBox{padding:10px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+  .layerPanel{padding:10px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+  .layerList{display:grid;gap:5px;margin-bottom:8px}
+  .layerRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid var(--line);border-radius:9px;background:#fff;padding:7px 8px;color:var(--ink)}
+  .layerRow.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f1f7f4}
+  .layerRowName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:750}
+  .layerRowMeta{flex:none;color:var(--muted);font-size:.64rem;white-space:nowrap}
+  .layerActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:6px 0}
+  .layerActions.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .layerActions .btn{min-width:0;padding:6px 4px;font-size:.7rem}
+  .layerFlags{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px}
+  .layerFlags .check{font-size:.68rem;gap:4px;min-width:0}
+  .layerFlags .check input{width:16px;height:16px;flex:none}
   .empty{font-size:.78rem;color:var(--muted)}
   footer{margin:12px 2px 0;color:var(--muted);font-size:.72rem;line-height:1.5}
   .mini{font-size:.72rem}
   .settingLabel{display:flex;justify-content:space-between;align-items:center;gap:6px}
   .settingValue{display:inline-block;max-width:58%;padding:2px 7px;border:1px solid #bfd0c8;border-radius:999px;background:#edf4f0;color:#244e44;font-size:.72rem;font-weight:750;text-align:right;white-space:normal;line-height:1.25}
+  .doodle-project #patternScatterDisclosure,.doodle-project #repeatControls,.doodle-project #repeatPreviewToggle,.doodle-project #repeatPreviewHeading,.doodle-project #preview,.doodle-project #previewScaleField,.doodle-project #backgroundSettingsRow{display:none!important}
+  .doodle-project #projectNameDisplay{background:#eaf3f0;border-color:#9dbdb4;color:#173d36}
+  .doodle-project #stageWrap{box-shadow:0 0 0 2px rgba(44,95,84,.10) inset}
   .advancedDisclosure{margin:12px 0;border:1px solid var(--line);border-radius:10px;background:#fff}
   .advancedDisclosure>summary{cursor:pointer;padding:10px 12px;color:#244e44;font-size:.84rem;font-weight:750;list-style-position:inside}
   .advancedDisclosure[open]>summary{border-bottom:1px solid var(--line)}
@@ -242,7 +257,7 @@
     <div>
       <p class="brandEyebrow">Sapiver Press · Pattern design studio</p>
       <h1>Sapiver Pattern Forge</h1>
-      <p class="sub">Arrange artwork into seamless repeats. Draw, place motifs, preview straight, half-drop and brick layouts, then export PNG, SVG or an editable project.</p>
+      <p class="sub">Create seamless repeat patterns or standalone doodles. Draw, place motifs and export reusable PNG, SVG or editable project files.</p>
     </div>
     <div class="status" id="status" role="status" aria-live="polite">Your artwork stays in this browser. Save a project file for a portable backup.</div>
   </header>
@@ -257,19 +272,20 @@
   <section id="projectSetupOverlay" class="projectSetupOverlay" role="dialog" aria-modal="true" aria-labelledby="projectSetupTitle">
     <div class="projectSetupCard">
       <h2 id="projectSetupTitle">Start designing</h2>
-      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.</p>
+      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.</p>
       <button id="startPractice" class="btn primary full setupChoice" type="button">Start practice mode</button>
-      <p class="setupDivider"><span>Or create a print project</span></p>
+      <p class="setupDivider"><span>Or create a project</span></p>
       <form id="projectSetupForm">
+        <div class="field"><label for="projectTypeInput">Project type</label><select id="projectTypeInput"><option value="pattern">Pattern Project · seamless repeat</option><option value="doodle">Doodle Project · standalone artwork</option></select></div>
         <div class="field"><label for="projectTitleInput">Project name</label><input id="projectTitleInput" type="text" maxlength="80" required placeholder="e.g. Garden birds"></div>
         <div class="field"><label for="projectCustomerInput">Customer (optional)</label><input id="projectCustomerInput" type="text" maxlength="80" placeholder="Name or business"></div>
         <div class="row">
           <div class="field"><label for="projectThemeInput">Theme (optional)</label><input id="projectThemeInput" type="text" maxlength="60" placeholder="e.g. botanical"></div>
           <div class="field"><label for="projectVariationInput">Variation (optional)</label><input id="projectVariationInput" type="text" maxlength="60" placeholder="e.g. blue colourway"></div>
         </div>
-        <div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
-        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p>
-        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create print project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
+        <div id="projectRepeatSetup"><div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
+        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p></div>
+        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create pattern project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
       </form>
       <section id="localProjectsSection" hidden>
         <h3>Saved on this device</h3>
@@ -286,6 +302,7 @@
       <div class="toolRow" role="group" aria-label="Drawing tools">
         <button class="btn active" data-tool="select">Select</button>
         <button class="btn" data-tool="brush">Brush</button>
+        <button class="btn" data-tool="eraser">Eraser</button>
         <button class="btn" data-tool="pan">Pan</button>
         <button class="btn" data-tool="line">Line</button>
         <button class="btn" data-tool="rect">Rectangle</button>
@@ -319,10 +336,10 @@
       </div>
       <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
       <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
-      <p class="help">Choose a brush style, then adjust size, opacity and texture. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
+      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
 
       <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
-      <summary>Tile and placement settings</summary>
+      <summary id="tileSettingsSummary">Tile and placement settings</summary>
       <div class="advancedDisclosureBody">
       <div class="kpi"><span>Export pixels</span><b id="pixelReadout">4000 × 4000</b></div>
       <div class="kpi"><span>PNG print metadata</span><b>300 DPI</b></div>
@@ -334,10 +351,15 @@
         <div class="field"><label class="settingLabel" for="symmetry"><span>Mirror while drawing</span><output id="symmetryValue" class="settingValue">Quadrant · 4 copies</output></label><select id="symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant" selected>Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></div>
         <div class="field"><label>&nbsp;</label><label class="check"><input id="symmetryGuides" type="checkbox" checked> Show mirror guides</label></div>
       </div>
-      <label class="check"><input id="snapOn" type="checkbox"> Snap placement to grid</label>
-      <p class="help">Grid and snap are independent. Snap applies when moving imported artwork or drawn shapes.</p>
-
       <div class="row">
+        <div class="field"><label for="constructionGuide">Construction guide</label><select id="constructionGuide"><option value="off" selected>Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></div>
+        <div class="field"><label for="guideOpacity">Guide opacity <span id="guideOpacityLabel">55%</span></label><input id="guideOpacity" type="range" min="10" max="100" value="55"></div>
+      </div>
+      <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
+      <label class="check"><input id="snapOn" type="checkbox"> Smart snapping</label>
+      <p id="snapHelp" class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
+
+      <div id="backgroundSettingsRow" class="row">
         <div class="field">
           <label for="bg">Background</label>
           <input id="bg" type="color" value="#ffffff">
@@ -358,9 +380,9 @@
         <input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple hidden>
       </div>
       <div id="assetGrid" class="assetGrid" style="margin-top:8px"></div>
-      <p class="help">The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.</p>
+      <p id="assetPlacementHelp" class="help">The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.</p>
 
-      <details class="advancedDisclosure">
+      <details id="patternScatterDisclosure" class="advancedDisclosure">
       <summary>Optional image scatter</summary>
       <div class="advancedDisclosureBody">
       <p class="help" style="margin-top:0">Create a repeat from randomly placed copies of your selected images.</p>
@@ -400,7 +422,7 @@
     <section id="stageWrap" class="stageWrap">
       <div class="stageBar">
         <span id="projectNameDisplay" class="projectBadge">Tile editor</span>
-        <span class="stageDescription">4000 px master tile · seamless repeat preview</span>
+        <span id="stageDescription" class="stageDescription">4000 px master tile · seamless repeat preview</span>
         <button id="projectMenu" class="btn" type="button">Project</button>
         <button id="focusToggle" class="btn" type="button" aria-label="Open full screen workspace">Full screen</button>
         <button id="focusAddImage" class="btn" type="button">Add image</button>
@@ -420,36 +442,64 @@
         <div id="focusSelectedSlot"></div>
         <h3>Original artwork quality</h3>
         <div id="focusQualitySlot"></div>
-        <h3>Tile size &amp; DPI</h3>
+        <h3 id="focusPrintHeading">Tile size &amp; DPI</h3>
         <div class="focusPrintSize">
-        <div class="field"><label for="focusPrintSize">Printed base-tile width</label><input id="focusPrintSize" type="number" min="1" max="300" step="any" value="30"></div>
+        <div class="field"><label id="focusPrintSizeLabel" for="focusPrintSize">Printed base-tile width</label><input id="focusPrintSize" type="number" min="1" max="300" step="any" value="30"></div>
           <div class="field"><label for="focusPrintUnit">Units</label><select id="focusPrintUnit"><option value="cm">cm</option><option value="in">in</option></select></div>
         </div>
         <p id="focusPrintReadout" aria-live="polite"></p>
         <div id="platformChecks" aria-live="polite"></div>
-        <p class="focusInfoNote">Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.</p>
+        <p id="focusInfoPrintNote" class="focusInfoNote">Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.</p>
         <div class="focusInfoLinks"><a href="https://help.printful.com/hc/en-us/articles/360014065619-Can-I-submit-print-files-in-300-DPI-resolution" target="_blank" rel="noopener">Printful</a><a href="https://help.printify.com/hc/en-us/articles/4483617936657-What-type-of-print-files-does-Printify-require" target="_blank" rel="noopener">Printify</a><a href="https://support.spoonflower.com/hc/en-us/articles/204600314-Uploading-Images" target="_blank" rel="noopener">Spoonflower</a><a href="https://printshrimp.com/blogs/news/artwork-specifications" target="_blank" rel="noopener">Print Shrimp</a></div>
       </aside>
       <div class="mobileTools" role="group" aria-label="Quick drawing tools">
-        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
+        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="eraser">Eraser</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
       </div>
       <div id="focusRail" class="focusRail" hidden aria-label="Drawing and colour tools"><button id="toolsClose" class="btn" type="button" style="float:right;padding:3px 8px" aria-label="Close drawing tools">×</button></div>
       <canvas id="editorCanvas" width="1000" height="1000" aria-label="Pattern tile editor"></canvas>
       <div class="stageControls zoomControls"><button id="zoomOut" class="btn" aria-label="Zoom out">−</button><input id="zoom" type="range" min="50" max="400" value="100" aria-label="Zoom"><button id="zoomIn" class="btn" aria-label="Zoom in">+</button><span id="zoomLabel">100%</span><button id="fit" class="btn">Fit</button></div>
-      <div class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
-      <div class="stageHint tileHint"><label class="check"><input id="showTileBorder" type="checkbox" checked> Show centre tile edge</label></div>
-      <div class="stageHint helpHint">Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.</div>
+      <div id="repeatControls" class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
+      <div class="stageHint tileHint"><label id="tileBorderLabel" class="check"><input id="showTileBorder" type="checkbox" checked> <span id="tileBorderLabelText">Show centre tile edge</span></label></div>
+      <div id="stageHelpHint" class="stageHint helpHint">Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.</div>
     </section>
 
     <section class="panel right">
-      <h2>Selected motif</h2>
+      <h2>Selected artwork</h2>
       <div id="selectedPanel" class="selectedBox">
-        <div class="empty">Tap a motif in the tile to edit it.</div>
+        <div class="empty">Tap an imported motif or drawn mark in the tile to edit it.</div>
       </div>
 
-      <h3>Live repeat preview</h3>
+      <h3>Layers</h3>
+      <div class="layerPanel">
+        <div id="layerList" class="layerList" aria-label="Artwork layers"></div>
+        <div class="layerActions">
+          <button id="layerAdd" class="btn" type="button">+ Layer</button>
+          <button id="layerDuplicate" class="btn" type="button">Duplicate</button>
+          <button id="layerDelete" class="btn danger" type="button">Delete</button>
+        </div>
+        <div class="layerActions two">
+          <button id="layerUp" class="btn" type="button">Move up</button>
+          <button id="layerDown" class="btn" type="button">Move down</button>
+        </div>
+        <div class="field">
+          <label for="layerName">Layer name</label>
+          <input id="layerName" type="text" maxlength="80" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="layerOpacity">Layer opacity <span id="layerOpacityValue">100%</span></label>
+          <input id="layerOpacity" type="range" min="0" max="100" value="100">
+        </div>
+        <div class="layerFlags">
+          <label class="check"><input id="layerVisible" type="checkbox" checked> Visible</label>
+          <label class="check"><input id="layerLocked" type="checkbox"> Lock</label>
+          <label class="check"><input id="layerExport" type="checkbox" checked> Export</label>
+        </div>
+        <p id="layerSummary" class="help">Select a layer to draw into it. Layers at the top are rendered in front.</p>
+      </div>
+
+      <h3 id="repeatPreviewHeading">Live repeat preview</h3>
       <div id="preview" class="previewBox"></div>
-      <div class="field" style="margin-top:8px">
+      <div id="previewScaleField" class="field" style="margin-top:8px">
         <label for="previewScale">Preview repeat size <span id="previewScaleLabel">33%</span></label>
         <input id="previewScale" type="range" min="10" max="100" value="33">
       </div>
@@ -458,7 +508,7 @@
       <div id="quality" class="warning ok">Add artwork to calculate effective raster resolution.</div>
 
       <h3 id="exportSection">Export and save</h3>
-      <p class="exportGroupTitle">Pattern files</p>
+      <p id="exportFilesTitle" class="exportGroupTitle">Pattern files</p>
       <div class="btns">
         <button id="exportPng" class="btn primary">Export pattern as PNG</button>
         <button id="exportSvg" class="btn">Export pattern as SVG</button>
@@ -472,7 +522,7 @@
         <input id="projectFile" type="file" accept="application/json,.json,application/zip,.zip" hidden>
       </div>
       <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
-      <p class="help">
+      <p id="exportDimensionsHelp" class="help">
         PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular.
         SVG itself is resolution-independent; raster artwork inside an SVG remains raster.
       </p>
@@ -485,8 +535,8 @@
     <div class="helpDialogHead"><h2 id="helpDialogTitle">Pattern Forge quick guide</h2><form method="dialog"><button class="btn" aria-label="Close guide">Close</button></form></div>
     <div class="helpDialogBody">
       <p class="helpCard"><strong>Best workspace:</strong> turn your device to landscape and choose Full screen. The central tile stays the main design area; open Tools, Recent or Info only when you need them.</p>
-      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named print project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
-      <h3>Preview and export</h3><p>Use Preview repeat to check how your tile looks when repeated. Projects use straight, half-drop or brick repeat layouts. Export PNG for a raster image or SVG for a vector document; imported raster images remain raster inside SVG.</p>
+      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named Pattern Project or Doodle Project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
+      <h3>Preview and export</h3><p>Pattern Projects use Preview repeat with straight, half-drop or brick layouts. Doodle Projects use one transparent standalone canvas with no automatic edge wrapping. Export PNG for reusable raster artwork or SVG for a vector document; imported raster images remain raster inside SVG.</p>
       <h3>Save your work</h3><p>Autosave stays in this browser on this device. Download editable project (JSON) to keep the editable design, or download project bundle (ZIP) for the project, PNG and SVG together. Open a JSON or ZIP project file in Pattern Forge to continue editing.</p>
       <h3>Print checks</h3><p>The base tile is 4000 × 4000 pixels and exports carry 300 DPI metadata. Imported image quality depends on its original resolution and chosen print size. Check the requirements for your specific product and printer before ordering.</p>
       <h3>Keyboard</h3><p>Press Escape to leave the full-screen workspace. If the Tools panel is open, its controls remain available in the drawer.</p>
@@ -607,7 +657,9 @@
     if(!document.fullscreenElement && stageWrap.classList.contains("focus-mode"))leaveFocus(false);
   });
   const TILE = 900;
-  function projectRepeatStyle(){return ["half-drop","brick"].includes(state.project?.repeatStyle)?state.project.repeatStyle:"straight";}
+  function projectType(){return state.project?.projectType==="doodle"?"doodle":"pattern";}
+  function isDoodleProject(){return projectType()==="doodle";}
+  function projectRepeatStyle(){if(isDoodleProject())return "straight";return ["half-drop","brick"].includes(state.project?.repeatStyle)?state.project.repeatStyle:"straight";}
   function repeatBasis(unitW=TILE,unitH=TILE,style=projectRepeatStyle()){
     if(style==="half-drop")return [{x:unitW,y:0},{x:unitW/2,y:unitH}];
     if(style==="brick")return [{x:unitW,y:unitH/2},{x:0,y:unitH}];
@@ -616,19 +668,45 @@
   function exportMultipliers(style=projectRepeatStyle()){
     return style==="half-drop"?{x:1,y:2}:style==="brick"?{x:2,y:1}:{x:1,y:1};
   }
+  const BASE_LAYER_IDS = Object.freeze({motifs:"layer-motifs",drawing:"layer-drawing"});
+  function defaultLayers(){
+    return [
+      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true},
+      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true}
+    ];
+  }
+  function normaliseLayers(rawLayers){
+    if(!Array.isArray(rawLayers)||!rawLayers.length)return defaultLayers();
+    const seen=new Set(),layers=[];
+    for(const raw of rawLayers){
+      if(!raw||typeof raw!=="object")continue;
+      const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
+      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false});
+    }
+    return layers.length?layers:defaultLayers();
+  }
+  function layerById(id){return state.layers.find(layer=>layer.id===id)||null;}
+  function layerForArtwork(artwork,fallbackId){return layerById(artwork?.layerId)||layerById(fallbackId)||state.layers[0]||null;}
+  function layerIsRenderable(layer,forExport=false){return !!layer&&layer.visible!==false&&(!forExport||layer.export!==false)&&Number(layer.opacity)>0;}
+  function resetLayerState(){state.layers=defaultLayers();state.activeLayerId=BASE_LAYER_IDS.drawing;}
+
   const state = {
     project: null,
     assets: [],
     items: [],
     marks: [],
+    layers: defaultLayers(),
+    activeLayerId: BASE_LAYER_IDS.drawing,
     selectedId: null,
     nextId: 1,
     dragging: false,
     resizeState: null,
     transformState: null,
     dragOffset: {x:0,y:0},
+    snapGuides: {x:null,y:null},
     renderQueued: false,
     tool: "select",
+    previousTool: "select",
     zoom: 1,
     panX: 0, panY: 0,
     pointers: new Map(),
@@ -641,6 +719,53 @@
     pendingPreview: false, pendingSelected: false
   };
 
+  function newLayerId(){return "layer-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
+  function activeLayer(){return layerById(state.activeLayerId)||state.layers[state.layers.length-1]||null;}
+  function motifTargetLayerId(){return layerById(BASE_LAYER_IDS.motifs)?.id||activeLayer()?.id||state.layers[0]?.id||null;}
+  function layerArtworkCount(id){return state.items.filter(item=>item.layerId===id).length+state.marks.filter(mark=>mark.layerId===id&&mark.type!=="eraser").length;}
+  function rebuildLayerUI(){
+    const list=$("layerList");if(!list)return;
+    if(!layerById(state.activeLayerId)&&state.layers.length)state.activeLayerId=state.layers[state.layers.length-1].id;
+    list.innerHTML="";
+    [...state.layers].reverse().forEach(layer=>{
+      const button=document.createElement("button");button.type="button";button.className="layerRow"+(layer.id===state.activeLayerId?" active":"");
+      const name=document.createElement("span");name.className="layerRowName";name.textContent=layer.name;
+      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");
+      const meta=document.createElement("span");meta.className="layerRowMeta";meta.textContent=`${layerArtworkCount(layer.id)} item${layerArtworkCount(layer.id)===1?"":"s"}${flags.length?" · "+flags.join(" · "):""}`;
+      button.append(name,meta);
+      button.addEventListener("click",()=>{state.activeLayerId=layer.id;rebuildLayerUI();scheduleAutosave();setStatus(`“${layer.name}” is the active layer.`);});
+      list.appendChild(button);
+    });
+    const layer=activeLayer(),index=layer?state.layers.indexOf(layer):-1;
+    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerDuplicate","layerDelete","layerUp","layerDown"];
+    controls.forEach(id=>$(id).disabled=!layer);
+    if(!layer)return;
+    $("layerName").value=layer.name;$("layerOpacity").value=Math.round(layer.opacity*100);$("layerOpacityValue").textContent=Math.round(layer.opacity*100)+"%";
+    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;
+    $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
+    $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
+  }
+  function addLayer(){
+    saveHistory();const layer={id:newLayerId(),name:`Layer ${state.layers.length+1}`,visible:true,opacity:1,locked:false,export:true};
+    state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
+  }
+  function duplicateActiveLayer(){
+    const source=activeLayer();if(!source)return;saveHistory();
+    const layer={...source,id:newLayerId(),name:(source.name+" copy").slice(0,80)};const index=state.layers.indexOf(source);state.layers.splice(index+1,0,layer);
+    const itemCopies=state.items.filter(item=>item.layerId===source.id).map(item=>({...item,id:state.nextId++,layerId:layer.id}));
+    const markCopies=state.marks.filter(mark=>mark.layerId===source.id).map(mark=>({...JSON.parse(JSON.stringify(mark)),id:state.nextId++,layerId:layer.id}));
+    state.items.push(...itemCopies);state.marks.push(...markCopies);state.activeLayerId=layer.id;state.selectedId=null;renderAll();setStatus(`Duplicated “${source.name}”.`);
+  }
+  function deleteActiveLayer(){
+    const layer=activeLayer();if(!layer||state.layers.length<=1)return;const count=layerArtworkCount(layer.id);
+    if(count&&typeof confirm==="function"&&!confirm(`Delete “${layer.name}” and its ${count} artwork item${count===1?"":"s"}?`))return;
+    saveHistory();const index=state.layers.indexOf(layer);state.items=state.items.filter(item=>item.layerId!==layer.id);state.marks=state.marks.filter(mark=>mark.layerId!==layer.id);state.layers.splice(index,1);
+    state.activeLayerId=state.layers[Math.min(index,state.layers.length-1)].id;state.selectedId=null;renderAll();setStatus(`Deleted “${layer.name}”.`);
+  }
+  function moveActiveLayer(direction){
+    const layer=activeLayer();if(!layer)return;const index=state.layers.indexOf(layer),next=index+direction;if(next<0||next>=state.layers.length)return;
+    saveHistory();[state.layers[index],state.layers[next]]=[state.layers[next],state.layers[index]];renderAll();setStatus(direction>0?"Layer moved up.":"Layer moved down.");
+  }
   function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
   function setInkColour(hex){
     if(!/^#[0-9a-f]{6}$/i.test(hex||""))return;
@@ -661,9 +786,14 @@
   function pickCanvasColour(world){
     const x=clamp(Math.floor(world.x),0,TILE-1),y=clamp(Math.floor(world.y),0,TILE-1),tile=makeTileCanvas(TILE,TILE),c=tile.getContext("2d"),d=c.getImageData(x,y,1,1).data;
     if(d[3]<12){setStatus("That spot is transparent. Pick a visible colour.");return;}
-    const hex="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");setInkColour(hex);setStatus(`Eyedropper picked ${hex}.`);
-    state.tool="brush";document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool==="brush"));
-    canvas.style.cursor="crosshair";
+    const hex="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");setInkColour(hex);
+    const returnTool=state.previousTool&&state.previousTool!=="eyedropper"?state.previousTool:"select";
+    state.tool=returnTool;
+    document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===returnTool));
+    updateToolHighlight();
+    canvas.style.cursor=returnTool==="pan"?"grab":returnTool==="select"?"default":"crosshair";
+    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[returnTool]||"Previous";
+    setStatus(`Eyedropper picked ${hex}. ${toolName} tool restored.`);
   }
   function hashString(str){
     let h = 2166136261 >>> 0;
@@ -760,7 +890,7 @@
     const target=minDim*.25;
     const scale=target/maxNatural;
     const item={
-      id:state.nextId++, assetId:asset.id,
+      id:state.nextId++, assetId:asset.id, layerId:motifTargetLayerId(),
       x:TILE/2,y:TILE/2,
       scale, rotation:0, opacity:1
     };
@@ -771,6 +901,7 @@
   }
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
+  function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
   function latticeCoordinates(x,y,basis){
     const [a,b]=basis,det=a.x*b.y-a.y*b.x;
     return {k:(x*b.y-y*b.x)/det,n:(a.x*y-a.y*x)/det};
@@ -787,7 +918,12 @@
     }
     return copies;
   }
+  function artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis){
+    if(isDoodleProject())return maxX>=0&&minX<=clipW&&maxY>=0&&minY<=clipH?[{k:0,n:0,x:0,y:0}]:[];
+    return latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+  }
   function nearestLatticeDelta(x,y,cx,cy){
+    if(isDoodleProject()){const dx=x-cx,dy=y-cy;return {x:dx,y:dy,distance:dx*dx+dy*dy};}
     const basis=repeatBasis(),coeff=latticeCoordinates(x-cx,y-cy,basis),k0=Math.round(coeff.k),n0=Math.round(coeff.n);
     let best={x:x-cx,y:y-cy,distance:Infinity};
     for(let n=n0-2;n<=n0+2;n++)for(let k=k0-2;k<=k0+2;k++){
@@ -800,6 +936,7 @@
     const delta=nearestLatticeDelta(refX,refY,x,y);return {x:refX-delta.x,y:refY-delta.y};
   }
   function canonicalPoint(x,y){
+    if(isDoodleProject())return {x,y};
     const style=projectRepeatStyle();
     if(style==="half-drop"){
       const n=Math.floor(y/TILE);y-=n*TILE;x-=n*TILE/2;
@@ -813,16 +950,16 @@
 
   // Draws every periodic copy needed to cover the target rectangle.
   // Unlike a fixed 3×3 wrap, this also works when a motif is larger than the tile.
-  function drawWrapped(targetCtx,item,W,H,showSelection=false,basis=repeatBasis(W,H)){
+  function drawWrapped(targetCtx,item,W,H,showSelection=false,basis=repeatBasis(W,H),layerOpacity=1){
     const a=assetOf(item); if(!a) return;
     const iw=a.w*item.scale, ih=a.h*item.scale;
     const c=Math.abs(Math.cos(item.rotation)), s=Math.abs(Math.sin(item.rotation));
     const halfW=(iw*c+ih*s)/2, halfH=(iw*s+ih*c)/2;
 
-    const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
+    const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
 
     targetCtx.save();
-    targetCtx.globalAlpha=item.opacity;
+    targetCtx.globalAlpha=item.opacity*layerOpacity;
     for(const copy of copies){
         const px=item.x+copy.x, py=item.y+copy.y;
         targetCtx.save();
@@ -864,7 +1001,7 @@
     const tile=makeTileCanvas(TILE,TILE,TILE,TILE);
     const o=viewOrigin(),sc=viewScale();
     ctx.save();ctx.translate(o.x,o.y);ctx.scale(sc,sc);
-    const repeatReach=state.focusMode&&!state.focusRepeatPreview?0:2;
+    const repeatReach=isDoodleProject()?0:(state.focusMode&&!state.focusRepeatPreview?0:2);
     const basis=repeatBasis();
     for(let n=-repeatReach;n<=repeatReach;n++)for(let k=-repeatReach;k<=repeatReach;k++){
       const x=k*basis[0].x+n*basis[1].x,y=k*basis[0].y+n*basis[1].y;
@@ -881,7 +1018,9 @@
       }
       ctx.strokeStyle="rgba(28,60,56,.24)";ctx.lineWidth=1/sc;ctx.stroke();
     }
+    drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
+    drawSnapGuides(ctx,sc);
     const item=selectedItem();
     if(item){
       const a=assetOf(item),iw=a.w*item.scale,ih=a.h*item.scale;
@@ -895,6 +1034,11 @@
       drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
       drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
       ctx.restore();
+    }
+    const mark=selectedMark();
+    if(mark){
+      const layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
+      if(layerIsRenderable(layer,false)&&!layer.locked)drawSelectedMarkOverlay(ctx,mark,sc);
     }
     ctx.restore();
   }
@@ -917,6 +1061,25 @@
     c.restore();
   }
 
+  function drawSelectedMarkOverlay(c,m,sc){
+    const b=markPrimaryBounds(m),w=Math.max(1,b.maxX-b.minX),h=Math.max(1,b.maxY-b.minY);
+    c.save();c.setLineDash([7/sc,5/sc]);c.strokeStyle="#cc523e";c.lineWidth=2/sc;c.strokeRect(b.minX,b.minY,w,h);c.setLineDash([]);
+    for(const [x,y] of [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]]){
+      c.beginPath();c.arc(x,y,8/sc,0,Math.PI*2);c.fillStyle="#fff";c.fill();c.strokeStyle="#173d36";c.lineWidth=2/sc;c.stroke();
+    }
+    drawImageTransformHandle(c,b.cx,b.minY-22/sc,"rotate",sc);drawImageTransformHandle(c,b.cx,b.maxY+22/sc,"move",sc);c.restore();
+  }
+  function markHandleAt(m,x,y){
+    const b=markPrimaryBounds(m),limit=20/viewScale();
+    if(Math.hypot(x-b.cx,y-(b.minY-22/viewScale()))<=limit)return "rotate";
+    if(Math.hypot(x-b.cx,y-(b.maxY+22/viewScale()))<=limit)return "move";
+    return null;
+  }
+  function markResizeHandleHit(m,x,y){
+    const b=markPrimaryBounds(m),limit=25/viewScale();
+    return [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]].some(([cx,cy])=>Math.hypot(x-cx,y-cy)<=limit);
+  }
+
   function symmetryTransforms(){
     const mode=$("symmetry").value;
     if(mode==="vertical")return [[false,false,0],[true,false,0]];
@@ -931,6 +1094,19 @@
     const c=Math.cos(angle),s=Math.sin(angle);
     return {x:TILE/2+x*c-y*s,y:TILE/2+x*s+y*c};
   }
+  function drawConstructionGuides(c,sc){
+    const mode=$("constructionGuide")?.value||"off";if(mode==="off")return;
+    const alpha=clamp((parseInt($("guideOpacity")?.value,10)||55)/100,.1,1);
+    const centre=mode==="centre"||mode==="all",diagonals=mode==="diagonals"||mode==="all",diamond=mode==="diamond"||mode==="all";
+    c.save();c.strokeStyle=`rgba(44,95,84,${alpha})`;c.fillStyle=`rgba(44,95,84,${alpha})`;c.lineWidth=1.5/sc;c.setLineDash([8/sc,6/sc]);c.beginPath();
+    if(centre){c.moveTo(TILE/2,0);c.lineTo(TILE/2,TILE);c.moveTo(0,TILE/2);c.lineTo(TILE,TILE/2);}
+    if(diagonals){c.moveTo(0,0);c.lineTo(TILE,TILE);c.moveTo(TILE,0);c.lineTo(0,TILE);}
+    if(diamond){c.moveTo(TILE/2,0);c.lineTo(TILE,TILE/2);c.lineTo(TILE/2,TILE);c.lineTo(0,TILE/2);c.closePath();}
+    c.stroke();c.setLineDash([]);
+    if(centre||diamond){c.beginPath();c.arc(TILE/2,TILE/2,4/sc,0,Math.PI*2);c.fill();}
+    c.restore();
+  }
+
   function drawSymmetryGuides(c,sc){
     if(!$("symmetryGuides").checked)return;
     const mode=$("symmetry").value;if(mode==="off")return;
@@ -944,11 +1120,67 @@
     c.stroke();c.restore();
   }
 
-  function drawMark(c,m){
+  function markGeometryBounds(m){
+    if(!m?.points?.length)return {minX:0,maxX:0,minY:0,maxY:0,cx:0,cy:0};
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const p of m.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+    return {minX,maxX,minY,maxY,cx:(minX+maxX)/2,cy:(minY+maxY)/2};
+  }
+  function markTransformValues(m){
+    const rawScale=Number(m?.transformScale),rawRotation=Number(m?.transformRotation),rawX=Number(m?.transformX),rawY=Number(m?.transformY);
+    return {x:Number.isFinite(rawX)?rawX:0,y:Number.isFinite(rawY)?rawY:0,scale:Number.isFinite(rawScale)?clamp(rawScale,.01,60):1,rotation:Number.isFinite(rawRotation)?rawRotation:0};
+  }
+  function markHasTransform(m){const t=markTransformValues(m);return Math.abs(t.x)>1e-9||Math.abs(t.y)>1e-9||Math.abs(t.scale-1)>1e-9||Math.abs(t.rotation)>1e-9;}
+  function markTransformPoint(p,m){
+    const b=markGeometryBounds(m),t=markTransformValues(m),dx=(p.x-b.cx)*t.scale,dy=(p.y-b.cy)*t.scale,c=Math.cos(t.rotation),s=Math.sin(t.rotation);
+    return {x:b.cx+t.x+dx*c-dy*s,y:b.cy+t.y+dx*s+dy*c};
+  }
+  function markTransformedBounds(m,mirrorX=false,mirrorY=false,angle=0){
+    const b=markGeometryBounds(m),pad=Math.max(.5,Number(m.width)||0),corners=[
+      {x:b.minX-pad,y:b.minY-pad},{x:b.maxX+pad,y:b.minY-pad},{x:b.maxX+pad,y:b.maxY+pad},{x:b.minX-pad,y:b.maxY+pad}
+    ].map(p=>reflectPoint(markTransformPoint(p,m),mirrorX,mirrorY,angle));
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const p of corners){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+    return {minX,maxX,minY,maxY,cx:(minX+maxX)/2,cy:(minY+maxY)/2};
+  }
+  function applyMarkTransformContext(c,m){
+    const b=markGeometryBounds(m),t=markTransformValues(m);if(!markHasTransform(m))return;
+    c.translate(b.cx+t.x,b.cy+t.y);c.rotate(t.rotation);c.scale(t.scale,t.scale);c.translate(-b.cx,-b.cy);
+  }
+  function applySymmetryContext(c,mirrorX,mirrorY,angle){
+    c.translate(TILE/2,TILE/2);c.rotate(angle);c.scale(mirrorX?-1:1,mirrorY?-1:1);c.translate(-TILE/2,-TILE/2);
+  }
+  function markSvgTransform(m){
+    const b=markGeometryBounds(m),t=markTransformValues(m),deg=t.rotation*180/Math.PI;
+    return `translate(${b.cx+t.x} ${b.cy+t.y}) rotate(${deg}) scale(${t.scale}) translate(${-b.cx} ${-b.cy})`;
+  }
+  function inverseMarkTransformPoint(p,m){
+    const b=markGeometryBounds(m),t=markTransformValues(m),dx=p.x-(b.cx+t.x),dy=p.y-(b.cy+t.y),c=Math.cos(-t.rotation),s=Math.sin(-t.rotation);
+    return {x:b.cx+(dx*c-dy*s)/t.scale,y:b.cy+(dx*s+dy*c)/t.scale};
+  }
+  function unreflectPoint(p,mirrorX,mirrorY,angle){
+    let x=p.x-TILE/2,y=p.y-TILE/2;const c=Math.cos(-angle),s=Math.sin(-angle),rx=x*c-y*s,ry=x*s+y*c;x=mirrorX?-rx:rx;y=mirrorY?-ry:ry;
+    return {x:TILE/2+x,y:TILE/2+y};
+  }
+  function normaliseMarkTranslation(m){
+    if(isDoodleProject())return;
+    const b=markGeometryBounds(m),t=markTransformValues(m),centre={x:b.cx+t.x,y:b.cy+t.y},canonical=canonicalPoint(centre.x,centre.y);
+    m.transformX=t.x+canonical.x-centre.x;m.transformY=t.y+canonical.y-centre.y;
+  }
+  function markPrimaryBounds(m){
+    const b=markTransformedBounds(m),canonical=canonicalPoint(b.cx,b.cy),dx=canonical.x-b.cx,dy=canonical.y-b.cy;
+    return {minX:b.minX+dx,maxX:b.maxX+dx,minY:b.minY+dy,maxY:b.maxY+dy,cx:b.cx+dx,cy:b.cy+dy};
+  }
+
+  function drawMark(c,m,alphaMultiplier=1){
     const pts=m.points;if(!pts.length)return;
-    const opacity=clamp(Number(m.opacity??1),.05,1),style=m.brushStyle||"ink";
+    const opacity=clamp(Number(m.opacity??1),.05,1)*clamp(Number(alphaMultiplier??1),0,1),style=m.brushStyle||"ink";
     c.save();c.strokeStyle=m.color;c.fillStyle=m.color;c.lineWidth=m.width;
     c.lineCap="round";c.lineJoin="round";c.globalAlpha=opacity;
+    if(m.type==="eraser"){
+      c.globalCompositeOperation="destination-out";c.globalAlpha=1;c.lineWidth=m.width;
+      c.beginPath();c.moveTo(pts[0].x,pts[0].y);if(pts.length===1)c.lineTo(pts[0].x+.01,pts[0].y+.01);else for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.stroke();c.restore();return;
+    }
     if(m.type==="rect"||m.type==="ellipse"){
       const a=pts[0],b=pts[pts.length-1];
       c.beginPath();
@@ -988,45 +1220,61 @@
     }
     c.restore();
   }
-  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle()){
+  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
     const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
     c.save();c.scale(sx,sy);
     for(const m of state.marks){
-      if(!m.points.length)continue;
+      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
+      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
+      const effectiveOpacity=layerId?layerOpacity:layer.opacity;
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
-        const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
-        let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-        for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-        const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
-        const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
-        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed);c.restore();}
+        if(!markHasTransform(m)){
+          const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
+          let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+          for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+          const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
+          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+          for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
+        }else{
+          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
+          for(const copy of copies){
+            c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
+          }
+        }
       }
     }
     c.restore();
   }
 
-  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle()){
+  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
     const out=document.createElement("canvas"); out.width=W; out.height=H;
     const c=out.getContext("2d");
     if(!$("transparent").checked){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
 
-    // Artwork is authored against a square 900-unit tile; export stays square.
+    // Keep the legacy direct-render path on layers without erasers so existing brush
+    // blending is byte-for-byte unchanged. Only layers with eraser strokes are isolated.
     const sx=baseW/TILE, sy=baseH/TILE;
     const uniform=Math.sqrt(sx*sy);
-
-    const mapped=state.items.map(it=>({
-      ...it,
-      x:it.x*sx, y:it.y*sy,
-      scale:it.scale*uniform
-    }));
+    const mapped=state.items.map(it=>({...it,x:it.x*sx,y:it.y*sy,scale:it.scale*uniform}));
     const basis=repeatBasis(baseW,baseH,style);
-    for(const item of mapped) drawWrapped(c,item,W,H,false,basis);
-    drawMarksWrapped(c,W,H,baseW,baseH,style);
+    for(const layer of state.layers){
+      if(!layerIsRenderable(layer,forExport))continue;
+      const hasEraser=state.marks.some(m=>m.type==="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
+      if(!hasEraser){
+        for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);}
+        drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,forExport);
+        continue;
+      }
+      const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
+      for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);}
+      drawMarksWrapped(lc,W,H,baseW,baseH,style,layer.id,1,forExport);
+      c.save();c.globalAlpha=layer.opacity;c.drawImage(surface,0,0);c.restore();
+    }
     return out;
   }
 
   function renderPreview(){
-    const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base);
+    const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     const data=thumb.toDataURL("image/png");
     const p=$("preview");
     p.style.backgroundImage=`url("${data}")`;
@@ -1047,7 +1295,7 @@
     const uniform=Math.sqrt(sx*sy);
     let worst=Infinity, rasterCount=0, vectorCount=0;
     for(const item of state.items){
-      const a=assetOf(item); if(!a) continue;
+      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,true)) continue;
       if(a.vector){ vectorCount++; continue; }
       rasterCount++;
       const drawW=a.w*item.scale*uniform;
@@ -1102,8 +1350,30 @@
   }
 
   function rebuildSelectedPanel(){
-    const panel=$("selectedPanel"), item=selectedItem();
-    if(!item){ panel.innerHTML='<div class="empty">Select an imported image to scale, rotate or delete it. Use the drawing tools on the centre tile.</div>'; return; }
+    const panel=$("selectedPanel"), item=selectedItem(), mark=selectedMark();
+    if(mark){
+      const t=markTransformValues(mark),pct=Math.round(t.scale*100),rawDeg=t.rotation*180/Math.PI,deg=Math.round(((rawDeg+180)%360+360)%360-180),layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
+      const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
+      panel.innerHTML=`
+        <div class="field">
+          <label>Artwork</label>
+          <div class="mini"><strong>${typeName}</strong> · ${escapeHtml(layer?.name||"Drawing")}</div>
+          <p class="help">Drag the mark to move it, use the curved-arrow handle to rotate, or a corner dot to resize. The original stroke points remain intact for seamless wrapping.</p>
+        </div>
+        <div class="field"><label for="selScale">Resize <span id="selScaleLabel">${pct}%</span></label><input id="selScale" type="range" min="1" max="600" value="${clamp(pct,1,600)}"></div>
+        <div class="field"><label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label><input id="selRot" type="range" min="-180" max="180" value="${clamp(deg,-180,180)}"></div>
+        <div class="field"><label for="selOpacity">Opacity <span id="selOpacityLabel">${Math.round((mark.opacity??1)*100)}%</span></label><input id="selOpacity" type="range" min="5" max="100" value="${Math.round((mark.opacity??1)*100)}"></div>
+        <div class="btns"><button id="duplicateSel" class="btn">Duplicate</button><button id="deleteSel" class="btn danger">Delete</button><button id="frontSel" class="btn">Bring front</button><button id="backSel" class="btn">Send back</button></div>`;
+      $("selScale").addEventListener("input",e=>{mark.transformScale=clamp(parseFloat(e.target.value)/100,.01,60);$("selScaleLabel").textContent=e.target.value+"%";renderAll(false);});
+      $("selRot").addEventListener("input",e=>{mark.transformRotation=parseFloat(e.target.value)*Math.PI/180;$("selRotLabel").textContent=e.target.value+"°";renderAll(false);});
+      $("selOpacity").addEventListener("input",e=>{mark.opacity=parseFloat(e.target.value)/100;$("selOpacityLabel").textContent=e.target.value+"%";renderAll(false);});
+      $("duplicateSel").onclick=()=>{saveHistory();const base=markTransformValues(mark),copy={...JSON.parse(JSON.stringify(mark)),id:state.nextId++,transformX:base.x+40,transformY:base.y+40,transformScale:base.scale,transformRotation:base.rotation};state.marks.push(copy);state.selectedId=copy.id;renderAll();};
+      $("deleteSel").onclick=()=>{saveHistory();state.marks=state.marks.filter(m=>m.id!==mark.id);state.selectedId=null;renderAll();};
+      $("frontSel").onclick=()=>{saveHistory();state.marks=state.marks.filter(m=>m.id!==mark.id);state.marks.push(mark);renderAll();};
+      $("backSel").onclick=()=>{saveHistory();state.marks=state.marks.filter(m=>m.id!==mark.id);state.marks.unshift(mark);renderAll();};
+      return;
+    }
+    if(!item){ panel.innerHTML='<div class="empty">Select an imported motif or drawn mark to move, resize, rotate or delete it.</div>'; return; }
     const a=assetOf(item);
     const pct=Math.round(item.scale*1000)/10;
     const deg=Math.round(item.rotation*180/Math.PI);
@@ -1172,12 +1442,13 @@
       drawEditor();
       if(state.pendingPreview)renderPreview();
       updateQuality();
-      if(state.pendingSelected)rebuildSelectedPanel();
+      if(state.pendingSelected){rebuildSelectedPanel();rebuildLayerUI();}
       state.pendingPreview=false;state.pendingSelected=false;
     });
   }
 
   function generate(){
+    if(isDoodleProject()){setStatus("Image scatter is available in Pattern Projects. Doodle Projects keep one standalone canvas.");return;}
     if(state.assets.length===0){ setStatus("Add at least one drawing first."); return; }
     const n=clamp(parseInt($("count").value)||28,1,500);
     let lo=Math.max(1,parseFloat($("minScale").value)||18)/100;
@@ -1191,7 +1462,7 @@
       const base=TILE/Math.max(a.w,a.h);
       const normalized=base*(lo+(hi-lo)*rand());
       state.items.push({
-        id:state.nextId++,assetId:a.id,
+        id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),
         x:rand()*TILE,y:rand()*TILE,
         scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
       });
@@ -1208,36 +1479,93 @@
     return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
   }
   function saveHistory(){
-    state.past.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    state.past.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
     if(state.past.length>40)state.past.shift();
     state.future=[];
   }
   function restoreHistory(from,to){
     if(!from.length)return;
-    to.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    to.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
     const s=JSON.parse(from.pop());
-    state.items=s.items;state.marks=s.marks;state.nextId=s.nextId;
+    state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
     state.selectedId=null;state.activeMark=null;renderAll();
   }
-  function snapCoordinate(v){
-    if(!$("snapOn").checked)return v;
-    const step=TILE/(parseInt($("gridCount").value,10)||16);
-    const target=Math.round(v/step)*step;
-    return Math.abs(target-v)<14/viewScale()?target:v;
+  function clearSnapGuides(){state.snapGuides={x:null,y:null};}
+  function smartSnapAxis(v,halfExtent){
+    if(!$("snapOn").checked)return {value:v,guide:null};
+    const strongLimit=18/viewScale(),gridLimit=10/viewScale();
+    const strong=[{value:TILE/2,guide:TILE/2}];
+    if(halfExtent<=TILE/2){strong.push({value:halfExtent,guide:0},{value:TILE-halfExtent,guide:TILE});}
+    let best=null;
+    for(const candidate of strong){
+      const distance=Math.abs(candidate.value-v);
+      if(distance<=strongLimit&&(!best||distance<best.distance))best={...candidate,distance};
+    }
+    if(best)return {value:best.value,guide:best.guide};
+    const step=TILE/(parseInt($("gridCount").value,10)||16),gridTarget=Math.round(v/step)*step;
+    return Math.abs(gridTarget-v)<=gridLimit?{value:gridTarget,guide:null}:{value:v,guide:null};
+  }
+  function smartSnapPosition(x,y,halfW=0,halfH=0){
+    const sx=smartSnapAxis(x,Math.max(0,halfW)),sy=smartSnapAxis(y,Math.max(0,halfH));
+    state.snapGuides={x:sx.guide,y:sy.guide};
+    return {x:sx.value,y:sy.value};
+  }
+  function itemSnapHalfExtents(item){
+    const a=assetOf(item);if(!a)return {x:0,y:0};
+    const iw=a.w*item.scale,ih=a.h*item.scale,c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
+    return {x:(iw*c+ih*s)/2,y:(iw*s+ih*c)/2};
+  }
+  function drawSnapGuides(c,sc){
+    const guides=state.snapGuides||{};if(!Number.isFinite(guides.x)&&!Number.isFinite(guides.y))return;
+    c.save();c.strokeStyle="rgba(204,82,62,.92)";c.lineWidth=2/sc;c.setLineDash([5/sc,4/sc]);c.beginPath();
+    if(Number.isFinite(guides.x)){c.moveTo(guides.x,0);c.lineTo(guides.x,TILE);}
+    if(Number.isFinite(guides.y)){c.moveTo(0,guides.y);c.lineTo(TILE,guides.y);}
+    c.stroke();c.restore();
   }
   function wrappedDelta(a,b,size){
     let d=a-b;
     d=((d+size/2)%size+size)%size-size/2;
     return d;
   }
-  function hitTest(x,y){
-    for(let idx=state.items.length-1;idx>=0;idx--){
-      const item=state.items[idx], a=assetOf(item); if(!a) continue;
-      const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
-      const cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation);
-      const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
-      const iw=a.w*item.scale,ih=a.h*item.scale;
-      if(Math.abs(lx)<=iw/2 && Math.abs(ly)<=ih/2) return item;
+  function pointSegmentDistance(p,a,b){
+    const dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;if(len2<1e-9)return Math.hypot(p.x-a.x,p.y-a.y);
+    const t=clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/len2,0,1),x=a.x+t*dx,y=a.y+t*dy;return Math.hypot(p.x-x,p.y-y);
+  }
+  function pointInPolygon(p,points){
+    let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){
+      const a=points[i],b=points[j],cross=((a.y>p.y)!=(b.y>p.y))&&(p.x<(b.x-a.x)*(p.y-a.y)/((b.y-a.y)||1e-9)+a.x);if(cross)inside=!inside;
+    }return inside;
+  }
+  function rawMarkHit(m,p,tolerance){
+    const pts=m.points||[];if(!pts.length)return false;const first=pts[0],last=pts[pts.length-1],brush=m.brushStyle||"ink",strokeFactor=m.type==="brush"?(brush==="marker"?1.8:brush==="pencil"?.72:1):1,strokeRadius=Math.max(tolerance,(Number(m.width)||1)*strokeFactor/2);
+    if(m.type==="rect"){
+      const left=Math.min(first.x,last.x),right=Math.max(first.x,last.x),top=Math.min(first.y,last.y),bottom=Math.max(first.y,last.y),inside=p.x>=left&&p.x<=right&&p.y>=top&&p.y<=bottom;if(m.fill)return inside;
+      return (p.x>=left-tolerance&&p.x<=right+tolerance&&(Math.abs(p.y-top)<=strokeRadius||Math.abs(p.y-bottom)<=strokeRadius))||(p.y>=top-tolerance&&p.y<=bottom+tolerance&&(Math.abs(p.x-left)<=strokeRadius||Math.abs(p.x-right)<=strokeRadius));
+    }
+    if(m.type==="ellipse"){
+      const cx=(first.x+last.x)/2,cy=(first.y+last.y)/2,rx=Math.max(.1,Math.abs(last.x-first.x)/2),ry=Math.max(.1,Math.abs(last.y-first.y)/2),q=Math.sqrt(((p.x-cx)/rx)**2+((p.y-cy)/ry)**2);if(m.fill)return q<=1;return Math.abs(q-1)*Math.min(rx,ry)<=strokeRadius;
+    }
+    if(m.type==="freefill"||m.type==="gradient")return pts.length>=3&&pointInPolygon(p,pts);
+    if(pts.length===1)return Math.hypot(p.x-first.x,p.y-first.y)<=strokeRadius;
+    for(let i=1;i<pts.length;i++)if(pointSegmentDistance(p,pts[i-1],pts[i])<=strokeRadius)return true;return false;
+  }
+  function markHitTest(m,x,y){
+    const t=markTransformValues(m),base=markGeometryBounds(m),transformedCentre=markTransformPoint({x:base.cx,y:base.cy},m),tolerance=Math.max(7/viewScale()/t.scale,(Number(m.width)||1)/2);
+    for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
+      const centre=reflectPoint(transformedCentre,mirrorX,mirrorY,angle),delta=nearestLatticeDelta(x,y,centre.x,centre.y),periodicPoint={x:centre.x+delta.x,y:centre.y+delta.y},unsym=unreflectPoint(periodicPoint,mirrorX,mirrorY,angle),raw=inverseMarkTransformPoint(unsym,m);
+      if(rawMarkHit(m,raw,tolerance))return true;
+    }
+    return false;
+  }
+  function hitTestArtwork(x,y){
+    for(let layerIndex=state.layers.length-1;layerIndex>=0;layerIndex--){
+      const layer=state.layers[layerIndex];if(!layerIsRenderable(layer,false)||layer.locked)continue;
+      for(let idx=state.marks.length-1;idx>=0;idx--){const mark=state.marks[idx];if(mark.type!=="eraser"&&layerForArtwork(mark,BASE_LAYER_IDS.drawing)?.id===layer.id&&markHitTest(mark,x,y))return {kind:"mark",artwork:mark};}
+      for(let idx=state.items.length-1;idx>=0;idx--){
+        const item=state.items[idx],itemLayer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item);if(!a||itemLayer?.id!==layer.id)continue;
+        const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y,cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation),lx=dx*cos-dy*sin,ly=dx*sin+dy*cos,iw=a.w*item.scale,ih=a.h*item.scale;
+        if(Math.abs(lx)<=iw/2&&Math.abs(ly)<=ih/2)return {kind:"item",artwork:item};
+      }
     }
     return null;
   }
@@ -1278,32 +1606,43 @@
     const w=worldPoint(p);
     if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
     if(state.tool==="select"){
-      const current=selectedItem();
+      let current=selectedItem(),currentMark=selectedMark();
+      const currentLayer=current?layerForArtwork(current,BASE_LAYER_IDS.motifs):currentMark?layerForArtwork(currentMark,BASE_LAYER_IDS.drawing):null;
+      if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){state.selectedId=null;current=null;currentMark=null;}
+      const markHandle=currentMark&&markHandleAt(currentMark,w.x,w.y);
+      if(markHandle){
+        saveHistory();const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);
+        if(markHandle==="rotate")state.transformState={kind:"mark",mode:"rotate",id:currentMark.id,startRotation:t.rotation,startAngle:Math.atan2(w.y-bounds.cy,w.x-bounds.cx),center:{x:bounds.cx,y:bounds.cy}};
+        else state.transformState={kind:"mark",mode:"move",id:currentMark.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:markGeometryBounds(currentMark).cx+t.x,y:markGeometryBounds(currentMark).cy+t.y}};
+        state.dragging=false;state.resizeState=null;renderAll();return;
+      }
+      if(currentMark&&markResizeHandleHit(currentMark,w.x,w.y)){
+        const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);saveHistory();state.resizeState={kind:"mark",id:currentMark.id,scale:t.scale,startDistance:Math.max(1,Math.hypot(w.x-bounds.cx,w.y-bounds.cy)),center:{x:bounds.cx,y:bounds.cy}};state.dragging=false;renderAll();return;
+      }
       const handle=current&&imageHandleAt(current,w.x,w.y);
       if(handle){
         saveHistory();
         if(handle==="rotate"){
           const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
-          state.transformState={mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
-        }else{
-          state.transformState={mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
-        }
+          state.transformState={kind:"item",mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
+        }else state.transformState={kind:"item",mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
         state.dragging=false;state.resizeState=null;renderAll();return;
       }
       if(current&&resizeHandleHit(current,w.x,w.y)){
-        const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
-        saveHistory();state.resizeState={id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};
-        state.dragging=false;renderAll();return;
+        const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
       }
-      const hit=hitTest(w.x,w.y);
-      state.selectedId=hit?.id??null;
-      state.dragging=!!hit;
-      if(hit){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.x,hit.y);}
+      const hit=hitTestArtwork(w.x,w.y);state.selectedId=hit?.artwork?.id??null;state.dragging=hit?.kind==="item";
+      if(hit?.kind==="item"){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
+      else if(hit?.kind==="mark"){
+        saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
+      }
       renderAll();return;
     }
+    const drawLayer=activeLayer();
+    if(!drawLayer||drawLayer.visible===false||drawLayer.locked){setStatus(!drawLayer?"Choose an active layer before drawing.":drawLayer.locked?`“${drawLayer.name}” is locked. Unlock it to draw.`:`“${drawLayer.name}” is hidden. Make it visible to draw.`);state.dragStart=null;return;}
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y);
-    const mark={id:state.nextId++,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
     state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
     renderAll(false,false);
   });
@@ -1327,25 +1666,33 @@
     }
     const w=worldPoint(p);
     if(state.transformState){
-      const item=state.items.find(i=>i.id===state.transformState.id);if(!item)return;
-      if(state.transformState.mode==="move"){
-        const pos=canonicalPoint(snapCoordinate(w.x-state.transformState.offset.x),snapCoordinate(w.y-state.transformState.offset.y));
-        item.x=pos.x;item.y=pos.y;
+      if(state.transformState.kind==="mark"){
+        const mark=state.marks.find(m=>m.id===state.transformState.id);if(!mark)return;
+        if(state.transformState.mode==="move"){
+          const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y,bounds=markPrimaryBounds(mark),snapped=smartSnapPosition(state.transformState.baseCenter.x+dx,state.transformState.baseCenter.y+dy,(bounds.maxX-bounds.minX)/2,(bounds.maxY-bounds.minY)/2);
+          mark.transformX=state.transformState.startX+snapped.x-state.transformState.baseCenter.x;mark.transformY=state.transformState.startY+snapped.y-state.transformState.baseCenter.y;
+        }else mark.transformRotation=state.transformState.startRotation+Math.atan2(w.y-state.transformState.center.y,w.x-state.transformState.center.x)-state.transformState.startAngle;
       }else{
-        const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),angle=Math.atan2(delta.y,delta.x);
-        item.rotation=state.transformState.startRotation+angle-state.transformState.startAngle;
+        const item=state.items.find(i=>i.id===state.transformState.id);if(!item)return;
+        if(state.transformState.mode==="move"){
+          const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.transformState.offset.x,w.y-state.transformState.offset.y,extents.x,extents.y),pos=canonicalPoint(snapped.x,snapped.y);item.x=pos.x;item.y=pos.y;
+        }else{
+          const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),angle=Math.atan2(delta.y,delta.x);item.rotation=state.transformState.startRotation+angle-state.transformState.startAngle;
+        }
       }
       renderAll(false,false);return;
     }
     if(state.resizeState){
-      const item=state.items.find(i=>i.id===state.resizeState.id);if(!item)return;
-      const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),dist=Math.hypot(delta.x,delta.y);
-      item.scale=clamp(state.resizeState.scale*dist/state.resizeState.startDistance,.01,60);
+      if(state.resizeState.kind==="mark"){
+        const mark=state.marks.find(m=>m.id===state.resizeState.id);if(!mark)return;const dist=Math.hypot(w.x-state.resizeState.center.x,w.y-state.resizeState.center.y);mark.transformScale=clamp(state.resizeState.scale*dist/state.resizeState.startDistance,.01,60);
+      }else{
+        const item=state.items.find(i=>i.id===state.resizeState.id);if(!item)return;const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),dist=Math.hypot(delta.x,delta.y);item.scale=clamp(state.resizeState.scale*dist/state.resizeState.startDistance,.01,60);
+      }
       renderAll(false,false);return;
     }
     if(state.activeMark){
       const m=state.activeMark;
-      if(m.type==="brush"||m.type==="freefill"||m.type==="gradient"){
+      if(m.type==="brush"||m.type==="eraser"||m.type==="freefill"||m.type==="gradient"){
         const last=m.points[m.points.length-1],next=nearestLatticePoint(w.x,w.y,last.x,last.y);
         if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
       }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
@@ -1353,16 +1700,16 @@
     }
     if(state.dragging){
       const item=selectedItem();if(!item)return;
-      item.x=((snapCoordinate(w.x-state.dragOffset.x)%TILE)+TILE)%TILE;
-      item.y=((snapCoordinate(w.y-state.dragOffset.y)%TILE)+TILE)%TILE;
+      const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.dragOffset.x,w.y-state.dragOffset.y,extents.x,extents.y);
+      item.x=isDoodleProject()?snapped.x:((snapped.x%TILE)+TILE)%TILE;
+      item.y=isDoodleProject()?snapped.y:((snapped.y%TILE)+TILE)%TILE;
       renderAll(false,false);
     }
   });
   function endDrag(e){
-    state.pointers.delete(e.pointerId);
-    if(state.pointers.size<2)state.gesture=null;
-    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;
-    renderAll();
+    state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
+    const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
+    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();renderAll();
   }
   canvas.addEventListener("pointerup",endDrag);
   canvas.addEventListener("pointercancel",endDrag);
@@ -1423,20 +1770,21 @@
     const label=state.project?.title||$("seed").value||"pattern";
     return label.replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"pattern";
   }
+  function exportFileStem(){return isDoodleProject()?"artwork":"seamless";}
   async function renderPNGBlob(){
     const spec=getExportSpec();
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
-    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000);
+    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000,projectRepeatStyle(),true);
     const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
     return {blob,spec};
   }
   async function exportPNG(){
     const result=await renderPNGBlob();if(!result)return;
     const {blob,spec}=result;
-    downloadBlob(blob,`${safeName()}-seamless-${spec.dpi}dpi.png`);
-    setStatus(`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}-${spec.dpi}dpi.png`);
+    setStatus(isDoodleProject()?`Standalone PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency and ${spec.dpi}-DPI metadata.`:`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -1447,7 +1795,13 @@
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
-    for(const srcItem of state.items){
+    let gradientId=0;
+    let maskIndex=0;
+    for(const layer of state.layers){
+      if(!layerIsRenderable(layer,true))continue;
+      let layerBody="";
+      for(const srcItem of state.items){
+      if(layerForArtwork(srcItem,BASE_LAYER_IDS.motifs)?.id!==layer.id)continue;
       const a=assetOf(srcItem);if(!a)continue;
       let assetRef=embeddedAssets.get(a.src);
       if(!assetRef){
@@ -1461,15 +1815,14 @@
       const c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
       const halfW=(iw*c+ih*s)/2,halfH=(iw*s+ih*c)/2;
       const deg=item.rotation*180/Math.PI;
-      const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
+      const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
       for(const copy of copies){
         const x=item.x+copy.x,y=item.y+copy.y;
-        body+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
+        layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
       }
-    }
-    let gradientId=0;
-    for(const m of state.marks){
-      if(!m.points?.length)continue;
+      }
+      for(const m of state.marks){
+      if(layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id!==layer.id||!m.points?.length)continue;
       const first=m.points[0],last=m.points[m.points.length-1];
       let shape="";
       if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
@@ -1487,33 +1840,43 @@
         if(dots.length)shape=`<g>${shape}${dots.join("")}</g>`;
       }
       let style;
-      if(m.type==="gradient"){
+      if(m.type==="eraser")style=`stroke="#000" stroke-width="${m.width}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="1"`;
+      else if(m.type==="gradient"){
         const id=`tile-gradient-${++gradientId}`;
         const dir=m.gradientDirection||"diagonal",x1=dir==="horizontal"?"0%":"0%",y1=dir==="vertical"?"0%":"0%",x2=dir==="vertical"?"0%":"100%",y2=dir==="horizontal"?"0%":"100%";
         gradientDefs+=m.gradientType==="radial"?`<radialGradient id="${id}" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></radialGradient>`:`<linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></linearGradient>`;
-        shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${m.opacity??1}"`;
+        shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${(m.opacity??1)*layer.opacity}"`;
       }else{
         const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
-        const opacity=(m.opacity??1)*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
+        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
         style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
       }
+      let eraserNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         const transform=`translate(${TILE/2} ${TILE/2}) rotate(${angle*180/Math.PI}) scale(${mirrorX?-1:1} ${mirrorY?-1:1}) translate(${-TILE/2} ${-TILE/2})`;
-        const transformedPoints=m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle));
-        let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-        for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-        minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
-        const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
-        for(const copy of copies)body+=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;
+        if(!markHasTransform(m)){
+          const transformedPoints=m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle));
+          let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+          for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+          minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
+          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+        }else{
+          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+        }
       }
+      if(m.type==="eraser"&&eraserNodes){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;}
+      }
+      body+=layerBody;
     }
     const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
     return new Blob([svg],{type:"image/svg+xml"});
   }
   function exportSVG(){
     const blob=renderSVGBlob();
-    downloadBlob(blob,`${safeName()}-seamless.svg`);
-    setStatus("Repeat SVG exported. Drawn marks remain vector; imported raster images stay raster.");
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}.svg`);
+    setStatus(isDoodleProject()?"Standalone SVG exported. Drawn marks remain vector; imported raster images stay raster.":"Repeat SVG exported. Drawn marks remain vector; imported raster images stay raster.");
   }
 
   function projectBlob(){
@@ -1522,19 +1885,49 @@
   function newProjectId(){return "pf-project-"+(Date.now().toString(36))+"-"+Math.random().toString(36).slice(2,9);}
   function setProjectBadge(){
     const p=state.project;
-    const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"};
-    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${styles[p.repeatStyle]||"Straight"}`:"Tile editor";
-    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+    const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"},doodle=p?.projectType==="doodle";
+    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${doodle?"Doodle":styles[p.repeatStyle]||"Straight"}`:"Tile editor";
+    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,doodle?"Doodle Project":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+  }
+  function updateSetupProjectType(){
+    const doodle=$("projectTypeInput").value==="doodle";
+    $("projectRepeatSetup").hidden=doodle;
+    $("createProject").textContent=doodle?"Create doodle project":"Create pattern project";
+  }
+  function updateProjectModeUi(){
+    const doodle=isDoodleProject();
+    document.body.classList.toggle("doodle-project",doodle);
+    if(doodle){$("transparent").checked=true;state.focusRepeatPreview=false;$("repeatPreviewToggle").setAttribute("aria-pressed","false");$("repeatPreviewToggle").textContent="Preview repeat";}
+    $("transparent").disabled=doodle;$("bg").disabled=doodle;
+    $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
+    $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;$("backgroundSettingsRow").hidden=doodle;
+    $("stageDescription").textContent=doodle?"4000 px standalone artwork canvas · transparent":"4000 px master tile · seamless repeat preview";
+    $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
+    $("tileSettingsSummary").textContent=doodle?"Canvas and placement settings":"Tile and placement settings";
+    $("snapHelp").textContent=doodle?"Smart snapping uses the grid plus canvas centre lines and canvas edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.":"Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.";
+    $("assetPlacementHelp").textContent=doodle?"The first selected image is placed on the canvas automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.":"The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.";
+    $("focusRecentEmpty").textContent=doodle?"Choose Add image. The first image will be placed on the canvas; tap a thumbnail here to add another copy.":"Choose Add image. The first image will be placed on the tile; tap a thumbnail here to add another copy.";
+    $("focusPrintHeading").textContent=doodle?"Artwork size & DPI":"Tile size & DPI";
+    $("focusPrintSizeLabel").textContent=doodle?"Printed artwork width":"Printed base-tile width";
+    $("focusInfoPrintNote").textContent=doodle?"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px artwork canvas; original raster quality is checked above.":"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.";
+    $("tileBorderLabelText").textContent=doodle?"Show canvas edge":"Show centre tile edge";
+    $("stageHelpHint").textContent=doodle?"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the standalone artwork without guides.":"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.";
+    canvas.setAttribute("aria-label",doodle?"Doodle artwork canvas":"Pattern tile editor");
+    $("exportFilesTitle").textContent=doodle?"Artwork files":"Pattern files";
+    $("exportPng").textContent=doodle?"Export artwork as PNG":"Export pattern as PNG";
+    $("exportSvg").textContent=doodle?"Export artwork as SVG":"Export pattern as SVG";
+    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px canvas. PNG carries 300-DPI metadata. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
     $("cancelProjectSetup").hidden=!state.project;
     $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
-    $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.":"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.";
+    $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named Pattern Project. Your drawing is kept and its straight repeat stays in place.":"Create a new Pattern Project or Doodle Project, or open another saved project from this device.";
     $("localProjectsSection").hidden=false;
     $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
+    $("projectTypeInput").value="pattern";$("projectTypeInput").disabled=!!state.project?.isPractice;
     $("projectRepeatStyle").value="straight";
-    $("projectRepeatStyle").disabled=!!state.project?.isPractice;
+    $("projectRepeatStyle").disabled=!!state.project?.isPractice;updateSetupProjectType();
     refreshLocalProjects();
   }
   async function refreshLocalProjects(){
@@ -1552,7 +1945,7 @@
       const p=data.project;if(p.id===state.project?.id)continue;
       const button=document.createElement("button");button.type="button";button.className="btn localProjectButton";
       const title=document.createElement("span");title.textContent=p.title||"Untitled project";
-      const detail=document.createElement("small");detail.textContent=p.isPractice?`Practice session · ${new Date(p.updatedAt||Date.now()).toLocaleString()}`:[p.customer,p.theme,p.variation,p.repeatStyle||"straight"].filter(Boolean).join(" · ");title.appendChild(detail);
+      const detail=document.createElement("small");detail.textContent=p.isPractice?`Practice session · ${new Date(p.updatedAt||Date.now()).toLocaleString()}`:[p.customer,p.theme,p.variation,p.projectType==="doodle"?"Doodle Project":p.repeatStyle||"straight"].filter(Boolean).join(" · ");title.appendChild(detail);
       const action=document.createElement("b");action.textContent="Open";button.append(title,action);
       button.addEventListener("click",async()=>{try{await saveAutosave();await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus(`Opened “${p.title||"Untitled project"}”.`);}catch(err){setStatus("Could not open saved project: "+err.message);}});
       list.appendChild(button);
@@ -1564,31 +1957,33 @@
     event.preventDefault();
     const title=$("projectTitleInput").value.trim();if(!title){$("projectTitleInput").focus();return;}
     const begin=()=>{
-      const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice;
-      state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),repeatStyle:promotePractice?"straight":$("projectRepeatStyle").value,createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
-      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
-      $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
-      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a print project.`:`Project “${title}” saved on this device. Draw and colour your tile.`);
+      const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice,requestedType=promotePractice?"pattern":($("projectTypeInput").value==="doodle"?"doodle":"pattern");
+      state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),projectType:requestedType,repeatStyle:requestedType==="doodle"?"straight":(promotePractice?"straight":$("projectRepeatStyle").value),createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
+      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      if(requestedType==="doodle")$("transparent").checked=true;
+      $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle Project “${title}” saved. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
     };
     if(state.project)saveAutosave().then(begin);else begin();
   }
   async function startPracticeMode(){
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
-    state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
-    state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
-    $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
+    state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",projectType:"pattern",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
+    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
   }
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
-    return {format:"pattern-forge-v3",tile:4000,dpi:300,
+    return {format:"pattern-forge-v4",tile:4000,dpi:300,
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
+      layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,nextId:state.nextId};
   }
   function compactProjectData(){
@@ -1637,8 +2032,19 @@
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
   }
   function validateProjectData(data){
-    if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
-    if(data.assets.length>500||data.items.length>10000||data.marks.length>10000)throw new Error("too-large");
+    if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
+    if(data.assets.length>500||data.items.length>10000||data.marks.length>10000||(Array.isArray(data.layers)&&data.layers.length>100))throw new Error("too-large");
+    if(data.format==="pattern-forge-v4"){
+      if(!Array.isArray(data.layers)||!data.layers.length)throw new Error("invalid-layers");
+      const layerIds=new Set();
+      for(const layer of data.layers){
+        const id=String(layer?.id||"").trim(),opacity=Number(layer?.opacity);
+        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error("invalid-layers");
+        layerIds.add(id);
+      }
+      if(data.activeLayerId!==undefined&&!layerIds.has(String(data.activeLayerId)))throw new Error("invalid-layers");
+      if(data.items.some(item=>item?.layerId!==undefined&&!layerIds.has(String(item.layerId)))||data.marks.some(mark=>mark?.layerId!==undefined&&!layerIds.has(String(mark.layerId))))throw new Error("invalid-layers");
+    }
     const assetIds=new Set();
     for(const a of data.assets){
       if(!a||a.id===undefined||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h)))throw new Error("invalid-assets");
@@ -1653,7 +2059,7 @@
     const code=err?.message||"";
     if(code==="wrong-format")return "That file is not a Pattern Forge project. Choose a JSON project or ZIP exported by Pattern Forge. Your current work is unchanged.";
     if(code==="too-large")return "That project is larger than Pattern Forge can open. Your current work is unchanged.";
-    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
+    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
     if(err instanceof SyntaxError)return "This file is not valid project JSON. Choose a Pattern Forge JSON file or exported project ZIP. Your current work is unchanged.";
     return "Pattern Forge could not open that project. Check that the file is a complete JSON project or ZIP exported by the app. Your current work is unchanged.";
   }
@@ -1661,15 +2067,20 @@
     validateProjectData(data);
     const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
     const incoming=data.project&&typeof data.project==="object"?data.project:{};
-    state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),repeatStyle:["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight",isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
-    state.assets=assets;state.items=data.items;state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m}));
+    state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),projectType:incoming.projectType==="doodle"?"doodle":"pattern",repeatStyle:incoming.projectType==="doodle"?"straight":(["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight"),isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.layers=normaliseLayers(data.layers);
+    const validLayerIds=new Set(state.layers.map(layer=>layer.id));
+    const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;
+    const drawingFallback=validLayerIds.has(BASE_LAYER_IDS.drawing)?BASE_LAYER_IDS.drawing:state.layers[state.layers.length-1].id;
+    state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
+    state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
-    $("bg").value=data.background||"#ffffff";$("transparent").checked=!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
+    $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
-    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";
-    rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
+    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
+    updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
   function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
   function uint32LE(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);}
@@ -1729,13 +2140,13 @@
       const png=await renderPNGBlob();if(!png){setStatus("ZIP export cancelled.");return;}
       const base=safeName();
       const files=[
-        {name:`${base}-seamless-${png.spec.dpi}dpi.png`,blob:png.blob},
-        {name:`${base}-seamless.svg`,blob:renderSVGBlob()},
+        {name:`${base}-${exportFileStem()}-${png.spec.dpi}dpi.png`,blob:png.blob},
+        {name:`${base}-${exportFileStem()}.svg`,blob:renderSVGBlob()},
         {name:`${base}-editable-project.json`,blob:projectBlob()}
       ];
       setStatus("Packaging the editable project, PNG and SVG into a ZIP…");
       const zip=await makeZip(files);
-      await shareOrDownloadZip(zip,`${base}-pattern-project.zip`);
+      await shareOrDownloadZip(zip,`${base}-${isDoodleProject()?"doodle":"pattern"}-project.zip`);
     }catch(err){setStatus("ZIP export failed: "+err.message);}
   }
 
@@ -1754,14 +2165,32 @@
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
-  ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
+  ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
+  $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
+  $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
   document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
-    state.tool=b.dataset.tool;
+    const nextTool=b.dataset.tool;
+    if(nextTool==="eyedropper"){
+      if(state.tool!=="eyedropper")state.previousTool=state.tool;
+    }else state.previousTool=nextTool;
+    state.tool=nextTool;
     document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===state.tool));
     updateToolHighlight();
     canvas.style.cursor=state.tool==="pan"?"grab":state.tool==="select"?"default":state.tool==="eyedropper"?"copy":"crosshair";
     setStatus(`${b.textContent} tool active.`);
   }));
+  $("layerAdd").addEventListener("click",addLayer);
+  $("layerDuplicate").addEventListener("click",duplicateActiveLayer);
+  $("layerDelete").addEventListener("click",deleteActiveLayer);
+  $("layerUp").addEventListener("click",()=>moveActiveLayer(1));
+  $("layerDown").addEventListener("click",()=>moveActiveLayer(-1));
+  $("layerName").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const name=$("layerName").value.trim();if(!name){$("layerName").value=layer.name;return;}saveHistory();layer.name=name.slice(0,80);renderAll();setStatus(`Layer renamed to “${layer.name}”.`);});
+  $("layerOpacity").addEventListener("input",()=>{$("layerOpacityValue").textContent=$("layerOpacity").value+"%";});
+  $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
+  $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(!layer.visible&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
+  $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(layer.locked&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
+  $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
+  rebuildLayerUI();
   loadSavedPalettes();rebuildPaletteUI();
   $("savedPaletteSelect").addEventListener("change",e=>{
     const value=e.target.value;
@@ -1795,6 +2224,7 @@
   $("fit").onclick=()=>{state.panX=state.panY=0;setZoom(1);};
   $("focusPrintSize").addEventListener("input",updatePrintEligibility);
   $("repeatPreviewToggle").addEventListener("click",()=>{
+    if(isDoodleProject()){setStatus("Doodle Projects use one standalone canvas and do not have a repeat preview.");return;}
     state.focusRepeatPreview=!state.focusRepeatPreview;
     $("repeatPreviewToggle").setAttribute("aria-pressed",String(state.focusRepeatPreview));
     $("repeatPreviewToggle").textContent=state.focusRepeatPreview?"Tile only":"Preview repeat";
@@ -1825,6 +2255,7 @@
   $("projectMenu").addEventListener("click",showProjectSetup);
   $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
   $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
+  $("projectTypeInput").addEventListener("change",updateSetupProjectType);
   $("cancelProjectSetup").addEventListener("click",()=>{$("projectSetupOverlay").hidden=true;});
   $("openProject").onclick=()=>$("projectFile").click();
   $("projectFile").addEventListener("change",async e=>{

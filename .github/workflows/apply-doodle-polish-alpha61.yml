@@ -1,0 +1,71 @@
+name: Apply Pattern Forge alpha.6.1 Doodle usability polish
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-doodle-polish-alpha61.py
+      - .github/workflows/apply-doodle-polish-alpha61.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-doodle-polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+      - name: Align current project-menu guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dev/apply-doodle-polish-alpha61.py')
+          s=p.read_text(encoding='utf-8')
+          old='Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.\":\"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.'
+          new='Turn your current practice artwork into a named Pattern Project. Your drawing is kept, and its straight repeat stays in place.\":\"Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.'
+          if s.count(old)!=1: raise SystemExit('project-menu guard source not found exactly once')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Apply guarded Doodle usability polish
+        run: python3 dev/apply-doodle-polish-alpha61.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify Doodle polish guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            '<meta name="app-version" content="1.2.0-alpha.6.1">',
+            'id="drawingHelp"',
+            'id="tileSettingsSummary"',
+            'id="backgroundSettingsRow"',
+            'id="focusPrintHeading"',
+            'id="tileBorderLabelText"',
+            '4000 px standalone artwork canvas · transparent',
+            'Artwork stays where you draw it; canvas edges do not repeat.',
+            'Create a new Pattern Project or Doodle Project',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('Doodle polish guard missing: '+repr(missing))
+          print('Doodle usability polish guards present')
+          PY
+      - name: Commit alpha.6.1
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Polish Doodle workspace in alpha.6.1'
+          git push origin HEAD:feature/layer-engine-v1.2

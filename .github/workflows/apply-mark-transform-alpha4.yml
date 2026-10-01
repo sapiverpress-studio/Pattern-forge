@@ -1,0 +1,59 @@
+name: Apply Pattern Forge alpha.4.0 mark transforms
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-mark-transform-alpha4.py
+      - .github/workflows/apply-mark-transform-alpha4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-mark-transform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Apply guarded patch
+        run: python3 dev/apply-mark-transform-alpha4.py
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+
+      - name: Verify default render path remains present
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            'if(!markHasTransform(m)){',
+            'const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};',
+            'drawMark(c,transformed,effectiveOpacity)',
+            'for(const copy of copies)body+=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('default path changed or missing')
+          print('default mark rendering/export path retained')
+          PY
+
+      - name: Commit alpha.4.0
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add non-destructive drawn mark transforms in alpha.4.0'
+          git push origin HEAD:feature/layer-engine-v1.2

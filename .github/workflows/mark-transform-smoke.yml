@@ -1,0 +1,59 @@
+name: Pattern Forge mark transform smoke test
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - index.html
+      - tests/mark-transform-smoke.mjs
+      - .github/workflows/mark-transform-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mark-transform-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch with history
+        uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Prepare alpha.3 comparison source
+        run: |
+          mkdir -p /tmp/pattern-forge-alpha3
+          git show d61cc917483c35df7f92739bd0b8b085c71ca828:index.html > /tmp/pattern-forge-alpha3/index.html
+
+      - name: Serve current and alpha.3 apps
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-current.log 2>&1 &
+          (cd /tmp/pattern-forge-alpha3 && python3 -m http.server 4174 --bind 127.0.0.1 >/tmp/pf-alpha3.log 2>&1 &)
+          for port in 4173 4174; do
+            ok=0
+            for i in {1..20}; do
+              if curl -fsS http://127.0.0.1:$port/ >/dev/null; then ok=1; break; fi
+              sleep 1
+            done
+            if [ "$ok" != 1 ]; then
+              echo "Server $port failed"
+              cat /tmp/pf-current.log || true
+              cat /tmp/pf-alpha3.log || true
+              exit 1
+            fi
+          done
+
+      - name: Run mark transform regression
+        run: node tests/mark-transform-smoke.mjs

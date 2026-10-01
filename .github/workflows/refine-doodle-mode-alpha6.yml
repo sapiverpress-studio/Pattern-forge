@@ -1,0 +1,44 @@
+name: Refine Pattern Forge alpha.6 Doodle Mode
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/refine-doodle-mode-alpha6.py
+      - .github/workflows/refine-doodle-mode-alpha6.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine-doodle-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+      - name: Apply guarded Doodle refinement
+        run: python3 dev/refine-doodle-mode-alpha6.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify Doodle visibility guard
+        run: |
+          grep -F '.doodle-project #patternScatterDisclosure' index.html
+          grep -F 'standalone Doodle Project' index.html
+      - name: Commit refinement
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix Doodle Mode pattern-only controls'
+          git push origin HEAD:feature/layer-engine-v1.2

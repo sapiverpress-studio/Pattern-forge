@@ -1,0 +1,62 @@
+name: Apply Pattern Forge alpha.5.0 construction guides
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-construction-guides-alpha5.py
+      - .github/workflows/apply-construction-guides-alpha5.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-construction-guides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Apply guarded patch
+        run: python3 dev/apply-construction-guides-alpha5.py
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+
+      - name: Verify construction guide guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            'id="constructionGuide"',
+            'id="guideOpacity"',
+            'function drawConstructionGuides(c,sc)',
+            'drawConstructionGuides(ctx,sc);',
+            'constructionGuide:$("constructionGuide").value',
+            'guideOpacity:$("guideOpacity").value',
+            '<meta name="app-version" content="1.2.0-alpha.5.0">',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('construction guide guard missing: '+repr(missing))
+          print('construction guide guards present')
+          PY
+
+      - name: Commit alpha.5.0
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add non-printing construction guides in alpha.5.0'
+          git push origin HEAD:feature/layer-engine-v1.2

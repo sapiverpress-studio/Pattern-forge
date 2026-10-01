@@ -1,0 +1,71 @@
+name: Apply Pattern Forge alpha.6 Doodle Mode foundation
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-doodle-mode-alpha6.py
+      - .github/workflows/apply-doodle-mode-alpha6.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-doodle-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+      - name: Scope duplicated setup intro guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('dev/apply-doodle-mode-alpha6.py')
+          text=path.read_text(encoding='utf-8')
+          old="replace_once('Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.', 'Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.', 'setup intro')"
+          new="replace_once('<p id=\"projectSetupIntro\" class=\"projectSetupIntro\">Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.</p>', '<p id=\"projectSetupIntro\" class=\"projectSetupIntro\">Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.</p>', 'setup intro')"
+          if text.count(old)!=1: raise SystemExit(f'setup intro patch guard mismatch: {text.count(old)}')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Apply guarded Doodle Mode patch
+        run: python3 dev/apply-doodle-mode-alpha6.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify Doodle Mode guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            '<meta name="app-version" content="1.2.0-alpha.6.0">',
+            'id="projectTypeInput"',
+            'function isDoodleProject()',
+            'function artworkCopiesForBounds',
+            'projectType:requestedType',
+            'incoming.projectType==="doodle"',
+            'Export artwork as PNG',
+            'Doodle Projects keep one standalone canvas',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('Doodle Mode guard missing: '+repr(missing))
+          if html.count('artworkCopiesForBounds(') < 7: raise SystemExit('standalone copy routing incomplete')
+          print('Doodle Mode guards present')
+          PY
+      - name: Commit alpha.6.0
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add Doodle Mode foundation in alpha.6.0'
+          git push origin HEAD:feature/layer-engine-v1.2
