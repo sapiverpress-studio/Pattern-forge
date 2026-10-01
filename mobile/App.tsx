@@ -14,6 +14,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 const PATTERN_FORGE_URL =
@@ -21,6 +22,32 @@ const PATTERN_FORGE_URL =
   'https://sapiver-pattern-forge.netlify.app/';
 
 const ALLOWED_HOST = 'sapiver-pattern-forge.netlify.app';
+
+function isDoodleUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl, PATTERN_FORGE_URL);
+    return (
+      url.pathname === '/app/doodle/' ||
+      url.pathname === '/app/doodle' ||
+      (url.pathname === '/app/' && url.searchParams.get('workspace') === 'doodle')
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function setWorkspaceOrientation(workspace: string) {
+  if (Platform.OS !== 'android') return;
+  try {
+    if (workspace === 'doodle') {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    } else {
+      await ScreenOrientation.unlockAsync();
+    }
+  } catch (error) {
+    console.warn('Pattern Forge orientation change failed:', error);
+  }
+}
 
 function normaliseInternalUrl(rawUrl: string) {
   try {
@@ -134,6 +161,25 @@ const ANDROID_BRIDGE = String.raw`
     } catch (_) {}
   }, true);
 
+  function reportWorkspace() {
+    var body = document.body;
+    if (!body) return;
+    var doodle = body.dataset.workspace === 'doodle' || body.classList.contains('doodle-project');
+    send('workspace', { workspace: doodle ? 'doodle' : 'other' });
+  }
+
+  function watchWorkspace() {
+    if (!document.body) return;
+    reportWorkspace();
+    new MutationObserver(reportWorkspace).observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'data-workspace']
+    });
+  }
+
+  if (document.body) watchWorkspace();
+  else document.addEventListener('DOMContentLoaded', watchWorkspace, { once: true });
+
   return true;
 })();
 true;
@@ -225,6 +271,16 @@ export default function App() {
     return () => subscription.remove();
   }, [canGoBack]);
 
+  useEffect(() => {
+    void setWorkspaceOrientation(isDoodleUrl(currentUrl) ? 'doodle' : 'other');
+  }, [currentUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'android') void ScreenOrientation.unlockAsync();
+    };
+  }, []);
+
   const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
     try {
       const message = JSON.parse(event.nativeEvent.data || '{}');
@@ -237,6 +293,8 @@ export default function App() {
           setLoadError(false);
           setCurrentUrl(target);
         }
+      } else if (message.action === 'workspace') {
+        await setWorkspaceOrientation(String(message.payload?.workspace || 'other'));
       } else if (message.action === 'saveFile') {
         await saveFile(message.payload || {});
       } else if (message.action === 'shareFile') {
