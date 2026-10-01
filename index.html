@@ -772,12 +772,12 @@
     $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
   }
   function nextLayerName(){
-    let max=0;
+    let maxNumber=0;
     for(const layer of state.layers){
       const match=/^Layer\s+(\d+)$/i.exec(String(layer.name||"").trim());
-      if(match)max=Math.max(max,Number(match[1])||0);
+      if(match)maxNumber=Math.max(maxNumber,Number(match[1])||0);
     }
-    return `Layer ${max+1}`;
+    return `Layer ${Math.max(state.layers.length,maxNumber)+1}`;
   }
   function addLayer(){
     saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true};
