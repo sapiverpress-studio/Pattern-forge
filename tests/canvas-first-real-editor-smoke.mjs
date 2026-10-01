@@ -21,7 +21,7 @@ try{
 
   await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
   assert(await page.locator('#ux2Editor').isVisible(),'canvas-first shell should render');
-  assert(await page.locator('#projectSetupOverlay').isVisible(),'new project setup should still gate a fresh session');
+  assert(await page.locator('#projectSetupOverlay').isVisible(),'generic project route should still gate a fresh session');
   await page.locator('#projectTitleInput').fill('UX Engine QA');
   await page.locator('#projectRepeatStyle').selectOption('straight');
   await page.locator('#createProject').click();
@@ -30,10 +30,19 @@ try{
   const parent=await page.locator('#stageWrap').evaluate(el=>el.parentElement?.id);
   assert(parent==='ux2CanvasSlot','real stage should be moved into new canvas shell');
   assert((await page.locator('#ux2Title').textContent())?.includes('UX Engine QA'),'new shell should display project identity');
+  assert(await page.locator('[data-ux2-action="image"]').isVisible(),'Image tool should be discoverable');
+  assert(await page.locator('[data-ux2-tool="rect"]').isVisible(),'Shape tool should be discoverable');
 
   const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   await page.locator('[data-ux2-tool="brush"]').click();
   assert(await page.locator('.layout [data-tool="brush"]').first().evaluate(el=>el.classList.contains('active')),'new Brush button should drive real engine tool');
+  assert(await page.locator('#ux2BrushLibrary').isVisible(),'Brush library should be discoverable from brush context');
+  await page.locator('#ux2BrushLibrary').click();
+  assert((await page.locator('#ux2PaletteTitle').textContent())==='Brush Library','Brush Library palette should open');
+  assert(await page.getByText('Textured paint',{exact:true}).isVisible(),'existing textured brush should be visible');
+  await page.locator('[data-brush-style="marker"]').click();
+  assert((await page.locator('#brushStyle').inputValue())==='marker','brush library should drive existing brush style');
+  await page.locator('[data-ux2-tool="brush"]').click();
   await page.locator('#ux2Size').evaluate(el=>{el.value='54';el.dispatchEvent(new Event('input',{bubbles:true}))});
   assert(await page.locator('#brushSize').inputValue()==='54','contextual size should drive real engine control');
   const box=await page.locator('#editorCanvas').boundingBox(); assert(box,'canvas bounds missing');
@@ -45,19 +54,20 @@ try{
   const afterBrush=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   assert(afterBrush!==before,'real brush should change canvas rendering');
 
-  await page.locator('#ux2Undo').click();await page.waitForTimeout(80);
+  await page.locator('#ux2Undo').click();await page.waitForTimeout(100);
   const afterUndo=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   assert(afterUndo===before,'new Undo should restore real engine canvas');
-  await page.locator('#ux2Redo').click();await page.waitForTimeout(80);
+  await page.locator('#ux2Redo').click();await page.waitForTimeout(100);
   const afterRedo=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   assert(afterRedo===afterBrush,'new Redo should restore real engine brush mark');
 
   await page.locator('[data-ux2-tool="select"]').click();
   await page.mouse.click(box.x+box.width*.45,box.y+box.height*.48);
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(150);
   if(await page.locator('#selScale').count()){
     assert(await page.locator('#ux2SelScale').isVisible(),'selected artwork should expose scale in contextual inspector');
     assert(await page.locator('#ux2SelRot').isVisible(),'selected artwork should expose rotation in contextual inspector');
+    assert(await page.locator('#ux2SelOpacity').isVisible(),'selected artwork should expose opacity in contextual inspector');
   }
 
   await page.locator('[data-ux2-tool="eraser"]').click();
@@ -66,23 +76,38 @@ try{
   assert(await page.locator('.layout [data-tool="pan"]').first().evaluate(el=>el.classList.contains('active')),'new Pan should drive real engine tool');
   await page.locator('[data-ux2-tool="freefill"]').click();
   assert(await page.locator('.layout [data-tool="freefill"]').first().evaluate(el=>el.classList.contains('active')),'new Fill should drive real engine tool');
+  await page.locator('[data-ux2-tool="rect"]').click();
+  assert(await page.locator('#ux2Line').isVisible()&&await page.locator('#ux2Ellipse').isVisible(),'Shape context should expose line, rectangle and ellipse');
+  await page.locator('#ux2Ellipse').click();
+  assert(await page.locator('.layout [data-tool="ellipse"]').first().evaluate(el=>el.classList.contains('active')),'Shape context should drive real ellipse engine tool');
 
   await page.locator('[data-ux2-panel="colour"]').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Colour palette should open');
   await page.locator('#ux2ColourInput').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}))});
   assert((await page.locator('#ink').inputValue()).toLowerCase()==='#345678','new colour control should drive engine ink');
+  assert(await page.locator('#ux2AddPaletteColour').isVisible(),'palette editing should be discoverable');
+  assert(await page.locator('#ux2SavedPalette').isVisible(),'saved palettes should be discoverable');
 
   await page.locator('[data-ux2-panel="layers"]').click();
   const layerCount=await page.locator('#layerList .layerRow').count();
+  assert(await page.locator('#ux2LayerName').isVisible(),'layer naming should be visible');
+  assert(await page.locator('#ux2LayerLocked').isVisible(),'layer locking should be visible');
+  assert(await page.locator('#ux2LayerExport').isVisible(),'layer export flag should be visible');
   await page.locator('#ux2AddLayer').click();
+  await page.waitForFunction(expected=>document.querySelectorAll('#layerList .layerRow').length===expected,layerCount+1);
   assert(await page.locator('#layerList .layerRow').count()===layerCount+1,'new Layers palette should add a real layer');
 
   await page.locator('[data-ux2-panel="pattern"]').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Pattern','Pattern palette should be discoverable');
   assert(await page.locator('#ux2FullPreview').isVisible(),'repeat preview should be available from Pattern palette');
+  assert(await page.locator('#ux2SeamInspect').isVisible(),'seam inspection should be discoverable');
+  assert(await page.locator('#ux2Grid').isVisible(),'grid controls should be discoverable');
+  assert(await page.locator('#ux2Symmetry').isVisible(),'symmetry controls should be discoverable');
+  assert(await page.locator('#ux2SnapOn').isVisible(),'snapping should be discoverable');
 
   await page.locator('#ux2Export').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Export','Export palette should open');
+  assert(await page.getByText(/300 DPI metadata/).isVisible(),'export confidence should disclose 300 DPI metadata');
   const downloadPromise=page.waitForEvent('download',{timeout:12000});
   await page.locator('[data-export-old="saveProject"]').click();
   const download=await downloadPromise;
@@ -96,11 +121,7 @@ try{
   const m=await mobile.newPage();m.setDefaultTimeout(12000);
   const mErrors=[];m.on('pageerror',e=>mErrors.push(String(e)));m.on('console',x=>{if(x.type()==='error')mErrors.push(`console: ${x.text()}`)});
   await m.goto('http://127.0.0.1:4173/app/doodle/',{waitUntil:'networkidle'});
-  if(await m.locator('#projectSetupOverlay').isVisible()){
-    await m.locator('#projectTitleInput').fill('Doodle QA');
-    await m.locator('#createProject').click();
-    await m.locator('#projectSetupOverlay').waitFor({state:'hidden'});
-  }
+  await m.locator('#projectSetupOverlay').waitFor({state:'hidden'});
   assert((await m.locator('#ux2Mode').textContent())==='Doodle','Doodle route should identify Doodle workspace');
   assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern palette should hide in Doodle');
   assert(await m.locator('#editorCanvas').isVisible(),'Doodle should use real canvas in new shell');
@@ -109,5 +130,5 @@ try{
   await m.screenshot({path:'ux2-real-shots/doodle-phone-landscape.png',fullPage:true});
   assert(mErrors.length===0,`mobile browser errors: ${mErrors.join(' | ')}`);
   await mobile.close();
-  console.log('PASS canvas-first real editor: project home, real canvas, tools, contextual transform, undo/redo, colour, layers, pattern and project download');
+  console.log('PASS canvas-first real editor: home, canvas, tools, brush library, shapes, transform, undo/redo, colour, layers, pattern, export and Doodle landscape');
 } finally {await browser.close()}
