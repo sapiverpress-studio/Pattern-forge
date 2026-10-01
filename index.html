@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.5.0">
+<meta name="app-version" content="1.2.0-alpha.5.1">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -351,8 +351,8 @@
         <div class="field"><label for="guideOpacity">Guide opacity <span id="guideOpacityLabel">55%</span></label><input id="guideOpacity" type="range" min="10" max="100" value="55"></div>
       </div>
       <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
-      <label class="check"><input id="snapOn" type="checkbox"> Snap placement to grid</label>
-      <p class="help">Grid and snap are independent. Snap applies when moving imported artwork or drawn shapes.</p>
+      <label class="check"><input id="snapOn" type="checkbox"> Smart snapping</label>
+      <p class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
 
       <div class="row">
         <div class="field">
@@ -696,6 +696,7 @@
     resizeState: null,
     transformState: null,
     dragOffset: {x:0,y:0},
+    snapGuides: {x:null,y:null},
     renderQueued: false,
     tool: "select",
     previousTool: "select",
@@ -1006,6 +1007,7 @@
     }
     drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
+    drawSnapGuides(ctx,sc);
     const item=selectedItem();
     if(item){
       const a=assetOf(item),iw=a.w*item.scale,ih=a.h*item.scale;
@@ -1467,11 +1469,37 @@
     state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
     state.selectedId=null;state.activeMark=null;renderAll();
   }
-  function snapCoordinate(v){
-    if(!$("snapOn").checked)return v;
-    const step=TILE/(parseInt($("gridCount").value,10)||16);
-    const target=Math.round(v/step)*step;
-    return Math.abs(target-v)<14/viewScale()?target:v;
+  function clearSnapGuides(){state.snapGuides={x:null,y:null};}
+  function smartSnapAxis(v,halfExtent){
+    if(!$("snapOn").checked)return {value:v,guide:null};
+    const strongLimit=18/viewScale(),gridLimit=10/viewScale();
+    const strong=[{value:TILE/2,guide:TILE/2}];
+    if(halfExtent<=TILE/2){strong.push({value:halfExtent,guide:0},{value:TILE-halfExtent,guide:TILE});}
+    let best=null;
+    for(const candidate of strong){
+      const distance=Math.abs(candidate.value-v);
+      if(distance<=strongLimit&&(!best||distance<best.distance))best={...candidate,distance};
+    }
+    if(best)return {value:best.value,guide:best.guide};
+    const step=TILE/(parseInt($("gridCount").value,10)||16),gridTarget=Math.round(v/step)*step;
+    return Math.abs(gridTarget-v)<=gridLimit?{value:gridTarget,guide:null}:{value:v,guide:null};
+  }
+  function smartSnapPosition(x,y,halfW=0,halfH=0){
+    const sx=smartSnapAxis(x,Math.max(0,halfW)),sy=smartSnapAxis(y,Math.max(0,halfH));
+    state.snapGuides={x:sx.guide,y:sy.guide};
+    return {x:sx.value,y:sy.value};
+  }
+  function itemSnapHalfExtents(item){
+    const a=assetOf(item);if(!a)return {x:0,y:0};
+    const iw=a.w*item.scale,ih=a.h*item.scale,c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
+    return {x:(iw*c+ih*s)/2,y:(iw*s+ih*c)/2};
+  }
+  function drawSnapGuides(c,sc){
+    const guides=state.snapGuides||{};if(!Number.isFinite(guides.x)&&!Number.isFinite(guides.y))return;
+    c.save();c.strokeStyle="rgba(204,82,62,.92)";c.lineWidth=2/sc;c.setLineDash([5/sc,4/sc]);c.beginPath();
+    if(Number.isFinite(guides.x)){c.moveTo(guides.x,0);c.lineTo(guides.x,TILE);}
+    if(Number.isFinite(guides.y)){c.moveTo(0,guides.y);c.lineTo(TILE,guides.y);}
+    c.stroke();c.restore();
   }
   function wrappedDelta(a,b,size){
     let d=a-b;
@@ -1620,13 +1648,13 @@
       if(state.transformState.kind==="mark"){
         const mark=state.marks.find(m=>m.id===state.transformState.id);if(!mark)return;
         if(state.transformState.mode==="move"){
-          const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y,targetX=snapCoordinate(state.transformState.baseCenter.x+dx),targetY=snapCoordinate(state.transformState.baseCenter.y+dy);
-          mark.transformX=state.transformState.startX+targetX-state.transformState.baseCenter.x;mark.transformY=state.transformState.startY+targetY-state.transformState.baseCenter.y;
+          const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y,bounds=markPrimaryBounds(mark),snapped=smartSnapPosition(state.transformState.baseCenter.x+dx,state.transformState.baseCenter.y+dy,(bounds.maxX-bounds.minX)/2,(bounds.maxY-bounds.minY)/2);
+          mark.transformX=state.transformState.startX+snapped.x-state.transformState.baseCenter.x;mark.transformY=state.transformState.startY+snapped.y-state.transformState.baseCenter.y;
         }else mark.transformRotation=state.transformState.startRotation+Math.atan2(w.y-state.transformState.center.y,w.x-state.transformState.center.x)-state.transformState.startAngle;
       }else{
         const item=state.items.find(i=>i.id===state.transformState.id);if(!item)return;
         if(state.transformState.mode==="move"){
-          const pos=canonicalPoint(snapCoordinate(w.x-state.transformState.offset.x),snapCoordinate(w.y-state.transformState.offset.y));item.x=pos.x;item.y=pos.y;
+          const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.transformState.offset.x,w.y-state.transformState.offset.y,extents.x,extents.y),pos=canonicalPoint(snapped.x,snapped.y);item.x=pos.x;item.y=pos.y;
         }else{
           const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),angle=Math.atan2(delta.y,delta.x);item.rotation=state.transformState.startRotation+angle-state.transformState.startAngle;
         }
@@ -1651,15 +1679,16 @@
     }
     if(state.dragging){
       const item=selectedItem();if(!item)return;
-      item.x=((snapCoordinate(w.x-state.dragOffset.x)%TILE)+TILE)%TILE;
-      item.y=((snapCoordinate(w.y-state.dragOffset.y)%TILE)+TILE)%TILE;
+      const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.dragOffset.x,w.y-state.dragOffset.y,extents.x,extents.y);
+      item.x=((snapped.x%TILE)+TILE)%TILE;
+      item.y=((snapped.y%TILE)+TILE)%TILE;
       renderAll(false,false);
     }
   });
   function endDrag(e){
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
     const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
-    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;renderAll();
+    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();renderAll();
   }
   canvas.addEventListener("pointerup",endDrag);
   canvas.addEventListener("pointercancel",endDrag);
@@ -2079,6 +2108,7 @@
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
+  $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
   document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
     const nextTool=b.dataset.tool;
     if(nextTool==="eyedropper"){
