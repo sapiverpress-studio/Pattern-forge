@@ -6,12 +6,12 @@ import {
   Linking,
   Platform,
   Pressable,
-  SafeAreaView,
+  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -21,7 +21,7 @@ const PATTERN_FORGE_URL =
   process.env.EXPO_PUBLIC_PATTERN_FORGE_URL ??
   'https://sapiver-pattern-forge.netlify.app/';
 
-const ALLOWED_HOST = 'sapiver-pattern-forge.netlify.app';
+const ALLOWED_HOST = new URL(PATTERN_FORGE_URL).hostname;
 
 function isDoodleUrl(rawUrl: string) {
   try {
@@ -258,6 +258,7 @@ export default function App() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [currentUrl, setCurrentUrl] = useState(PATTERN_FORGE_URL);
 
   useEffect(() => {
@@ -280,6 +281,15 @@ export default function App() {
       if (Platform.OS === 'android') void ScreenOrientation.unlockAsync();
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading || loadError) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+      setLoadError(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [loading, loadError, currentUrl]);
 
   const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
     try {
@@ -311,8 +321,8 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
+    <View style={styles.safeArea}>
+      <ExpoStatusBar style="dark" />
       <View style={styles.container}>
         <WebView
           ref={webRef}
@@ -325,10 +335,19 @@ export default function App() {
           onMessage={handleMessage}
           onNavigationStateChange={(state) => setCanGoBack(state.canGoBack)}
           onLoadStart={() => {
+            setLoadProgress(0);
             setLoading(true);
             setLoadError(false);
           }}
-          onLoadEnd={() => setLoading(false)}
+          onLoadProgress={(event) => {
+            const progress = event.nativeEvent.progress;
+            setLoadProgress(progress);
+            if (progress >= 0.8) setLoading(false);
+          }}
+          onLoadEnd={() => {
+            setLoadProgress(1);
+            setLoading(false);
+          }}
           onError={() => {
             setLoading(false);
             setLoadError(true);
@@ -348,14 +367,15 @@ export default function App() {
 
         {loading && !loadError ? (
           <View pointerEvents="none" style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#2c6658" />
+            <ActivityIndicator size="large" color="#526d8f" />
+            <Text style={styles.loadingText}>Loading Pattern Forge… {Math.round(loadProgress * 100)}%</Text>
           </View>
         ) : null}
 
         {loadError ? (
           <View style={styles.errorOverlay}>
             <Text style={styles.errorTitle}>Pattern Forge could not load</Text>
-            <Text style={styles.errorText}>Check your internet connection and try again.</Text>
+            <Text style={styles.errorText}>Pattern Forge did not finish loading. Check your connection and try again.</Text>
             <Pressable
               accessibilityRole="button"
               style={styles.retryButton}
@@ -370,18 +390,19 @@ export default function App() {
           </View>
         ) : null}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2c6658',
+    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) : 0,
+    backgroundColor: '#eef1f4',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f4f1e9',
+    backgroundColor: '#eef1f4',
   },
   webView: {
     flex: 1,
@@ -393,6 +414,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#f4f1e9',
   },
+  loadingText: {
+    marginTop: 14,
+    fontSize: 15,
+    color: '#526d8f',
+  },
   errorOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
@@ -403,13 +429,13 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#183d35',
+    color: '#17202b',
     textAlign: 'center',
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#5f665f',
+    color: '#687483',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -420,7 +446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#2c6658',
+    backgroundColor: '#526d8f',
   },
   retryText: {
     color: '#ffffff',
