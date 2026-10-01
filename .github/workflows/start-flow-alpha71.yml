@@ -18,10 +18,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply guarded start-flow patches
+      - name: Confirm committed start-flow patch
         run: |
-          python dev/apply-start-flow-alpha71.py
-          python dev/refine-start-flow-alpha71.py
+          grep -q 'id="resumePrompt"' app/index.html
+          grep -q 'pendingAutosaveData' app/js/editor.js
+          grep -q "getElementById('projectSetupTitle')" app/js/workspace.js
       - name: Syntax checks
         run: |
           node --check app/js/editor.js
@@ -30,7 +31,7 @@ jobs:
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
-          npx playwright install --with-deps chromium >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
       - name: Prepare alpha.3 comparison source
         run: |
           git show b2c4744def6bd94816427738883bcf586ea4191d:index.html > /tmp/pf-alpha3.html
@@ -53,12 +54,3 @@ jobs:
         run: node tests/layer-ui-smoke.mjs
       - name: Start again regression
         run: node tests/start-again-smoke.mjs
-      - name: Commit app changes if green
-        run: |
-          git config user.name "sapiverpress-studio"
-          git config user.email "sapiverpress@gmail.com"
-          git add app/index.html app/assets/editor.css app/js/editor.js app/js/workspace.js help/index.html
-          if ! git diff --cached --quiet; then
-            git commit -m "Fix saved-project start flow and main-menu navigation"
-            git push origin HEAD:feature/start-flow-alpha71
-          fi
