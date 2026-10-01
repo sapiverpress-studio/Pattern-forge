@@ -1,0 +1,72 @@
+name: Apply Pattern Forge alpha.3 layer UI
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-layer-ui-alpha3.py
+      - .github/workflows/apply-layer-ui-alpha3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-layer-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Apply guarded patch
+        run: python3 dev/apply-layer-ui-alpha3.py
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          start = html.rfind('<script>')
+          end = html.rfind('</script>')
+          if start < 0 or end <= start:
+              raise SystemExit('embedded script not found')
+          Path('/tmp/pattern-forge-app.js').write_text(html[start+8:end], encoding='utf-8')
+          PY
+          node --check /tmp/pattern-forge-app.js
+
+      - name: Check layer UI guardrails
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          checks = {
+              'alpha.3 version': 'content="1.2.0-alpha.3"',
+              'layer list': 'id="layerList"',
+              'active layer': 'function activeLayer()',
+              'duplicate layer': 'function duplicateActiveLayer()',
+              'delete layer': 'function deleteActiveLayer()',
+              'layer reorder': 'function moveActiveLayer(direction)',
+              'locked drawing guard': 'drawLayer.locked',
+              'export toggle': 'layer.export=$("layerExport").checked',
+              'editor/export split': 'function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false)',
+          }
+          missing = [name for name, needle in checks.items() if needle not in html]
+          if missing:
+              raise SystemExit('missing guardrails: ' + ', '.join(missing))
+          print('layer UI guardrails present')
+          PY
+
+      - name: Commit alpha.3
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No index change produced; failing rather than creating an ambiguous release state.'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Expose guarded layer controls in alpha.3'
+          git push origin HEAD:feature/layer-engine-v1.2
