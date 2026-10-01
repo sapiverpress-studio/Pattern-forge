@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.4.2">
+<meta name="app-version" content="1.2.0-alpha.5.0">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -346,6 +346,11 @@
         <div class="field"><label class="settingLabel" for="symmetry"><span>Mirror while drawing</span><output id="symmetryValue" class="settingValue">Quadrant · 4 copies</output></label><select id="symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant" selected>Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></div>
         <div class="field"><label>&nbsp;</label><label class="check"><input id="symmetryGuides" type="checkbox" checked> Show mirror guides</label></div>
       </div>
+      <div class="row">
+        <div class="field"><label for="constructionGuide">Construction guide</label><select id="constructionGuide"><option value="off" selected>Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></div>
+        <div class="field"><label for="guideOpacity">Guide opacity <span id="guideOpacityLabel">55%</span></label><input id="guideOpacity" type="range" min="10" max="100" value="55"></div>
+      </div>
+      <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
       <label class="check"><input id="snapOn" type="checkbox"> Snap placement to grid</label>
       <p class="help">Grid and snap are independent. Snap applies when moving imported artwork or drawn shapes.</p>
 
@@ -999,6 +1004,7 @@
       }
       ctx.strokeStyle="rgba(28,60,56,.24)";ctx.lineWidth=1/sc;ctx.stroke();
     }
+    drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
     const item=selectedItem();
     if(item){
@@ -1073,6 +1079,19 @@
     const c=Math.cos(angle),s=Math.sin(angle);
     return {x:TILE/2+x*c-y*s,y:TILE/2+x*s+y*c};
   }
+  function drawConstructionGuides(c,sc){
+    const mode=$("constructionGuide")?.value||"off";if(mode==="off")return;
+    const alpha=clamp((parseInt($("guideOpacity")?.value,10)||55)/100,.1,1);
+    const centre=mode==="centre"||mode==="all",diagonals=mode==="diagonals"||mode==="all",diamond=mode==="diamond"||mode==="all";
+    c.save();c.strokeStyle=`rgba(44,95,84,${alpha})`;c.fillStyle=`rgba(44,95,84,${alpha})`;c.lineWidth=1.5/sc;c.setLineDash([8/sc,6/sc]);c.beginPath();
+    if(centre){c.moveTo(TILE/2,0);c.lineTo(TILE/2,TILE);c.moveTo(0,TILE/2);c.lineTo(TILE,TILE/2);}
+    if(diagonals){c.moveTo(0,0);c.lineTo(TILE,TILE);c.moveTo(TILE,0);c.lineTo(0,TILE);}
+    if(diamond){c.moveTo(TILE/2,0);c.lineTo(TILE,TILE/2);c.lineTo(TILE/2,TILE);c.lineTo(0,TILE/2);c.closePath();}
+    c.stroke();c.setLineDash([]);
+    if(centre||diamond){c.beginPath();c.arc(TILE/2,TILE/2,4/sc,0,Math.PI*2);c.fill();}
+    c.restore();
+  }
+
   function drawSymmetryGuides(c,sc){
     if(!$("symmetryGuides").checked)return;
     const mode=$("symmetry").value;if(mode==="off")return;
@@ -1874,7 +1893,7 @@
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,nextId:state.nextId};
@@ -1969,10 +1988,10 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
-    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";
+    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
   function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
@@ -2058,7 +2077,8 @@
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
-  ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
+  ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
+  $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
   document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
     const nextTool=b.dataset.tool;
     if(nextTool==="eyedropper"){
