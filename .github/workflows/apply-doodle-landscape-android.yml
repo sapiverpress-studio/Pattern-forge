@@ -1,0 +1,44 @@
+name: Apply Android Doodle landscape
+
+on:
+  push:
+    branches: [feature/expo-go-live-test]
+    paths:
+      - '.github/workflows/apply-doodle-landscape-android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-go-live-test
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply orientation patch
+        run: python dev/apply-doodle-landscape-android.py
+      - name: Install Expo dependency
+        working-directory: mobile
+        run: |
+          npm ci
+          npx expo install expo-screen-orientation --npm
+      - name: Verify Android app
+        working-directory: mobile
+        run: |
+          npm run typecheck
+          npx expo-doctor
+          grep -q 'expo-screen-orientation' package.json
+          grep -q 'OrientationLock.LANDSCAPE' App.tsx
+          grep -q "message.action === 'workspace'" App.tsx
+      - name: Commit tested Android change
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add mobile/App.tsx mobile/package.json mobile/package-lock.json
+          git commit -m "Lock Doodle workspace to landscape on Android"
+          git push origin HEAD:feature/expo-go-live-test
