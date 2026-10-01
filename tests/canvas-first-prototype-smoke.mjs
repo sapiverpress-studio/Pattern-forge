@@ -19,6 +19,8 @@ try {
   assert(iconCount >= 10, 'prototype should use the custom Sapiver SVG icon set');
   const blue = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--blue').trim());
   assert(blue.toLowerCase()==='#6f89a8','prototype should use the approved slate-blue accent');
+  assert(await page.locator('.motif').count()===0,'prototype must not contain decorative sample motifs');
+  assert(await page.locator('.neutral-thumb').count()===3,'recent projects should use neutral structural previews');
   await page.screenshot({path:'prototype-shots/gallery-desktop.png',fullPage:true});
 
   await page.locator('[data-action="new-pattern"]').click();
@@ -47,13 +49,18 @@ try {
   await m.locator('[data-action="new-doodle"]').click();
   assert((await m.locator('#modePill').textContent())==='Doodle','Doodle should open directly');
   assert(await m.locator('.pattern-only').isHidden(),'Pattern-only dock should hide in Doodle');
+  assert(await m.locator('#sidePanel').isHidden(),'phone landscape should start with palette closed so canvas keeps its width');
+  await m.locator('[data-panel="layers"]').click();
+  assert(await m.locator('#sidePanel').isVisible(),'phone palette should open on demand as an overlay');
+  await m.locator('#closePanel').click();
+  assert(await m.locator('#sidePanel').isHidden(),'phone palette should close without leaving a permanent canvas column');
   await m.locator('[data-tool="brush"]').click();
   assert(await m.locator('#contextBar').getByText('Brush library').isVisible(),'mobile landscape should expose contextual Brush controls');
   await m.screenshot({path:'prototype-shots/doodle-phone-landscape.png',fullPage:true});
   assert(mobileErrors.length===0,`mobile browser errors: ${mobileErrors.join(' | ')}`);
   await mobile.close();
 
-  console.log('PASS canvas-first prototype: custom icons, blue/silver system, gallery, contextual editor, Pattern panel and Doodle landscape layout');
+  console.log('PASS canvas-first prototype: original icons, blue/silver system, neutral previews, contextual editor, Pattern tools and phone overlay palette');
 } finally {
   await browser.close();
 }
