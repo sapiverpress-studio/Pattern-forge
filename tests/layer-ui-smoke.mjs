@@ -134,6 +134,12 @@ try {
   await page.locator('#files').setInputFiles({ name: 'test-motif.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(tinySvg) });
   await page.waitForFunction(() => !document.querySelector('#selectedPanel')?.textContent?.includes('Select an imported image'));
 
+  // The Sketch stroke crosses the canvas centre and sits above Motifs. Hide it so this
+  // assertion isolates motif-vs-motif stack order instead of correctly selecting the stroke.
+  await selectLayer('Sketch');
+  await page.locator('#layerVisible').uncheck();
+  await page.waitForTimeout(120);
+
   await selectLayer('Motifs');
   await page.locator('#layerDuplicate').click();
   await waitForLayerCount(4);
@@ -164,7 +170,9 @@ try {
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported image'), 'locking Motifs did not clear the selected motif');
 
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const lockBox = await canvas.boundingBox();
+  assert(lockBox, 'canvas missing for locked motif hit test');
+  await page.mouse.click(lockBox.x + lockBox.width / 2, lockBox.y + lockBox.height / 2);
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported image'), 'locked motif could still be selected/transformed');
 
