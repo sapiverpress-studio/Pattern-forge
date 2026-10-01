@@ -30,7 +30,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
-      - name: Route legacy engine tests around the new shell
+      - name: Adapt legacy engine tests to the UX shell
         run: |
           tests=(
             doodle-mode-smoke.mjs
@@ -49,6 +49,9 @@ jobs:
             test -f "tests/$f" || continue
             sed -i 's#http://127.0.0.1:4173/app/#http://127.0.0.1:4173/app/?legacy=1#g' "tests/$f"
           done
+          # Layer UX originally pinned the alpha.7.0 presentation version. The engine
+          # assertions remain valid under UX2, so update only that presentation check.
+          sed -i "s/1.2.0-alpha.7.0/1.3.0-ux2-alpha.1/g" tests/layer-ux-smoke.mjs
       - name: Prepare alpha.3 comparison source
         run: |
           mkdir -p /tmp/pattern-forge-alpha3
