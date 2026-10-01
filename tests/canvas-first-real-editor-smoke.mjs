@@ -39,7 +39,7 @@ try{
   assert(await page.locator('#ux2BrushLibrary').isVisible(),'Brush library should be discoverable from brush context');
   await page.locator('#ux2BrushLibrary').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Brush Library','Brush Library palette should open');
-  assert(await page.getByText('Textured paint',{exact:true}).isVisible(),'existing textured brush should be visible');
+  assert(await page.locator('.ux2-brush-card').filter({hasText:'Textured paint'}).isVisible(),'existing textured brush should be visible');
   await page.locator('[data-brush-style="marker"]').click();
   assert((await page.locator('#brushStyle').inputValue())==='marker','brush library should drive existing brush style');
   await page.locator('[data-ux2-tool="brush"]').click();
