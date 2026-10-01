@@ -55,3 +55,5 @@ jobs:
         run: node tests/layer-ui-smoke.mjs
       - name: Start again regression
         run: node tests/start-again-smoke.mjs
+
+# Final alpha.7.1 run uses explicit-resume expectations across all reload tests.
