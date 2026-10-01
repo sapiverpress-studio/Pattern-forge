@@ -1,0 +1,33 @@
+name: Apply Pattern Forge project-menu alpha.7.1
+
+on:
+  push:
+    branches: [feature/start-flow-alpha71]
+    paths:
+      - '.github/workflows/apply-project-menu-alpha71.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/start-flow-alpha71
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply project-menu fix
+        run: |
+          python dev/fix-project-menu-alpha71.py
+          node --check app/js/editor.js
+      - name: Commit app fix
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add app/js/editor.js
+          git commit -m "Fix Project menu after resume choice"
+          git push origin HEAD:feature/start-flow-alpha71
