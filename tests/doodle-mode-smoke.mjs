@@ -84,10 +84,21 @@ try {
   assert(await page.locator('#transparent').isChecked(), 'Doodle Project did not force transparency');
   assert(await page.locator('#transparent').isDisabled(), 'Doodle transparency can be disabled');
   assert(await page.locator('#bg').isDisabled(), 'Doodle background colour should be disabled');
-  for (const selector of ['#patternScatterDisclosure','#repeatControls','#repeatPreviewToggle','#repeatPreviewHeading','#preview','#previewScaleField']) {
+  for (const selector of ['#patternScatterDisclosure','#repeatControls','#repeatPreviewToggle','#repeatPreviewHeading','#preview','#previewScaleField','#backgroundSettingsRow']) {
     assert(await page.locator(selector).isHidden(), `${selector} should be hidden in Doodle Mode`);
   }
-  assert((await page.locator('#stageDescription').textContent()).includes('standalone'), 'stage does not describe standalone Doodle canvas');
+  assert((await page.locator('#stageDescription').textContent()).includes('standalone artwork canvas'), 'stage does not clearly describe standalone Doodle artwork canvas');
+  assert((await page.locator('#drawingHelp').textContent()).includes('canvas edges do not repeat'), 'drawing help still describes wrapping in Doodle Mode');
+  assert((await page.locator('#tileSettingsSummary').textContent()).trim() === 'Canvas and placement settings', 'Doodle settings still use tile terminology');
+  assert((await page.locator('#snapHelp').textContent()).includes('canvas centre lines'), 'Doodle smart-snap help still uses tile terminology');
+  assert((await page.locator('#assetPlacementHelp').textContent()).includes('placed on the canvas'), 'Doodle image placement help still uses tile terminology');
+  assert((await page.locator('#focusRecentEmpty').textContent()).includes('placed on the canvas'), 'Doodle recent-image help still uses tile terminology');
+  assert((await page.locator('#focusPrintHeading').textContent()).trim() === 'Artwork size & DPI', 'Doodle print panel heading still uses tile terminology');
+  assert((await page.locator('#focusPrintSizeLabel').textContent()).trim() === 'Printed artwork width', 'Doodle print size label still uses base-tile terminology');
+  assert((await page.locator('#focusInfoPrintNote').textContent()).includes('artwork canvas'), 'Doodle print note still uses base-tile terminology');
+  assert((await page.locator('#tileBorderLabelText').textContent()).trim() === 'Show canvas edge', 'Doodle border control still says centre tile edge');
+  assert((await page.locator('#stageHelpHint').textContent()).includes('standalone artwork'), 'Doodle stage help still describes repeat swatch export');
+  assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Doodle artwork canvas', 'Doodle canvas accessibility label still says pattern tile');
   assert((await page.locator('#exportPng').textContent()).includes('artwork'), 'PNG export label is not Doodle-specific');
   assert((await page.locator('#exportSvg').textContent()).includes('artwork'), 'SVG export label is not Doodle-specific');
 
@@ -130,9 +141,23 @@ try {
   const reopenedBrush = reopened.json.marks.find(m => m.type === 'brush');
   assert(reopenedBrush?.points.some(p => Number(p.x) > 900), 'autosave/reload wrapped or lost Doodle edge-crossing geometry');
   assert(await page.locator('#transparent').isDisabled(), 'restored Doodle project did not restore mode UI');
+  assert((await page.locator('#tileSettingsSummary').textContent()).trim() === 'Canvas and placement settings', 'restored Doodle project lost canvas wording');
+
+  await page.locator('#projectMenu').click();
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'visible' });
+  assert((await page.locator('#projectSetupIntro').textContent()).includes('Create a new Pattern Project or Doodle Project'), 'Project menu still uses old print-project wording');
+  await page.locator('#projectTypeInput').selectOption('pattern');
+  await page.locator('#projectTitleInput').fill('Pattern Copy Check');
+  await page.locator('#projectSetupForm').evaluate(form => form.requestSubmit());
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden' });
+  assert((await page.locator('#tileSettingsSummary').textContent()).trim() === 'Tile and placement settings', 'Pattern Project lost tile terminology');
+  assert((await page.locator('#drawingHelp').textContent()).includes('Draw across edges to wrap'), 'Pattern Project lost edge-wrap guidance');
+  assert((await page.locator('#stageHelpHint').textContent()).includes('full repeat swatch'), 'Pattern Project lost repeat export guidance');
+  assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Pattern tile editor', 'Pattern Project canvas label changed unexpectedly');
+  assert(!(await page.locator('#backgroundSettingsRow').isHidden()), 'Pattern Project background controls were hidden');
 
   assert(errors.length === 0, `browser errors: ${errors.join(' | ')}`);
-  console.log('PASS Doodle Mode: project choice, transparent standalone canvas, no edge wrapping, PNG/SVG export and autosave/reload');
+  console.log('PASS Doodle Mode: standalone workflow terminology, transparent no-wrap export, autosave/reload and Pattern wording fallback');
 } finally {
   await browser.close();
 }
