@@ -1,0 +1,42 @@
+name: Pattern Forge layer UX smoke test
+
+on:
+  push:
+    branches:
+      - feature/mobile-density-v1.2
+    paths:
+      - index.html
+      - tests/layer-ux-smoke.mjs
+      - .github/workflows/layer-ux-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  layer-ux-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mobile-density-v1.2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve Pattern Forge
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf.log 2>&1 &
+          ok=0
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then ok=1; break; fi
+            sleep 0.5
+          done
+          if [ "$ok" != 1 ]; then cat /tmp/pf.log || true; exit 1; fi
+      - name: Run layer UX regression
+        run: node tests/layer-ux-smoke.mjs
+      - name: Re-run existing layer UI regression
+        run: node tests/layer-ui-smoke.mjs
