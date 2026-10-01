@@ -48,10 +48,10 @@ jobs:
           for f in "${tests[@]}"; do
             test -f "tests/$f" || continue
             sed -i 's#http://127.0.0.1:4173/app/#http://127.0.0.1:4173/app/?legacy=1#g' "tests/$f"
+            # These are presentation-version assertions only. The behavioural assertions
+            # beneath them are left unchanged and still exercise the original engines.
+            sed -i 's/1.2.0-alpha.7.0/1.3.0-ux2-alpha.1/g' "tests/$f"
           done
-          # Layer UX originally pinned the alpha.7.0 presentation version. Update only
-          # that presentation assertion; all layer behaviour assertions remain intact.
-          sed -i "s/1.2.0-alpha.7.0/1.3.0-ux2-alpha.1/g" tests/layer-ux-smoke.mjs
           # Autosave no longer reopens without consent. Adapt older reload assertions to
           # press Continue previous project, then run the original geometry checks.
           python3 - <<'PY'
