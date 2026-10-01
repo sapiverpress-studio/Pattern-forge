@@ -1428,8 +1428,8 @@
     $("resumePrompt").hidden=true;
     $("newProjectSetup").hidden=false;
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
-    $("cancelProjectSetup").hidden=!state.project;
-    $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
+    $("cancelProjectSetup").hidden=false;
+    $("cancelProjectSetup").textContent="Cancel";
     $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named Pattern Project. Your drawing is kept and its straight repeat stays in place.":"Create a new Pattern Project or Doodle Project, or open another saved project from this device.";
     $("localProjectsSection").hidden=false;
     $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
@@ -1817,7 +1817,10 @@
   $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
   $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
   $("projectTypeInput").addEventListener("change",updateSetupProjectType);
-  $("cancelProjectSetup").addEventListener("click",()=>{$("projectSetupOverlay").hidden=true;});
+  $("cancelProjectSetup").addEventListener("click",()=>{
+    if(state.project){$("projectSetupOverlay").hidden=true;return;}
+    window.location.assign("/");
+  });
   $("openProject").onclick=()=>$("projectFile").click();
   $("projectFile").addEventListener("change",async e=>{
     const file=e.target.files[0];if(!file)return;
