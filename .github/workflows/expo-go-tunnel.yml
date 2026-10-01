@@ -78,3 +78,5 @@ jobs:
             fi
             sleep 1
           done
+
+# Restarted for Doodle landscape orientation testing.
