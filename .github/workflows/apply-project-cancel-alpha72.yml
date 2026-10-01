@@ -1,0 +1,45 @@
+name: Apply Pattern Forge project-cancel alpha.7.2
+
+on:
+  push:
+    branches: [feature/start-flow-alpha71]
+    paths:
+      - '.github/workflows/apply-project-cancel-alpha72.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/start-flow-alpha71
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply Cancel UX fix
+        run: |
+          python dev/apply-project-cancel-alpha72.py
+          node --check app/js/editor.js
+          grep -q 'id="cancelProjectSetup" class="btn full" type="button">Cancel</button>' app/index.html
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Cancel browser smoke test
+        run: |
+          python3 -m http.server 4173 >/tmp/pattern-forge-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 2
+          node tests/project-cancel-smoke.mjs
+      - name: Commit tested app fix
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add app/index.html app/js/editor.js
+          git commit -m "Add Cancel to new project setup"
+          git push origin HEAD:feature/start-flow-alpha71
