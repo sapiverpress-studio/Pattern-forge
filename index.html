@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.6.1">
+<meta name="app-version" content="1.2.0-alpha.6.2">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -199,6 +199,7 @@
   .exportGroupTitle{margin:10px 0 5px;font-size:.8rem;font-weight:750;color:#47443f}
   .exportNote{margin:5px 0 12px;color:var(--muted);font-size:.76rem;line-height:1.45}
   .mobileNav{display:none}
+  .mobileDisclosure>summary{display:none}
   @media(max-width:1100px){
     .layout{grid-template-columns:270px 1fr}
     .right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -217,6 +218,16 @@
     .panel{margin-bottom:10px;border-radius:13px}
     .stageWrap{order:0;width:100%;margin-bottom:0}
     .left{order:1;width:100%}.right{order:2;width:100%}
+    .left,.right{background:transparent;border:0;box-shadow:none;padding:0;margin-bottom:0}
+    .mobileDisclosure{margin:0 0 8px;padding:0 10px 10px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
+    .mobileDisclosure:not([open]){padding-bottom:0}
+    .mobileDisclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 -10px;padding:11px 12px;cursor:pointer;font-size:.88rem;font-weight:800;color:#244e44;list-style:none}
+    .mobileDisclosure>summary::-webkit-details-marker{display:none}
+    .mobileDisclosure>summary::after{content:"+";flex:none;font-size:1rem;line-height:1;color:var(--muted)}
+    .mobileDisclosure[open]>summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+    .mobileDisclosure[open]>summary::after{content:"−"}
+    .mobileDisclosure #focusControls>h2{font-size:.95rem;margin-top:0}
+    .doodle-project #previewDisclosure{display:none!important}
     .stageBar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px}
     .stageBar .stageDescription{display:none}
     .stageBar .tileLabel{flex:1 1 100%;min-width:0;max-width:100%;margin:0;font-size:.74rem}
@@ -297,6 +308,8 @@
 
   <main class="layout">
     <section class="panel left">
+      <details id="drawingControlsDisclosure" class="mobileDisclosure" open>
+      <summary>Drawing controls</summary>
       <div id="focusControls">
       <h2>Draw and colour</h2>
       <div class="toolRow" role="group" aria-label="Drawing tools">
@@ -372,7 +385,10 @@
       </div>
       </details>
       </div>
+      </details>
 
+      <details id="imagesDisclosure" class="mobileDisclosure" open>
+      <summary>Images and motifs</summary>
       <h3>Add your images</h3>
       <div id="drop" class="drop">
         <strong>Tap to choose images</strong><br>
@@ -416,6 +432,7 @@
         <button id="clear" class="btn danger">Clear artwork</button>
       </div>
       </div>
+      </details>
       </details>
     </section>
 
@@ -464,6 +481,8 @@
     </section>
 
     <section class="panel right">
+      <details id="layersDisclosure" class="mobileDisclosure" open>
+      <summary>Selection and layers</summary>
       <h2>Selected artwork</h2>
       <div id="selectedPanel" class="selectedBox">
         <div class="empty">Tap an imported motif or drawn mark in the tile to edit it.</div>
@@ -496,14 +515,20 @@
         </div>
         <p id="layerSummary" class="help">Select a layer to draw into it. Layers at the top are rendered in front.</p>
       </div>
+      </details>
 
+      <details id="previewDisclosure" class="mobileDisclosure" open>
+      <summary>Repeat preview</summary>
       <h3 id="repeatPreviewHeading">Live repeat preview</h3>
       <div id="preview" class="previewBox"></div>
       <div id="previewScaleField" class="field" style="margin-top:8px">
         <label for="previewScale">Preview repeat size <span id="previewScaleLabel">33%</span></label>
         <input id="previewScale" type="range" min="10" max="100" value="33">
       </div>
+      </details>
 
+      <details id="exportDisclosure" class="mobileDisclosure" open>
+      <summary>Export and save</summary>
       <h3>Print-quality check</h3>
       <div id="quality" class="warning ok">Add artwork to calculate effective raster resolution.</div>
 
@@ -528,6 +553,7 @@
       </p>
 
       <p class="help">Project files include artwork used by placed motifs. Keep your original image files as separate backups.</p>
+      </details>
     </section>
   </main>
 
@@ -2267,13 +2293,23 @@
     e.target.value="";
   });
 
-  if(window.matchMedia("(max-width:760px)").matches)$("tileSettingsDisclosure").open=false;
+  const mobileLayoutQuery=window.matchMedia("(max-width:760px)");
+  const mobileDisclosureIds=["drawingControlsDisclosure","imagesDisclosure","layersDisclosure","previewDisclosure","exportDisclosure"];
+  function setMobileSection(targetId="stageWrap"){
+    if(!mobileLayoutQuery.matches)return;
+    mobileDisclosureIds.forEach(id=>{const disclosure=$(id);if(disclosure)disclosure.open=false;});
+    $("tileSettingsDisclosure").open=false;
+    if(targetId==="drop")$("imagesDisclosure").open=true;
+    else if(targetId==="tileSettingsDisclosure"){$("drawingControlsDisclosure").open=true;$("tileSettingsDisclosure").open=true;}
+    else if(targetId==="exportSection")$("exportDisclosure").open=true;
+  }
+  setMobileSection();
   document.querySelectorAll("[data-mobile-jump]").forEach(button=>button.addEventListener("click",()=>{
     const targetId=button.dataset.mobileJump;
-    if(targetId==="tileSettingsDisclosure")$(targetId).open=true;
+    setMobileSection(targetId);
     document.querySelectorAll("[data-mobile-jump]").forEach(item=>item.removeAttribute("aria-current"));
     button.setAttribute("aria-current","page");
-    $(targetId).scrollIntoView({behavior:"smooth",block:"start"});
+    requestAnimationFrame(()=>$(targetId).scrollIntoView({behavior:"smooth",block:"start"}));
   }));
   ["gridCount","symmetry"].forEach(id=>$(id).addEventListener("change",updateSettingReadouts));
   updatePixelReadout();
