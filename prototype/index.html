@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pattern Forge UX Prototype</title>
   <link rel="stylesheet" href="./ux.css">
+  <link rel="stylesheet" href="./refine.css">
 </head>
 <body>
   <div id="app" class="pf-app">
@@ -39,16 +40,16 @@
       </div>
       <div class="recent-grid">
         <button class="project-card" data-open="pattern">
-          <div class="thumb botanical"><span></span><span></span><span></span><span></span></div>
-          <div class="project-card-meta"><strong>Garden Birds</strong><small>Straight repeat · today</small></div>
+          <div class="thumb neutral-thumb"><span class="thumb-badge">Pattern · Straight</span></div>
+          <div class="project-card-meta"><strong>Untitled Pattern</strong><small>Edited today</small></div>
         </button>
         <button class="project-card" data-open="doodle">
-          <div class="thumb doodle-thumb"><span></span></div>
-          <div class="project-card-meta"><strong>Leaf Motifs</strong><small>Doodle · yesterday</small></div>
+          <div class="thumb neutral-thumb transparent-preview"><span class="thumb-badge">Doodle</span></div>
+          <div class="project-card-meta"><strong>Untitled Doodle</strong><small>Edited yesterday</small></div>
         </button>
         <button class="project-card" data-open="pattern">
-          <div class="thumb geo"><span></span><span></span><span></span></div>
-          <div class="project-card-meta"><strong>Geo Garden</strong><small>Half-drop · 2 days ago</small></div>
+          <div class="thumb neutral-thumb"><span class="thumb-badge">Pattern · Half-drop</span></div>
+          <div class="project-card-meta"><strong>Client Pattern</strong><small>Edited 2 days ago</small></div>
         </button>
       </div>
     </section>
@@ -58,7 +59,7 @@
         <div class="topbar-left">
           <button class="icon-button labelled" id="galleryButton" title="Gallery"><svg><use href="./icons.svg#i-gallery"/></svg><b>Gallery</b></button>
           <div class="project-identity">
-            <strong id="projectName">Garden Birds</strong>
+            <strong id="projectName">Untitled Pattern</strong>
             <button id="modePill" class="mode-pill">Pattern</button>
           </div>
         </div>
@@ -89,8 +90,12 @@
           <div class="workspace-field pattern-workspace" id="workspaceField">
             <div class="repeat-copy c1"></div><div class="repeat-copy c2"></div><div class="repeat-copy c3"></div><div class="repeat-copy c4"></div>
             <div class="artboard" id="artboard">
-              <div class="motif m1"></div><div class="motif m2"></div><div class="motif m3"></div><div class="motif m4"></div>
-              <div class="selection-box" id="selectionBox"><i class="handle h1"></i><i class="handle h2"></i><i class="handle h3"></i><i class="handle h4"></i></div>
+              <div class="empty-canvas-state">
+                <svg><use href="./icons.svg#i-brush"/></svg>
+                <strong>Canvas ready</strong>
+                <small>Choose a tool to begin</small>
+              </div>
+              <div class="selection-box" id="selectionBox" hidden><i class="handle h1"></i><i class="handle h2"></i><i class="handle h3"></i><i class="handle h4"></i></div>
             </div>
           </div>
         </main>
