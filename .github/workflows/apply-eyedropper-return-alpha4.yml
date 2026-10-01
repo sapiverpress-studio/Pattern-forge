@@ -1,0 +1,60 @@
+name: Apply Pattern Forge alpha.4.2 eyedropper return
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-eyedropper-return-alpha4.py
+      - .github/workflows/apply-eyedropper-return-alpha4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-eyedropper-return:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Apply guarded patch
+        run: python3 dev/apply-eyedropper-return-alpha4.py
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+
+      - name: Verify eyedropper restoration guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            'previousTool: "select"',
+            'const returnTool=state.previousTool&&state.previousTool!=="eyedropper"?state.previousTool:"select";',
+            'if(state.tool!=="eyedropper")state.previousTool=state.tool;',
+            '<meta name="app-version" content="1.2.0-alpha.4.2">',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('eyedropper restoration guard missing')
+          if 'state.tool="brush";document.querySelectorAll("[data-tool]")' in html: raise SystemExit('hard-coded brush return remains')
+          print('eyedropper restoration guards present')
+          PY
+
+      - name: Commit alpha.4.2
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Return eyedropper to the previous tool in alpha.4.2'
+          git push origin HEAD:feature/layer-engine-v1.2
