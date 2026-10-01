@@ -19,6 +19,17 @@ jobs:
         with:
           ref: feature/layer-engine-v1.2
           fetch-depth: 0
+      - name: Align current project-menu guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dev/apply-doodle-polish-alpha61.py')
+          s=p.read_text(encoding='utf-8')
+          old='Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.\":\"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.'
+          new='Turn your current practice artwork into a named Pattern Project. Your drawing is kept, and its straight repeat stays in place.\":\"Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.'
+          if s.count(old)!=1: raise SystemExit('project-menu guard source not found exactly once')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
       - name: Apply guarded Doodle usability polish
         run: python3 dev/apply-doodle-polish-alpha61.py
       - name: Check embedded JavaScript syntax
