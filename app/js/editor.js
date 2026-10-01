@@ -1424,6 +1424,9 @@
     $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px canvas. PNG carries 300-DPI metadata. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
+    pendingAutosaveData=null;
+    $("resumePrompt").hidden=true;
+    $("newProjectSetup").hidden=false;
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
     $("cancelProjectSetup").hidden=!state.project;
     $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
