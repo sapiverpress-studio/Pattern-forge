@@ -22,6 +22,7 @@ jobs:
         run: |
           grep -q 'id="resumePrompt"' app/index.html
           grep -q 'pendingAutosaveData' app/js/editor.js
+          grep -q '$("newProjectSetup").hidden=false' app/js/editor.js
           grep -q "getElementById('projectSetupTitle')" app/js/workspace.js
       - name: Syntax checks
         run: |
