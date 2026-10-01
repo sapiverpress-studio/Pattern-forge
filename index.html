@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.2">
+<meta name="app-version" content="1.2.0-alpha.3">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -172,6 +172,18 @@
   .kpi:last-child{border-bottom:0}
   .kpi b{font-variant-numeric:tabular-nums}
   .selectedBox{padding:10px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+  .layerPanel{padding:10px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+  .layerList{display:grid;gap:5px;margin-bottom:8px}
+  .layerRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid var(--line);border-radius:9px;background:#fff;padding:7px 8px;color:var(--ink)}
+  .layerRow.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f1f7f4}
+  .layerRowName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:750}
+  .layerRowMeta{flex:none;color:var(--muted);font-size:.64rem;white-space:nowrap}
+  .layerActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:6px 0}
+  .layerActions.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .layerActions .btn{min-width:0;padding:6px 4px;font-size:.7rem}
+  .layerFlags{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px}
+  .layerFlags .check{font-size:.68rem;gap:4px;min-width:0}
+  .layerFlags .check input{width:16px;height:16px;flex:none}
   .empty{font-size:.78rem;color:var(--muted)}
   footer{margin:12px 2px 0;color:var(--muted);font-size:.72rem;line-height:1.5}
   .mini{font-size:.72rem}
@@ -447,6 +459,34 @@
         <div class="empty">Tap a motif in the tile to edit it.</div>
       </div>
 
+      <h3>Layers</h3>
+      <div class="layerPanel">
+        <div id="layerList" class="layerList" aria-label="Artwork layers"></div>
+        <div class="layerActions">
+          <button id="layerAdd" class="btn" type="button">+ Layer</button>
+          <button id="layerDuplicate" class="btn" type="button">Duplicate</button>
+          <button id="layerDelete" class="btn danger" type="button">Delete</button>
+        </div>
+        <div class="layerActions two">
+          <button id="layerUp" class="btn" type="button">Move up</button>
+          <button id="layerDown" class="btn" type="button">Move down</button>
+        </div>
+        <div class="field">
+          <label for="layerName">Layer name</label>
+          <input id="layerName" type="text" maxlength="80" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="layerOpacity">Layer opacity <span id="layerOpacityValue">100%</span></label>
+          <input id="layerOpacity" type="range" min="0" max="100" value="100">
+        </div>
+        <div class="layerFlags">
+          <label class="check"><input id="layerVisible" type="checkbox" checked> Visible</label>
+          <label class="check"><input id="layerLocked" type="checkbox"> Lock</label>
+          <label class="check"><input id="layerExport" type="checkbox" checked> Export</label>
+        </div>
+        <p id="layerSummary" class="help">Select a layer to draw into it. Layers at the top are rendered in front.</p>
+      </div>
+
       <h3>Live repeat preview</h3>
       <div id="preview" class="previewBox"></div>
       <div class="field" style="margin-top:8px">
@@ -665,6 +705,52 @@
     pendingPreview: false, pendingSelected: false
   };
 
+  function newLayerId(){return "layer-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
+  function activeLayer(){return layerById(state.activeLayerId)||state.layers[state.layers.length-1]||null;}
+  function layerArtworkCount(id){return state.items.filter(item=>item.layerId===id).length+state.marks.filter(mark=>mark.layerId===id).length;}
+  function rebuildLayerUI(){
+    const list=$("layerList");if(!list)return;
+    if(!layerById(state.activeLayerId)&&state.layers.length)state.activeLayerId=state.layers[state.layers.length-1].id;
+    list.innerHTML="";
+    [...state.layers].reverse().forEach(layer=>{
+      const button=document.createElement("button");button.type="button";button.className="layerRow"+(layer.id===state.activeLayerId?" active":"");
+      const name=document.createElement("span");name.className="layerRowName";name.textContent=layer.name;
+      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");
+      const meta=document.createElement("span");meta.className="layerRowMeta";meta.textContent=`${layerArtworkCount(layer.id)} item${layerArtworkCount(layer.id)===1?"":"s"}${flags.length?" · "+flags.join(" · "):""}`;
+      button.append(name,meta);
+      button.addEventListener("click",()=>{state.activeLayerId=layer.id;rebuildLayerUI();scheduleAutosave();setStatus(`“${layer.name}” is the active layer.`);});
+      list.appendChild(button);
+    });
+    const layer=activeLayer(),index=layer?state.layers.indexOf(layer):-1;
+    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerDuplicate","layerDelete","layerUp","layerDown"];
+    controls.forEach(id=>$(id).disabled=!layer);
+    if(!layer)return;
+    $("layerName").value=layer.name;$("layerOpacity").value=Math.round(layer.opacity*100);$("layerOpacityValue").textContent=Math.round(layer.opacity*100)+"%";
+    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;
+    $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
+    $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
+  }
+  function addLayer(){
+    saveHistory();const layer={id:newLayerId(),name:`Layer ${state.layers.length+1}`,visible:true,opacity:1,locked:false,export:true};
+    state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
+  }
+  function duplicateActiveLayer(){
+    const source=activeLayer();if(!source)return;saveHistory();
+    const layer={...source,id:newLayerId(),name:(source.name+" copy").slice(0,80)};const index=state.layers.indexOf(source);state.layers.splice(index+1,0,layer);
+    const itemCopies=state.items.filter(item=>item.layerId===source.id).map(item=>({...item,id:state.nextId++,layerId:layer.id}));
+    const markCopies=state.marks.filter(mark=>mark.layerId===source.id).map(mark=>({...JSON.parse(JSON.stringify(mark)),id:state.nextId++,layerId:layer.id}));
+    state.items.push(...itemCopies);state.marks.push(...markCopies);state.activeLayerId=layer.id;state.selectedId=null;renderAll();setStatus(`Duplicated “${source.name}”.`);
+  }
+  function deleteActiveLayer(){
+    const layer=activeLayer();if(!layer||state.layers.length<=1)return;const count=layerArtworkCount(layer.id);
+    if(count&&typeof confirm==="function"&&!confirm(`Delete “${layer.name}” and its ${count} artwork item${count===1?"":"s"}?`))return;
+    saveHistory();const index=state.layers.indexOf(layer);state.items=state.items.filter(item=>item.layerId!==layer.id);state.marks=state.marks.filter(mark=>mark.layerId!==layer.id);state.layers.splice(index,1);
+    state.activeLayerId=state.layers[Math.min(index,state.layers.length-1)].id;state.selectedId=null;renderAll();setStatus(`Deleted “${layer.name}”.`);
+  }
+  function moveActiveLayer(direction){
+    const layer=activeLayer();if(!layer)return;const index=state.layers.indexOf(layer),next=index+direction;if(next<0||next>=state.layers.length)return;
+    saveHistory();[state.layers[index],state.layers[next]]=[state.layers[next],state.layers[index]];renderAll();setStatus(direction>0?"Layer moved up.":"Layer moved down.");
+  }
   function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
   function setInkColour(hex){
     if(!/^#[0-9a-f]{6}$/i.test(hex||""))return;
@@ -1203,7 +1289,7 @@
       drawEditor();
       if(state.pendingPreview)renderPreview();
       updateQuality();
-      if(state.pendingSelected)rebuildSelectedPanel();
+      if(state.pendingSelected){rebuildSelectedPanel();rebuildLayerUI();}
       state.pendingPreview=false;state.pendingSelected=false;
     });
   }
@@ -1332,9 +1418,11 @@
       if(hit){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.x,hit.y);}
       renderAll();return;
     }
+    const drawLayer=activeLayer();
+    if(!drawLayer||drawLayer.visible===false||drawLayer.locked){setStatus(!drawLayer?"Choose an active layer before drawing.":drawLayer.locked?`“${drawLayer.name}” is locked. Unlock it to draw.`:`“${drawLayer.name}” is hidden. Make it visible to draw.`);state.dragStart=null;return;}
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y);
-    const mark={id:state.nextId++,layerId:layerById(state.activeLayerId)?.id||BASE_LAYER_IDS.drawing,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
     state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
     renderAll(false,false);
   });
@@ -1814,6 +1902,18 @@
     canvas.style.cursor=state.tool==="pan"?"grab":state.tool==="select"?"default":state.tool==="eyedropper"?"copy":"crosshair";
     setStatus(`${b.textContent} tool active.`);
   }));
+  $("layerAdd").addEventListener("click",addLayer);
+  $("layerDuplicate").addEventListener("click",duplicateActiveLayer);
+  $("layerDelete").addEventListener("click",deleteActiveLayer);
+  $("layerUp").addEventListener("click",()=>moveActiveLayer(1));
+  $("layerDown").addEventListener("click",()=>moveActiveLayer(-1));
+  $("layerName").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const name=$("layerName").value.trim();if(!name){$("layerName").value=layer.name;return;}saveHistory();layer.name=name.slice(0,80);renderAll();setStatus(`Layer renamed to “${layer.name}”.`);});
+  $("layerOpacity").addEventListener("input",()=>{$("layerOpacityValue").textContent=$("layerOpacity").value+"%";});
+  $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
+  $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;if(!layer.visible&&selectedItem()?.layerId===layer.id)state.selectedId=null;renderAll();});
+  $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;renderAll();});
+  $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
+  rebuildLayerUI();
   loadSavedPalettes();rebuildPaletteUI();
   $("savedPaletteSelect").addEventListener("change",e=>{
     const value=e.target.value;
