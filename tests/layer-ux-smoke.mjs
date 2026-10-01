@@ -24,7 +24,7 @@ try{
   await page.locator('#layerAdd').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===3);
   let layerNames=await names();
-  assert(layerNames[0]==='Layer 1',`first custom layer should be Layer 1, got ${layerNames[0]}`);
+  assert(layerNames[0]==='Layer 3',`first added layer should be Layer 3 with the two base layers present, got ${layerNames[0]}`);
 
   const nameInput=page.locator('#layerName');
   await nameInput.click();
@@ -37,22 +37,22 @@ try{
   await page.locator('#layerAdd').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===4);
   layerNames=await names();
-  assert(layerNames[0]==='Layer 2',`second custom layer should be Layer 2, got ${layerNames[0]}`);
+  assert(layerNames[0]==='Layer 4',`next layer should be Layer 4 after renaming the previous layer, got ${layerNames[0]}`);
 
   await selectLayer('Ink outline');
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#layerDelete').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===3);
-  assert(!(await names()).includes('Ink outline'),'renamed Layer 1 was not deleted');
+  assert(!(await names()).includes('Ink outline'),'renamed layer was not deleted');
 
-  await selectLayer('Layer 2');
+  await selectLayer('Layer 4');
   await page.locator('#layerAdd').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===4);
   layerNames=await names();
-  assert(layerNames[0]==='Layer 3',`new layer after deleting Layer 1 should be Layer 3, got ${layerNames[0]}`);
-  assert(layerNames.filter(name=>name==='Layer 2').length===1,`duplicate Layer 2 names found: ${layerNames.join(' | ')}`);
+  assert(layerNames[0]==='Layer 5',`new layer after deleting an earlier layer should advance to Layer 5, got ${layerNames[0]}`);
+  assert(new Set(layerNames).size===layerNames.length,`duplicate layer names found: ${layerNames.join(' | ')}`);
   assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
-  console.log('PASS layer UX: live rename works and default layer numbers never duplicate after deletion');
+  console.log('PASS layer UX: live rename works and default layer numbers never duplicate after rename/delete');
 }finally{
   await browser.close();
 }
