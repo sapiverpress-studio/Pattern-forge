@@ -132,7 +132,7 @@ try {
 
   const tinySvg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#0a84ff"/></svg>';
   await page.locator('#files').setInputFiles({ name: 'test-motif.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(tinySvg) });
-  await page.waitForFunction(() => !document.querySelector('#selectedPanel')?.textContent?.includes('Select an imported image'));
+  await page.waitForFunction(() => !document.querySelector('#selectedPanel')?.textContent?.includes('Select an imported motif or drawn mark'));
 
   // The Sketch stroke crosses the canvas centre and sits above Motifs. Hide it so this
   // assertion isolates motif-vs-motif stack order instead of correctly selecting the stroke.
@@ -168,13 +168,13 @@ try {
   await selectLayer('Motifs');
   await page.locator('#layerLocked').check();
   await page.waitForTimeout(120);
-  assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported image'), 'locking Motifs did not clear the selected motif');
+  assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locking Motifs did not clear the selected motif');
 
   const lockBox = await canvas.boundingBox();
   assert(lockBox, 'canvas missing for locked motif hit test');
   await page.mouse.click(lockBox.x + lockBox.width / 2, lockBox.y + lockBox.height / 2);
   await page.waitForTimeout(120);
-  assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported image'), 'locked motif could still be selected/transformed');
+  assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locked motif could still be selected/transformed');
 
   await page.locator('#layerLocked').uncheck();
   page.once('dialog', dialog => dialog.accept());
