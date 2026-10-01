@@ -1,0 +1,26 @@
+name: Check Expo account access
+
+on:
+  push:
+    branches: [feature/expo-go-live-test]
+    paths:
+      - .github/workflows/expo-auth-check.yml
+  workflow_dispatch:
+
+jobs:
+  expo-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo 'EXPO_TOKEN is not available to this repository.'
+            exit 2
+          fi
+          npx eas-cli@latest whoami
