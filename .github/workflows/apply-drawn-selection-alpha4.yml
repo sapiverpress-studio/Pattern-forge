@@ -1,0 +1,62 @@
+name: Apply Pattern Forge alpha.4.1 drawn selection
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-drawn-selection-alpha4.py
+      - .github/workflows/apply-drawn-selection-alpha4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-drawn-selection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+
+      - name: Apply guarded patch
+        run: python3 dev/apply-drawn-selection-alpha4.py
+
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+
+      - name: Verify selection guardrails
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            'content="1.2.0-alpha.4.1"',
+            'function selectedMark()',
+            'function hitTestArtwork(x,y)',
+            'function markHitTest(m,x,y)',
+            'function drawSelectedMarkOverlay(c,m,sc)',
+            'normaliseMarkTranslation(mark)',
+            'selectedItem()?.layerId||selectedMark()?.layerId',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('missing alpha.4.1 guardrails: '+', '.join(missing))
+          print('alpha.4.1 selection guardrails present')
+          PY
+
+      - name: Commit alpha.4.1
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Select and transform drawn artwork in alpha.4.1'
+          git push origin HEAD:feature/layer-engine-v1.2
