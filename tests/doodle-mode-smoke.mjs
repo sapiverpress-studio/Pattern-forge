@@ -134,6 +134,9 @@ try {
 
   await page.waitForTimeout(1300);
   await page.reload({ waitUntil: 'networkidle' });
+  await page.locator('#resumePrompt').waitFor({ state: 'visible', timeout: 5000 });
+  assert((await page.locator('#resumePromptDetail').textContent()).includes('Doodle Edge Test'), 'autosave prompt did not identify saved Doodle project');
+  await page.locator('#continuePrevious').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
   const reopened = await downloadJson(page);
   assert(reopened.json.project?.projectType === 'doodle', 'autosave/reload lost Doodle projectType');
@@ -157,7 +160,7 @@ try {
   assert(!(await page.locator('#backgroundSettingsRow').isHidden()), 'Pattern Project background controls were hidden');
 
   assert(errors.length === 0, `browser errors: ${errors.join(' | ')}`);
-  console.log('PASS Doodle Mode: standalone workflow terminology, transparent no-wrap export, autosave/reload and Pattern wording fallback');
+  console.log('PASS Doodle Mode: standalone workflow terminology, transparent no-wrap export, explicit resume and Pattern wording fallback');
 } finally {
   await browser.close();
 }
