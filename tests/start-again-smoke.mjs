@@ -54,7 +54,7 @@ try{
   assert(project.marks.length===1,`expected one drawing mark before reset, got ${project.marks.length}`);
   const beforeLayers=await layerNames();
   const beforeAssets=await assetNames();
-  const beforeBadge=await page.locator('#projectBadge').textContent();
+  const beforeBadge=await page.locator('#projectNameDisplay').textContent();
   assert(beforeLayers.includes('Keep layer'),'custom layer fixture missing');
   assert(beforeAssets.includes('alpha.svg')&&beforeAssets.includes('beta.svg'),'imported image fixtures missing');
   assert(await page.locator('#gridCount').inputValue()==='16','grid fixture was not set');
@@ -78,7 +78,7 @@ try{
   assert(JSON.stringify(await layerNames())===JSON.stringify(beforeLayers),'Start again changed the layer structure');
   assert(JSON.stringify(await assetNames())===JSON.stringify(beforeAssets),'Start again changed the imported image library');
   assert(await page.locator('#gridCount').inputValue()==='16','Start again changed tile/settings state');
-  assert(await page.locator('#projectBadge').textContent()===beforeBadge,'Start again changed the project setup/badge');
+  assert(await page.locator('#projectNameDisplay').textContent()===beforeBadge,'Start again changed the project setup/badge');
 
   // Undo immediately after reset restores the entire cleared artwork snapshot.
   await page.locator('#undo').click();
