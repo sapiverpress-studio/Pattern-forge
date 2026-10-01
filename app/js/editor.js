@@ -1853,6 +1853,7 @@
   updatePixelReadout();
   updateSettingReadouts();
   renderAll();
-  loadAutosave();
+  const explicitWorkspaceEntry=new URLSearchParams(location.search).get("workspace");
+  if(!["pattern","doodle"].includes(explicitWorkspaceEntry))loadAutosave();
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveAutosave();});
 })();
