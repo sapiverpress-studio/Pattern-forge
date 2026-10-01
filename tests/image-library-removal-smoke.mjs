@@ -46,13 +46,13 @@ try{
   project=await savedProject();
   assert(project.items.length===1 && project.assets.some(a=>a.name==='alpha.svg'),'removing unused image changed the placed alpha artwork');
 
-  // Import after deletion, then place every surviving image so Save Project retains each asset for ID validation.
+  // Import after deletion. Delta is auto-placed by the normal import flow; add gamma once so all surviving assets are used.
   await page.locator('#files').setInputFiles({name:'delta.svg',mimeType:'image/svg+xml',buffer:svg('#8e24aa')});
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===3);
   await page.getByRole('button',{name:'Add gamma.svg'}).click();
-  await page.getByRole('button',{name:'Add delta.svg'}).click();
   project=await savedProject();
   assert(project.assets.length===3,`expected three used assets after placement, got ${project.assets.length}`);
+  assert(project.items.length===3,'expected alpha, auto-placed delta and manually placed gamma before alpha removal');
   const ids=project.assets.map(a=>String(a.id));
   assert(new Set(ids).size===ids.length,`asset ID collision after removal/reimport: ${ids.join(', ')}`);
   const gamma=project.assets.find(a=>a.name==='gamma.svg');
