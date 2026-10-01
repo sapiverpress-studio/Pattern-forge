@@ -1,0 +1,35 @@
+name: Scaffold Pattern Forge Expo Android app
+
+on:
+  push:
+    branches: [feature/expo-android-app-v1]
+    paths:
+      - dev/scaffold-expo-android.sh
+      - .github/workflows/scaffold-expo-android.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-android-app-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scaffold and verify Expo app
+        run: bash dev/scaffold-expo-android.sh
+      - name: Verify web editor syntax
+        run: node --check app/js/editor.js
+      - name: Commit generated Android app
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add mobile app/js/editor.js docs/ANDROID-READINESS.md
+          git commit -m "Add Expo Android app shell" || exit 0
+          git push origin HEAD:feature/expo-android-app-v1
