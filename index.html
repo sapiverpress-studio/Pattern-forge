@@ -449,7 +449,7 @@
         <div class="focusInfoLinks"><a href="https://help.printful.com/hc/en-us/articles/360014065619-Can-I-submit-print-files-in-300-DPI-resolution" target="_blank" rel="noopener">Printful</a><a href="https://help.printify.com/hc/en-us/articles/4483617936657-What-type-of-print-files-does-Printify-require" target="_blank" rel="noopener">Printify</a><a href="https://support.spoonflower.com/hc/en-us/articles/204600314-Uploading-Images" target="_blank" rel="noopener">Spoonflower</a><a href="https://printshrimp.com/blogs/news/artwork-specifications" target="_blank" rel="noopener">Print Shrimp</a></div>
       </aside>
       <div class="mobileTools" role="group" aria-label="Quick drawing tools">
-        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
+        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="eraser">Eraser</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
       </div>
       <div id="focusRail" class="focusRail" hidden aria-label="Drawing and colour tools"><button id="toolsClose" class="btn" type="button" style="float:right;padding:3px 8px" aria-label="Close drawing tools">×</button></div>
       <canvas id="editorCanvas" width="1000" height="1000" aria-label="Pattern tile editor"></canvas>
@@ -1784,7 +1784,7 @@
     let maskIndex=0;
     for(const layer of state.layers){
       if(!layerIsRenderable(layer,true))continue;
-      let layerBody="",layerErase="";
+      let layerBody="";
       for(const srcItem of state.items){
       if(layerForArtwork(srcItem,BASE_LAYER_IDS.motifs)?.id!==layer.id)continue;
       const a=assetOf(srcItem);if(!a)continue;
@@ -1836,6 +1836,7 @@
         const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
         style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
       }
+      let eraserNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         const transform=`translate(${TILE/2} ${TILE/2}) rotate(${angle*180/Math.PI}) scale(${mirrorX?-1:1} ${mirrorY?-1:1}) translate(${-TILE/2} ${-TILE/2})`;
         if(!markHasTransform(m)){
@@ -1844,14 +1845,15 @@
           for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
           minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
           const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")layerErase+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
         }else{
           const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=latticeCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")layerErase+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
         }
       }
+      if(m.type==="eraser"&&eraserNodes){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;}
       }
-      if(layerErase){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${layerErase}</mask>`;body+=`<g mask="url(#${maskId})">${layerBody}</g>`;}else body+=layerBody;
+      body+=layerBody;
     }
     const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
     return new Blob([svg],{type:"image/svg+xml"});
