@@ -1,0 +1,49 @@
+name: Build Pattern Forge Android test APK
+
+on:
+  push:
+    branches: [feature/expo-android-app-v1]
+    paths:
+      - mobile/**
+      - .github/workflows/build-android-debug-apk.yml
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-android-app-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Verify Expo project
+        working-directory: mobile
+        run: |
+          npm run typecheck
+          npx expo-doctor
+      - name: Generate Android native project
+        working-directory: mobile
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+      - name: Build signed debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sapiver-pattern-forge-android-test
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
