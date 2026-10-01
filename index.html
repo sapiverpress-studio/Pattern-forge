@@ -707,6 +707,7 @@
 
   function newLayerId(){return "layer-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
   function activeLayer(){return layerById(state.activeLayerId)||state.layers[state.layers.length-1]||null;}
+  function motifTargetLayerId(){return layerById(BASE_LAYER_IDS.motifs)?.id||activeLayer()?.id||state.layers[0]?.id||null;}
   function layerArtworkCount(id){return state.items.filter(item=>item.layerId===id).length+state.marks.filter(mark=>mark.layerId===id).length;}
   function rebuildLayerUI(){
     const list=$("layerList");if(!list)return;
@@ -870,7 +871,7 @@
     const target=minDim*.25;
     const scale=target/maxNatural;
     const item={
-      id:state.nextId++, assetId:asset.id, layerId:BASE_LAYER_IDS.motifs,
+      id:state.nextId++, assetId:asset.id, layerId:motifTargetLayerId(),
       x:TILE/2,y:TILE/2,
       scale, rotation:0, opacity:1
     };
@@ -1308,7 +1309,7 @@
       const base=TILE/Math.max(a.w,a.h);
       const normalized=base*(lo+(hi-lo)*rand());
       state.items.push({
-        id:state.nextId++,assetId:a.id,layerId:BASE_LAYER_IDS.motifs,
+        id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),
         x:rand()*TILE,y:rand()*TILE,
         scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
       });
@@ -1333,7 +1334,7 @@
     if(!from.length)return;
     to.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
     const s=JSON.parse(from.pop());
-    state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||BASE_LAYER_IDS.drawing;state.nextId=s.nextId;
+    state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
     state.selectedId=null;state.activeMark=null;renderAll();
   }
   function snapCoordinate(v){
@@ -1348,13 +1349,17 @@
     return d;
   }
   function hitTest(x,y){
-    for(let idx=state.items.length-1;idx>=0;idx--){
-      const item=state.items[idx],layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,false)||layer.locked) continue;
-      const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
-      const cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation);
-      const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
-      const iw=a.w*item.scale,ih=a.h*item.scale;
-      if(Math.abs(lx)<=iw/2 && Math.abs(ly)<=ih/2) return item;
+    for(let layerIndex=state.layers.length-1;layerIndex>=0;layerIndex--){
+      const layer=state.layers[layerIndex];if(!layerIsRenderable(layer,false)||layer.locked)continue;
+      for(let idx=state.items.length-1;idx>=0;idx--){
+        const item=state.items[idx],itemLayer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item);
+        if(!a||itemLayer?.id!==layer.id)continue;
+        const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
+        const cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation);
+        const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
+        const iw=a.w*item.scale,ih=a.h*item.scale;
+        if(Math.abs(lx)<=iw/2 && Math.abs(ly)<=ih/2)return item;
+      }
     }
     return null;
   }
