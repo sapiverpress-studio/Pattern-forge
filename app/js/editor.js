@@ -1526,6 +1526,24 @@
       setStatus("Autosaved on this device.");
     }catch(err){try{const json=JSON.stringify(projectData());if(json.length>3_500_000)throw err;localStorage.setItem("patternForgeAutosave",json);setStatus("Autosaved on this device.");}catch(_){setStatus("Automatic device save is unavailable. Export a project ZIP to keep a portable copy.");}}
   }
+  let pendingAutosaveData=null;
+  function showNewProjectSetup(){
+    pendingAutosaveData=null;
+    $("resumePrompt").hidden=true;
+    $("newProjectSetup").hidden=false;
+    $("projectSetupOverlay").hidden=false;
+    updateSetupProjectType();
+  }
+  function showResumePrompt(data){
+    pendingAutosaveData=data;
+    const project=data?.project||{};
+    const type=project.projectType==="doodle"?"Doodle Project":"Pattern Project";
+    const title=String(project.title||"Untitled project");
+    $("resumePromptDetail").textContent=`${title} · ${type}. Choose whether to continue it or start a new project.`;
+    $("newProjectSetup").hidden=true;
+    $("resumePrompt").hidden=false;
+    $("projectSetupOverlay").hidden=false;
+  }
   async function loadAutosave(){
     try{let json;
       try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
@@ -1533,7 +1551,9 @@
       };req.onerror=()=>reject(req.error);});}
       catch(_){json=localStorage.getItem("patternForgeAutosave");}
       if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
-      await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus("Your latest autosaved design was reopened from this device.");
+      validateProjectData(data);
+      showResumePrompt(data);
+      setStatus("A saved project is available on this device.");
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
   }
   function validateProjectData(data){
@@ -1785,6 +1805,12 @@
     setStatus("Editable project JSON downloaded. Use Download project bundle (ZIP) for the JSON, PNG and SVG together.");
   };
   $("projectMenu").addEventListener("click",showProjectSetup);
+  $("continuePrevious").addEventListener("click",async()=>{
+    if(!pendingAutosaveData)return showNewProjectSetup();
+    try{const data=pendingAutosaveData;pendingAutosaveData=null;await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus("Previous project continued from this device.");}
+    catch(_){showNewProjectSetup();setStatus("The previous autosave could not be reopened. Start a new project or open a project file instead.");}
+  });
+  $("startNewFromResume").addEventListener("click",showNewProjectSetup);
   $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
   $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
   $("projectTypeInput").addEventListener("change",updateSetupProjectType);

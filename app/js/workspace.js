@@ -11,9 +11,8 @@
       const field = typeInput.closest('.field');
       if (field) field.hidden = true;
     }
-    const card = document.querySelector('.projectSetupCard');
-    const heading = card?.querySelector('h2');
-    const intro = card?.querySelector('.projectSetupIntro');
+    const heading = document.getElementById('projectSetupTitle');
+    const intro = document.getElementById('projectSetupIntro');
     if (heading) heading.textContent = workspace === 'pattern' ? 'New Pattern Project' : 'New Doodle';
     if (intro) intro.textContent = workspace === 'pattern'
       ? 'Set up a seamless pattern project, or open one you already started.'
