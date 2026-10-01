@@ -1,17 +1,21 @@
 import { chromium } from 'playwright';
+import fs from 'node:fs/promises';
 
 function assert(condition,message){if(!condition)throw new Error(message);}
 
 const browser=await chromium.launch({headless:true});
-const context=await browser.newContext({viewport:{width:1440,height:1200}});
+const context=await browser.newContext({viewport:{width:1440,height:1200},acceptDownloads:true});
 const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(String(error)));
 page.on('console',message=>{if(message.type()==='error')errors.push(`console: ${message.text()}`)});
 
 const svg=(fill)=>Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="${fill}"/></svg>`);
-async function projectState(){
-  return await page.evaluate(()=>JSON.parse(JSON.stringify(projectData())));
+async function savedProject(){
+  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#saveProject').click()]);
+  const path=await download.path();
+  assert(path,'saved project download path missing');
+  return JSON.parse(await fs.readFile(path,'utf8'));
 }
 
 try{
@@ -26,48 +30,54 @@ try{
     {name:'gamma.svg',mimeType:'image/svg+xml',buffer:svg('#1e88e5')},
   ]);
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===3);
-  let project=await projectState();
-  assert(project.assets.length===3,'three imported assets were not stored');
+  let visibleNames=await page.locator('.asset span').allTextContents();
+  assert(visibleNames.includes('alpha.svg')&&visibleNames.includes('beta.svg')&&visibleNames.includes('gamma.svg'),'three imported images were not visible in the library');
+
+  // First image is auto-placed. Removing an unused image must not disturb that placed copy.
+  let project=await savedProject();
   assert(project.items.length===1,'first imported image should be auto-placed once');
   const alpha=project.assets.find(a=>a.name==='alpha.svg');
-  const beta=project.assets.find(a=>a.name==='beta.svg');
-  const gamma=project.assets.find(a=>a.name==='gamma.svg');
-  assert(alpha&&beta&&gamma,'imported asset names missing');
+  assert(alpha,'auto-placed alpha asset missing from saved project');
 
-  // Remove an unused library image. No confirmation should be necessary and placed artwork must remain.
   await page.getByRole('button',{name:'Remove beta.svg from image library'}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===2);
-  project=await projectState();
-  assert(!project.assets.some(a=>a.name==='beta.svg'),'unused image stayed in library after removal');
-  assert(project.items.length===1 && String(project.items[0].assetId)===String(alpha.id),'removing unused image changed placed artwork');
+  visibleNames=await page.locator('.asset span').allTextContents();
+  assert(!visibleNames.includes('beta.svg'),'unused image stayed visible after removal');
+  project=await savedProject();
+  assert(project.items.length===1 && project.assets.some(a=>a.name==='alpha.svg'),'removing unused image changed the placed alpha artwork');
 
-  // Import after a deletion: IDs must remain unique and must not collide with the surviving gamma asset.
+  // Import after deletion, then place every surviving image so Save Project retains each asset for ID validation.
   await page.locator('#files').setInputFiles({name:'delta.svg',mimeType:'image/svg+xml',buffer:svg('#8e24aa')});
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===3);
-  project=await projectState();
+  await page.getByRole('button',{name:'Add gamma.svg'}).click();
+  await page.getByRole('button',{name:'Add delta.svg'}).click();
+  project=await savedProject();
+  assert(project.assets.length===3,`expected three used assets after placement, got ${project.assets.length}`);
   const ids=project.assets.map(a=>String(a.id));
   assert(new Set(ids).size===ids.length,`asset ID collision after removal/reimport: ${ids.join(', ')}`);
+  const gamma=project.assets.find(a=>a.name==='gamma.svg');
   const delta=project.assets.find(a=>a.name==='delta.svg');
-  assert(delta && String(delta.id)!==String(gamma.id),'new import reused a surviving asset ID');
+  assert(gamma&&delta&&String(gamma.id)!==String(delta.id),'new import reused the surviving gamma asset ID');
 
-  // Removing a used image must warn and remove every placed copy that depends on it.
+  // Removing a used image must warn and remove its placed copy, while other artwork survives.
   let warning='';
   page.once('dialog',async dialog=>{warning=dialog.message();await dialog.accept();});
   await page.getByRole('button',{name:'Remove alpha.svg from image library'}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===2);
   assert(warning.includes('1 placed copy'),`used-image removal warning did not state affected copies: ${warning}`);
-  project=await projectState();
-  assert(!project.assets.some(a=>a.name==='alpha.svg'),'used image stayed in library after confirmed removal');
-  assert(!project.items.some(item=>String(item.assetId)===String(alpha.id)),'placed copy survived after its library image was removed');
+  project=await savedProject();
+  assert(!project.assets.some(a=>a.name==='alpha.svg'),'used image stayed in saved project after confirmed removal');
+  assert(project.assets.some(a=>a.name==='gamma.svg')&&project.assets.some(a=>a.name==='delta.svg'),'surviving images disappeared after removing alpha');
+  assert(project.items.length===2,'removing alpha did not leave exactly the gamma and delta placed copies');
   const validIds=new Set(project.assets.map(a=>String(a.id)));
   assert(project.items.every(item=>validIds.has(String(item.assetId))),'orphaned item references remain after removal');
 
-  // Autosave/reload must preserve the removal.
+  // Autosave/reload must preserve the library removal.
   await page.waitForTimeout(1300);
   await page.reload({waitUntil:'networkidle'});
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden',timeout:5000});
   await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===2);
-  const visibleNames=await page.locator('.asset span').allTextContents();
+  visibleNames=await page.locator('.asset span').allTextContents();
   assert(!visibleNames.includes('alpha.svg')&&!visibleNames.includes('beta.svg'),`removed images returned after reload: ${visibleNames.join(', ')}`);
   assert(visibleNames.includes('gamma.svg')&&visibleNames.includes('delta.svg'),'surviving images missing after reload');
 
