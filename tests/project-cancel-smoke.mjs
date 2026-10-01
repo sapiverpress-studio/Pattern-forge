@@ -30,7 +30,7 @@ try{
   await cancel.click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
   assert(((await page.locator('.projectBadge').textContent())||'').includes('Cancel QA'),'Cancel should return to the current project without changing it');
-  assert(!page.url().endsWith('/'),'Cancel from an active project should not send the user to Main menu');
+  assert(new URL(page.url()).pathname !== '/','Cancel from an active project should not send the user to Main menu');
 
   assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
   await context.close();
