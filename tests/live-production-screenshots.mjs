@@ -5,7 +5,7 @@ const LIVE='https://sapiver-pattern-forge.netlify.app';
 await fs.mkdir('live-screenshots',{recursive:true});
 
 async function makeShot(browser, {mode, viewport, name}) {
-  const context = await browser.newContext({viewportSize:viewport, deviceScaleFactor:1});
+  const context = await browser.newContext({viewport, deviceScaleFactor:1});
   const page = await context.newPage();
   await page.goto(LIVE,{waitUntil:'networkidle'});
   await page.locator('#projectTypeInput').selectOption(mode);
@@ -16,7 +16,8 @@ async function makeShot(browser, {mode, viewport, name}) {
   await page.screenshot({path:`live-screenshots/${name}.png`,fullPage:true});
   const version=await page.locator('meta[name="app-version"]').getAttribute('content');
   const badge=(await page.locator('#projectNameDisplay').textContent())?.trim();
-  console.log(`${name}: version=${version} badge=${badge}`);
+  const cssViewport=await page.evaluate(()=>({width:window.innerWidth,height:window.innerHeight}));
+  console.log(`${name}: version=${version} badge=${badge} viewport=${cssViewport.width}x${cssViewport.height}`);
   await context.close();
 }
 
