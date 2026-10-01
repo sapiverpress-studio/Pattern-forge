@@ -162,7 +162,10 @@ try {
   assert(reloaded.marks.filter(m => m.type === 'eraser').length === 1, 'autosave/reload lost eraser stroke');
 
   // Transparent export must contain true alpha where a single-layer drawing is erased.
-  await page.locator('#clear').click();
+  // Clear is inside the closed Optional image scatter disclosure after reload; invoke the
+  // same button action directly because this is test setup, not a Clear-button UI test.
+  await page.locator('#clear').evaluate(el => el.click());
+  await page.waitForTimeout(120);
   await page.locator('#transparent').check();
   await setColour(page, '#0000ff');
   await page.locator('[data-tool="rect"]').first().click();
