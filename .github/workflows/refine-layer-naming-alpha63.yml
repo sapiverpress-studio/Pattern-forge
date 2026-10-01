@@ -1,0 +1,39 @@
+name: Refine Pattern Forge alpha.6.3 layer numbering
+
+on:
+  push:
+    branches:
+      - feature/mobile-density-v1.2
+    paths:
+      - dev/refine-layer-naming-alpha63.py
+      - .github/workflows/refine-layer-naming-alpha63.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine-layer-naming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mobile-density-v1.2
+          fetch-depth: 0
+      - name: Apply guarded numbering refinement
+        run: python3 dev/refine-layer-naming-alpha63.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('index.html').read_text(encoding='utf-8')
+          Path('/tmp/pf.js').write_text('\n'.join(re.findall(r'<script>(.*?)</script>',text,re.S)),encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Commit refinement
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Refine unique layer numbering in alpha.6.3'
+          git push origin HEAD:feature/mobile-density-v1.2
