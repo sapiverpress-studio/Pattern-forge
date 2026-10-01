@@ -19,6 +19,17 @@ jobs:
         with:
           ref: feature/layer-engine-v1.2
           fetch-depth: 0
+      - name: Scope duplicated setup intro guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('dev/apply-doodle-mode-alpha6.py')
+          text=path.read_text(encoding='utf-8')
+          old="replace_once('Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.', 'Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.', 'setup intro')"
+          new="replace_once('<p id=\"projectSetupIntro\" class=\"projectSetupIntro\">Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.</p>', '<p id=\"projectSetupIntro\" class=\"projectSetupIntro\">Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.</p>', 'setup intro')"
+          if text.count(old)!=1: raise SystemExit(f'setup intro patch guard mismatch: {text.count(old)}')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
       - name: Apply guarded Doodle Mode patch
         run: python3 dev/apply-doodle-mode-alpha6.py
       - name: Check embedded JavaScript syntax
