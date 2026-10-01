@@ -1,4 +1,5 @@
 (() => {
+  if(new URLSearchParams(location.search).get('legacy')==='1') return;
   const $ = id => document.getElementById(id);
   const oldLayout = document.querySelector('.layout');
   const stage = $('stageWrap');
@@ -170,7 +171,7 @@
   const updateIdentity=()=>{
     setText($('ux2Title'),$('projectNameDisplay')?.textContent?.trim()||'Pattern Forge');
     const doodle=document.body.classList.contains('doodle-project');setText($('ux2Mode'),doodle?'Doodle':'Pattern');
-    const patternDock=document.querySelector('[data-ux2-panel="pattern"]');if(patternDock)patternDock.hidden=doodle;
+    const patternDock=document.querySelector('[data-ux2-panel="pattern"]');if(patternDock){patternDock.hidden=doodle;patternDock.style.display=doodle?'none':'';}
     setText($('ux2ZoomLabel'),$('zoomLabel')?.textContent||'100%');
   };
   const updateStatus=()=>setText($('ux2Status'),$('status')?.textContent||'');
