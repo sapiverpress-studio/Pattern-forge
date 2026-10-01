@@ -1,0 +1,38 @@
+name: Canvas-first UX prototype
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - prototype/**
+      - tests/canvas-first-prototype-smoke.mjs
+      - .github/workflows/canvas-first-prototype.yml
+  workflow_dispatch:
+
+jobs:
+  prototype:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 4173 >/tmp/pf-prototype.log 2>&1 &
+          sleep 2
+      - name: Run prototype browser smoke
+        run: node tests/canvas-first-prototype-smoke.mjs
+      - name: Upload prototype screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvas-first-prototype-screenshots
+          path: prototype-shots/*.png
+          retention-days: 7
