@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sapiver Pattern Forge — Seamless Pattern Design</title>
+<meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
+<meta name="application-name" content="Sapiver Pattern Forge">
+<meta name="app-version" content="1.1.5">
+<style>
+  :root{
+    --bg:#f4f1eb;
+    --panel:#ffffff;
+    --ink:#171717;
+    --muted:#6a675f;
+    --line:#d8d2c8;
+    --accent:#2c5f54;
+    --danger:#8a2e2e;
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  .app{max-width:1500px;margin:0 auto;padding:18px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px}
+  .brandEyebrow{margin:0 0 4px;color:var(--accent);font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  h1{margin:0;font-size:clamp(1.35rem,2.2vw,2rem);letter-spacing:-.02em}
+  .sub{max-width:760px;margin:.35rem 0 0;color:var(--muted);font-size:.94rem;line-height:1.45}
+  .status{font-size:.82rem;color:var(--muted);text-align:right;max-width:470px}
+  .projectSetupOverlay{position:fixed;inset:0;z-index:11000;display:grid;place-items:center;background:rgba(28,35,32,.46);padding:16px;overflow:auto}
+  .projectSetupOverlay[hidden]{display:none}
+  .projectSetupCard{width:min(100%,620px);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(16px,4vw,28px);box-shadow:0 18px 60px rgba(0,0,0,.2)}
+  .projectSetupCard h2{margin:0 0 5px;font-size:1.4rem}.projectSetupIntro{color:var(--muted);font-size:.9rem;line-height:1.45;margin:0 0 17px}
+  .setupChoice{margin:0 0 10px}.setupDivider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:.75rem}.setupDivider:before,.setupDivider:after{content:"";height:1px;flex:1;background:var(--line)}
+  .projectSetupCard .field{margin-bottom:11px}.repeatLockNote{padding:9px 10px;background:#f4f1eb;border-radius:9px;color:var(--muted);font-size:.76rem;line-height:1.4;margin:7px 0 14px}
+  #localProjectList{display:grid;gap:6px;max-height:180px;overflow:auto}.localProjectButton{display:flex;justify-content:space-between;gap:10px;text-align:left}.localProjectButton small{display:block;color:var(--muted);font-weight:400;margin-top:3px}
+  .projectBadge{max-width:min(360px,34vw);min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;white-space:normal;font-weight:700;color:var(--ink);line-height:1.2}
+  .layout{display:grid;grid-template-columns:285px minmax(0,1fr) 285px;gap:12px;align-items:start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+  .panel h2{font-size:1rem;margin:0 0 10px}
+  .panel h3{font-size:.9rem;margin:16px 0 8px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  label{display:block;font-size:.78rem;font-weight:650;color:#47443f;margin-bottom:4px}
+  input[type="number"],input[type="text"],select,input[type="color"]{
+    width:100%;border:1px solid var(--line);border-radius:9px;background:#fff;padding:9px 10px;color:var(--ink)
+  }
+  input[type="range"]{width:100%;accent-color:var(--accent)}
+  input[type="color"]{height:39px;padding:3px}
+  .field{margin-bottom:9px}
+  .check{display:flex;align-items:center;gap:8px;font-size:.86rem;color:#3e3b36}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn{
+    border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+    padding:9px 10px;font-weight:700;font-size:.85rem
+  }
+  .btn:hover{border-color:#aaa49a}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{color:var(--danger)}
+  .btn.full{grid-column:1/-1}
+  .help{font-size:.76rem;line-height:1.4;color:var(--muted);margin:6px 0 0}
+  .stageWrap{position:relative;overflow:hidden;border-radius:var(--radius);background:#ddd7cc;border:1px solid var(--line)}
+  .stageBar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+  .stageBar .tileLabel{margin-right:auto;white-space:nowrap}
+  .stageBar .stageDescription{white-space:nowrap}
+  .stageBar .btn{padding:7px 9px;white-space:nowrap}
+  #editorCanvas{display:block;width:100%;height:auto;touch-action:none;background:#e9e4da;cursor:crosshair}
+  .toolRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:8px 0}
+  .toolRow .btn{min-width:0;padding:8px 3px;font-size:.75rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere;min-height:38px}
+  .toolRow .btn.active,.mobileTools .btn.active{background:#173d36;color:#fff;border-color:#173d36}
+  .colorRow{display:flex;gap:7px;align-items:center;margin:9px 0}
+  .colorRow input[type=color]{width:58px;flex:none}
+  .swatch{width:27px;height:27px;border:1px solid #8c877d;border-radius:50%;padding:0;flex:none}
+  .paletteSwatches{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
+  .paletteActions{display:grid;grid-template-columns:auto minmax(70px,1fr) auto;gap:5px;align-items:center;margin:4px 0 8px}
+  .paletteActions .btn{padding:6px 7px;font-size:.72rem}
+  .paletteActions select{min-width:0;padding:6px;font-size:.72rem}
+  .gradientControls input[type=color]{height:37px}
+  .stageControls{display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border-top:1px solid var(--line)}
+  .stageControls input{flex:1;min-width:55px}
+  .stageControls button{white-space:nowrap}
+  .stageControls span{min-width:45px;text-align:right;font-size:.78rem}
+  .stageHint{font-size:.75rem;color:var(--muted);padding:5px 10px;background:#fff}
+  .mobileTools{display:none}
+  .focusRail{display:none}
+  .focusRail[hidden]{display:none}
+  .stageBar #toolsToggle{display:none}
+  .focus-mode{position:fixed!important;inset:0!important;z-index:10000!important;width:100vw!important;height:100dvh!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;display:block!important;overflow:hidden!important;background:#ddd7cc}
+  .focus-mode .stageBar{position:absolute;z-index:20;top:0;bottom:0;right:auto;left:8px;margin-block:auto;transform:none;width:min(168px,max(104px,calc((100vw - 100dvh)/2 - 16px)));height:max-content;max-height:calc(100dvh - 24px);overflow-y:auto;padding:6px;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16)}
+  .focus-mode .stageBar .tileLabel,.focus-mode .stageBar span:nth-child(2){display:none}
+  .focus-mode .stageBar .btn{font-size:.72rem;line-height:1.15;padding:6px 5px;white-space:normal;min-width:0}
+  .focus-mode .stageBar #focusToggle{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:8px;left:auto;z-index:40;min-width:112px;padding:8px 10px;background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18)}
+  .focus-mode .stageBar #toolsToggle{display:block}
+  #repeatPreviewToggle{display:none}
+  .focus-mode .stageBar #repeatPreviewToggle{display:block}
+  .focus-mode .stageBar #repeatPreviewToggle[aria-pressed="true"]{background:#173d36;color:#fff;border-color:#173d36}
+  #recentToggle,#infoToggle{display:none}
+  .focus-mode .stageBar #recentToggle,.focus-mode .stageBar #infoToggle{display:block}
+  .focus-mode #editorCanvas{position:absolute!important;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,100dvh)!important;height:min(100vw,100dvh)!important;max-width:none!important;max-height:none!important;aspect-ratio:1}
+  .focus-mode .focusRail:not([hidden]){display:block!important;position:absolute;z-index:14;right:8px;left:auto;top:calc(env(safe-area-inset-top,0px) + 56px);width:min(300px,calc(100vw - 24px));max-height:calc(100dvh - 72px);box-sizing:border-box;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;overflow:auto;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+  .focusRecents,.focusInfoPanel{display:none}
+  .focus-mode .focusRecents,.focus-mode .focusInfoPanel{display:none;position:absolute;z-index:12;right:8px;left:auto;width:min(300px,calc(100vw - 24px));box-sizing:border-box;background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px;overflow:auto;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+  .focus-mode.show-recents .focusRecents,.focus-mode.show-info .focusInfoPanel{display:block}
+  .focus-mode .focusRecents{top:calc(env(safe-area-inset-top,0px) + 56px);max-height:calc(100dvh - 72px)}
+  .focus-mode .focusInfoPanel{top:calc(env(safe-area-inset-top,0px) + 56px);max-height:calc(100dvh - 72px)}
+  .focus-mode .focusRecents h3,.focus-mode .focusInfoPanel h3{font-size:.9rem;margin:1px 0 7px}
+  .focus-mode .focusInfoPanel h3:not(:first-child){margin-top:12px}
+  #focusRecentGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .focusRecentItem{min-width:0;border:1px solid var(--line);border-radius:8px;background:#faf9f6;padding:4px;cursor:pointer}
+  .focusRecentItem img{display:block;width:100%;height:54px;object-fit:contain}
+  .focusRecentItem span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.62rem;margin-top:3px}
+  .focusRecentEmpty,.focusInfoNote{font-size:.68rem;line-height:1.35;color:var(--muted);margin:5px 0}
+  .focusPrintSize{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:5px;align-items:end}
+  .focusPrintSize input,.focusPrintSize select{min-width:0;padding:6px}
+  #focusPrintReadout{font-size:.73rem;font-weight:700;margin:6px 0}
+  #platformChecks{display:grid;gap:5px}
+  .platformCheck{padding:6px;border-radius:7px;background:#f6f4ef;font-size:.66rem;line-height:1.3}
+  .platformCheck strong{display:block;font-size:.69rem}
+  .platformCheck.good{background:#edf7ef}.platformCheck.warn{background:#fff4dc}.platformCheck.low{background:#fae9e7}
+  .focusInfoLinks{font-size:.64rem;line-height:1.45}
+  .focusInfoLinks a{display:inline-block;margin-right:5px}
+  .focus-mode #focusControls{width:100%;min-width:0}
+  .focus-mode #focusControls h2{font-size:1.05rem;margin:2px 0 7px}
+  .focus-mode #focusControls h3{font-size:.9rem;margin:12px 0 5px}
+  .focus-mode #focusControls .toolRow{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin:5px 0}
+  .focus-mode #focusControls .toolRow .btn{font-size:.72rem;min-height:34px}
+  .focus-mode #focusControls .btn{min-width:0;padding:6px 4px;font-size:.74rem}
+  .focus-mode #focusControls .colorRow{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+  .focus-mode #focusControls .colorRow label{flex-basis:100%;font-size:.78rem}
+  .focus-mode #focusControls .colorRow input[type=color]{width:48px}
+  .focus-mode #focusControls .swatch{width:25px;height:25px}
+  .focus-mode .stageControls,.focus-mode .stageHint,.focus-mode .mobileTools{display:none!important}
+  .focus-mode #toolsToggle{font-size:.75rem;padding:6px 9px}
+  .focusHelpIntro{font-size:.9rem;line-height:1.5;color:var(--muted)}
+  dialog.helpDialog{width:min(640px,calc(100vw - 28px));max-height:min(82dvh,760px);overflow:auto;border:1px solid var(--line);border-radius:18px;padding:0;background:#fff;color:var(--ink);box-shadow:0 24px 80px rgba(0,0,0,.25)}
+  dialog.helpDialog::backdrop{background:rgba(20,29,26,.58);backdrop-filter:blur(3px)}
+  .helpDialogHead{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;background:#fff;border-bottom:1px solid var(--line)}
+  .helpDialogHead h2{margin:0;font-size:1.15rem}
+  .helpDialogBody{padding:18px;line-height:1.55}
+  .helpDialogBody h3{margin:18px 0 6px;font-size:.95rem}
+  .helpDialogBody p,.helpDialogBody li{font-size:.88rem}
+  .helpDialogBody .helpCard{padding:12px 14px;background:#f2f6f3;border:1px solid #d8e6db;border-radius:12px}
+  @media(orientation:portrait){#focusToggle{display:none!important}}
+  body.pattern-fullscreen{overflow:hidden}
+  .tileLabel{font-weight:700;color:var(--ink)}
+  .previewBox{
+    width:100%;aspect-ratio:1/1;border:1px solid var(--line);border-radius:12px;background:#fff;
+    background-repeat:repeat;overflow:hidden;position:relative
+  }
+  .previewBox::after{
+    content:"repeat preview";position:absolute;right:7px;bottom:6px;font-size:.67rem;color:rgba(0,0,0,.45);
+    background:rgba(255,255,255,.72);padding:2px 5px;border-radius:5px
+  }
+  .assetGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:225px;overflow:auto}
+  .asset{
+    position:relative;border:1px solid var(--line);border-radius:10px;background:#faf9f6;aspect-ratio:1;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;cursor:pointer
+  }
+  .asset img{max-width:100%;max-height:100%;object-fit:contain}
+  .asset:hover{outline:2px solid rgba(44,95,84,.35)}
+  .asset span{position:absolute;left:4px;right:4px;bottom:3px;background:rgba(255,255,255,.82);font-size:.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 4px;border-radius:4px}
+  .drop{
+    border:1.5px dashed #aaa49a;border-radius:12px;padding:12px;text-align:center;background:#faf9f6;
+    font-size:.8rem;color:var(--muted)
+  }
+  .drop.drag{border-color:var(--accent);background:#eef7f4}
+  .warning{margin-top:10px;padding:9px 10px;border-radius:10px;background:#fff7df;border:1px solid #ead59b;font-size:.76rem;line-height:1.4}
+  .ok{background:#eef8f1;border-color:#b6d9bf}
+  .kpi{display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:6px 0;border-bottom:1px dashed #e7e2da}
+  .kpi:last-child{border-bottom:0}
+  .kpi b{font-variant-numeric:tabular-nums}
+  .selectedBox{padding:10px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+  .empty{font-size:.78rem;color:var(--muted)}
+  footer{margin:12px 2px 0;color:var(--muted);font-size:.72rem;line-height:1.5}
+  .mini{font-size:.72rem}
+  .settingLabel{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .settingValue{display:inline-block;max-width:58%;padding:2px 7px;border:1px solid #bfd0c8;border-radius:999px;background:#edf4f0;color:#244e44;font-size:.72rem;font-weight:750;text-align:right;white-space:normal;line-height:1.25}
+  .advancedDisclosure{margin:12px 0;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .advancedDisclosure>summary{cursor:pointer;padding:10px 12px;color:#244e44;font-size:.84rem;font-weight:750;list-style-position:inside}
+  .advancedDisclosure[open]>summary{border-bottom:1px solid var(--line)}
+  .advancedDisclosureBody{padding:10px 12px}
+  .exportGroupTitle{margin:10px 0 5px;font-size:.8rem;font-weight:750;color:#47443f}
+  .exportNote{margin:5px 0 12px;color:var(--muted);font-size:.76rem;line-height:1.45}
+  .mobileNav{display:none}
+  @media(max-width:1100px){
+    .layout{grid-template-columns:270px 1fr}
+    .right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  }
+  @media(max-width:760px){
+    .app{padding:9px}
+    header{display:block}
+    .brandEyebrow{font-size:.62rem;margin-bottom:3px}
+    h1{font-size:1.55rem}
+    .sub{font-size:.85rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .status{text-align:left;margin-top:5px}
+    .layout{display:flex;flex-direction:column;gap:10px}
+    .mobileNav{position:sticky;top:0;z-index:300;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:6px;margin:0 -9px;background:var(--bg);border-bottom:1px solid var(--line)}
+    .mobileNav .btn{min-width:0;padding:8px 3px;font-size:.74rem;line-height:1.1}
+    .mobileNav .btn[aria-current="page"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .panel{margin-bottom:10px;border-radius:13px}
+    .stageWrap{order:0;width:100%;margin-bottom:0}
+    .left{order:1;width:100%}.right{order:2;width:100%}
+    .stageBar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px}
+    .stageBar .stageDescription{display:none}
+    .stageBar .tileLabel{flex:1 1 100%;min-width:0;max-width:100%;margin:0;font-size:.74rem}
+    .stageBar .btn{flex:1 1 auto;min-width:0;font-size:.7rem;padding:6px 5px}
+    .mobileTools{display:flex;flex-wrap:wrap;gap:5px;padding:7px;background:#fff;border-bottom:1px solid var(--line)}
+    .mobileTools .btn{padding:7px;font-size:.76rem;flex:1 1 auto}
+    .mobileTools input[type=color]{width:42px;flex:none}
+    .right{display:block}
+    .previewBox{max-height:56vh}
+    #stageWrap,#drop,#tileSettingsDisclosure,#exportSection{scroll-margin-top:58px}
+    .advancedDisclosureBody{padding:9px}
+  }
+  @media(orientation:landscape) and (max-width:760px) and (max-height:600px){
+    /* Keep the normal landscape page scrollable so the export panel remains available. */
+    .app{max-width:none;height:auto;min-height:100dvh;padding:4px;overflow:visible}
+    header{display:none}
+    .layout{display:flex;flex-direction:column;gap:8px;height:auto;align-items:stretch;overflow:visible}
+    .stageWrap{order:0;width:100%;height:auto;min-height:0;margin:0;display:block}
+    .left{order:1;width:100%;max-height:none;overflow:visible;margin:0;padding:10px;border-radius:10px}
+    .right{order:2;display:block!important;width:100%;margin:0}
+    .mobileTools{display:flex}
+  }
+  @media(orientation:landscape) and (max-height:600px){
+    /* In a short landscape fullscreen view, reserve the centre for the drawing grid. */
+    .focus-mode .stageBar{top:0;bottom:0;right:auto;left:8px;margin-block:auto;transform:none;width:min(168px,max(104px,calc((100vw - 100dvh)/2 - 16px)));height:max-content;max-height:calc(100dvh - 16px);overflow-y:auto;padding:5px;gap:3px}
+    .focus-mode .stageBar .btn{font-size:.66rem;line-height:1.15;padding:4px 3px;white-space:normal}
+    .focus-mode .stageBar #recentToggle,.focus-mode .stageBar #infoToggle{display:block}
+    .focus-mode .stageBar #focusToggle{top:calc(env(safe-area-inset-top,0px) + 6px);right:6px;min-width:112px}
+    .focus-mode .focusRecents,.focus-mode .focusInfoPanel{display:none}
+    .focus-mode.show-recents .focusRecents,.focus-mode.show-info .focusInfoPanel{display:block;top:calc(env(safe-area-inset-top,0px) + 54px);bottom:8px;left:auto;right:8px;transform:none;width:min(300px,calc(100vw - 24px));max-height:none}
+    .focus-mode .focusRail:not([hidden]){top:calc(env(safe-area-inset-top,0px) + 54px);right:8px;left:auto;width:min(300px,calc(100vw - 24px));max-height:calc(100dvh - 62px)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <p class="brandEyebrow">Sapiver Press · Pattern design studio</p>
+      <h1>Sapiver Pattern Forge</h1>
+      <p class="sub">Arrange artwork into seamless repeats. Draw, place motifs, preview straight, half-drop and brick layouts, then export PNG, SVG or an editable project.</p>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">Your artwork stays in this browser. Save a project file for a portable backup.</div>
+  </header>
+
+  <nav class="mobileNav" aria-label="Pattern Forge sections">
+    <button type="button" class="btn" data-mobile-jump="stageWrap" aria-current="page">Design</button>
+    <button type="button" class="btn" data-mobile-jump="drop">Images</button>
+    <button type="button" class="btn" data-mobile-jump="tileSettingsDisclosure">Settings</button>
+    <button type="button" class="btn" data-mobile-jump="exportSection">Export</button>
+  </nav>
+
+  <section id="projectSetupOverlay" class="projectSetupOverlay" role="dialog" aria-modal="true" aria-labelledby="projectSetupTitle">
+    <div class="projectSetupCard">
+      <h2 id="projectSetupTitle">Start designing</h2>
+      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.</p>
+      <button id="startPractice" class="btn primary full setupChoice" type="button">Start practice mode</button>
+      <p class="setupDivider"><span>Or create a print project</span></p>
+      <form id="projectSetupForm">
+        <div class="field"><label for="projectTitleInput">Project name</label><input id="projectTitleInput" type="text" maxlength="80" required placeholder="e.g. Garden birds"></div>
+        <div class="field"><label for="projectCustomerInput">Customer (optional)</label><input id="projectCustomerInput" type="text" maxlength="80" placeholder="Name or business"></div>
+        <div class="row">
+          <div class="field"><label for="projectThemeInput">Theme (optional)</label><input id="projectThemeInput" type="text" maxlength="60" placeholder="e.g. botanical"></div>
+          <div class="field"><label for="projectVariationInput">Variation (optional)</label><input id="projectVariationInput" type="text" maxlength="60" placeholder="e.g. blue colourway"></div>
+        </div>
+        <div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
+        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p>
+        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create print project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
+      </form>
+      <section id="localProjectsSection" hidden>
+        <h3>Saved on this device</h3>
+        <div id="localProjectList"></div>
+        <p id="localProjectsEmpty" class="help">Your saved projects will appear here.</p>
+      </section>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="panel left">
+      <div id="focusControls">
+      <h2>Draw and colour</h2>
+      <div class="toolRow" role="group" aria-label="Drawing tools">
+        <button class="btn active" data-tool="select">Select</button>
+        <button class="btn" data-tool="brush">Brush</button>
+        <button class="btn" data-tool="pan">Pan</button>
+        <button class="btn" data-tool="line">Line</button>
+        <button class="btn" data-tool="rect">Rectangle</button>
+        <button class="btn" data-tool="ellipse">Ellipse</button>
+        <button class="btn" data-tool="freefill">Freehand fill</button>
+        <button class="btn" data-tool="gradient">Gradient fill</button>
+        <button class="btn" data-tool="eyedropper">Eyedropper</button>
+      </div>
+      <div class="colorRow">
+        <label for="ink" style="margin:0">Colour</label><input id="ink" type="color" value="#2c5f54" aria-label="Drawing colour">
+        <div id="paletteSwatches" class="paletteSwatches" aria-label="Current palette"></div>
+      </div>
+      <div class="paletteActions">
+        <button id="addPaletteColour" class="btn" type="button">Add colour</button>
+        <select id="savedPaletteSelect" aria-label="Saved colour palettes"><option value="default">Forest &amp; clay</option></select>
+        <button id="savePalette" class="btn" type="button">Save palette</button>
+      </div>
+      <div class="field"><label for="brushSize">Brush / outline size <span id="brushSizeLabel">20</span> px at export</label><input id="brushSize" type="range" min="2" max="400" value="20"></div>
+      <div class="row">
+        <div class="field"><label for="brushStyle">Brush style</label><select id="brushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select></div>
+        <div class="field"><label for="stampShape">Stamp shape</label><select id="stampShape"><option value="leaf">Leaf</option><option value="star">Star</option><option value="dot">Dot</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="inkOpacity">Mark opacity <span id="inkOpacityLabel">100%</span></label><input id="inkOpacity" type="range" min="5" max="100" value="100"></div>
+        <div class="field"><label for="textureAmount">Texture <span id="textureLabel">35%</span></label><input id="textureAmount" type="range" min="0" max="100" value="35"></div>
+      </div>
+      <div class="row gradientControls">
+        <div class="field"><label for="gradientType">Gradient fill</label><select id="gradientType"><option value="linear">Linear</option><option value="radial">Radial</option></select></div>
+        <div class="field"><label for="gradientDirection">Linear direction</label><select id="gradientDirection"><option value="diagonal">Diagonal</option><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></div>
+        <div class="field"><label for="gradientEnd">Fade to</label><input id="gradientEnd" type="color" value="#e8bc52" aria-label="Gradient end colour"></div>
+      </div>
+      <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
+      <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
+      <p class="help">Choose a brush style, then adjust size, opacity and texture. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
+
+      <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
+      <summary>Tile and placement settings</summary>
+      <div class="advancedDisclosureBody">
+      <div class="kpi"><span>Export pixels</span><b id="pixelReadout">4000 × 4000</b></div>
+      <div class="kpi"><span>PNG print metadata</span><b>300 DPI</b></div>
+      <div class="row">
+        <div class="field"><label class="settingLabel" for="gridCount"><span>Grid divisions</span><output id="gridCountValue" class="settingValue">16 × 16</output></label><select id="gridCount"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16" selected>16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></div>
+        <div class="field"><label>&nbsp;</label><label class="check"><input id="gridOn" type="checkbox" checked> Show grid</label></div>
+      </div>
+      <div class="row">
+        <div class="field"><label class="settingLabel" for="symmetry"><span>Mirror while drawing</span><output id="symmetryValue" class="settingValue">Quadrant · 4 copies</output></label><select id="symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant" selected>Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></div>
+        <div class="field"><label>&nbsp;</label><label class="check"><input id="symmetryGuides" type="checkbox" checked> Show mirror guides</label></div>
+      </div>
+      <label class="check"><input id="snapOn" type="checkbox"> Snap placement to grid</label>
+      <p class="help">Grid and snap are independent. Snap applies when moving imported artwork or drawn shapes.</p>
+
+      <div class="row">
+        <div class="field">
+          <label for="bg">Background</label>
+          <input id="bg" type="color" value="#ffffff">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label class="check"><input id="transparent" type="checkbox"> Transparent</label>
+        </div>
+      </div>
+      </div>
+      </details>
+      </div>
+
+      <h3>Add your images</h3>
+      <div id="drop" class="drop">
+        <strong>Tap to choose images</strong><br>
+        PNG, JPG, WebP or SVG. Transparent PNG/SVG works best.
+        <input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple hidden>
+      </div>
+      <div id="assetGrid" class="assetGrid" style="margin-top:8px"></div>
+      <p class="help">The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.</p>
+
+      <details class="advancedDisclosure">
+      <summary>Optional image scatter</summary>
+      <div class="advancedDisclosureBody">
+      <p class="help" style="margin-top:0">Create a repeat from randomly placed copies of your selected images.</p>
+      <div class="row">
+        <div class="field">
+          <label for="count">Copies</label>
+          <input id="count" type="number" min="1" max="500" value="28">
+        </div>
+        <div class="field">
+          <label for="seed">Seed</label>
+          <input id="seed" type="text" value="pattern-01">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="minScale">Min scale %</label>
+          <input id="minScale" type="number" min="1" max="1000" value="18">
+        </div>
+        <div class="field">
+          <label for="maxScale">Max scale %</label>
+          <input id="maxScale" type="number" min="1" max="2000" value="42">
+        </div>
+      </div>
+      <div class="field">
+        <label for="rotationAmount">Random rotation ± <span id="rotationLabel">25°</span></label>
+        <input id="rotationAmount" type="range" min="0" max="180" value="25">
+      </div>
+      <div class="btns">
+        <button id="generate" class="btn primary full">Generate seamless pattern</button>
+        <button id="shuffle" class="btn">New seed</button>
+        <button id="clear" class="btn danger">Clear artwork</button>
+      </div>
+      </div>
+      </details>
+    </section>
+
+    <section id="stageWrap" class="stageWrap">
+      <div class="stageBar">
+        <span id="projectNameDisplay" class="projectBadge">Tile editor</span>
+        <span class="stageDescription">4000 px master tile · seamless repeat preview</span>
+        <button id="projectMenu" class="btn" type="button">Project</button>
+        <button id="focusToggle" class="btn" type="button" aria-label="Open full screen workspace">Full screen</button>
+        <button id="focusAddImage" class="btn" type="button">Add image</button>
+        <button id="repeatPreviewToggle" class="btn" type="button" aria-pressed="false">Preview repeat</button>
+        <button id="toolsToggle" class="btn" type="button" aria-controls="focusRail" aria-expanded="false">Tools</button>
+        <button id="recentToggle" class="btn" type="button" aria-controls="focusRecents" aria-expanded="false">Recent</button>
+        <button id="infoToggle" class="btn" type="button" aria-controls="focusInfoPanel" aria-expanded="false">Info</button>
+        <button id="helpOpen" class="btn" type="button">Guide</button>
+      </div>
+      <aside id="focusRecents" class="focusRecents" aria-label="Recently used images">
+        <h3>Recently used images</h3>
+        <div id="focusRecentGrid"></div>
+        <p id="focusRecentEmpty" class="focusRecentEmpty">Choose Add image. The first image will be placed on the tile; tap a thumbnail here to add another copy.</p>
+      </aside>
+      <aside id="focusInfoPanel" class="focusInfoPanel" aria-label="Image scaling and print checks">
+        <h3>Scale selected image</h3>
+        <div id="focusSelectedSlot"></div>
+        <h3>Original artwork quality</h3>
+        <div id="focusQualitySlot"></div>
+        <h3>Tile size &amp; DPI</h3>
+        <div class="focusPrintSize">
+        <div class="field"><label for="focusPrintSize">Printed base-tile width</label><input id="focusPrintSize" type="number" min="1" max="300" step="any" value="30"></div>
+          <div class="field"><label for="focusPrintUnit">Units</label><select id="focusPrintUnit"><option value="cm">cm</option><option value="in">in</option></select></div>
+        </div>
+        <p id="focusPrintReadout" aria-live="polite"></p>
+        <div id="platformChecks" aria-live="polite"></div>
+        <p class="focusInfoNote">Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.</p>
+        <div class="focusInfoLinks"><a href="https://help.printful.com/hc/en-us/articles/360014065619-Can-I-submit-print-files-in-300-DPI-resolution" target="_blank" rel="noopener">Printful</a><a href="https://help.printify.com/hc/en-us/articles/4483617936657-What-type-of-print-files-does-Printify-require" target="_blank" rel="noopener">Printify</a><a href="https://support.spoonflower.com/hc/en-us/articles/204600314-Uploading-Images" target="_blank" rel="noopener">Spoonflower</a><a href="https://printshrimp.com/blogs/news/artwork-specifications" target="_blank" rel="noopener">Print Shrimp</a></div>
+      </aside>
+      <div class="mobileTools" role="group" aria-label="Quick drawing tools">
+        <button class="btn active" data-tool="select">Select</button><button class="btn" data-tool="brush">Brush</button><button class="btn" data-tool="freefill">Fill</button><button class="btn" data-tool="pan">Pan</button><input id="inkMobile" type="color" value="#2c5f54" aria-label="Drawing colour"><button class="btn" id="mobileAdd">Add image</button>
+      </div>
+      <div id="focusRail" class="focusRail" hidden aria-label="Drawing and colour tools"><button id="toolsClose" class="btn" type="button" style="float:right;padding:3px 8px" aria-label="Close drawing tools">×</button></div>
+      <canvas id="editorCanvas" width="1000" height="1000" aria-label="Pattern tile editor"></canvas>
+      <div class="stageControls zoomControls"><button id="zoomOut" class="btn" aria-label="Zoom out">−</button><input id="zoom" type="range" min="50" max="400" value="100" aria-label="Zoom"><button id="zoomIn" class="btn" aria-label="Zoom in">+</button><span id="zoomLabel">100%</span><button id="fit" class="btn">Fit</button></div>
+      <div class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
+      <div class="stageHint tileHint"><label class="check"><input id="showTileBorder" type="checkbox" checked> Show centre tile edge</label></div>
+      <div class="stageHint helpHint">Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.</div>
+    </section>
+
+    <section class="panel right">
+      <h2>Selected motif</h2>
+      <div id="selectedPanel" class="selectedBox">
+        <div class="empty">Tap a motif in the tile to edit it.</div>
+      </div>
+
+      <h3>Live repeat preview</h3>
+      <div id="preview" class="previewBox"></div>
+      <div class="field" style="margin-top:8px">
+        <label for="previewScale">Preview repeat size <span id="previewScaleLabel">33%</span></label>
+        <input id="previewScale" type="range" min="10" max="100" value="33">
+      </div>
+
+      <h3>Print-quality check</h3>
+      <div id="quality" class="warning ok">Add artwork to calculate effective raster resolution.</div>
+
+      <h3 id="exportSection">Export and save</h3>
+      <p class="exportGroupTitle">Pattern files</p>
+      <div class="btns">
+        <button id="exportPng" class="btn primary">Export pattern as PNG</button>
+        <button id="exportSvg" class="btn">Export pattern as SVG</button>
+      </div>
+      <p class="exportNote">PNG is a pixel image. SVG is vector artwork; placed raster images remain pixel based.</p>
+      <p class="exportGroupTitle">Editable project</p>
+      <div class="btns">
+        <button id="saveProject" class="btn">Download editable project (JSON)</button>
+        <button id="openProject" class="btn">Open project file</button>
+        <button id="exportZip" class="btn full">Download project bundle (ZIP)</button>
+        <input id="projectFile" type="file" accept="application/json,.json,application/zip,.zip" hidden>
+      </div>
+      <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
+      <p class="help">
+        PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular.
+        SVG itself is resolution-independent; raster artwork inside an SVG remains raster.
+      </p>
+
+      <p class="help">Project files include artwork used by placed motifs. Keep your original image files as separate backups.</p>
+    </section>
+  </main>
+
+  <dialog id="helpDialog" class="helpDialog" aria-labelledby="helpDialogTitle">
+    <div class="helpDialogHead"><h2 id="helpDialogTitle">Pattern Forge quick guide</h2><form method="dialog"><button class="btn" aria-label="Close guide">Close</button></form></div>
+    <div class="helpDialogBody">
+      <p class="helpCard"><strong>Best workspace:</strong> turn your device to landscape and choose Full screen. The central tile stays the main design area; open Tools, Recent or Info only when you need them.</p>
+      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named print project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
+      <h3>Preview and export</h3><p>Use Preview repeat to check how your tile looks when repeated. Projects use straight, half-drop or brick repeat layouts. Export PNG for a raster image or SVG for a vector document; imported raster images remain raster inside SVG.</p>
+      <h3>Save your work</h3><p>Autosave stays in this browser on this device. Download editable project (JSON) to keep the editable design, or download project bundle (ZIP) for the project, PNG and SVG together. Open a JSON or ZIP project file in Pattern Forge to continue editing.</p>
+      <h3>Print checks</h3><p>The base tile is 4000 × 4000 pixels and exports carry 300 DPI metadata. Imported image quality depends on its original resolution and chosen print size. Check the requirements for your specific product and printer before ordering.</p>
+      <h3>Keyboard</h3><p>Press Escape to leave the full-screen workspace. If the Tools panel is open, its controls remain available in the drawer.</p>
+    </div>
+  </dialog>
+
+  <footer>
+    Sapiver Press · Pattern Forge. Export quality depends on your source artwork and print settings. Check the requirements for your chosen product and print provider.
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const canvas = $("editorCanvas");
+  const ctx = canvas.getContext("2d");
+  const stageWrap = $("stageWrap");
+  const focusControls = $("focusControls");
+  const focusRail = $("focusRail");
+  const focusToggle = $("focusToggle");
+  const toolsToggle = $("toolsToggle");
+  const toolsClose = $("toolsClose");
+  const selectedPanelNode = $("selectedPanel");
+  const qualityPanelNode = $("quality");
+  const controlsHome = document.createComment("drawing tools home");
+  const selectedPanelHome = document.createComment("selected image panel home");
+  const qualityPanelHome = document.createComment("quality panel home");
+  let focusZoomBefore = null;
+  focusControls.parentNode.insertBefore(controlsHome, focusControls);
+  selectedPanelNode.parentNode.insertBefore(selectedPanelHome, selectedPanelNode);
+  qualityPanelNode.parentNode.insertBefore(qualityPanelHome, qualityPanelNode);
+
+  function updateToolHighlight(){
+    document.documentElement.style.setProperty("--tool-active-color","#173d36");
+    document.documentElement.style.setProperty("--tool-active-text","#ffffff");
+  }
+
+  function leaveFocus(exitBrowserFullscreen=true){
+    if(!stageWrap.classList.contains("focus-mode"))return;
+    controlsHome.parentNode.insertBefore(focusControls, controlsHome.nextSibling);
+    selectedPanelHome.parentNode.insertBefore(selectedPanelNode, selectedPanelHome.nextSibling);
+    qualityPanelHome.parentNode.insertBefore(qualityPanelNode, qualityPanelHome.nextSibling);
+    focusRail.hidden = true;
+    toolsToggle.setAttribute("aria-expanded","false");
+    stageWrap.classList.remove("focus-mode","show-recents","show-info");
+    $("recentToggle").setAttribute("aria-expanded","false");
+    $("infoToggle").setAttribute("aria-expanded","false");
+    document.body.classList.remove("pattern-fullscreen");
+    state.focusMode = false;
+    state.focusRepeatPreview=false;$("repeatPreviewToggle").setAttribute("aria-pressed","false");$("repeatPreviewToggle").textContent="Preview repeat";
+    focusToggle.textContent = "Full screen";
+    focusToggle.setAttribute("aria-label","Open full screen workspace");
+    if(focusZoomBefore!==null){setZoom(focusZoomBefore);focusZoomBefore=null;}
+    if(exitBrowserFullscreen && document.fullscreenElement && document.exitFullscreen){
+      document.exitFullscreen().catch(()=>{});
+    }
+  }
+  const landscapeMode=window.matchMedia("(orientation: landscape)");
+  function updateFullscreenAvailability(){
+    focusToggle.hidden=!landscapeMode.matches;
+    focusToggle.title=landscapeMode.matches?"Open the landscape design workspace":"Rotate your device to landscape to use full screen";
+    if(!landscapeMode.matches&&stageWrap.classList.contains("focus-mode"))leaveFocus();
+  }
+  landscapeMode.addEventListener?.("change",updateFullscreenAvailability);
+  updateFullscreenAvailability();
+  focusToggle.addEventListener("click",async()=>{
+    if(!landscapeMode.matches){setStatus("Full screen is designed for landscape orientation. Rotate your device and try again.");return;}
+    if(stageWrap.classList.contains("focus-mode")){leaveFocus();return;}
+    focusRail.appendChild(focusControls);
+    $("focusSelectedSlot").appendChild(selectedPanelNode);
+    $("focusQualitySlot").appendChild(qualityPanelNode);
+    rebuildFocusRecent();
+    updatePrintEligibility();
+    focusRail.hidden = true;
+    toolsToggle.setAttribute("aria-expanded","false");
+    stageWrap.classList.remove("show-recents","show-info");
+    $("recentToggle").setAttribute("aria-expanded","false");
+    $("infoToggle").setAttribute("aria-expanded","false");
+    stageWrap.classList.add("focus-mode");
+    document.body.classList.add("pattern-fullscreen");
+    state.focusMode = true;
+    state.focusRepeatPreview=false;$("repeatPreviewToggle").setAttribute("aria-pressed","false");$("repeatPreviewToggle").textContent="Preview repeat";
+    focusZoomBefore = state.zoom;
+    setZoom(2.7);
+    focusToggle.textContent = "Exit full screen";
+    focusToggle.setAttribute("aria-label","Exit full screen workspace");
+    const fullScreenTarget = document.documentElement || stageWrap;
+    if(fullScreenTarget.requestFullscreen){
+      try{await fullScreenTarget.requestFullscreen();}catch(_){/* Keep the expanded in-page workspace. */}
+    }
+  });
+  toolsToggle.addEventListener("click",()=>{
+    const opening=focusRail.hidden;closeFocusDrawers();
+    if(opening){focusRail.hidden=false;toolsToggle.setAttribute("aria-expanded","true");}
+  });
+  toolsClose.addEventListener("click",()=>{
+    focusRail.hidden = true;
+    toolsToggle.setAttribute("aria-expanded","false");
+  });
+  function closeFocusDrawers(){
+    focusRail.hidden=true;toolsToggle.setAttribute("aria-expanded","false");
+    stageWrap.classList.remove("show-recents","show-info");
+    $("recentToggle").setAttribute("aria-expanded","false");$("infoToggle").setAttribute("aria-expanded","false");
+  }
+  function toggleFocusSidePanel(panel){
+    const alreadyOpen=stageWrap.classList.contains(panel==="recent"?"show-recents":"show-info");
+    closeFocusDrawers();
+    if(!alreadyOpen){stageWrap.classList.add(panel==="recent"?"show-recents":"show-info");$(panel==="recent"?"recentToggle":"infoToggle").setAttribute("aria-expanded","true");}
+  }
+  $("recentToggle").addEventListener("click",()=>toggleFocusSidePanel("recent"));
+  $("infoToggle").addEventListener("click",()=>toggleFocusSidePanel("info"));
+  const helpDialog=$("helpDialog");
+  $("helpOpen").addEventListener("click",()=>{if(!helpDialog.open)helpDialog.showModal();});
+  $("focusAddImage").addEventListener("click",()=>$ ("files").click());
+  document.addEventListener("fullscreenchange",()=>{
+    if(!document.fullscreenElement && stageWrap.classList.contains("focus-mode"))leaveFocus(false);
+  });
+  const TILE = 900;
+  function projectRepeatStyle(){return ["half-drop","brick"].includes(state.project?.repeatStyle)?state.project.repeatStyle:"straight";}
+  function repeatBasis(unitW=TILE,unitH=TILE,style=projectRepeatStyle()){
+    if(style==="half-drop")return [{x:unitW,y:0},{x:unitW/2,y:unitH}];
+    if(style==="brick")return [{x:unitW,y:unitH/2},{x:0,y:unitH}];
+    return [{x:unitW,y:0},{x:0,y:unitH}];
+  }
+  function exportMultipliers(style=projectRepeatStyle()){
+    return style==="half-drop"?{x:1,y:2}:style==="brick"?{x:2,y:1}:{x:1,y:1};
+  }
+  const state = {
+    project: null,
+    assets: [],
+    items: [],
+    marks: [],
+    selectedId: null,
+    nextId: 1,
+    dragging: false,
+    resizeState: null,
+    transformState: null,
+    dragOffset: {x:0,y:0},
+    renderQueued: false,
+    tool: "select",
+    zoom: 1,
+    panX: 0, panY: 0,
+    pointers: new Map(),
+    gesture: null,
+    activeMark: null,
+    dragStart: null,
+    past: [], future: [],
+    recentAssetIds:[], colorPalette:["#2c5f54","#d66a4d","#e8bc52","#20242b"],
+    savedPalettes:[],focusMode:false,focusRepeatPreview:false,
+    pendingPreview: false, pendingSelected: false
+  };
+
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function setInkColour(hex){
+    if(!/^#[0-9a-f]{6}$/i.test(hex||""))return;
+    $("ink").value=$("inkMobile").value=hex;updateToolHighlight();scheduleAutosave();
+  }
+  function rebuildPaletteUI(){
+    const holder=$("paletteSwatches");holder.innerHTML="";
+    state.colorPalette.forEach((hex,index)=>{
+      const b=document.createElement("button");b.type="button";b.className="swatch";b.dataset.color=hex;b.style.background=hex;b.title=`Use ${hex}`;b.setAttribute("aria-label",`Use palette colour ${index+1}: ${hex}`);
+      b.addEventListener("click",()=>setInkColour(hex));holder.appendChild(b);
+    });
+    const select=$("savedPaletteSelect"),saved=state.savedPalettes||[];
+    select.innerHTML='<option value="default">Forest &amp; clay</option>'+saved.map((p,i)=>`<option value="saved-${i}">${escapeHtml(p.name)}</option>`).join("");
+  }
+  function loadSavedPalettes(){
+    try{const parsed=JSON.parse(localStorage.getItem("patternForgePalettes")||"[]");if(Array.isArray(parsed))state.savedPalettes=parsed.filter(p=>p&&typeof p.name==="string"&&Array.isArray(p.colors));}catch(_){state.savedPalettes=[];}
+  }
+  function pickCanvasColour(world){
+    const x=clamp(Math.floor(world.x),0,TILE-1),y=clamp(Math.floor(world.y),0,TILE-1),tile=makeTileCanvas(TILE,TILE),c=tile.getContext("2d"),d=c.getImageData(x,y,1,1).data;
+    if(d[3]<12){setStatus("That spot is transparent. Pick a visible colour.");return;}
+    const hex="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");setInkColour(hex);setStatus(`Eyedropper picked ${hex}.`);
+    state.tool="brush";document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool==="brush"));
+    canvas.style.cursor="crosshair";
+  }
+  function hashString(str){
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,16777619); }
+    return h >>> 0;
+  }
+  function mulberry32(a){
+    return function(){
+      let t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function getExportSpec(){
+    const mult=exportMultipliers();
+    return {dpi:300,wIn:4000*mult.x/300,hIn:4000*mult.y/300,wPx:4000*mult.x,hPx:4000*mult.y};
+  }
+  function updatePixelReadout(){
+    const s=getExportSpec();
+    $("pixelReadout").textContent=`${s.wPx.toLocaleString()} × ${s.hPx.toLocaleString()}`;
+    renderAll();
+  }
+  function updateSettingReadouts(){
+    $("gridCountValue").textContent=$("gridCount").selectedOptions[0]?.textContent.trim()||"16 × 16";
+    $("symmetryValue").textContent=$("symmetry").selectedOptions[0]?.textContent.trim()||"Off";
+  }
+
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(r.result);
+      r.onerror=reject;
+      r.readAsDataURL(file);
+    });
+  }
+  async function addFiles(files){
+    const candidates=files.filter(file=>/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type));
+    if(!candidates.length){setStatus("No supported image was added. Choose a PNG, JPG, WebP or SVG file.");return;}
+    const firstNewAssetIndex=state.assets.length;
+    for(const file of candidates){
+      const src=await fileToDataURL(file);
+      const img=new Image();
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;img.onerror=()=>reject(new Error(`“${file.name}” could not be decoded as an image.`));img.src=src;
+      });
+      const assetId="a"+(state.assets.length+1);
+      state.assets.push({id:assetId,name:file.name,src,img,w:img.naturalWidth||1000,h:img.naturalHeight||1000,vector:file.type==="image/svg+xml"});
+      state.recentAssetIds.unshift(assetId);
+    }
+    rebuildAssetGrid();
+    const firstAdded=state.assets[firstNewAssetIndex];
+    if(firstAdded)addAssetInstance(firstAdded);
+    renderAll();
+    const extra=candidates.length>1?` ${candidates.length-1} more ${candidates.length===2?"image is":"images are"} ready in your image list.`:"";
+    setStatus(`“${firstAdded?.name||candidates[0].name}” was added and placed on the tile.${extra} Tap a thumbnail to place another copy.`);
+  }
+  function rebuildAssetGrid(){
+    const g=$("assetGrid");
+    g.innerHTML="";
+    state.assets.forEach(a=>{
+      const d=document.createElement("button");
+      d.type="button"; d.className="asset"; d.title=`Add ${a.name}`;
+      const im=document.createElement("img"); im.src=a.src; im.alt="";
+      const sp=document.createElement("span"); sp.textContent=a.name;
+      d.append(im,sp);
+      d.addEventListener("click",()=>addAssetInstance(a));
+      g.appendChild(d);
+    });
+    rebuildFocusRecent();
+  }
+  function rebuildFocusRecent(){
+    const grid=$("focusRecentGrid"),empty=$("focusRecentEmpty");
+    if(!grid||!empty)return;
+    grid.innerHTML="";
+    const ids=[...new Set(state.recentAssetIds)];
+    const assets=ids.map(id=>state.assets.find(a=>a.id===id)).filter(Boolean).slice(0,9);
+    empty.hidden=assets.length>0;
+    for(const asset of assets){
+      const button=document.createElement("button");
+      button.type="button";button.className="focusRecentItem";button.title=`Add another ${asset.name}`;
+      const img=document.createElement("img");img.src=asset.src;img.alt="";
+      const name=document.createElement("span");name.textContent=asset.name;
+      button.append(img,name);
+      button.addEventListener("click",()=>addAssetInstance(asset));
+      grid.appendChild(button);
+    }
+  }
+  function addAssetInstance(asset){
+    state.recentAssetIds=[asset.id,...state.recentAssetIds.filter(id=>id!==asset.id)].slice(0,20);
+    rebuildFocusRecent();
+    const minDim=TILE;
+    const maxNatural=Math.max(asset.w,asset.h)||1;
+    const target=minDim*.25;
+    const scale=target/maxNatural;
+    const item={
+      id:state.nextId++, assetId:asset.id,
+      x:TILE/2,y:TILE/2,
+      scale, rotation:0, opacity:1
+    };
+    saveHistory();
+    state.items.push(item);
+    state.selectedId=item.id;
+    renderAll();
+  }
+  function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
+  function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
+  function latticeCoordinates(x,y,basis){
+    const [a,b]=basis,det=a.x*b.y-a.y*b.x;
+    return {k:(x*b.y-y*b.x)/det,n:(a.x*y-a.y*x)/det};
+  }
+  function latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis){
+    const corners=[[-maxX,-maxY],[clipW-minX,-maxY],[-maxX,clipH-minY],[clipW-minX,clipH-minY]].map(([x,y])=>latticeCoordinates(x,y,basis));
+    const ks=corners.map(p=>p.k),ns=corners.map(p=>p.n);
+    const k0=Math.floor(Math.min(...ks))-1,k1=Math.ceil(Math.max(...ks))+1;
+    const n0=Math.floor(Math.min(...ns))-1,n1=Math.ceil(Math.max(...ns))+1;
+    const copies=[];
+    for(let n=n0;n<=n1;n++)for(let k=k0;k<=k1;k++){
+      const x=k*basis[0].x+n*basis[1].x,y=k*basis[0].y+n*basis[1].y;
+      if(maxX+x>=0&&minX+x<=clipW&&maxY+y>=0&&minY+y<=clipH)copies.push({k,n,x,y});
+    }
+    return copies;
+  }
+  function nearestLatticeDelta(x,y,cx,cy){
+    const basis=repeatBasis(),coeff=latticeCoordinates(x-cx,y-cy,basis),k0=Math.round(coeff.k),n0=Math.round(coeff.n);
+    let best={x:x-cx,y:y-cy,distance:Infinity};
+    for(let n=n0-2;n<=n0+2;n++)for(let k=k0-2;k<=k0+2;k++){
+      const dx=x-(cx+k*basis[0].x+n*basis[1].x),dy=y-(cy+k*basis[0].y+n*basis[1].y),distance=dx*dx+dy*dy;
+      if(distance<best.distance)best={x:dx,y:dy,distance};
+    }
+    return best;
+  }
+  function nearestLatticePoint(x,y,refX,refY){
+    const delta=nearestLatticeDelta(refX,refY,x,y);return {x:refX-delta.x,y:refY-delta.y};
+  }
+  function canonicalPoint(x,y){
+    const style=projectRepeatStyle();
+    if(style==="half-drop"){
+      const n=Math.floor(y/TILE);y-=n*TILE;x-=n*TILE/2;
+      const k=Math.floor(x/TILE);x-=k*TILE;
+    }else if(style==="brick"){
+      const k=Math.floor(x/TILE);x-=k*TILE;y-=k*TILE/2;
+      const n=Math.floor(y/TILE);y-=n*TILE;
+    }else{x=((x%TILE)+TILE)%TILE;y=((y%TILE)+TILE)%TILE;}
+    return {x,y};
+  }
+
+  // Draws every periodic copy needed to cover the target rectangle.
+  // Unlike a fixed 3×3 wrap, this also works when a motif is larger than the tile.
+  function drawWrapped(targetCtx,item,W,H,showSelection=false,basis=repeatBasis(W,H)){
+    const a=assetOf(item); if(!a) return;
+    const iw=a.w*item.scale, ih=a.h*item.scale;
+    const c=Math.abs(Math.cos(item.rotation)), s=Math.abs(Math.sin(item.rotation));
+    const halfW=(iw*c+ih*s)/2, halfH=(iw*s+ih*c)/2;
+
+    const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
+
+    targetCtx.save();
+    targetCtx.globalAlpha=item.opacity;
+    for(const copy of copies){
+        const px=item.x+copy.x, py=item.y+copy.y;
+        targetCtx.save();
+        targetCtx.translate(px,py);
+        targetCtx.rotate(item.rotation);
+        targetCtx.drawImage(a.img,-iw/2,-ih/2,iw,ih);
+        if(showSelection && item.id===state.selectedId){
+          targetCtx.globalAlpha=1;
+          targetCtx.strokeStyle="#2c5f54";
+          targetCtx.lineWidth=2;
+          targetCtx.setLineDash([7,5]);
+          targetCtx.strokeRect(-iw/2,-ih/2,iw,ih);
+          targetCtx.setLineDash([]);
+        }
+        targetCtx.restore();
+    }
+    targetCtx.restore();
+  }
+
+  function viewScale(){ return .38*state.zoom; }
+  function viewOrigin(){
+    const sc=viewScale();
+    return {x:(canvas.width-TILE*sc)/2+state.panX,y:(canvas.height-TILE*sc)/2+state.panY};
+  }
+  function worldPoint(p){ const o=viewOrigin(),s=viewScale();return {x:(p.x-o.x)/s,y:(p.y-o.y)/s}; }
+  function setZoom(value,anchor={x:canvas.width/2,y:canvas.height/2}){
+    const before=worldPoint(anchor);
+    state.zoom=clamp(value,.5,4);
+    const after=worldPoint(anchor),s=viewScale();
+    state.panX+=(after.x-before.x)*s;
+    state.panY+=(after.y-before.y)*s;
+    $("zoom").value=Math.round(state.zoom*100);
+    $("zoomLabel").textContent=Math.round(state.zoom*100)+"%";
+    renderAll(false,false);
+  }
+  function drawEditor(){
+    const W=canvas.width,H=canvas.height;
+    ctx.fillStyle="#e9e4da";ctx.fillRect(0,0,W,H);
+    const tile=makeTileCanvas(TILE,TILE,TILE,TILE);
+    const o=viewOrigin(),sc=viewScale();
+    ctx.save();ctx.translate(o.x,o.y);ctx.scale(sc,sc);
+    const repeatReach=state.focusMode&&!state.focusRepeatPreview?0:2;
+    const basis=repeatBasis();
+    for(let n=-repeatReach;n<=repeatReach;n++)for(let k=-repeatReach;k<=repeatReach;k++){
+      const x=k*basis[0].x+n*basis[1].x,y=k*basis[0].y+n*basis[1].y;
+      ctx.save();ctx.globalAlpha=(k===0&&n===0)?1:(parseInt($("neighborOpacity").value,10)||35)/100;
+      ctx.drawImage(tile,x,y,TILE,TILE);
+      ctx.restore();
+    }
+    if($("showTileBorder").checked){ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.strokeRect(0,0,TILE,TILE);}
+    if($("gridOn").checked){
+      const n=parseInt($("gridCount").value,10)||16;
+      ctx.beginPath();
+      for(let i=1;i<n;i++){
+        const q=i*TILE/n;ctx.moveTo(q,0);ctx.lineTo(q,TILE);ctx.moveTo(0,q);ctx.lineTo(TILE,q);
+      }
+      ctx.strokeStyle="rgba(28,60,56,.24)";ctx.lineWidth=1/sc;ctx.stroke();
+    }
+    drawSymmetryGuides(ctx,sc);
+    const item=selectedItem();
+    if(item){
+      const a=assetOf(item),iw=a.w*item.scale,ih=a.h*item.scale;
+      ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rotation);
+      ctx.setLineDash([7/sc,5/sc]);ctx.strokeStyle="#cc523e";ctx.lineWidth=2/sc;
+      ctx.strokeRect(-iw/2,-ih/2,iw,ih);ctx.setLineDash([]);
+      for(const [x,y] of [[-iw/2,-ih/2],[iw/2,-ih/2],[iw/2,ih/2],[-iw/2,ih/2]]){
+        ctx.beginPath();ctx.arc(x,y,8/sc,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+        ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.stroke();
+      }
+      drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
+      drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawImageTransformHandle(c,x,y,mode,sc){
+    const r=13/sc;
+    c.save();c.translate(x,y);c.setLineDash([]);c.lineWidth=2/sc;
+    c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fillStyle="#fff";c.fill();
+    c.strokeStyle="#173d36";c.stroke();c.strokeStyle="#173d36";c.fillStyle="#173d36";
+    if(mode==="rotate"){
+      c.beginPath();c.arc(0,0,6/sc,-Math.PI*.72,Math.PI*.92);c.stroke();
+      c.beginPath();c.moveTo(5/sc,5/sc);c.lineTo(9/sc,5/sc);c.lineTo(8/sc,1/sc);c.closePath();c.fill();
+    }else{
+      const d=5/sc;
+      c.beginPath();c.moveTo(-d,0);c.lineTo(d,0);c.moveTo(0,-d);c.lineTo(0,d);c.stroke();
+      for(const [ax,ay] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        c.beginPath();c.moveTo(ax*9/sc,ay*9/sc);c.lineTo(ax*5/sc-ay*3/sc,ay*5/sc-ax*3/sc);c.lineTo(ax*5/sc+ay*3/sc,ay*5/sc+ax*3/sc);c.closePath();c.fill();
+      }
+    }
+    c.restore();
+  }
+
+  function symmetryTransforms(){
+    const mode=$("symmetry").value;
+    if(mode==="vertical")return [[false,false,0],[true,false,0]];
+    if(mode==="horizontal")return [[false,false,0],[false,true,0]];
+    if(mode==="quadrant")return [[false,false,0],[true,false,0],[false,true,0],[true,true,0]];
+    if(mode==="radial")return Array.from({length:8},(_,i)=>[[false,false,i*Math.PI/4],[true,false,i*Math.PI/4]]).flat();
+    return [[false,false,0]];
+  }
+  function reflectPoint(p,mirrorX,mirrorY,angle){
+    let x=p.x-TILE/2,y=p.y-TILE/2;
+    if(mirrorX)x=-x;if(mirrorY)y=-y;
+    const c=Math.cos(angle),s=Math.sin(angle);
+    return {x:TILE/2+x*c-y*s,y:TILE/2+x*s+y*c};
+  }
+  function drawSymmetryGuides(c,sc){
+    if(!$("symmetryGuides").checked)return;
+    const mode=$("symmetry").value;if(mode==="off")return;
+    c.save();c.strokeStyle="rgba(193,75,53,.72)";c.lineWidth=1.5/sc;c.setLineDash([6/sc,5/sc]);
+    c.beginPath();
+    if(["vertical","quadrant","radial"].includes(mode)){c.moveTo(TILE/2,0);c.lineTo(TILE/2,TILE);}
+    if(["horizontal","quadrant","radial"].includes(mode)){c.moveTo(0,TILE/2);c.lineTo(TILE,TILE/2);}
+    if(mode==="radial"){
+      for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/4,dx=Math.cos(a)*TILE,dy=Math.sin(a)*TILE;c.moveTo(TILE/2-dx,TILE/2-dy);c.lineTo(TILE/2+dx,TILE/2+dy);}
+    }
+    c.stroke();c.restore();
+  }
+
+  function drawMark(c,m){
+    const pts=m.points;if(!pts.length)return;
+    const opacity=clamp(Number(m.opacity??1),.05,1),style=m.brushStyle||"ink";
+    c.save();c.strokeStyle=m.color;c.fillStyle=m.color;c.lineWidth=m.width;
+    c.lineCap="round";c.lineJoin="round";c.globalAlpha=opacity;
+    if(m.type==="rect"||m.type==="ellipse"){
+      const a=pts[0],b=pts[pts.length-1];
+      c.beginPath();
+      if(m.type==="rect") c.rect(a.x,a.y,b.x-a.x,b.y-a.y);
+      else c.ellipse((a.x+b.x)/2,(a.y+b.y)/2,Math.max(.1,Math.abs(b.x-a.x)/2),Math.max(.1,Math.abs(b.y-a.y)/2),0,0,Math.PI*2);
+      if(m.fill)c.fill();else c.stroke();
+    }else if(m.type==="gradient"){
+      let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;for(const p of pts){left=Math.min(left,p.x);right=Math.max(right,p.x);top=Math.min(top,p.y);bottom=Math.max(bottom,p.y);}
+      let gradient;
+      if(m.gradientType==="radial")gradient=c.createRadialGradient((left+right)/2,(top+bottom)/2,0,(left+right)/2,(top+bottom)/2,Math.max(1,Math.hypot(right-left,bottom-top)/2));
+      else{let x0=left,y0=top,x1=right,y1=bottom;const direction=m.gradientDirection||"diagonal";if(direction==="horizontal"){y0=y1=(top+bottom)/2;}if(direction==="vertical"){x0=x1=(left+right)/2;}gradient=c.createLinearGradient(x0,y0,x1===x0?x1+1:x1,y1===y0?y1+1:y1);}
+      gradient.addColorStop(0,m.color);gradient.addColorStop(1,m.endColor||"#ffffff");c.fillStyle=gradient;
+      c.beginPath();c.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.closePath();c.fill();
+    }else{
+      const path=()=>{c.beginPath();c.moveTo(pts[0].x,pts[0].y);if(pts.length===1)c.lineTo(pts[0].x+.01,pts[0].y+.01);else if(m.type==="line")c.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);else for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);};
+      if(m.type==="freefill"){path();c.closePath();c.fill();}
+      else if(m.type==="brush"&&style==="stamp"){
+        const spacing=Math.max(4,m.width*1.65),shape=m.stampShape||"leaf";let carry=spacing;
+        const stamp=(x,y,angle)=>{c.save();c.translate(x,y);c.rotate(angle);const r=Math.max(1,m.width*.46);c.beginPath();
+          if(shape==="dot"){c.arc(0,0,r,0,Math.PI*2);}
+          else if(shape==="star"){for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();}
+          else{c.ellipse(0,0,r*.52,r,0,0,Math.PI*2);c.moveTo(0,-r);c.lineTo(0,r);}
+          c.fill();c.restore();};
+        stamp(pts[0].x,pts[0].y,0);
+        for(let i=1;i<pts.length;i++){let x1=pts[i-1].x,y1=pts[i-1].y,dx=pts[i].x-x1,dy=pts[i].y-y1,len=Math.hypot(dx,dy),dist=carry;while(dist<=len){const t=dist/len;stamp(x1+dx*t,y1+dy*t,Math.atan2(dy,dx));dist+=spacing;}carry=dist-len;}
+      }else{
+        c.lineWidth=style==="pencil"?m.width*.72:style==="marker"?m.width*1.8:m.width;
+        if(style==="pencil")c.globalAlpha=opacity*.68;
+        if(style==="marker"){c.globalAlpha=opacity*.36;c.globalCompositeOperation="multiply";}
+        path();c.stroke();
+        if(style==="texture"&&Number(m.texture||0)>0){
+          const amount=clamp(Number(m.texture)||0,0,1),rng=mulberry32(hashString(String(m.id)+"texture")),step=Math.max(4,m.width*(1.4-amount));
+          c.globalCompositeOperation="source-over";c.globalAlpha=opacity*(.3+amount*.55);c.fillStyle=m.color;
+          for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],len=Math.hypot(b.x-a.x,b.y-a.y),count=Math.min(80,Math.ceil(len/step));for(let j=0;j<count;j++){const t=(j+rng())/Math.max(1,count),x=a.x+(b.x-a.x)*t+(rng()-.5)*m.width*.6,y=a.y+(b.y-a.y)*t+(rng()-.5)*m.width*.6,r=Math.max(.45,m.width*(.035+amount*.07)*rng());c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();}}
+        }
+      }
+    }
+    c.restore();
+  }
+  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle()){
+    const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
+    c.save();c.scale(sx,sy);
+    for(const m of state.marks){
+      if(!m.points.length)continue;
+      for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
+        const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
+        let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+        for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+        const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
+        const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed);c.restore();}
+      }
+    }
+    c.restore();
+  }
+
+  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle()){
+    const out=document.createElement("canvas"); out.width=W; out.height=H;
+    const c=out.getContext("2d");
+    if(!$("transparent").checked){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
+
+    // Artwork is authored against a square 900-unit tile; export stays square.
+    const sx=baseW/TILE, sy=baseH/TILE;
+    const uniform=Math.sqrt(sx*sy);
+
+    const mapped=state.items.map(it=>({
+      ...it,
+      x:it.x*sx, y:it.y*sy,
+      scale:it.scale*uniform
+    }));
+    const basis=repeatBasis(baseW,baseH,style);
+    for(const item of mapped) drawWrapped(c,item,W,H,false,basis);
+    drawMarksWrapped(c,W,H,baseW,baseH,style);
+    return out;
+  }
+
+  function renderPreview(){
+    const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base);
+    const data=thumb.toDataURL("image/png");
+    const p=$("preview");
+    p.style.backgroundImage=`url("${data}")`;
+    const sc=parseInt($("previewScale").value)||33;
+    $("previewScaleLabel").textContent=sc+"%";
+    p.style.backgroundSize=`${sc}% auto`;
+  }
+
+  function updateQuality(){
+    const box=$("quality");
+    if(state.items.length===0){
+      box.className="warning ok";
+      box.textContent=state.marks.length?"Drawn lines and shapes render at the full 4000 px export size.":"Add artwork to calculate effective raster resolution.";
+      return;
+    }
+    const spec=getExportSpec();
+    const sx=spec.wPx/TILE, sy=spec.hPx/TILE;
+    const uniform=Math.sqrt(sx*sy);
+    let worst=Infinity, rasterCount=0, vectorCount=0;
+    for(const item of state.items){
+      const a=assetOf(item); if(!a) continue;
+      if(a.vector){ vectorCount++; continue; }
+      rasterCount++;
+      const drawW=a.w*item.scale*uniform;
+      const drawH=a.h*item.scale*uniform;
+      const physicalW=drawW/spec.dpi;
+      const physicalH=drawH/spec.dpi;
+      const effX=a.w/Math.max(.0001,physicalW);
+      const effY=a.h/Math.max(.0001,physicalH);
+      worst=Math.min(worst,effX,effY);
+    }
+    if(rasterCount===0){
+      box.className="warning ok";
+      box.innerHTML=`All ${vectorCount} placed motifs are SVG sources. Export scaling is not limited by raster DPI.`;
+      return;
+    }
+    const rounded=Math.round(worst);
+    if(worst>=300){
+      box.className="warning ok";
+      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Good for a 300-DPI export.${vectorCount?` ${vectorCount} SVG motif(s) are resolution-independent.`:""}`;
+    }else if(worst>=220){
+      box.className="warning";
+      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Usually usable, but below a true 300-DPI source standard. Reduce motif scale or use a higher-resolution original.`;
+    }else{
+      box.className="warning";
+      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Likely soft in print. The PNG can be tagged 300 DPI, but the source artwork does not contain enough pixels at its current scale.`;
+    }
+  }
+
+  function updatePrintEligibility(){
+    const size=Number($("focusPrintSize").value);
+    const unit=$("focusPrintUnit").value;
+    const inches=unit==="cm"?size/2.54:size;
+    const readout=$("focusPrintReadout"),list=$("platformChecks");
+    if(!Number.isFinite(inches)||inches<=0){readout.textContent="Enter a valid tile width.";list.innerHTML="";return;}
+    const dpi=Math.floor(4000/inches);
+    const cm=inches*2.54;
+    const spec=getExportSpec();
+    readout.textContent=`Base tile: 4000 px at ${inches.toFixed(2)} in (${cm.toFixed(1)} cm) = ${dpi} DPI. Export swatch: ${spec.wPx} × ${spec.hPx} px.`;
+    const profiles=[
+      {name:"Print Shrimp · posters",minimum:150,target:300,low:"Below 150 DPI guidance.",mid:"150 DPI is often fine; below the 300-DPI recommendation.",high:"Meets the 300-DPI recommendation."},
+      {name:"Spoonflower · fabric",minimum:150,target:150,low:"Below Spoonflower’s 150-DPI sizing guidance.",mid:"Matches Spoonflower’s 150-DPI workflow.",high:"Above Spoonflower’s 150-DPI print workflow."},
+      {name:"Printful · paper",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets general minimum; paper prints recommend 300 DPI.",high:"Meets the 300-DPI paper recommendation."},
+      {name:"Printful · apparel",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets the general minimum; finer details may benefit from 300 DPI.",high:"Meets the 300-DPI detailed-artwork target."},
+      {name:"Printify · standard products",minimum:0,target:300,low:"Below the common 300-DPI recommendation; product tools may accept less.",mid:"Below the common 300-DPI recommendation; check the product template.",high:"Meets the common 300-DPI recommendation."},
+      {name:"Printify · large textiles",minimum:120,target:150,low:"Below the 120–150-DPI range cited for some large textiles.",mid:"Within the 120–150-DPI range for some large textiles.",high:"Meets the 150-DPI large-textile target."}
+    ];
+    list.innerHTML=profiles.map(p=>{
+      const status=dpi<p.minimum?p.low:dpi<p.target?p.mid:p.high;
+      const cls=dpi<p.minimum?"low":dpi<p.target?"warn":"good";
+      return `<div class="platformCheck ${cls}"><strong>${p.name}</strong>${status}</div>`;
+    }).join("");
+  }
+
+  function rebuildSelectedPanel(){
+    const panel=$("selectedPanel"), item=selectedItem();
+    if(!item){ panel.innerHTML='<div class="empty">Select an imported image to scale, rotate or delete it. Use the drawing tools on the centre tile.</div>'; return; }
+    const a=assetOf(item);
+    const pct=Math.round(item.scale*1000)/10;
+    const deg=Math.round(item.rotation*180/Math.PI);
+    panel.innerHTML=`
+      <div class="field">
+        <label>Artwork</label>
+        <div class="mini"><strong>${escapeHtml(a?.name||"motif")}</strong></div>
+        <p class="help">On the tile, drag the four-arrow handle to move, the curved-arrow handle to rotate, or a corner dot to resize.</p>
+      </div>
+      <div class="field">
+        <label for="selScale">Resize · drag a corner or use slider <span id="selScaleLabel">${pct}%</span></label>
+        <input id="selScale" type="range" min="1" max="600" value="${clamp(Math.round(item.scale*100),1,600)}">
+      </div>
+      <div class="field">
+        <label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label>
+        <input id="selRot" type="range" min="-180" max="180" value="${clamp(deg,-180,180)}">
+      </div>
+      <div class="field">
+        <label for="selOpacity">Opacity <span id="selOpacityLabel">${Math.round(item.opacity*100)}%</span></label>
+        <input id="selOpacity" type="range" min="5" max="100" value="${Math.round(item.opacity*100)}">
+      </div>
+      <div class="btns">
+        <button id="duplicateSel" class="btn">Duplicate</button>
+        <button id="deleteSel" class="btn danger">Delete</button>
+        <button id="frontSel" class="btn">Bring front</button>
+        <button id="backSel" class="btn">Send back</button>
+      </div>`;
+    $("selScale").addEventListener("input",e=>{
+      item.scale=parseFloat(e.target.value)/100;
+      $("selScaleLabel").textContent=e.target.value+"%"; renderAll(false);
+    });
+    $("selRot").addEventListener("input",e=>{
+      item.rotation=parseFloat(e.target.value)*Math.PI/180;
+      $("selRotLabel").textContent=e.target.value+"°"; renderAll(false);
+    });
+    $("selOpacity").addEventListener("input",e=>{
+      item.opacity=parseFloat(e.target.value)/100;
+      $("selOpacityLabel").textContent=e.target.value+"%"; renderAll(false);
+    });
+    $("duplicateSel").onclick=()=>{
+      saveHistory();
+      const copy={...item,id:state.nextId++,x:(item.x+40)%TILE,y:(item.y+40)%TILE};
+      state.items.push(copy);state.selectedId=copy.id;renderAll();
+    };
+    $("deleteSel").onclick=()=>{
+      saveHistory();state.items=state.items.filter(i=>i.id!==item.id);state.selectedId=null;renderAll();
+    };
+    $("frontSel").onclick=()=>{
+      saveHistory();state.items=state.items.filter(i=>i.id!==item.id);state.items.push(item);renderAll();
+    };
+    $("backSel").onclick=()=>{
+      saveHistory();state.items=state.items.filter(i=>i.id!==item.id);state.items.unshift(item);renderAll();
+    };
+  }
+
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+
+  function renderAll(rebuildSelected=true,refreshPreview=true){
+    state.pendingPreview ||= refreshPreview;
+    state.pendingSelected ||= rebuildSelected;
+    scheduleAutosave();
+    if(state.renderQueued) return;
+    state.renderQueued=true;
+    requestAnimationFrame(()=>{
+      state.renderQueued=false;
+      drawEditor();
+      if(state.pendingPreview)renderPreview();
+      updateQuality();
+      if(state.pendingSelected)rebuildSelectedPanel();
+      state.pendingPreview=false;state.pendingSelected=false;
+    });
+  }
+
+  function generate(){
+    if(state.assets.length===0){ setStatus("Add at least one drawing first."); return; }
+    const n=clamp(parseInt($("count").value)||28,1,500);
+    let lo=Math.max(1,parseFloat($("minScale").value)||18)/100;
+    let hi=Math.max(1,parseFloat($("maxScale").value)||42)/100;
+    if(hi<lo)[lo,hi]=[hi,lo];
+    const rot=clamp(parseFloat($("rotationAmount").value)||0,0,180)*Math.PI/180;
+    const rand=mulberry32(hashString($("seed").value||"pattern"));
+    saveHistory();state.items=[];
+    for(let i=0;i<n;i++){
+      const a=state.assets[Math.floor(rand()*state.assets.length)];
+      const base=TILE/Math.max(a.w,a.h);
+      const normalized=base*(lo+(hi-lo)*rand());
+      state.items.push({
+        id:state.nextId++,assetId:a.id,
+        x:rand()*TILE,y:rand()*TILE,
+        scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
+      });
+    }
+    state.selectedId=null;
+    setStatus(`Generated ${n} wrapped motif copies. The tile edges are mathematically periodic.`);
+    renderAll();
+  }
+
+  function setStatus(msg){ $("status").textContent=msg; }
+
+  function pointerPos(e){
+    const r=canvas.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
+  }
+  function saveHistory(){
+    state.past.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    if(state.past.length>40)state.past.shift();
+    state.future=[];
+  }
+  function restoreHistory(from,to){
+    if(!from.length)return;
+    to.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    const s=JSON.parse(from.pop());
+    state.items=s.items;state.marks=s.marks;state.nextId=s.nextId;
+    state.selectedId=null;state.activeMark=null;renderAll();
+  }
+  function snapCoordinate(v){
+    if(!$("snapOn").checked)return v;
+    const step=TILE/(parseInt($("gridCount").value,10)||16);
+    const target=Math.round(v/step)*step;
+    return Math.abs(target-v)<14/viewScale()?target:v;
+  }
+  function wrappedDelta(a,b,size){
+    let d=a-b;
+    d=((d+size/2)%size+size)%size-size/2;
+    return d;
+  }
+  function hitTest(x,y){
+    for(let idx=state.items.length-1;idx>=0;idx--){
+      const item=state.items[idx], a=assetOf(item); if(!a) continue;
+      const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
+      const cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation);
+      const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
+      const iw=a.w*item.scale,ih=a.h*item.scale;
+      if(Math.abs(lx)<=iw/2 && Math.abs(ly)<=ih/2) return item;
+    }
+    return null;
+  }
+  function resizeHandleHit(item,x,y){
+    const a=assetOf(item);if(!a)return false;
+    const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
+    const c=Math.cos(-item.rotation),s=Math.sin(-item.rotation);
+    const lx=dx*c-dy*s,ly=dx*s+dy*c;
+    const hw=a.w*item.scale/2,hh=a.h*item.scale/2,limit=25/viewScale();
+    return Math.hypot(Math.abs(lx)-hw,Math.abs(ly)-hh)<limit;
+  }
+  function imageHandleAt(item,x,y){
+    const a=assetOf(item);if(!a)return null;
+    const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
+    const c=Math.cos(-item.rotation),s=Math.sin(-item.rotation);
+    const lx=dx*c-dy*s,ly=dx*s+dy*c;
+    const hw=a.w*item.scale/2,hh=a.h*item.scale/2,limit=20/viewScale();
+    const r=Math.hypot(lx,ly+hh+22/viewScale());
+    if(r<=limit)return "rotate";
+    const m=Math.hypot(lx,ly-hh-22/viewScale());
+    if(m<=limit)return "move";
+    return null;
+  }
+  function gestureInfo(){
+    const [a,b]=[...state.pointers.values()];
+    return {distance:Math.hypot(a.x-b.x,a.y-b.y),mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
+  }
+  canvas.addEventListener("pointerdown",e=>{
+    e.preventDefault();canvas.setPointerCapture(e.pointerId);
+    const p=pointerPos(e);state.pointers.set(e.pointerId,p);
+    if(state.pointers.size===2){
+      state.activeMark=null;state.dragging=false;state.dragStart=null;
+      const g=gestureInfo();state.gesture={...g,zoom:state.zoom};renderAll();return;
+    }
+    if(state.pointers.size>2)return;
+    state.dragStart=p;
+    if(state.tool==="pan" || e.button===1)return;
+    const w=worldPoint(p);
+    if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
+    if(state.tool==="select"){
+      const current=selectedItem();
+      const handle=current&&imageHandleAt(current,w.x,w.y);
+      if(handle){
+        saveHistory();
+        if(handle==="rotate"){
+          const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
+          state.transformState={mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
+        }else{
+          state.transformState={mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
+        }
+        state.dragging=false;state.resizeState=null;renderAll();return;
+      }
+      if(current&&resizeHandleHit(current,w.x,w.y)){
+        const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
+        saveHistory();state.resizeState={id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};
+        state.dragging=false;renderAll();return;
+      }
+      const hit=hitTest(w.x,w.y);
+      state.selectedId=hit?.id??null;
+      state.dragging=!!hit;
+      if(hit){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.x,hit.y);}
+      renderAll();return;
+    }
+    saveHistory();
+    const markStart=canonicalPoint(w.x,w.y);
+    const mark={id:state.nextId++,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
+    renderAll(false,false);
+  });
+  canvas.addEventListener("pointermove",e=>{
+    if(!state.pointers.has(e.pointerId))return;
+    const p=pointerPos(e),old=state.pointers.get(e.pointerId);
+    state.pointers.set(e.pointerId,p);
+    if(state.pointers.size===2){
+      const g=gestureInfo();
+      if(state.gesture){
+        state.panX+=g.mid.x-state.gesture.mid.x;
+        state.panY+=g.mid.y-state.gesture.mid.y;
+        setZoom(state.gesture.zoom*g.distance/Math.max(1,state.gesture.distance),g.mid);
+        state.gesture={...g,zoom:state.zoom};
+      }
+      return;
+    }
+    if(state.pointers.size!==1||!state.dragStart)return;
+    if(state.tool==="pan" || e.buttons===4){
+      state.panX+=p.x-old.x;state.panY+=p.y-old.y;renderAll(false,false);return;
+    }
+    const w=worldPoint(p);
+    if(state.transformState){
+      const item=state.items.find(i=>i.id===state.transformState.id);if(!item)return;
+      if(state.transformState.mode==="move"){
+        const pos=canonicalPoint(snapCoordinate(w.x-state.transformState.offset.x),snapCoordinate(w.y-state.transformState.offset.y));
+        item.x=pos.x;item.y=pos.y;
+      }else{
+        const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),angle=Math.atan2(delta.y,delta.x);
+        item.rotation=state.transformState.startRotation+angle-state.transformState.startAngle;
+      }
+      renderAll(false,false);return;
+    }
+    if(state.resizeState){
+      const item=state.items.find(i=>i.id===state.resizeState.id);if(!item)return;
+      const delta=nearestLatticeDelta(w.x,w.y,item.x,item.y),dist=Math.hypot(delta.x,delta.y);
+      item.scale=clamp(state.resizeState.scale*dist/state.resizeState.startDistance,.01,60);
+      renderAll(false,false);return;
+    }
+    if(state.activeMark){
+      const m=state.activeMark;
+      if(m.type==="brush"||m.type==="freefill"||m.type==="gradient"){
+        const last=m.points[m.points.length-1],next=nearestLatticePoint(w.x,w.y,last.x,last.y);
+        if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
+      }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
+      renderAll(false,false);return;
+    }
+    if(state.dragging){
+      const item=selectedItem();if(!item)return;
+      item.x=((snapCoordinate(w.x-state.dragOffset.x)%TILE)+TILE)%TILE;
+      item.y=((snapCoordinate(w.y-state.dragOffset.y)%TILE)+TILE)%TILE;
+      renderAll(false,false);
+    }
+  });
+  function endDrag(e){
+    state.pointers.delete(e.pointerId);
+    if(state.pointers.size<2)state.gesture=null;
+    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;
+    renderAll();
+  }
+  canvas.addEventListener("pointerup",endDrag);
+  canvas.addEventListener("pointercancel",endDrag);
+  canvas.addEventListener("wheel",e=>{
+    e.preventDefault();setZoom(state.zoom*(e.deltaY<0?1.12:1/1.12),pointerPos(e));
+  },{passive:false});
+
+  // PNG DPI writer: inserts a pHYs chunk after IHDR.
+  const crcTable=(()=>{
+    const t=new Uint32Array(256);
+    for(let n=0;n<256;n++){
+      let c=n;
+      for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+      t[n]=c>>>0;
+    }
+    return t;
+  })();
+  function crc32(bytes){
+    let c=0xFFFFFFFF;
+    for(const b of bytes)c=crcTable[(c^b)&255]^(c>>>8);
+    return (c^0xFFFFFFFF)>>>0;
+  }
+  function u32be(n){ return new Uint8Array([(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]); }
+  function concatArrays(arrays){
+    const len=arrays.reduce((s,a)=>s+a.length,0),out=new Uint8Array(len);
+    let o=0;for(const a of arrays){out.set(a,o);o+=a.length;}return out;
+  }
+  async function canvasToPngBlobWithDpi(c,dpi){
+    const blob=await new Promise(res=>c.toBlob(res,"image/png"));
+    if(!blob)throw Error("Browser could not encode PNG");
+    const src=new Uint8Array(await blob.arrayBuffer());
+    if(src.length<33)throw Error("Browser could not encode PNG");
+    const sig=src.slice(0,8);
+    const ihdrLen=4+4+13+4; // length + type + data + crc
+    const ihdr=src.slice(8,8+ihdrLen);
+    const rest=[];
+    for(let pos=8+ihdrLen;pos<src.length;){
+      const len=new DataView(src.buffer,src.byteOffset+pos,4).getUint32(0);
+      const end=pos+12+len;
+      if(end>src.length)throw Error("Invalid PNG chunk");
+      const type=String.fromCharCode(...src.slice(pos+4,pos+8));
+      if(type!=="pHYs")rest.push(src.slice(pos,end));
+      pos=end;
+    }
+    const ppm=Math.round(dpi/0.0254);
+    const type=new TextEncoder().encode("pHYs");
+    const data=concatArrays([u32be(ppm),u32be(ppm),new Uint8Array([1])]);
+    const crc=u32be(crc32(concatArrays([type,data])));
+    const chunk=concatArrays([u32be(9),type,data,crc]);
+    return new Blob([sig,ihdr,chunk,...rest],{type:"image/png"});
+  }
+  function downloadBlob(blob,name){
+    const u=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }
+  function safeName(){
+    const label=state.project?.title||$("seed").value||"pattern";
+    return label.replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"pattern";
+  }
+  async function renderPNGBlob(){
+    const spec=getExportSpec();
+    if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
+    setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
+    await new Promise(r=>setTimeout(r,40));
+    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000);
+    const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
+    return {blob,spec};
+  }
+  async function exportPNG(){
+    const result=await renderPNGBlob();if(!result)return;
+    const {blob,spec}=result;
+    downloadBlob(blob,`${safeName()}-seamless-${spec.dpi}dpi.png`);
+    setStatus(`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
+  }
+
+  function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function renderSVGBlob(){
+    const spec=getExportSpec();
+    const W=spec.wPx,H=spec.hPx,sx=4000/TILE,sy=4000/TILE,uniform=Math.sqrt(sx*sy),clipW=W/sx,clipH=H/sy;
+    const itemBasis=repeatBasis(4000,4000),markBasis=repeatBasis();
+    let body="",gradientDefs="",assetDefs="";
+    const embeddedAssets=new Map();
+    if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
+    for(const srcItem of state.items){
+      const a=assetOf(srcItem);if(!a)continue;
+      let assetRef=embeddedAssets.get(a.src);
+      if(!assetRef){
+        assetRef=`pf-asset-${embeddedAssets.size+1}`;
+        embeddedAssets.set(a.src,assetRef);
+        const sourceW=Math.max(1,Number(a.w)||1),sourceH=Math.max(1,Number(a.h)||1);
+        assetDefs+=`<symbol id="${assetRef}" viewBox="0 0 ${sourceW} ${sourceH}" preserveAspectRatio="none"><image href="${svgEscape(a.src)}" x="0" y="0" width="${sourceW}" height="${sourceH}" preserveAspectRatio="none"/></symbol>`;
+      }
+      const item={...srcItem,x:srcItem.x*sx,y:srcItem.y*sy,scale:srcItem.scale*uniform};
+      const iw=a.w*item.scale,ih=a.h*item.scale;
+      const c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
+      const halfW=(iw*c+ih*s)/2,halfH=(iw*s+ih*c)/2;
+      const deg=item.rotation*180/Math.PI;
+      const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
+      for(const copy of copies){
+        const x=item.x+copy.x,y=item.y+copy.y;
+        body+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
+      }
+    }
+    let gradientId=0;
+    for(const m of state.marks){
+      if(!m.points?.length)continue;
+      const first=m.points[0],last=m.points[m.points.length-1];
+      let shape="";
+      if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
+      else if(m.type==="ellipse")shape=`<ellipse cx="${(first.x+last.x)/2}" cy="${(first.y+last.y)/2}" rx="${Math.max(.1,Math.abs(last.x-first.x)/2)}" ry="${Math.max(.1,Math.abs(last.y-first.y)/2)}"/>`;
+      else shape=`<path d="M ${m.points.map(p=>`${p.x} ${p.y}`).join(" L ")}${m.points.length===1?` L ${first.x+.01} ${first.y+.01}`:""}${m.type==="freefill"?" Z":""}"/>`;
+      if(m.type==="brush"&&(m.brushStyle||"ink")==="stamp"){
+        const spacing=Math.max(4,m.width*1.65),r=Math.max(1,m.width*.46),parts=[];let carry=spacing;
+        const stamp=(x,y,angle)=>{if((m.stampShape||"leaf")==="dot")parts.push(`<circle cx="${x}" cy="${y}" r="${r}"/>`);else if(m.stampShape==="star"){let d="";for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;d+=`${i?"L":"M"}${x+Math.cos(a)*rr} ${y+Math.sin(a)*rr} `;}parts.push(`<path d="${d}Z"/>`);}else parts.push(`<ellipse cx="${x}" cy="${y}" rx="${r*.52}" ry="${r}" transform="rotate(${angle*180/Math.PI} ${x} ${y})"/>`);};
+        stamp(first.x,first.y,0);for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);for(let d=carry;d<=len;d+=spacing){const t=d/len;stamp(a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx));}carry=((carry-len)%spacing+spacing)%spacing||spacing;}
+        shape=parts.join("");
+      }
+      if(m.type==="brush"&&(m.brushStyle||"")==="texture"&&Number(m.texture||0)>0){
+        const amount=clamp(Number(m.texture)||0,0,1),rng=mulberry32(hashString(String(m.id)+"texture")),step=Math.max(4,m.width*(1.4-amount)),dots=[];
+        for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],len=Math.hypot(b.x-a.x,b.y-a.y),count=Math.min(80,Math.ceil(len/step));for(let j=0;j<count;j++){const t=(j+rng())/Math.max(1,count),x=a.x+(b.x-a.x)*t+(rng()-.5)*m.width*.6,y=a.y+(b.y-a.y)*t+(rng()-.5)*m.width*.6,r=Math.max(.45,m.width*(.035+amount*.07)*rng());dots.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${svgEscape(m.color)}" stroke="none" opacity="${.3+amount*.55}"/>`);}}
+        if(dots.length)shape=`<g>${shape}${dots.join("")}</g>`;
+      }
+      let style;
+      if(m.type==="gradient"){
+        const id=`tile-gradient-${++gradientId}`;
+        const dir=m.gradientDirection||"diagonal",x1=dir==="horizontal"?"0%":"0%",y1=dir==="vertical"?"0%":"0%",x2=dir==="vertical"?"0%":"100%",y2=dir==="horizontal"?"0%":"100%";
+        gradientDefs+=m.gradientType==="radial"?`<radialGradient id="${id}" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></radialGradient>`:`<linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></linearGradient>`;
+        shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${m.opacity??1}"`;
+      }else{
+        const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
+        const opacity=(m.opacity??1)*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
+        style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
+      }
+      for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
+        const transform=`translate(${TILE/2} ${TILE/2}) rotate(${angle*180/Math.PI}) scale(${mirrorX?-1:1} ${mirrorY?-1:1}) translate(${-TILE/2} ${-TILE/2})`;
+        const transformedPoints=m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle));
+        let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+        for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+        minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
+        const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
+        for(const copy of copies)body+=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;
+      }
+    }
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
+    return new Blob([svg],{type:"image/svg+xml"});
+  }
+  function exportSVG(){
+    const blob=renderSVGBlob();
+    downloadBlob(blob,`${safeName()}-seamless.svg`);
+    setStatus("Repeat SVG exported. Drawn marks remain vector; imported raster images stay raster.");
+  }
+
+  function projectBlob(){
+    return new Blob([JSON.stringify(compactProjectData())],{type:"application/json"});
+  }
+  function newProjectId(){return "pf-project-"+(Date.now().toString(36))+"-"+Math.random().toString(36).slice(2,9);}
+  function setProjectBadge(){
+    const p=state.project;
+    const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"};
+    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${styles[p.repeatStyle]||"Straight"}`:"Tile editor";
+    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+  }
+  function showProjectSetup(){
+    const overlay=$("projectSetupOverlay");overlay.hidden=false;
+    $("cancelProjectSetup").hidden=!state.project;
+    $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
+    $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.":"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.";
+    $("localProjectsSection").hidden=false;
+    $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
+    $("projectRepeatStyle").value="straight";
+    $("projectRepeatStyle").disabled=!!state.project?.isPractice;
+    refreshLocalProjects();
+  }
+  async function refreshLocalProjects(){
+    const list=$("localProjectList"),empty=$("localProjectsEmpty");list.innerHTML="";
+    let records=[];
+    try{
+      const db=await openAutosaveDb();
+      records=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.getAllKeys();req.onsuccess=async()=>{
+        const keys=req.result.filter(k=>typeof k==="string"&&k.startsWith("pf-project-"));
+        try{const rows=await Promise.all(keys.map(key=>new Promise((res,rej)=>{const get=store.get(key);get.onsuccess=()=>res(get.result);get.onerror=()=>rej(get.error);})));resolve(rows.map(raw=>{try{return typeof raw==="string"?JSON.parse(raw):raw;}catch(_){return null;}}).filter(x=>x?.project));}catch(err){reject(err);}
+      };req.onerror=()=>reject(req.error);});
+    }catch(_){records=[];}
+    records.sort((a,b)=>String(b.project.updatedAt||"").localeCompare(String(a.project.updatedAt||"")));
+    for(const data of records){
+      const p=data.project;if(p.id===state.project?.id)continue;
+      const button=document.createElement("button");button.type="button";button.className="btn localProjectButton";
+      const title=document.createElement("span");title.textContent=p.title||"Untitled project";
+      const detail=document.createElement("small");detail.textContent=p.isPractice?`Practice session · ${new Date(p.updatedAt||Date.now()).toLocaleString()}`:[p.customer,p.theme,p.variation,p.repeatStyle||"straight"].filter(Boolean).join(" · ");title.appendChild(detail);
+      const action=document.createElement("b");action.textContent="Open";button.append(title,action);
+      button.addEventListener("click",async()=>{try{await saveAutosave();await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus(`Opened “${p.title||"Untitled project"}”.`);}catch(err){setStatus("Could not open saved project: "+err.message);}});
+      list.appendChild(button);
+    }
+    empty.hidden=records.some(r=>r.project.id!==state.project?.id);
+    empty.textContent=typeof indexedDB==="undefined"?"Saved project listing needs browser device storage. Open a JSON project or ZIP instead.":"No other saved projects on this device yet.";
+  }
+  function createProjectFromSetup(event){
+    event.preventDefault();
+    const title=$("projectTitleInput").value.trim();if(!title){$("projectTitleInput").focus();return;}
+    const begin=()=>{
+      const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice;
+      state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),repeatStyle:promotePractice?"straight":$("projectRepeatStyle").value,createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
+      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a print project.`:`Project “${title}” saved on this device. Draw and colour your tile.`);
+    };
+    if(state.project)saveAutosave().then(begin);else begin();
+  }
+  async function startPracticeMode(){
+    if(state.project)await saveAutosave();
+    const now=new Date().toISOString();
+    state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
+    state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
+    await saveAutosave();
+    setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
+  }
+  function projectData(){
+    if(state.project)state.project.updatedAt=new Date().toISOString();
+    return {format:"pattern-forge-v3",tile:4000,dpi:300,
+      project:state.project?{...state.project}:null,
+      background:$("bg").value,transparent:$("transparent").checked,
+      palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
+      items:state.items,marks:state.marks,nextId:state.nextId};
+  }
+  function compactProjectData(){
+    const data=projectData(),usedIds=new Set(data.items.map(item=>String(item.assetId))),assetBySource=new Map(),assetIdMap=new Map(),assets=[];
+    for(const asset of data.assets){
+      const oldId=String(asset.id);if(!usedIds.has(oldId))continue;
+      let kept=assetBySource.get(asset.src);
+      if(!kept){kept={...asset};assetBySource.set(asset.src,kept);assets.push(kept);}
+      assetIdMap.set(oldId,kept.id);
+    }
+    data.assets=assets;
+    data.items=data.items.map(item=>({...item,assetId:assetIdMap.get(String(item.assetId))??item.assetId}));
+    return data;
+  }
+  let autosaveTimer=null,autosaveMaxTimer=null,autosaveDbPromise=null;
+  function openAutosaveDb(){
+    if(autosaveDbPromise)return autosaveDbPromise;
+    autosaveDbPromise=new Promise((resolve,reject)=>{
+      if(typeof indexedDB==="undefined"){reject(new Error("Local project storage is not supported here."));return;}
+      const req=indexedDB.open("pattern-forge-local",1);
+      req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("projects"))req.result.createObjectStore("projects");};
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("Could not open local project storage."));
+    });return autosaveDbPromise;
+  }
+  function scheduleAutosave(){
+    if(autosaveTimer)clearTimeout(autosaveTimer);
+    if(!autosaveMaxTimer)autosaveMaxTimer=setTimeout(()=>{if(autosaveTimer)clearTimeout(autosaveTimer);autosaveTimer=null;autosaveMaxTimer=null;saveAutosave();},5000);
+    autosaveTimer=setTimeout(()=>{autosaveTimer=null;if(autosaveMaxTimer)clearTimeout(autosaveMaxTimer);autosaveMaxTimer=null;saveAutosave();},900);
+  }
+  async function saveAutosave(){
+    autosaveTimer=null;
+    if(!state.project)return;
+    try{const db=await openAutosaveDb(),data=projectData(),json=JSON.stringify(data);
+      await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readwrite"),store=tx.objectStore("projects");store.put(json,data.project.id);store.put(data.project.id,"current");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Local autosave failed."));});
+      setStatus("Autosaved on this device.");
+    }catch(err){try{const json=JSON.stringify(projectData());if(json.length>3_500_000)throw err;localStorage.setItem("patternForgeAutosave",json);setStatus("Autosaved on this device.");}catch(_){setStatus("Automatic device save is unavailable. Export a project ZIP to keep a portable copy.");}}
+  }
+  async function loadAutosave(){
+    try{let json;
+      try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
+        const current=req.result;if(typeof current==="string"&&current.startsWith("pf-project-")){const get=store.get(current);get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);}else resolve(current);
+      };req.onerror=()=>reject(req.error);});}
+      catch(_){json=localStorage.getItem("patternForgeAutosave");}
+      if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
+      await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus("Your latest autosaved design was reopened from this device.");
+    }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
+  }
+  function validateProjectData(data){
+    if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
+    if(data.assets.length>500||data.items.length>10000||data.marks.length>10000)throw new Error("too-large");
+    const assetIds=new Set();
+    for(const a of data.assets){
+      if(!a||a.id===undefined||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h)))throw new Error("invalid-assets");
+      assetIds.add(String(a.id));
+    }
+    for(const item of data.items){
+      if(!item||item.id===undefined||!assetIds.has(String(item.assetId))||![item.x,item.y,item.scale].every(v=>Number.isFinite(Number(v)))||Number(item.scale)<=0)throw new Error("invalid-items");
+    }
+    if(data.marks.some(mark=>!mark||typeof mark!=="object"||typeof mark.type!=="string"||!Array.isArray(mark.points)))throw new Error("invalid-marks");
+  }
+  function projectOpenErrorMessage(err){
+    const code=err?.message||"";
+    if(code==="wrong-format")return "That file is not a Pattern Forge project. Choose a JSON project or ZIP exported by Pattern Forge. Your current work is unchanged.";
+    if(code==="too-large")return "That project is larger than Pattern Forge can open. Your current work is unchanged.";
+    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
+    if(err instanceof SyntaxError)return "This file is not valid project JSON. Choose a Pattern Forge JSON file or exported project ZIP. Your current work is unchanged.";
+    return "Pattern Forge could not open that project. Check that the file is a complete JSON project or ZIP exported by the app. Your current work is unchanged.";
+  }
+  async function restoreProject(data,options={}){
+    validateProjectData(data);
+    const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
+    const incoming=data.project&&typeof data.project==="object"?data.project:{};
+    state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),repeatStyle:["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight",isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.assets=assets;state.items=data.items;state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m}));
+    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
+    $("bg").value=data.background||"#ffffff";$("transparent").checked=!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
+    if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
+    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";
+    rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
+  }
+  function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
+  function uint32LE(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);}
+  async function makeZip(files){
+    const encoder=new TextEncoder(),localParts=[],centralParts=[];
+    let offset=0;
+    const now=new Date(),dosTime=(now.getHours()<<11)|(now.getMinutes()<<5)|Math.floor(now.getSeconds()/2);
+    const dosDate=((Math.max(1980,now.getFullYear())-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+    for(const file of files){
+      const name=encoder.encode(file.name),data=new Uint8Array(await file.blob.arrayBuffer());
+      if(data.length>0xffffffff)throw Error(`${file.name} exceeds the ZIP size limit.`);
+      let method=0,packed=data;
+      if(/\.(?:svg|json|txt|xml|csv|html)$/i.test(file.name)&&typeof CompressionStream!="undefined"){
+        try{const stream=new Blob([data]).stream().pipeThrough(new CompressionStream("deflate-raw")),compressed=new Uint8Array(await new Response(stream).arrayBuffer());if(compressed.length<data.length){method=8;packed=compressed;}}
+        catch(_){/* Keep the ZIP compatible when raw DEFLATE is unavailable. */}
+      }
+      const crc=crc32(data),flags=0x0800;
+      const local=concatArrays([uint32LE(0x04034b50),uint16LE(20),uint16LE(flags),uint16LE(method),uint16LE(dosTime),uint16LE(dosDate),uint32LE(crc),uint32LE(packed.length),uint32LE(data.length),uint16LE(name.length),uint16LE(0),name]);
+      const central=concatArrays([uint32LE(0x02014b50),uint16LE(20),uint16LE(20),uint16LE(flags),uint16LE(method),uint16LE(dosTime),uint16LE(dosDate),uint32LE(crc),uint32LE(packed.length),uint32LE(data.length),uint16LE(name.length),uint16LE(0),uint16LE(0),uint16LE(0),uint16LE(0),uint32LE(0),uint32LE(offset),name]);
+      localParts.push(local,packed);centralParts.push(central);offset+=local.length+packed.length;
+      if(offset>0xffffffff)throw Error("The ZIP is larger than the standard ZIP format supports.");
+    }
+    const centralDirectory=concatArrays(centralParts);
+    const end=concatArrays([uint32LE(0x06054b50),uint16LE(0),uint16LE(0),uint16LE(files.length),uint16LE(files.length),uint32LE(centralDirectory.length),uint32LE(offset),uint16LE(0)]);
+    return new Blob([...localParts,centralDirectory,end],{type:"application/zip"});
+  }
+  async function projectFromZip(file){
+    const bytes=new Uint8Array(await file.arrayBuffer()),view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),decoder=new TextDecoder();let offset=0;
+    while(offset+30<=bytes.length&&view.getUint32(offset,true)===0x04034b50){
+      const method=view.getUint16(offset+8,true),compressed=view.getUint32(offset+18,true),nameLen=view.getUint16(offset+26,true),extraLen=view.getUint16(offset+28,true),nameStart=offset+30,name=decoder.decode(bytes.slice(nameStart,nameStart+nameLen)),dataStart=nameStart+nameLen+extraLen,dataEnd=dataStart+compressed;
+      if(dataEnd>bytes.length)throw Error("ZIP is incomplete or damaged.");
+      if(name.endsWith("-editable-project.json")||name==="editable-project.json"){
+        let content=bytes.slice(dataStart,dataEnd);
+        if(method===8){if(typeof DecompressionStream==="undefined")throw Error("This browser cannot open compressed project ZIPs. Try the ZIP exported directly from this app.");const stream=new Blob([content]).stream().pipeThrough(new DecompressionStream("deflate-raw"));content=new Uint8Array(await new Response(stream).arrayBuffer());}
+        else if(method!==0)throw Error("This ZIP uses an unsupported compression method.");
+        return JSON.parse(decoder.decode(content));
+      }
+      if(method!==0&&method!==8)throw Error("This ZIP uses an unsupported compression method.");offset=dataEnd;
+    }
+    throw Error("No editable Pattern Forge project was found inside that ZIP.");
+  }
+  async function shareOrDownloadZip(blob,name){
+    try{
+      if(typeof navigator!=="undefined"&&navigator.share&&typeof File!=="undefined"){
+        const file=new File([blob],name,{type:"application/zip"});
+        if(!navigator.canShare||navigator.canShare({files:[file]})){
+          try{await navigator.share({files:[file],title:"Pattern project",text:"Editable seamless pattern project and PNG/SVG exports."});setStatus("ZIP sent to the selected app. It contains the editable project, PNG and SVG.");return;}
+          catch(err){if(err?.name==="AbortError"){setStatus("Sharing cancelled. Choose Download project bundle (ZIP) again to select a destination.");return;}throw err;}
+        }
+      }
+    }catch(err){if(err?.name==="AbortError")return;}
+    downloadBlob(blob,name);setStatus("ZIP downloaded. Find it in Downloads, then use your device’s file manager or sharing tools to move it.");
+  }
+  async function exportZIP(){
+    try{
+      setStatus("Preparing PNG, SVG and editable project for ZIP…");
+      const png=await renderPNGBlob();if(!png){setStatus("ZIP export cancelled.");return;}
+      const base=safeName();
+      const files=[
+        {name:`${base}-seamless-${png.spec.dpi}dpi.png`,blob:png.blob},
+        {name:`${base}-seamless.svg`,blob:renderSVGBlob()},
+        {name:`${base}-editable-project.json`,blob:projectBlob()}
+      ];
+      setStatus("Packaging the editable project, PNG and SVG into a ZIP…");
+      const zip=await makeZip(files);
+      await shareOrDownloadZip(zip,`${base}-pattern-project.zip`);
+    }catch(err){setStatus("ZIP export failed: "+err.message);}
+  }
+
+  $("drop").addEventListener("click",()=>$("files").click());
+  $("files").addEventListener("click",e=>e.stopPropagation());
+  $("files").addEventListener("change",e=>addFiles([...e.target.files]).catch(()=>setStatus("The selected image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
+  ["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("drag");}));
+  ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("drag");}));
+  $("drop").addEventListener("drop",e=>addFiles([...e.dataTransfer.files]).catch(()=>setStatus("The dropped image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
+
+  $("generate").onclick=generate;
+  $("shuffle").onclick=()=>{$("seed").value="pattern-"+Math.random().toString(36).slice(2,8);generate();};
+  $("clear").onclick=()=>{saveHistory();state.items=[];state.marks=[];state.selectedId=null;renderAll();setStatus("Artwork cleared. Uploaded images remain available.");};
+  $("exportPng").onclick=()=>exportPNG().catch(err=>setStatus("PNG export failed: "+err.message));
+  $("exportSvg").onclick=exportSVG;
+  $("exportZip").onclick=exportZIP;
+  $("previewScale").addEventListener("input",renderPreview);
+  $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
+  ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
+  document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
+    state.tool=b.dataset.tool;
+    document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===state.tool));
+    updateToolHighlight();
+    canvas.style.cursor=state.tool==="pan"?"grab":state.tool==="select"?"default":state.tool==="eyedropper"?"copy":"crosshair";
+    setStatus(`${b.textContent} tool active.`);
+  }));
+  loadSavedPalettes();rebuildPaletteUI();
+  $("savedPaletteSelect").addEventListener("change",e=>{
+    const value=e.target.value;
+    if(value==="default")state.colorPalette=["#2c5f54","#d66a4d","#e8bc52","#20242b"];
+    else{const p=state.savedPalettes[Number(value.slice(6))];if(p)state.colorPalette=[...p.colors];}
+    rebuildPaletteUI();scheduleAutosave();
+  });
+  $("addPaletteColour").addEventListener("click",()=>{
+    const color=$("ink").value;if(!state.colorPalette.includes(color))state.colorPalette.push(color);
+    rebuildPaletteUI();scheduleAutosave();setStatus(`${color} added to the current palette.`);
+  });
+  $("savePalette").addEventListener("click",()=>{
+    const name=typeof prompt==="function"?prompt("Name this palette:","My palette"):"My palette";if(!name||!name.trim())return;
+    state.savedPalettes.push({name:name.trim(),colors:[...state.colorPalette]});
+    try{localStorage.setItem("patternForgePalettes",JSON.stringify(state.savedPalettes));}catch(_){setStatus("Palette saved for this session, but device storage is full.");return;}
+    rebuildPaletteUI();$("savedPaletteSelect").value=`saved-${state.savedPalettes.length-1}`;setStatus(`Palette “${name.trim()}” saved on this device.`);
+  });
+  $("mobileAdd").onclick=()=>$("files").click();
+  $("inkMobile").addEventListener("input",()=>setInkColour($("inkMobile").value));
+  $("ink").addEventListener("input",()=>setInkColour($("ink").value));
+  $("brushSize").addEventListener("input",()=>{$("brushSizeLabel").textContent=$("brushSize").value;scheduleAutosave();});
+  $("inkOpacity").addEventListener("input",()=>{$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";scheduleAutosave();});
+  $("textureAmount").addEventListener("input",()=>{$("textureLabel").textContent=$("textureAmount").value+"%";scheduleAutosave();});
+  ["brushStyle","stampShape","gradientType","gradientDirection","gradientEnd"].forEach(id=>$(id).addEventListener("input",scheduleAutosave));
+  $("undo").onclick=()=>restoreHistory(state.past,state.future);
+  $("redo").onclick=()=>restoreHistory(state.future,state.past);
+  $("zoom").addEventListener("input",()=>setZoom(parseInt($("zoom").value,10)/100));
+  $("neighborOpacity").addEventListener("input",()=>{$("neighborLabel").textContent=$("neighborOpacity").value+"%";renderAll(false,false);});
+  $("zoomOut").onclick=()=>setZoom(state.zoom/1.25);
+  $("zoomIn").onclick=()=>setZoom(state.zoom*1.25);
+  $("fit").onclick=()=>{state.panX=state.panY=0;setZoom(1);};
+  $("focusPrintSize").addEventListener("input",updatePrintEligibility);
+  $("repeatPreviewToggle").addEventListener("click",()=>{
+    state.focusRepeatPreview=!state.focusRepeatPreview;
+    $("repeatPreviewToggle").setAttribute("aria-pressed",String(state.focusRepeatPreview));
+    $("repeatPreviewToggle").textContent=state.focusRepeatPreview?"Tile only":"Preview repeat";
+    setStatus(state.focusRepeatPreview?"Repeat preview on. Tap again to return to the full-size tile.":"Full-size tile view restored.");renderAll(false,false);
+  });
+  let lastPrintUnit=$("focusPrintUnit").value;
+  $("focusPrintUnit").addEventListener("change",()=>{
+    const nextUnit=$("focusPrintUnit").value,value=Number($("focusPrintSize").value);
+    if(Number.isFinite(value)&&value>0&&nextUnit!==lastPrintUnit){
+      $("focusPrintSize").value=(nextUnit==="cm"?value*2.54:value/2.54).toFixed(3);
+    }
+    lastPrintUnit=nextUnit;updatePrintEligibility();
+  });
+  updatePrintEligibility();
+  updateToolHighlight();
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&stageWrap.classList.contains("focus-mode")&&!helpDialog.open){leaveFocus();return;}
+    if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){
+      e.preventDefault();restoreHistory(e.shiftKey?state.future:state.past,e.shiftKey?state.past:state.future);
+    }
+  });
+
+  $("saveProject").onclick=()=>{
+    downloadBlob(projectBlob(),`${safeName()}-editable-project.json`);
+    setStatus("Editable project JSON downloaded. Use Download project bundle (ZIP) for the JSON, PNG and SVG together.");
+  };
+  $("projectMenu").addEventListener("click",showProjectSetup);
+  $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
+  $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
+  $("cancelProjectSetup").addEventListener("click",()=>{$("projectSetupOverlay").hidden=true;});
+  $("openProject").onclick=()=>$("projectFile").click();
+  $("projectFile").addEventListener("change",async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const data=/\.zip$/i.test(file.name)?await projectFromZip(file):JSON.parse(await file.text());
+      await saveAutosave();await restoreProject(data,{asCopy:true});$("projectSetupOverlay").hidden=true;setStatus("Project opened as a separate design. Save a project file to keep a portable copy.");
+    }catch(err){setStatus(projectOpenErrorMessage(err));}
+    e.target.value="";
+  });
+
+  if(window.matchMedia("(max-width:760px)").matches)$("tileSettingsDisclosure").open=false;
+  document.querySelectorAll("[data-mobile-jump]").forEach(button=>button.addEventListener("click",()=>{
+    const targetId=button.dataset.mobileJump;
+    if(targetId==="tileSettingsDisclosure")$(targetId).open=true;
+    document.querySelectorAll("[data-mobile-jump]").forEach(item=>item.removeAttribute("aria-current"));
+    button.setAttribute("aria-current","page");
+    $(targetId).scrollIntoView({behavior:"smooth",block:"start"});
+  }));
+  ["gridCount","symmetry"].forEach(id=>$(id).addEventListener("change",updateSettingReadouts));
+  updatePixelReadout();
+  updateSettingReadouts();
+  renderAll();
+  loadAutosave();
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveAutosave();});
+})();
+</script>
+</body>
+</html>
