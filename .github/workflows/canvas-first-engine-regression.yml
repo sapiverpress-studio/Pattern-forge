@@ -73,3 +73,5 @@ jobs:
         run: node tests/eyedropper-return-smoke.mjs && node tests/real-eraser-smoke.mjs
       - name: Library and reset engine
         run: node tests/image-library-removal-smoke.mjs && node tests/start-again-smoke.mjs
+      - name: Regression complete
+        run: echo 'UX2 shell is preserving the tested Pattern Forge engine behaviours.'
