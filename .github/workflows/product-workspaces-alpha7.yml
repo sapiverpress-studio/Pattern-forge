@@ -1,0 +1,101 @@
+name: Pattern Forge product workspaces alpha.7
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/product-workspaces-v1.2
+    paths:
+      - dev/apply-product-workspaces-alpha7.py
+      - .github/workflows/product-workspaces-alpha7.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor-and-regress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/product-workspaces-v1.2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply guarded workspace refactor
+        run: python3 dev/apply-product-workspaces-alpha7.py
+      - name: Syntax checks
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/platform.js
+          node --check app/js/workspace.js
+          python3 - <<'PY'
+          from pathlib import Path
+          assert Path('app/index.html').exists()
+          assert Path('app/pattern/index.html').exists()
+          assert Path('app/doodle/index.html').exists()
+          assert Path('manifest.webmanifest').exists()
+          print('Static structure checks PASS')
+          PY
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Prepare alpha.3 comparison source
+        run: |
+          mkdir -p /tmp/pattern-forge-alpha3
+          git show d61cc917483c35df7f92739bd0b8b085c71ca828:index.html > /tmp/pattern-forge-alpha3/index.html
+      - name: Serve current and alpha.3
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-current.log 2>&1 &
+          (cd /tmp/pattern-forge-alpha3 && python3 -m http.server 4174 --bind 127.0.0.1 >/tmp/pf-alpha3.log 2>&1 &)
+          for port in 4173 4174; do
+            ok=0
+            for i in {1..30}; do
+              if curl -fsS http://127.0.0.1:$port/ >/dev/null; then ok=1; break; fi
+              sleep 0.5
+            done
+            if [ "$ok" != 1 ]; then
+              cat /tmp/pf-current.log || true
+              cat /tmp/pf-alpha3.log || true
+              exit 1
+            fi
+          done
+      - name: Product workspace smoke
+        run: node tests/product-workspaces-smoke.mjs
+      - name: Mobile density regression
+        run: node tests/mobile-density-smoke.mjs
+      - name: Doodle regression
+        run: node tests/doodle-mode-smoke.mjs
+      - name: Layer UI regression
+        run: node tests/layer-ui-smoke.mjs
+      - name: Layer UX regression
+        run: node tests/layer-ux-smoke.mjs
+      - name: Drawn selection regression
+        run: node tests/drawn-selection-smoke.mjs
+      - name: Mark transform regression
+        run: node tests/mark-transform-smoke.mjs
+      - name: Construction guides regression
+        run: node tests/construction-guides-smoke.mjs
+      - name: Smart snapping regression
+        run: node tests/smart-snapping-smoke.mjs
+      - name: Eyedropper regression
+        run: node tests/eyedropper-return-smoke.mjs
+      - name: Real eraser regression
+        run: node tests/real-eraser-smoke.mjs
+      - name: Image library removal regression
+        run: node tests/image-library-removal-smoke.mjs
+      - name: Start again regression
+        run: node tests/start-again-smoke.mjs
+      - name: Commit refactor if green
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add index.html app assets help manifest.webmanifest docs/ANDROID-READINESS.md tests
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit"
+          else
+            git commit -m "Refactor Pattern Forge into product workspaces alpha.7.0"
+            git push origin HEAD:feature/product-workspaces-v1.2
+          fi
