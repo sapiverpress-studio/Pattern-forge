@@ -1,4 +1,4 @@
-name: Build Pattern Forge Android test APK
+name: Build Pattern Forge standalone Android test APK
 
 on:
   push:
@@ -37,13 +37,32 @@ jobs:
         env:
           CI: '1'
         run: npx expo prebuild --platform android --clean
-      - name: Build signed debug APK
+      - name: Force JS bundle into installable test APK
+        working-directory: mobile
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/build.gradle')
+          s = p.read_text()
+          anchor = 'react {\n'
+          if anchor not in s:
+              raise SystemExit('react block not found in android/app/build.gradle')
+          s = s.replace(anchor, anchor + '    // Standalone QA APK: bundle JS instead of requiring Metro.\n    debuggableVariants = []\n', 1)
+          p.write_text(s)
+          PY
+          grep -n "debuggableVariants" android/app/build.gradle
+      - name: Build standalone debug-signed APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug --no-daemon
-      - name: Upload installable APK
+      - name: Verify packaged JavaScript bundle
+        working-directory: mobile/android
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | tee /tmp/apk-files.txt
+          grep -E 'index\.android\.bundle|assets/.*\.bundle' /tmp/apk-files.txt
+      - name: Upload standalone installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: sapiver-pattern-forge-android-test
+          name: sapiver-pattern-forge-android-standalone-test
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
