@@ -30,15 +30,19 @@ jobs:
         run: |
           cd mobile
           export CI=1
+          export EXPO_NO_DEVTOOLS=1
           nohup npx expo start --tunnel --clear > ../expo-go.log 2>&1 &
           echo $! > ../expo-go.pid
           cd ..
           for i in $(seq 1 120); do
-            URL=$(grep -Eo 'exp://[^[:space:]]+' expo-go.log | head -n 1 | tr -d '\r' || true)
-            if [ -n "$URL" ]; then
-              printf '%s\n' "$URL" > expo-go-url.txt
-              echo "Expo Go URL: $URL"
-              break
+            if grep -q 'Tunnel ready' expo-go.log 2>/dev/null; then
+              PUBLIC_URL=$(curl -fsS http://127.0.0.1:4040/api/tunnels 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);const t=(j.tunnels||[]).find(x=>String(x.public_url||'').startsWith('https://'));if(t)process.stdout.write(t.public_url)}catch(e){}})" || true)
+              if [ -n "$PUBLIC_URL" ]; then
+                EXPO_URL="exp://${PUBLIC_URL#https://}"
+                printf '%s\n' "$EXPO_URL" > expo-go-url.txt
+                echo "Expo Go URL: $EXPO_URL"
+                break
+              fi
             fi
             if ! kill -0 "$(cat expo-go.pid)" 2>/dev/null; then
               echo 'Expo tunnel stopped before publishing a URL.'
@@ -47,7 +51,7 @@ jobs:
             fi
             sleep 2
           done
-          test -s expo-go-url.txt || { echo 'Timed out waiting for Expo Go URL'; cat expo-go.log; exit 1; }
+          test -s expo-go-url.txt || { echo 'Timed out waiting for Expo Go URL'; cat expo-go.log; curl -fsS http://127.0.0.1:4040/api/tunnels || true; exit 1; }
       - name: Upload Expo Go connection info
         uses: actions/upload-artifact@v4
         with:
