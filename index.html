@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.5.2">
+<meta name="app-version" content="1.2.0-alpha.6.0">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -254,7 +254,7 @@
     <div>
       <p class="brandEyebrow">Sapiver Press · Pattern design studio</p>
       <h1>Sapiver Pattern Forge</h1>
-      <p class="sub">Arrange artwork into seamless repeats. Draw, place motifs, preview straight, half-drop and brick layouts, then export PNG, SVG or an editable project.</p>
+      <p class="sub">Create seamless repeat patterns or standalone doodles. Draw, place motifs and export reusable PNG, SVG or editable project files.</p>
     </div>
     <div class="status" id="status" role="status" aria-live="polite">Your artwork stays in this browser. Save a project file for a portable backup.</div>
   </header>
@@ -269,19 +269,20 @@
   <section id="projectSetupOverlay" class="projectSetupOverlay" role="dialog" aria-modal="true" aria-labelledby="projectSetupTitle">
     <div class="projectSetupCard">
       <h2 id="projectSetupTitle">Start designing</h2>
-      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.</p>
+      <p id="projectSetupIntro" class="projectSetupIntro">Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.</p>
       <button id="startPractice" class="btn primary full setupChoice" type="button">Start practice mode</button>
-      <p class="setupDivider"><span>Or create a print project</span></p>
+      <p class="setupDivider"><span>Or create a project</span></p>
       <form id="projectSetupForm">
+        <div class="field"><label for="projectTypeInput">Project type</label><select id="projectTypeInput"><option value="pattern">Pattern Project · seamless repeat</option><option value="doodle">Doodle Project · standalone artwork</option></select></div>
         <div class="field"><label for="projectTitleInput">Project name</label><input id="projectTitleInput" type="text" maxlength="80" required placeholder="e.g. Garden birds"></div>
         <div class="field"><label for="projectCustomerInput">Customer (optional)</label><input id="projectCustomerInput" type="text" maxlength="80" placeholder="Name or business"></div>
         <div class="row">
           <div class="field"><label for="projectThemeInput">Theme (optional)</label><input id="projectThemeInput" type="text" maxlength="60" placeholder="e.g. botanical"></div>
           <div class="field"><label for="projectVariationInput">Variation (optional)</label><input id="projectVariationInput" type="text" maxlength="60" placeholder="e.g. blue colourway"></div>
         </div>
-        <div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
-        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p>
-        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create print project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
+        <div id="projectRepeatSetup"><div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
+        <p class="repeatLockNote">Repeat style is locked when the project is created. Half-drop exports a 4000 × 8000 px repeat swatch; brick exports 8000 × 4000 px. Straight repeat stays 4000 × 4000 px. All are tagged 300 DPI.</p></div>
+        <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create pattern project</button><button id="cancelProjectSetup" class="btn full" type="button" hidden>Back to current project</button></div>
       </form>
       <section id="localProjectsSection" hidden>
         <h3>Saved on this device</h3>
@@ -378,7 +379,7 @@
       <div id="assetGrid" class="assetGrid" style="margin-top:8px"></div>
       <p class="help">The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.</p>
 
-      <details class="advancedDisclosure">
+      <details id="patternScatterDisclosure" class="advancedDisclosure">
       <summary>Optional image scatter</summary>
       <div class="advancedDisclosureBody">
       <p class="help" style="margin-top:0">Create a repeat from randomly placed copies of your selected images.</p>
@@ -418,7 +419,7 @@
     <section id="stageWrap" class="stageWrap">
       <div class="stageBar">
         <span id="projectNameDisplay" class="projectBadge">Tile editor</span>
-        <span class="stageDescription">4000 px master tile · seamless repeat preview</span>
+        <span id="stageDescription" class="stageDescription">4000 px master tile · seamless repeat preview</span>
         <button id="projectMenu" class="btn" type="button">Project</button>
         <button id="focusToggle" class="btn" type="button" aria-label="Open full screen workspace">Full screen</button>
         <button id="focusAddImage" class="btn" type="button">Add image</button>
@@ -454,7 +455,7 @@
       <div id="focusRail" class="focusRail" hidden aria-label="Drawing and colour tools"><button id="toolsClose" class="btn" type="button" style="float:right;padding:3px 8px" aria-label="Close drawing tools">×</button></div>
       <canvas id="editorCanvas" width="1000" height="1000" aria-label="Pattern tile editor"></canvas>
       <div class="stageControls zoomControls"><button id="zoomOut" class="btn" aria-label="Zoom out">−</button><input id="zoom" type="range" min="50" max="400" value="100" aria-label="Zoom"><button id="zoomIn" class="btn" aria-label="Zoom in">+</button><span id="zoomLabel">100%</span><button id="fit" class="btn">Fit</button></div>
-      <div class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
+      <div id="repeatControls" class="stageControls repeatControls"><label for="neighborOpacity" style="white-space:nowrap;margin:0">Repeat visibility</label><input id="neighborOpacity" type="range" min="15" max="100" value="35"><span id="neighborLabel">35%</span></div>
       <div class="stageHint tileHint"><label class="check"><input id="showTileBorder" type="checkbox" checked> Show centre tile edge</label></div>
       <div class="stageHint helpHint">Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.</div>
     </section>
@@ -493,9 +494,9 @@
         <p id="layerSummary" class="help">Select a layer to draw into it. Layers at the top are rendered in front.</p>
       </div>
 
-      <h3>Live repeat preview</h3>
+      <h3 id="repeatPreviewHeading">Live repeat preview</h3>
       <div id="preview" class="previewBox"></div>
-      <div class="field" style="margin-top:8px">
+      <div id="previewScaleField" class="field" style="margin-top:8px">
         <label for="previewScale">Preview repeat size <span id="previewScaleLabel">33%</span></label>
         <input id="previewScale" type="range" min="10" max="100" value="33">
       </div>
@@ -504,7 +505,7 @@
       <div id="quality" class="warning ok">Add artwork to calculate effective raster resolution.</div>
 
       <h3 id="exportSection">Export and save</h3>
-      <p class="exportGroupTitle">Pattern files</p>
+      <p id="exportFilesTitle" class="exportGroupTitle">Pattern files</p>
       <div class="btns">
         <button id="exportPng" class="btn primary">Export pattern as PNG</button>
         <button id="exportSvg" class="btn">Export pattern as SVG</button>
@@ -518,7 +519,7 @@
         <input id="projectFile" type="file" accept="application/json,.json,application/zip,.zip" hidden>
       </div>
       <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
-      <p class="help">
+      <p id="exportDimensionsHelp" class="help">
         PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular.
         SVG itself is resolution-independent; raster artwork inside an SVG remains raster.
       </p>
@@ -531,8 +532,8 @@
     <div class="helpDialogHead"><h2 id="helpDialogTitle">Pattern Forge quick guide</h2><form method="dialog"><button class="btn" aria-label="Close guide">Close</button></form></div>
     <div class="helpDialogBody">
       <p class="helpCard"><strong>Best workspace:</strong> turn your device to landscape and choose Full screen. The central tile stays the main design area; open Tools, Recent or Info only when you need them.</p>
-      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named print project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
-      <h3>Preview and export</h3><p>Use Preview repeat to check how your tile looks when repeated. Projects use straight, half-drop or brick repeat layouts. Export PNG for a raster image or SVG for a vector document; imported raster images remain raster inside SVG.</p>
+      <h3>Start</h3><ol><li>Choose <strong>Start practice mode</strong> or create a named Pattern Project or Doodle Project.</li><li>Choose a drawing tool, or select <strong>Add image</strong>.</li><li>The first imported image is placed on the tile automatically. Tap a thumbnail to place another copy.</li><li>Select a placed motif to change its size, angle, opacity, order or position.</li></ol>
+      <h3>Preview and export</h3><p>Pattern Projects use Preview repeat with straight, half-drop or brick layouts. Doodle Projects use one transparent standalone canvas with no automatic edge wrapping. Export PNG for reusable raster artwork or SVG for a vector document; imported raster images remain raster inside SVG.</p>
       <h3>Save your work</h3><p>Autosave stays in this browser on this device. Download editable project (JSON) to keep the editable design, or download project bundle (ZIP) for the project, PNG and SVG together. Open a JSON or ZIP project file in Pattern Forge to continue editing.</p>
       <h3>Print checks</h3><p>The base tile is 4000 × 4000 pixels and exports carry 300 DPI metadata. Imported image quality depends on its original resolution and chosen print size. Check the requirements for your specific product and printer before ordering.</p>
       <h3>Keyboard</h3><p>Press Escape to leave the full-screen workspace. If the Tools panel is open, its controls remain available in the drawer.</p>
@@ -653,7 +654,9 @@
     if(!document.fullscreenElement && stageWrap.classList.contains("focus-mode"))leaveFocus(false);
   });
   const TILE = 900;
-  function projectRepeatStyle(){return ["half-drop","brick"].includes(state.project?.repeatStyle)?state.project.repeatStyle:"straight";}
+  function projectType(){return state.project?.projectType==="doodle"?"doodle":"pattern";}
+  function isDoodleProject(){return projectType()==="doodle";}
+  function projectRepeatStyle(){if(isDoodleProject())return "straight";return ["half-drop","brick"].includes(state.project?.repeatStyle)?state.project.repeatStyle:"straight";}
   function repeatBasis(unitW=TILE,unitH=TILE,style=projectRepeatStyle()){
     if(style==="half-drop")return [{x:unitW,y:0},{x:unitW/2,y:unitH}];
     if(style==="brick")return [{x:unitW,y:unitH/2},{x:0,y:unitH}];
@@ -912,7 +915,12 @@
     }
     return copies;
   }
+  function artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis){
+    if(isDoodleProject())return maxX>=0&&minX<=clipW&&maxY>=0&&minY<=clipH?[{k:0,n:0,x:0,y:0}]:[];
+    return latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+  }
   function nearestLatticeDelta(x,y,cx,cy){
+    if(isDoodleProject()){const dx=x-cx,dy=y-cy;return {x:dx,y:dy,distance:dx*dx+dy*dy};}
     const basis=repeatBasis(),coeff=latticeCoordinates(x-cx,y-cy,basis),k0=Math.round(coeff.k),n0=Math.round(coeff.n);
     let best={x:x-cx,y:y-cy,distance:Infinity};
     for(let n=n0-2;n<=n0+2;n++)for(let k=k0-2;k<=k0+2;k++){
@@ -925,6 +933,7 @@
     const delta=nearestLatticeDelta(refX,refY,x,y);return {x:refX-delta.x,y:refY-delta.y};
   }
   function canonicalPoint(x,y){
+    if(isDoodleProject())return {x,y};
     const style=projectRepeatStyle();
     if(style==="half-drop"){
       const n=Math.floor(y/TILE);y-=n*TILE;x-=n*TILE/2;
@@ -944,7 +953,7 @@
     const c=Math.abs(Math.cos(item.rotation)), s=Math.abs(Math.sin(item.rotation));
     const halfW=(iw*c+ih*s)/2, halfH=(iw*s+ih*c)/2;
 
-    const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
+    const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
 
     targetCtx.save();
     targetCtx.globalAlpha=item.opacity*layerOpacity;
@@ -989,7 +998,7 @@
     const tile=makeTileCanvas(TILE,TILE,TILE,TILE);
     const o=viewOrigin(),sc=viewScale();
     ctx.save();ctx.translate(o.x,o.y);ctx.scale(sc,sc);
-    const repeatReach=state.focusMode&&!state.focusRepeatPreview?0:2;
+    const repeatReach=isDoodleProject()?0:(state.focusMode&&!state.focusRepeatPreview?0:2);
     const basis=repeatBasis();
     for(let n=-repeatReach;n<=repeatReach;n++)for(let k=-repeatReach;k<=repeatReach;k++){
       const x=k*basis[0].x+n*basis[1].x,y=k*basis[0].y+n*basis[1].y;
@@ -1151,6 +1160,7 @@
     return {x:TILE/2+x,y:TILE/2+y};
   }
   function normaliseMarkTranslation(m){
+    if(isDoodleProject())return;
     const b=markGeometryBounds(m),t=markTransformValues(m),centre={x:b.cx+t.x,y:b.cy+t.y},canonical=canonicalPoint(centre.x,centre.y);
     m.transformX=t.x+canonical.x-centre.x;m.transformY=t.y+canonical.y-centre.y;
   }
@@ -1220,10 +1230,10 @@
           let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
           for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
           const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
-          const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
           for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
         }else{
-          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=latticeCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
+          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
           for(const copy of copies){
             c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
           }
@@ -1435,6 +1445,7 @@
   }
 
   function generate(){
+    if(isDoodleProject()){setStatus("Image scatter is available in Pattern Projects. Doodle Projects keep one standalone canvas.");return;}
     if(state.assets.length===0){ setStatus("Add at least one drawing first."); return; }
     const n=clamp(parseInt($("count").value)||28,1,500);
     let lo=Math.max(1,parseFloat($("minScale").value)||18)/100;
@@ -1687,8 +1698,8 @@
     if(state.dragging){
       const item=selectedItem();if(!item)return;
       const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.dragOffset.x,w.y-state.dragOffset.y,extents.x,extents.y);
-      item.x=((snapped.x%TILE)+TILE)%TILE;
-      item.y=((snapped.y%TILE)+TILE)%TILE;
+      item.x=isDoodleProject()?snapped.x:((snapped.x%TILE)+TILE)%TILE;
+      item.y=isDoodleProject()?snapped.y:((snapped.y%TILE)+TILE)%TILE;
       renderAll(false,false);
     }
   });
@@ -1756,6 +1767,7 @@
     const label=state.project?.title||$("seed").value||"pattern";
     return label.replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"pattern";
   }
+  function exportFileStem(){return isDoodleProject()?"artwork":"seamless";}
   async function renderPNGBlob(){
     const spec=getExportSpec();
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
@@ -1768,8 +1780,8 @@
   async function exportPNG(){
     const result=await renderPNGBlob();if(!result)return;
     const {blob,spec}=result;
-    downloadBlob(blob,`${safeName()}-seamless-${spec.dpi}dpi.png`);
-    setStatus(`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}-${spec.dpi}dpi.png`);
+    setStatus(isDoodleProject()?`Standalone PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency and ${spec.dpi}-DPI metadata.`:`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -1800,7 +1812,7 @@
       const c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
       const halfW=(iw*c+ih*s)/2,halfH=(iw*s+ih*c)/2;
       const deg=item.rotation*180/Math.PI;
-      const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
+      const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
       for(const copy of copies){
         const x=item.x+copy.x,y=item.y+copy.y;
         layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
@@ -1844,10 +1856,10 @@
           let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
           for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
           minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
-          const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
+          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
           for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
         }else{
-          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=latticeCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
+          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
           for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
         }
       }
@@ -1860,8 +1872,8 @@
   }
   function exportSVG(){
     const blob=renderSVGBlob();
-    downloadBlob(blob,`${safeName()}-seamless.svg`);
-    setStatus("Repeat SVG exported. Drawn marks remain vector; imported raster images stay raster.");
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}.svg`);
+    setStatus(isDoodleProject()?"Standalone SVG exported. Drawn marks remain vector; imported raster images stay raster.":"Repeat SVG exported. Drawn marks remain vector; imported raster images stay raster.");
   }
 
   function projectBlob(){
@@ -1870,9 +1882,27 @@
   function newProjectId(){return "pf-project-"+(Date.now().toString(36))+"-"+Math.random().toString(36).slice(2,9);}
   function setProjectBadge(){
     const p=state.project;
-    const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"};
-    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${styles[p.repeatStyle]||"Straight"}`:"Tile editor";
-    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+    const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"},doodle=p?.projectType==="doodle";
+    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${doodle?"Doodle":styles[p.repeatStyle]||"Straight"}`:"Tile editor";
+    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,doodle?"Doodle Project":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+  }
+  function updateSetupProjectType(){
+    const doodle=$("projectTypeInput").value==="doodle";
+    $("projectRepeatSetup").hidden=doodle;
+    $("createProject").textContent=doodle?"Create doodle project":"Create pattern project";
+  }
+  function updateProjectModeUi(){
+    const doodle=isDoodleProject();
+    document.body.classList.toggle("doodle-project",doodle);
+    if(doodle){$("transparent").checked=true;state.focusRepeatPreview=false;$("repeatPreviewToggle").setAttribute("aria-pressed","false");$("repeatPreviewToggle").textContent="Preview repeat";}
+    $("transparent").disabled=doodle;$("bg").disabled=doodle;
+    $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
+    $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;
+    $("stageDescription").textContent=doodle?"4000 px standalone canvas · transparent background":"4000 px master tile · seamless repeat preview";
+    $("exportFilesTitle").textContent=doodle?"Artwork files":"Pattern files";
+    $("exportPng").textContent=doodle?"Export artwork as PNG":"Export pattern as PNG";
+    $("exportSvg").textContent=doodle?"Export artwork as SVG":"Export pattern as SVG";
+    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px canvas. PNG carries 300-DPI metadata. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
@@ -1881,8 +1911,9 @@
     $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.":"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.";
     $("localProjectsSection").hidden=false;
     $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
+    $("projectTypeInput").value="pattern";$("projectTypeInput").disabled=!!state.project?.isPractice;
     $("projectRepeatStyle").value="straight";
-    $("projectRepeatStyle").disabled=!!state.project?.isPractice;
+    $("projectRepeatStyle").disabled=!!state.project?.isPractice;updateSetupProjectType();
     refreshLocalProjects();
   }
   async function refreshLocalProjects(){
@@ -1900,7 +1931,7 @@
       const p=data.project;if(p.id===state.project?.id)continue;
       const button=document.createElement("button");button.type="button";button.className="btn localProjectButton";
       const title=document.createElement("span");title.textContent=p.title||"Untitled project";
-      const detail=document.createElement("small");detail.textContent=p.isPractice?`Practice session · ${new Date(p.updatedAt||Date.now()).toLocaleString()}`:[p.customer,p.theme,p.variation,p.repeatStyle||"straight"].filter(Boolean).join(" · ");title.appendChild(detail);
+      const detail=document.createElement("small");detail.textContent=p.isPractice?`Practice session · ${new Date(p.updatedAt||Date.now()).toLocaleString()}`:[p.customer,p.theme,p.variation,p.projectType==="doodle"?"Doodle Project":p.repeatStyle||"straight"].filter(Boolean).join(" · ");title.appendChild(detail);
       const action=document.createElement("b");action.textContent="Open";button.append(title,action);
       button.addEventListener("click",async()=>{try{await saveAutosave();await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus(`Opened “${p.title||"Untitled project"}”.`);}catch(err){setStatus("Could not open saved project: "+err.message);}});
       list.appendChild(button);
@@ -1912,20 +1943,21 @@
     event.preventDefault();
     const title=$("projectTitleInput").value.trim();if(!title){$("projectTitleInput").focus();return;}
     const begin=()=>{
-      const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice;
-      state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),repeatStyle:promotePractice?"straight":$("projectRepeatStyle").value,createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
+      const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice,requestedType=promotePractice?"pattern":($("projectTypeInput").value==="doodle"?"doodle":"pattern");
+      state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),projectType:requestedType,repeatStyle:requestedType==="doodle"?"straight":(promotePractice?"straight":$("projectRepeatStyle").value),createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
       if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
-      $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
-      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a print project.`:`Project “${title}” saved on this device. Draw and colour your tile.`);
+      if(requestedType==="doodle")$("transparent").checked=true;
+      $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle Project “${title}” saved. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
     };
     if(state.project)saveAutosave().then(begin);else begin();
   }
   async function startPracticeMode(){
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
-    state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
+    state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",projectType:"pattern",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
     state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
-    $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
+    $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
   }
@@ -2021,7 +2053,7 @@
     validateProjectData(data);
     const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
     const incoming=data.project&&typeof data.project==="object"?data.project:{};
-    state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),repeatStyle:["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight",isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),projectType:incoming.projectType==="doodle"?"doodle":"pattern",repeatStyle:incoming.projectType==="doodle"?"straight":(["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight"),isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
     state.layers=normaliseLayers(data.layers);
     const validLayerIds=new Set(state.layers.map(layer=>layer.id));
     const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;
@@ -2029,12 +2061,12 @@
     state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
     state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
-    $("bg").value=data.background||"#ffffff";$("transparent").checked=!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
+    $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
     $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
-    rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
+    updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
   function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
   function uint32LE(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);}
@@ -2094,13 +2126,13 @@
       const png=await renderPNGBlob();if(!png){setStatus("ZIP export cancelled.");return;}
       const base=safeName();
       const files=[
-        {name:`${base}-seamless-${png.spec.dpi}dpi.png`,blob:png.blob},
-        {name:`${base}-seamless.svg`,blob:renderSVGBlob()},
+        {name:`${base}-${exportFileStem()}-${png.spec.dpi}dpi.png`,blob:png.blob},
+        {name:`${base}-${exportFileStem()}.svg`,blob:renderSVGBlob()},
         {name:`${base}-editable-project.json`,blob:projectBlob()}
       ];
       setStatus("Packaging the editable project, PNG and SVG into a ZIP…");
       const zip=await makeZip(files);
-      await shareOrDownloadZip(zip,`${base}-pattern-project.zip`);
+      await shareOrDownloadZip(zip,`${base}-${isDoodleProject()?"doodle":"pattern"}-project.zip`);
     }catch(err){setStatus("ZIP export failed: "+err.message);}
   }
 
@@ -2178,6 +2210,7 @@
   $("fit").onclick=()=>{state.panX=state.panY=0;setZoom(1);};
   $("focusPrintSize").addEventListener("input",updatePrintEligibility);
   $("repeatPreviewToggle").addEventListener("click",()=>{
+    if(isDoodleProject()){setStatus("Doodle Projects use one standalone canvas and do not have a repeat preview.");return;}
     state.focusRepeatPreview=!state.focusRepeatPreview;
     $("repeatPreviewToggle").setAttribute("aria-pressed",String(state.focusRepeatPreview));
     $("repeatPreviewToggle").textContent=state.focusRepeatPreview?"Tile only":"Preview repeat";
@@ -2208,6 +2241,7 @@
   $("projectMenu").addEventListener("click",showProjectSetup);
   $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
   $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
+  $("projectTypeInput").addEventListener("change",updateSetupProjectType);
   $("cancelProjectSetup").addEventListener("click",()=>{$("projectSetupOverlay").hidden=true;});
   $("openProject").onclick=()=>$("projectFile").click();
   $("projectFile").addEventListener("change",async e=>{
