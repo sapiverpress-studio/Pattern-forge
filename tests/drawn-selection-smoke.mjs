@@ -35,6 +35,7 @@ try {
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden' });
+  await page.locator('#snapOn').uncheck();
 
   await page.locator('[data-tool="brush"]').first().click();
   const canvas = page.locator('#editorCanvas');
@@ -57,7 +58,6 @@ try {
   const originalPoints = JSON.stringify(initial.marks[0].points);
   const originalId = initial.marks[0].id;
 
-  // Click-drag the stroke itself. This must select and translate the original mark.
   await page.locator('[data-tool="select"]').first().click();
   await page.mouse.move(xm, ym);
   await page.mouse.down();
@@ -77,8 +77,6 @@ try {
   assert(JSON.stringify(dragged.points) === originalPoints, 'direct drag rewrote raw stroke points');
   assert(Math.abs(Number(dragged.transformX || 0)) > 0.01 || Math.abs(Number(dragged.transformY || 0)) > 0.01, 'direct drag did not create translation metadata');
 
-  // At this stage there is no rotation/scale, so the visual stroke has moved by the exact
-  // CSS-pointer delta used above. Test lock/hide against that known screen position.
   const movedX = xm + 52, movedY = ym + 34;
   const drawingRow = page.locator('.layerRow').filter({ hasText: 'Drawing' }).first();
   await drawingRow.click();
@@ -107,7 +105,6 @@ try {
   await page.waitForTimeout(140);
   await page.waitForFunction(() => document.querySelector('#selectedPanel')?.textContent?.includes('Brush stroke'));
 
-  // Panel transforms must retain the original authored stroke points.
   await setRange(page, '#selScale', 145);
   await setRange(page, '#selRot', 32);
   await setRange(page, '#selOpacity', 61);
@@ -134,7 +131,6 @@ try {
   assert(saved.marks.length === 1 && saved.marks[0].id === originalId, 'delete removed the wrong drawn mark');
   assert(JSON.stringify(saved.marks[0].points) === originalPoints, 'duplicate/delete workflow changed source raw points');
 
-  // Real browser autosave/reload must retain the non-destructive transform metadata.
   await page.waitForTimeout(1300);
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
