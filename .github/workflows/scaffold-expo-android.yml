@@ -26,6 +26,8 @@ jobs:
         run: |
           sed -i 's/<StatusBar style="light" backgroundColor="#2c6658" \/>/<StatusBar style="light" \/>/' dev/scaffold-expo-android.sh
           sed -i 's/StyleSheet.absoluteFillObject/StyleSheet.absoluteFill/g' dev/scaffold-expo-android.sh
+          sed -i '/"edgeToEdgeEnabled": false/d' dev/scaffold-expo-android.sh
+          sed -i 's/"versionCode": 1,/"versionCode": 1/' dev/scaffold-expo-android.sh
       - name: Scaffold and verify Expo app
         run: bash dev/scaffold-expo-android.sh
       - name: Verify web editor syntax
