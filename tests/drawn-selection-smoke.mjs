@@ -24,6 +24,32 @@ async function setRange(page, selector, value) {
   await page.waitForTimeout(120);
 }
 
+function transformedPoint(mark, point) {
+  const xs = mark.points.map(p => p.x), ys = mark.points.map(p => p.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const scale = Number.isFinite(Number(mark.transformScale)) ? Number(mark.transformScale) : 1;
+  const rotation = Number.isFinite(Number(mark.transformRotation)) ? Number(mark.transformRotation) : 0;
+  const tx = Number.isFinite(Number(mark.transformX)) ? Number(mark.transformX) : 0;
+  const ty = Number.isFinite(Number(mark.transformY)) ? Number(mark.transformY) : 0;
+  const dx = (point.x - cx) * scale, dy = (point.y - cy) * scale;
+  const c = Math.cos(rotation), s = Math.sin(rotation);
+  return { x: cx + tx + dx * c - dy * s, y: cy + ty + dx * s + dy * c };
+}
+
+async function defaultWorldToScreen(page, world) {
+  return await page.locator('#editorCanvas').evaluate((el, p) => {
+    const rect = el.getBoundingClientRect();
+    const scale = 0.38; // viewScale() at the untouched default zoom=1
+    const originX = (el.width - 900 * scale) / 2;
+    const originY = (el.height - 900 * scale) / 2;
+    return {
+      x: rect.left + (originX + p.x * scale) * rect.width / el.width,
+      y: rect.top + (originY + p.y * scale) * rect.height / el.height,
+    };
+  }, world);
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1200 }, acceptDownloads: true });
 const page = await context.newPage();
@@ -77,18 +103,21 @@ try {
   assert(JSON.stringify(dragged.points) === originalPoints, 'direct drag rewrote raw stroke points');
   assert(Math.abs(Number(dragged.transformX || 0)) > 0.01 || Math.abs(Number(dragged.transformY || 0)) > 0.01, 'direct drag did not create translation metadata');
 
-  const movedX = xm + 52, movedY = ym + 34;
+  const rawHitPoint = dragged.points[Math.floor(dragged.points.length / 2)];
+  const movedScreen = await defaultWorldToScreen(page, transformedPoint(dragged, rawHitPoint));
+  assert(movedScreen.x >= box.x && movedScreen.x <= box.x + box.width && movedScreen.y >= box.y && movedScreen.y <= box.y + box.height, 'calculated transformed hit point fell outside the editor canvas');
+
   const drawingRow = page.locator('.layerRow').filter({ hasText: 'Drawing' }).first();
   await drawingRow.click();
   await page.locator('#layerLocked').check();
   await page.waitForTimeout(140);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locking Drawing did not clear drawn-mark selection');
-  await page.mouse.click(movedX, movedY);
+  await page.mouse.click(movedScreen.x, movedScreen.y);
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locked drawn mark could still be selected');
 
   await page.locator('#layerLocked').uncheck();
-  await page.mouse.click(movedX, movedY);
+  await page.mouse.click(movedScreen.x, movedScreen.y);
   await page.waitForTimeout(140);
   await page.waitForFunction(() => document.querySelector('#selectedPanel')?.textContent?.includes('Brush stroke'));
 
@@ -96,12 +125,12 @@ try {
   await page.locator('#layerVisible').uncheck();
   await page.waitForTimeout(140);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'hiding Drawing did not clear drawn-mark selection');
-  await page.mouse.click(movedX, movedY);
+  await page.mouse.click(movedScreen.x, movedScreen.y);
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'hidden drawn mark could still be selected');
 
   await page.locator('#layerVisible').check();
-  await page.mouse.click(movedX, movedY);
+  await page.mouse.click(movedScreen.x, movedScreen.y);
   await page.waitForTimeout(140);
   await page.waitForFunction(() => document.querySelector('#selectedPanel')?.textContent?.includes('Brush stroke'));
 
