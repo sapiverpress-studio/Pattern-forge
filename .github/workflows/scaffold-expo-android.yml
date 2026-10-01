@@ -22,6 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Apply SDK 57 compatibility fixes to scaffold template
+        run: |
+          sed -i 's/<StatusBar style="light" backgroundColor="#2c6658" \/>/<StatusBar style="light" \/>/' dev/scaffold-expo-android.sh
+          sed -i 's/StyleSheet.absoluteFillObject/StyleSheet.absoluteFill/g' dev/scaffold-expo-android.sh
       - name: Scaffold and verify Expo app
         run: bash dev/scaffold-expo-android.sh
       - name: Verify web editor syntax
