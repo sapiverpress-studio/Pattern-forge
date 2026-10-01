@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.4.1">
+<meta name="app-version" content="1.2.0-alpha.4.2">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -693,6 +693,7 @@
     dragOffset: {x:0,y:0},
     renderQueued: false,
     tool: "select",
+    previousTool: "select",
     zoom: 1,
     panX: 0, panY: 0,
     pointers: new Map(),
@@ -772,9 +773,14 @@
   function pickCanvasColour(world){
     const x=clamp(Math.floor(world.x),0,TILE-1),y=clamp(Math.floor(world.y),0,TILE-1),tile=makeTileCanvas(TILE,TILE),c=tile.getContext("2d"),d=c.getImageData(x,y,1,1).data;
     if(d[3]<12){setStatus("That spot is transparent. Pick a visible colour.");return;}
-    const hex="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");setInkColour(hex);setStatus(`Eyedropper picked ${hex}.`);
-    state.tool="brush";document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool==="brush"));
-    canvas.style.cursor="crosshair";
+    const hex="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");setInkColour(hex);
+    const returnTool=state.previousTool&&state.previousTool!=="eyedropper"?state.previousTool:"select";
+    state.tool=returnTool;
+    document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===returnTool));
+    updateToolHighlight();
+    canvas.style.cursor=returnTool==="pan"?"grab":returnTool==="select"?"default":"crosshair";
+    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[returnTool]||"Previous";
+    setStatus(`Eyedropper picked ${hex}. ${toolName} tool restored.`);
   }
   function hashString(str){
     let h = 2166136261 >>> 0;
@@ -2054,7 +2060,11 @@
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
-    state.tool=b.dataset.tool;
+    const nextTool=b.dataset.tool;
+    if(nextTool==="eyedropper"){
+      if(state.tool!=="eyedropper")state.previousTool=state.tool;
+    }else state.previousTool=nextTool;
+    state.tool=nextTool;
     document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===state.tool));
     updateToolHighlight();
     canvas.style.cursor=state.tool==="pan"?"grab":state.tool==="select"?"default":state.tool==="eyedropper"?"copy":"crosshair";
