@@ -20,15 +20,15 @@
 
       <div class="start-actions">
         <button class="launch-card primary" data-action="new-pattern">
-          <span class="launch-icon">P</span>
+          <span class="launch-icon"><svg><use href="./icons.svg#i-pattern"/></svg></span>
           <span><strong>New Pattern</strong><small>Straight, half-drop or brick</small></span>
         </button>
         <button class="launch-card" data-action="new-doodle">
-          <span class="launch-icon">D</span>
+          <span class="launch-icon"><svg><use href="./icons.svg#i-doodle"/></svg></span>
           <span><strong>New Doodle</strong><small>Transparent standalone artwork</small></span>
         </button>
         <button class="launch-card" data-action="open-project">
-          <span class="launch-icon">↥</span>
+          <span class="launch-icon"><svg><use href="./icons.svg#i-open"/></svg></span>
           <span><strong>Open Project</strong><small>Continue an existing file</small></span>
         </button>
       </div>
@@ -56,15 +56,15 @@
     <section id="editorView" class="editor-view" hidden>
       <header class="editor-topbar">
         <div class="topbar-left">
-          <button class="icon-button labelled" id="galleryButton" title="Gallery"><span>‹</span><b>Gallery</b></button>
+          <button class="icon-button labelled" id="galleryButton" title="Gallery"><svg><use href="./icons.svg#i-gallery"/></svg><b>Gallery</b></button>
           <div class="project-identity">
             <strong id="projectName">Garden Birds</strong>
             <button id="modePill" class="mode-pill">Pattern</button>
           </div>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button" title="Undo">↶</button>
-          <button class="icon-button" title="Redo">↷</button>
+          <button class="icon-button" title="Undo"><svg><use href="./icons.svg#i-undo"/></svg></button>
+          <button class="icon-button" title="Redo"><svg><use href="./icons.svg#i-redo"/></svg></button>
           <button class="secondary-button" id="previewButton">Preview</button>
           <button class="primary-button" id="exportButton">Export</button>
         </div>
@@ -72,12 +72,12 @@
 
       <div class="editor-shell">
         <nav class="tool-rail" aria-label="Creative tools">
-          <button class="tool-button active" data-tool="select"><span class="tool-glyph">⌁</span><b>Select</b></button>
-          <button class="tool-button" data-tool="brush"><span class="tool-glyph">╱</span><b>Brush</b></button>
-          <button class="tool-button" data-tool="eraser"><span class="tool-glyph">◇</span><b>Erase</b></button>
-          <button class="tool-button" data-tool="fill"><span class="tool-glyph">▰</span><b>Fill</b></button>
-          <button class="tool-button" data-tool="image"><span class="tool-glyph">▧</span><b>Image</b></button>
-          <button class="tool-button" data-tool="shape"><span class="tool-glyph">○</span><b>Shape</b></button>
+          <button class="tool-button active" data-tool="select"><svg><use href="./icons.svg#i-select"/></svg><b>Select</b></button>
+          <button class="tool-button" data-tool="brush"><svg><use href="./icons.svg#i-brush"/></svg><b>Brush</b></button>
+          <button class="tool-button" data-tool="eraser"><svg><use href="./icons.svg#i-eraser"/></svg><b>Erase</b></button>
+          <button class="tool-button" data-tool="fill"><svg><use href="./icons.svg#i-fill"/></svg><b>Fill</b></button>
+          <button class="tool-button" data-tool="image"><svg><use href="./icons.svg#i-image"/></svg><b>Image</b></button>
+          <button class="tool-button" data-tool="shape"><svg><use href="./icons.svg#i-shape"/></svg><b>Shape</b></button>
         </nav>
 
         <main class="canvas-zone">
@@ -96,13 +96,13 @@
         </main>
 
         <aside class="quick-dock" aria-label="Quick palettes">
-          <button class="dock-button" data-panel="colour"><span class="colour-dot"></span><b>Colour</b></button>
-          <button class="dock-button active" data-panel="layers"><span class="stack-icon">▱</span><b>Layers</b></button>
-          <button class="dock-button pattern-only" data-panel="pattern"><span class="repeat-icon">⧉</span><b>Pattern</b></button>
+          <button class="dock-button" data-panel="colour"><svg><use href="./icons.svg#i-colour"/></svg><b>Colour</b></button>
+          <button class="dock-button active" data-panel="layers"><svg><use href="./icons.svg#i-layers"/></svg><b>Layers</b></button>
+          <button class="dock-button pattern-only" data-panel="pattern"><svg><use href="./icons.svg#i-repeat"/></svg><b>Pattern</b></button>
         </aside>
 
         <aside class="side-panel" id="sidePanel">
-          <div class="panel-header"><strong id="panelTitle">Layers</strong><button class="close-panel" id="closePanel">×</button></div>
+          <div class="panel-header"><strong id="panelTitle">Layers</strong><button class="close-panel" id="closePanel" title="Close"><svg><use href="./icons.svg#i-close"/></svg></button></div>
           <div id="panelBody"></div>
         </aside>
       </div>
@@ -127,7 +127,7 @@
 
   <div class="modal-backdrop" id="exportModal" hidden>
     <div class="modal-card export-modal">
-      <div class="panel-header"><div><div class="eyebrow">EXPORT</div><h2>Ready to use</h2></div><button class="close-panel" data-close-modal>×</button></div>
+      <div class="panel-header"><div><div class="eyebrow">EXPORT</div><h2>Ready to use</h2></div><button class="close-panel" data-close-modal title="Close"><svg><use href="./icons.svg#i-close"/></svg></button></div>
       <div class="export-grid">
         <button><strong>PNG</strong><small>300 DPI print-ready image</small></button>
         <button><strong>SVG</strong><small>Scalable vector artwork</small></button>
