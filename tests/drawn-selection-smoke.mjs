@@ -50,6 +50,12 @@ async function defaultWorldToScreen(page, world) {
   }, world);
 }
 
+async function clickWorld(page, world) {
+  const screen = await defaultWorldToScreen(page, world);
+  await page.mouse.click(screen.x, screen.y);
+  return screen;
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1200 }, acceptDownloads: true });
 const page = await context.newPage();
@@ -104,7 +110,8 @@ try {
   assert(Math.abs(Number(dragged.transformX || 0)) > 0.01 || Math.abs(Number(dragged.transformY || 0)) > 0.01, 'direct drag did not create translation metadata');
 
   const rawHitPoint = dragged.points[Math.floor(dragged.points.length / 2)];
-  const movedScreen = await defaultWorldToScreen(page, transformedPoint(dragged, rawHitPoint));
+  const movedWorld = transformedPoint(dragged, rawHitPoint);
+  const movedScreen = await defaultWorldToScreen(page, movedWorld);
   const currentBox = await canvas.boundingBox();
   assert(currentBox, 'editor canvas disappeared after selection');
   assert(movedScreen.x >= currentBox.x && movedScreen.x <= currentBox.x + currentBox.width && movedScreen.y >= currentBox.y && movedScreen.y <= currentBox.y + currentBox.height, 'calculated transformed hit point fell outside the current editor canvas');
@@ -114,12 +121,12 @@ try {
   await page.locator('#layerLocked').check();
   await page.waitForTimeout(140);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locking Drawing did not clear drawn-mark selection');
-  await page.mouse.click(movedScreen.x, movedScreen.y);
+  await clickWorld(page, movedWorld);
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'locked drawn mark could still be selected');
 
   await page.locator('#layerLocked').uncheck();
-  await page.mouse.click(movedScreen.x, movedScreen.y);
+  await clickWorld(page, movedWorld);
   await page.waitForTimeout(140);
   await page.waitForFunction(() => document.querySelector('#selectedPanel')?.textContent?.includes('Brush stroke'));
 
@@ -127,12 +134,12 @@ try {
   await page.locator('#layerVisible').uncheck();
   await page.waitForTimeout(140);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'hiding Drawing did not clear drawn-mark selection');
-  await page.mouse.click(movedScreen.x, movedScreen.y);
+  await clickWorld(page, movedWorld);
   await page.waitForTimeout(120);
   assert((await page.locator('#selectedPanel').textContent()).includes('Select an imported motif or drawn mark'), 'hidden drawn mark could still be selected');
 
   await page.locator('#layerVisible').check();
-  await page.mouse.click(movedScreen.x, movedScreen.y);
+  await clickWorld(page, movedWorld);
   await page.waitForTimeout(140);
   await page.waitForFunction(() => document.querySelector('#selectedPanel')?.textContent?.includes('Brush stroke'));
 
