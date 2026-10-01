@@ -1,0 +1,33 @@
+name: Live production screenshots
+
+on:
+  push:
+    branches:
+      - qa/live-v1.2-screenshots
+    paths:
+      - tests/live-production-screenshots.mjs
+      - .github/workflows/live-production-screenshots.yml
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capture live production screenshots
+        run: node tests/live-production-screenshots.mjs
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: pattern-forge-live-screenshots
+          path: live-screenshots/*.png
+          if-no-files-found: error
