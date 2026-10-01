@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.1.5">
+<meta name="app-version" content="1.2.0-alpha.1">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -616,11 +616,35 @@
   function exportMultipliers(style=projectRepeatStyle()){
     return style==="half-drop"?{x:1,y:2}:style==="brick"?{x:2,y:1}:{x:1,y:1};
   }
+  const BASE_LAYER_IDS = Object.freeze({motifs:"layer-motifs",drawing:"layer-drawing"});
+  function defaultLayers(){
+    return [
+      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true},
+      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true}
+    ];
+  }
+  function normaliseLayers(rawLayers){
+    if(!Array.isArray(rawLayers)||!rawLayers.length)return defaultLayers();
+    const seen=new Set(),layers=[];
+    for(const raw of rawLayers){
+      if(!raw||typeof raw!=="object")continue;
+      const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
+      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false});
+    }
+    return layers.length?layers:defaultLayers();
+  }
+  function layerById(id){return state.layers.find(layer=>layer.id===id)||null;}
+  function layerForArtwork(artwork,fallbackId){return layerById(artwork?.layerId)||layerById(fallbackId)||state.layers[0]||null;}
+  function layerIsRenderable(layer,forExport=false){return !!layer&&layer.visible!==false&&(!forExport||layer.export!==false)&&Number(layer.opacity)>0;}
+  function resetLayerState(){state.layers=defaultLayers();state.activeLayerId=BASE_LAYER_IDS.drawing;}
+
   const state = {
     project: null,
     assets: [],
     items: [],
     marks: [],
+    layers: defaultLayers(),
+    activeLayerId: BASE_LAYER_IDS.drawing,
     selectedId: null,
     nextId: 1,
     dragging: false,
@@ -760,7 +784,7 @@
     const target=minDim*.25;
     const scale=target/maxNatural;
     const item={
-      id:state.nextId++, assetId:asset.id,
+      id:state.nextId++, assetId:asset.id, layerId:BASE_LAYER_IDS.motifs,
       x:TILE/2,y:TILE/2,
       scale, rotation:0, opacity:1
     };
@@ -813,7 +837,7 @@
 
   // Draws every periodic copy needed to cover the target rectangle.
   // Unlike a fixed 3×3 wrap, this also works when a motif is larger than the tile.
-  function drawWrapped(targetCtx,item,W,H,showSelection=false,basis=repeatBasis(W,H)){
+  function drawWrapped(targetCtx,item,W,H,showSelection=false,basis=repeatBasis(W,H),layerOpacity=1){
     const a=assetOf(item); if(!a) return;
     const iw=a.w*item.scale, ih=a.h*item.scale;
     const c=Math.abs(Math.cos(item.rotation)), s=Math.abs(Math.sin(item.rotation));
@@ -822,7 +846,7 @@
     const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,basis);
 
     targetCtx.save();
-    targetCtx.globalAlpha=item.opacity;
+    targetCtx.globalAlpha=item.opacity*layerOpacity;
     for(const copy of copies){
         const px=item.x+copy.x, py=item.y+copy.y;
         targetCtx.save();
@@ -944,9 +968,9 @@
     c.stroke();c.restore();
   }
 
-  function drawMark(c,m){
+  function drawMark(c,m,alphaMultiplier=1){
     const pts=m.points;if(!pts.length)return;
-    const opacity=clamp(Number(m.opacity??1),.05,1),style=m.brushStyle||"ink";
+    const opacity=clamp(Number(m.opacity??1),.05,1)*clamp(Number(alphaMultiplier??1),0,1),style=m.brushStyle||"ink";
     c.save();c.strokeStyle=m.color;c.fillStyle=m.color;c.lineWidth=m.width;
     c.lineCap="round";c.lineJoin="round";c.globalAlpha=opacity;
     if(m.type==="rect"||m.type==="ellipse"){
@@ -988,18 +1012,20 @@
     }
     c.restore();
   }
-  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle()){
+  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
     const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
     c.save();c.scale(sx,sy);
     for(const m of state.marks){
-      if(!m.points.length)continue;
+      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
+      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
+      const effectiveOpacity=layerId?layerOpacity:layer.opacity;
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
         let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
         for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
         const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
         const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
-        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed);c.restore();}
+        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
       }
     }
     c.restore();
@@ -1020,8 +1046,13 @@
       scale:it.scale*uniform
     }));
     const basis=repeatBasis(baseW,baseH,style);
-    for(const item of mapped) drawWrapped(c,item,W,H,false,basis);
-    drawMarksWrapped(c,W,H,baseW,baseH,style);
+    for(const layer of state.layers){
+      if(!layerIsRenderable(layer,true))continue;
+      for(const item of mapped){
+        if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);
+      }
+      drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,true);
+    }
     return out;
   }
 
@@ -1047,7 +1078,7 @@
     const uniform=Math.sqrt(sx*sy);
     let worst=Infinity, rasterCount=0, vectorCount=0;
     for(const item of state.items){
-      const a=assetOf(item); if(!a) continue;
+      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,true)) continue;
       if(a.vector){ vectorCount++; continue; }
       rasterCount++;
       const drawW=a.w*item.scale*uniform;
@@ -1191,7 +1222,7 @@
       const base=TILE/Math.max(a.w,a.h);
       const normalized=base*(lo+(hi-lo)*rand());
       state.items.push({
-        id:state.nextId++,assetId:a.id,
+        id:state.nextId++,assetId:a.id,layerId:BASE_LAYER_IDS.motifs,
         x:rand()*TILE,y:rand()*TILE,
         scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
       });
@@ -1208,15 +1239,15 @@
     return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
   }
   function saveHistory(){
-    state.past.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    state.past.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
     if(state.past.length>40)state.past.shift();
     state.future=[];
   }
   function restoreHistory(from,to){
     if(!from.length)return;
-    to.push(JSON.stringify({items:state.items,marks:state.marks,nextId:state.nextId}));
+    to.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
     const s=JSON.parse(from.pop());
-    state.items=s.items;state.marks=s.marks;state.nextId=s.nextId;
+    state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||BASE_LAYER_IDS.drawing;state.nextId=s.nextId;
     state.selectedId=null;state.activeMark=null;renderAll();
   }
   function snapCoordinate(v){
@@ -1232,7 +1263,7 @@
   }
   function hitTest(x,y){
     for(let idx=state.items.length-1;idx>=0;idx--){
-      const item=state.items[idx], a=assetOf(item); if(!a) continue;
+      const item=state.items[idx],layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,false)||layer.locked) continue;
       const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y;
       const cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation);
       const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
@@ -1303,7 +1334,7 @@
     }
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y);
-    const mark={id:state.nextId++,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    const mark={id:state.nextId++,layerId:layerById(state.activeLayerId)?.id||BASE_LAYER_IDS.drawing,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
     state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
     renderAll(false,false);
   });
@@ -1448,6 +1479,7 @@
     const embeddedAssets=new Map();
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     for(const srcItem of state.items){
+      const layer=layerForArtwork(srcItem,BASE_LAYER_IDS.motifs);if(!layerIsRenderable(layer,true))continue;
       const a=assetOf(srcItem);if(!a)continue;
       let assetRef=embeddedAssets.get(a.src);
       if(!assetRef){
@@ -1464,12 +1496,12 @@
       const copies=latticeCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
       for(const copy of copies){
         const x=item.x+copy.x,y=item.y+copy.y;
-        body+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
+        body+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
       }
     }
     let gradientId=0;
     for(const m of state.marks){
-      if(!m.points?.length)continue;
+      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);if(!layerIsRenderable(layer,true)||!m.points?.length)continue;
       const first=m.points[0],last=m.points[m.points.length-1];
       let shape="";
       if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
@@ -1491,10 +1523,10 @@
         const id=`tile-gradient-${++gradientId}`;
         const dir=m.gradientDirection||"diagonal",x1=dir==="horizontal"?"0%":"0%",y1=dir==="vertical"?"0%":"0%",x2=dir==="vertical"?"0%":"100%",y2=dir==="horizontal"?"0%":"100%";
         gradientDefs+=m.gradientType==="radial"?`<radialGradient id="${id}" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></radialGradient>`:`<linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${svgEscape(m.color)}"/><stop offset="100%" stop-color="${svgEscape(m.endColor||"#ffffff")}"/></linearGradient>`;
-        shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${m.opacity??1}"`;
+        shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${(m.opacity??1)*layer.opacity}"`;
       }else{
         const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
-        const opacity=(m.opacity??1)*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
+        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
         style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
       }
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
@@ -1566,7 +1598,7 @@
     const begin=()=>{
       const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice;
       state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),repeatStyle:promotePractice?"straight":$("projectRepeatStyle").value,createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
-      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
       setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a print project.`:`Project “${title}” saved on this device. Draw and colour your tile.`);
     };
@@ -1576,19 +1608,20 @@
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
     state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
-    state.assets=[];state.items=[];state.marks=[];state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
     $("projectSetupOverlay").hidden=true;setProjectBadge();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
   }
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
-    return {format:"pattern-forge-v3",tile:4000,dpi:300,
+    return {format:"pattern-forge-v4",tile:4000,dpi:300,
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
       seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
+      layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,nextId:state.nextId};
   }
   function compactProjectData(){
@@ -1637,8 +1670,19 @@
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
   }
   function validateProjectData(data){
-    if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
-    if(data.assets.length>500||data.items.length>10000||data.marks.length>10000)throw new Error("too-large");
+    if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
+    if(data.assets.length>500||data.items.length>10000||data.marks.length>10000||(Array.isArray(data.layers)&&data.layers.length>100))throw new Error("too-large");
+    if(data.format==="pattern-forge-v4"){
+      if(!Array.isArray(data.layers)||!data.layers.length)throw new Error("invalid-layers");
+      const layerIds=new Set();
+      for(const layer of data.layers){
+        const id=String(layer?.id||"").trim(),opacity=Number(layer?.opacity);
+        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error("invalid-layers");
+        layerIds.add(id);
+      }
+      if(data.activeLayerId!==undefined&&!layerIds.has(String(data.activeLayerId)))throw new Error("invalid-layers");
+      if(data.items.some(item=>item?.layerId!==undefined&&!layerIds.has(String(item.layerId)))||data.marks.some(mark=>mark?.layerId!==undefined&&!layerIds.has(String(mark.layerId))))throw new Error("invalid-layers");
+    }
     const assetIds=new Set();
     for(const a of data.assets){
       if(!a||a.id===undefined||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h)))throw new Error("invalid-assets");
@@ -1653,7 +1697,7 @@
     const code=err?.message||"";
     if(code==="wrong-format")return "That file is not a Pattern Forge project. Choose a JSON project or ZIP exported by Pattern Forge. Your current work is unchanged.";
     if(code==="too-large")return "That project is larger than Pattern Forge can open. Your current work is unchanged.";
-    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
+    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
     if(err instanceof SyntaxError)return "This file is not valid project JSON. Choose a Pattern Forge JSON file or exported project ZIP. Your current work is unchanged.";
     return "Pattern Forge could not open that project. Check that the file is a complete JSON project or ZIP exported by the app. Your current work is unchanged.";
   }
@@ -1662,7 +1706,12 @@
     const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
     const incoming=data.project&&typeof data.project==="object"?data.project:{};
     state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),repeatStyle:["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight",isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
-    state.assets=assets;state.items=data.items;state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m}));
+    state.layers=normaliseLayers(data.layers);
+    const validLayerIds=new Set(state.layers.map(layer=>layer.id));
+    const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;
+    const drawingFallback=validLayerIds.has(BASE_LAYER_IDS.drawing)?BASE_LAYER_IDS.drawing:state.layers[state.layers.length-1].id;
+    state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
+    state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
