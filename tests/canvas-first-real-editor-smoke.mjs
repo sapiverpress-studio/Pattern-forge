@@ -7,9 +7,18 @@ const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:1365,height:820},acceptDownloads:true});
   const page=await context.newPage();
+  page.setDefaultTimeout(12000);
   const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+  assert(await page.getByText('New Pattern',{exact:true}).isVisible(),'project home should expose New Pattern');
+  assert(await page.getByText('New Doodle',{exact:true}).isVisible(),'project home should expose New Doodle');
+  const homeBlue=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--blue').trim());
+  assert(homeBlue.toLowerCase()==='#6f89a8','project home should use blue/silver design system');
+  await page.screenshot({path:'ux2-real-shots/project-home.png',fullPage:true});
+
   await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
   assert(await page.locator('#ux2Editor').isVisible(),'canvas-first shell should render');
   assert(await page.locator('#projectSetupOverlay').isVisible(),'new project setup should still gate a fresh session');
@@ -43,6 +52,14 @@ try{
   const afterRedo=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   assert(afterRedo===afterBrush,'new Redo should restore real engine brush mark');
 
+  await page.locator('[data-ux2-tool="select"]').click();
+  await page.mouse.click(box.x+box.width*.45,box.y+box.height*.48);
+  await page.waitForTimeout(100);
+  if(await page.locator('#selScale').count()){
+    assert(await page.locator('#ux2SelScale').isVisible(),'selected artwork should expose scale in contextual inspector');
+    assert(await page.locator('#ux2SelRot').isVisible(),'selected artwork should expose rotation in contextual inspector');
+  }
+
   await page.locator('[data-ux2-tool="eraser"]').click();
   assert(await page.locator('.layout [data-tool="eraser"]').first().evaluate(el=>el.classList.contains('active')),'new Eraser should drive real engine tool');
   await page.locator('[data-ux2-tool="pan"]').click();
@@ -66,7 +83,7 @@ try{
 
   await page.locator('#ux2Export').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Export','Export palette should open');
-  const downloadPromise=page.waitForEvent('download');
+  const downloadPromise=page.waitForEvent('download',{timeout:12000});
   await page.locator('[data-export-old="saveProject"]').click();
   const download=await downloadPromise;
   assert((await download.suggestedFilename()).endsWith('.json'),'editable project export should still download JSON');
@@ -76,7 +93,7 @@ try{
   await context.close();
 
   const mobile=await browser.newContext({viewport:{width:844,height:390},deviceScaleFactor:1});
-  const m=await mobile.newPage();
+  const m=await mobile.newPage();m.setDefaultTimeout(12000);
   const mErrors=[];m.on('pageerror',e=>mErrors.push(String(e)));m.on('console',x=>{if(x.type()==='error')mErrors.push(`console: ${x.text()}`)});
   await m.goto('http://127.0.0.1:4173/app/doodle/',{waitUntil:'networkidle'});
   if(await m.locator('#projectSetupOverlay').isVisible()){
@@ -92,5 +109,5 @@ try{
   await m.screenshot({path:'ux2-real-shots/doodle-phone-landscape.png',fullPage:true});
   assert(mErrors.length===0,`mobile browser errors: ${mErrors.join(' | ')}`);
   await mobile.close();
-  console.log('PASS canvas-first real editor: engine canvas, tools, undo/redo, colour, layers, pattern and project download');
+  console.log('PASS canvas-first real editor: project home, real canvas, tools, contextual transform, undo/redo, colour, layers, pattern and project download');
 } finally {await browser.close()}
