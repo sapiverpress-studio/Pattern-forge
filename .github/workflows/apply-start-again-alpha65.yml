@@ -1,0 +1,53 @@
+name: Apply Pattern Forge alpha.6.5 Start again
+
+on:
+  push:
+    branches: [feature/mobile-density-v1.2]
+    paths:
+      - dev/apply-start-again-alpha65.py
+      - .github/workflows/apply-start-again-alpha65.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-start-again:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mobile-density-v1.2
+          fetch-depth: 0
+      - name: Apply guarded Start again patch
+        run: python3 dev/apply-start-again-alpha65.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          m=re.search(r'<script>([\s\S]*?)</script>',s)
+          assert m, 'script block missing'
+          Path('/tmp/pf-script.js').write_text(m.group(1))
+          PY
+          node --check /tmp/pf-script.js
+      - name: Verify Start again guards
+        run: |
+          grep -q 'content="1.2.0-alpha.6.5"' index.html
+          grep -q 'id="startAgain"' index.html
+          grep -q 'function startAgain()' index.html
+          grep -q 'state.items=\[\]' index.html
+          grep -q 'state.marks=\[\]' index.html
+          grep -q '$("startAgain").onclick=startAgain' index.html
+          grep -q "'1.2.0-alpha.6.5'" tests/layer-ux-smoke.mjs
+      - name: Commit alpha.6.5
+        run: |
+          if git diff --quiet -- index.html tests/layer-ux-smoke.mjs; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git config user.name 'sapiverpress-studio'
+          git config user.email 'sapiverpress@gmail.com'
+          git add index.html tests/layer-ux-smoke.mjs
+          git commit -m 'Add Start again project reset in alpha.6.5'
+          git push origin HEAD:feature/mobile-density-v1.2
