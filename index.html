@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.6.2">
+<meta name="app-version" content="1.2.0-alpha.6.3">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -771,8 +771,16 @@
     $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
     $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
   }
+  function nextLayerName(){
+    let max=0;
+    for(const layer of state.layers){
+      const match=/^Layer\s+(\d+)$/i.exec(String(layer.name||"").trim());
+      if(match)max=Math.max(max,Number(match[1])||0);
+    }
+    return `Layer ${max+1}`;
+  }
   function addLayer(){
-    saveHistory();const layer={id:newLayerId(),name:`Layer ${state.layers.length+1}`,visible:true,opacity:1,locked:false,export:true};
+    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true};
     state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
   }
   function duplicateActiveLayer(){
@@ -2210,7 +2218,33 @@
   $("layerDelete").addEventListener("click",deleteActiveLayer);
   $("layerUp").addEventListener("click",()=>moveActiveLayer(1));
   $("layerDown").addEventListener("click",()=>moveActiveLayer(-1));
-  $("layerName").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const name=$("layerName").value.trim();if(!name){$("layerName").value=layer.name;return;}saveHistory();layer.name=name.slice(0,80);renderAll();setStatus(`Layer renamed to “${layer.name}”.`);});
+  let layerNameEditStart="";
+  let layerNameEditDirty=false;
+  $("layerName").addEventListener("focus",()=>{
+    const layer=activeLayer();
+    layerNameEditStart=layer?.name||"";
+    layerNameEditDirty=false;
+  });
+  $("layerName").addEventListener("input",()=>{
+    const layer=activeLayer();if(!layer)return;
+    if(!layerNameEditDirty){saveHistory();layerNameEditDirty=true;}
+    const value=$("layerName").value.slice(0,80);
+    layer.name=value;
+    const activeName=document.querySelector(".layerRow.active .layerRowName");
+    if(activeName)activeName.textContent=value.trim()||"Untitled layer";
+  });
+  $("layerName").addEventListener("blur",()=>{
+    const layer=activeLayer();if(!layer||!layerNameEditDirty)return;
+    const name=$("layerName").value.trim();
+    layer.name=(name||layerNameEditStart||nextLayerName()).slice(0,80);
+    $("layerName").value=layer.name;
+    layerNameEditDirty=false;
+    renderAll();
+    setStatus(`Layer renamed to “${layer.name}”.`);
+  });
+  $("layerName").addEventListener("keydown",event=>{
+    if(event.key==="Enter"){event.preventDefault();$("layerName").blur();}
+  });
   $("layerOpacity").addEventListener("input",()=>{$("layerOpacityValue").textContent=$("layerOpacity").value+"%";});
   $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
   $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(!layer.visible&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
