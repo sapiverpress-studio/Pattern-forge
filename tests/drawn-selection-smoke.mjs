@@ -105,7 +105,9 @@ try {
 
   const rawHitPoint = dragged.points[Math.floor(dragged.points.length / 2)];
   const movedScreen = await defaultWorldToScreen(page, transformedPoint(dragged, rawHitPoint));
-  assert(movedScreen.x >= box.x && movedScreen.x <= box.x + box.width && movedScreen.y >= box.y && movedScreen.y <= box.y + box.height, 'calculated transformed hit point fell outside the editor canvas');
+  const currentBox = await canvas.boundingBox();
+  assert(currentBox, 'editor canvas disappeared after selection');
+  assert(movedScreen.x >= currentBox.x && movedScreen.x <= currentBox.x + currentBox.width && movedScreen.y >= currentBox.y && movedScreen.y <= currentBox.y + currentBox.height, 'calculated transformed hit point fell outside the current editor canvas');
 
   const drawingRow = page.locator('.layerRow').filter({ hasText: 'Drawing' }).first();
   await drawingRow.click();
