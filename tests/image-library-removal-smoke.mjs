@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 function assert(condition,message){if(!condition)throw new Error(message);}
 
 const browser=await chromium.launch({headless:true});
-const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
+const context=await browser.newContext({viewport:{width:1440,height:1200},acceptDownloads:true});
 const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(String(error)));
