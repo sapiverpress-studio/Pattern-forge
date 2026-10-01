@@ -1,0 +1,49 @@
+name: Apply Pattern Forge alpha.6.3 layer UX fixes
+
+on:
+  push:
+    branches:
+      - feature/mobile-density-v1.2
+    paths:
+      - dev/apply-layer-ux-alpha63.py
+      - .github/workflows/apply-layer-ux-alpha63.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-layer-ux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mobile-density-v1.2
+          fetch-depth: 0
+      - name: Apply guarded layer UX patch
+        run: python3 dev/apply-layer-ux-alpha63.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',text,re.S)
+          Path('/tmp/pf.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify layer UX guards
+        run: |
+          grep -q 'content="1.2.0-alpha.6.3"' index.html
+          grep -q 'function nextLayerName()' index.html
+          grep -q 'layerNameEditDirty' index.html
+      - name: Commit alpha.6.3
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No app changes to commit'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix layer rename and unique layer names in alpha.6.3'
+          git push origin HEAD:feature/mobile-density-v1.2
