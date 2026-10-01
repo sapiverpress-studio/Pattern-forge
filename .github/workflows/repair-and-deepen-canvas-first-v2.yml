@@ -1,0 +1,46 @@
+name: Repair and deepen canvas-first UX
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - .github/workflows/repair-and-deepen-canvas-first-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deepen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - name: Repair helper quoting
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dev/deepen-canvas-first-v2.py')
+          s=p.read_text(encoding='utf-8')
+          start="rep(\"document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));\""
+          i=s.find(start)
+          if i<0:
+              raise SystemExit('image action line not found')
+          j=s.find("\n",i)
+          replacement='''rep("""document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));""","""document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));\n  document.querySelectorAll('[data-ux2-action="image"]').forEach(b=>b.addEventListener('click',()=>{const picker=document.getElementById('files');if(picker)picker.click()}));""",'image action')'''
+          s=s[:i]+replacement+s[j:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python3 -m py_compile dev/deepen-canvas-first-v2.py
+      - name: Apply UX depth pass
+        run: python3 dev/deepen-canvas-first-v2.py
+      - name: Verify JavaScript
+        run: node --check app/js/canvas-first-v2.js
+      - name: Commit depth pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dev/deepen-canvas-first-v2.py app/js/canvas-first-v2.js app/assets/canvas-first-v2.css
+          git commit -m 'Expose advanced controls in canvas-first UX'
+          git push origin HEAD:feature/canvas-first-ux-v2
