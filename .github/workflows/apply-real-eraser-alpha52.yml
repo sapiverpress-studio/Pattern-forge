@@ -1,0 +1,57 @@
+name: Apply Pattern Forge alpha.5.2 real eraser
+
+on:
+  push:
+    branches:
+      - feature/layer-engine-v1.2
+    paths:
+      - dev/apply-real-eraser-alpha52.py
+      - .github/workflows/apply-real-eraser-alpha52.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-real-eraser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/layer-engine-v1.2
+          fetch-depth: 0
+      - name: Apply guarded eraser patch
+        run: python3 dev/apply-real-eraser-alpha52.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          start=html.rfind('<script>'); end=html.rfind('</script>')
+          if start<0 or end<=start: raise SystemExit('embedded script not found')
+          Path('/tmp/pf.js').write_text(html[start+8:end],encoding='utf-8')
+          PY
+          node --check /tmp/pf.js
+      - name: Verify real eraser guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          checks=[
+            'data-tool="eraser"',
+            'c.globalCompositeOperation="destination-out"',
+            'const hasEraser=state.marks.some',
+            'mark.type!=="eraser"',
+            'mask-type:luminance',
+            '<meta name="app-version" content="1.2.0-alpha.5.2">',
+          ]
+          missing=[x for x in checks if x not in html]
+          if missing: raise SystemExit('eraser guard missing: '+repr(missing))
+          print('real eraser guards present')
+          PY
+      - name: Commit alpha.5.2
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add layer-safe real eraser in alpha.5.2'
+          git push origin HEAD:feature/layer-engine-v1.2
