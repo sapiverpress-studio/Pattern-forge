@@ -5,44 +5,44 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Sapiver Pattern Forge</title>
 <meta name="description" content="Create seamless patterns or standalone transparent artwork with Sapiver Pattern Forge.">
-<meta name="theme-color" content="#2c5f54">
+<meta name="theme-color" content="#526d8f">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="/assets/product.css">
 </head>
 <body>
 <main class="productShell">
   <header class="productHead">
-    <p class="eyebrow">Sapiver Press</p>
-    <h1>Sapiver Pattern Forge</h1>
-    <p class="lede">Choose what you want to make. Pattern and Doodle use the same drawing engine, projects and export system, without putting every control on the start screen.</p>
+    <div class="productHeadCopy">
+      <p class="eyebrow">Sapiver Press · Pattern Design Studio</p>
+      <h1>Sapiver Pattern Forge</h1>
+      <p class="lede">Start with the artwork, not a settings form. Create a seamless repeat, draw a standalone motif, or continue an existing Pattern Forge project.</p>
+    </div>
+    <a class="guideLink" href="/help/">Quick guide</a>
   </header>
+
+  <div class="sectionHead"><h2>Start</h2><span>Choose a workspace</span></div>
   <section class="choiceGrid" aria-label="Create or open a project">
     <a class="choiceCard primary" href="/app/pattern/">
-      <span class="choiceTag">Pattern</span>
-      <h2>Create a seamless pattern</h2>
-      <p>Straight, half-drop and brick repeats with live preview and print-ready export.</p>
-      <strong>New Pattern →</strong>
+      <span class="choiceIcon"><svg><use href="/prototype/icons.svg#i-pattern"/></svg></span>
+      <span class="choiceCopy"><span class="choiceTag">Pattern</span><h2>New Pattern</h2><p>Straight, half-drop or brick repeat.</p></span>
     </a>
     <a class="choiceCard" href="/app/doodle/">
-      <span class="choiceTag">Doodle</span>
-      <h2>Create standalone artwork</h2>
-      <p>Draw transparent motifs and illustrations without repeat wrapping.</p>
-      <strong>New Doodle →</strong>
+      <span class="choiceIcon"><svg><use href="/prototype/icons.svg#i-doodle"/></svg></span>
+      <span class="choiceCopy"><span class="choiceTag">Doodle</span><h2>New Doodle</h2><p>Standalone transparent artwork.</p></span>
     </a>
-    <a class="choiceCard compact" href="/app/">
-      <span class="choiceTag">Projects</span>
-      <h2>Open an existing project</h2>
-      <p>Resume an autosaved project or open a Pattern Forge project file.</p>
-      <strong>Open project →</strong>
-    </a>
-    <a class="choiceCard compact" href="/help/">
-      <span class="choiceTag">Help</span>
-      <h2>Quick guide</h2>
-      <p>Pattern, Doodle, layers, images and exports in one short guide.</p>
-      <strong>View help →</strong>
+    <a class="choiceCard" href="/app/">
+      <span class="choiceIcon"><svg><use href="/prototype/icons.svg#i-open"/></svg></span>
+      <span class="choiceCopy"><span class="choiceTag">Projects</span><h2>Open Project</h2><p>Continue autosaved work or open a project file.</p></span>
     </a>
   </section>
-  <footer>Pattern Forge v1.2 · Browser workspace prepared for a future Android wrapper.</footer>
+
+  <div class="sectionHead"><h2>Recent</h2><span>Stored on this device</span></div>
+  <section id="recentProjects" class="recentGrid" aria-live="polite">
+    <div class="emptyRecent">Recent projects will appear here after you create or open work on this device.</div>
+  </section>
+
+  <footer>Pattern Forge · Canvas-first UX rebuild preview. Existing repeat, export and project engines are preserved.</footer>
 </main>
+<script src="/assets/product-home.js"></script>
 </body>
 </html>
