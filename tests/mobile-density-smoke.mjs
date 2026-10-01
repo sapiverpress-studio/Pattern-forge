@@ -61,14 +61,21 @@ try{
   await page.waitForTimeout(200);
   state=await disclosureState(page);
   assert(Object.values(state).every(v=>v===false),'Design nav should return to compact canvas-first view');
-
-  await createProject(page,'doodle','Mobile Doodle Compact QA');
-  state=await disclosureState(page);
-  assert(Object.values(state).every(v=>v===false),'Doodle mobile disclosures should start collapsed');
-  assert(await page.locator('#previewDisclosure').isHidden(),'Doodle should hide repeat-preview disclosure');
-  await page.screenshot({path:'mobile-qa/doodle-mobile-compact.png',fullPage:true});
-  assert(errors.length===0,`mobile browser errors: ${errors.join(' | ')}`);
+  assert(errors.length===0,`pattern mobile browser errors: ${errors.join(' | ')}`);
   await mobile.close();
+
+  const doodleMobile = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
+  const doodle = await doodleMobile.newPage();
+  const doodleErrors=[];
+  doodle.on('pageerror',e=>doodleErrors.push(String(e)));
+  doodle.on('console',m=>{if(m.type()==='error')doodleErrors.push(`console: ${m.text()}`)});
+  await createProject(doodle,'doodle','Mobile Doodle Compact QA');
+  state=await disclosureState(doodle);
+  assert(Object.values(state).every(v=>v===false),'Doodle mobile disclosures should start collapsed');
+  assert(await doodle.locator('#previewDisclosure').isHidden(),'Doodle should hide repeat-preview disclosure');
+  await doodle.screenshot({path:'mobile-qa/doodle-mobile-compact.png',fullPage:true});
+  assert(doodleErrors.length===0,`doodle mobile browser errors: ${doodleErrors.join(' | ')}`);
+  await doodleMobile.close();
 
   const desktop = await browser.newContext({viewport:{width:1440,height:1200},deviceScaleFactor:1});
   const desk = await desktop.newPage();
