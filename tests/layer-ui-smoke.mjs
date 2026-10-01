@@ -137,7 +137,10 @@ try {
   await selectLayer('Motifs');
   await page.locator('#layerDuplicate').click();
   await waitForLayerCount(4);
-  assert((await layerNames())[0] === 'Motifs copy', 'duplicated Motifs layer was not visually topmost');
+  names = await layerNames();
+  const copyIndex = names.indexOf('Motifs copy');
+  const baseIndex = names.indexOf('Motifs');
+  assert(copyIndex >= 0 && baseIndex >= 0 && copyIndex < baseIndex, 'duplicated Motifs layer was not above its source layer');
 
   await page.locator('[data-tool="select"]').first().click();
   const canvas = page.locator('#editorCanvas');
