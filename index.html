@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.1">
+<meta name="app-version" content="1.2.0-alpha.2">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -1031,7 +1031,7 @@
     c.restore();
   }
 
-  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle()){
+  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
     const out=document.createElement("canvas"); out.width=W; out.height=H;
     const c=out.getContext("2d");
     if(!$("transparent").checked){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
@@ -1047,17 +1047,17 @@
     }));
     const basis=repeatBasis(baseW,baseH,style);
     for(const layer of state.layers){
-      if(!layerIsRenderable(layer,true))continue;
+      if(!layerIsRenderable(layer,forExport))continue;
       for(const item of mapped){
         if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);
       }
-      drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,true);
+      drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,forExport);
     }
     return out;
   }
 
   function renderPreview(){
-    const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base);
+    const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     const data=thumb.toDataURL("image/png");
     const p=$("preview");
     p.style.backgroundImage=`url("${data}")`;
@@ -1459,7 +1459,7 @@
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
-    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000);
+    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000,projectRepeatStyle(),true);
     const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
     return {blob,spec};
   }
@@ -1478,8 +1478,11 @@
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
-    for(const srcItem of state.items){
-      const layer=layerForArtwork(srcItem,BASE_LAYER_IDS.motifs);if(!layerIsRenderable(layer,true))continue;
+    let gradientId=0;
+    for(const layer of state.layers){
+      if(!layerIsRenderable(layer,true))continue;
+      for(const srcItem of state.items){
+      if(layerForArtwork(srcItem,BASE_LAYER_IDS.motifs)?.id!==layer.id)continue;
       const a=assetOf(srcItem);if(!a)continue;
       let assetRef=embeddedAssets.get(a.src);
       if(!assetRef){
@@ -1498,10 +1501,9 @@
         const x=item.x+copy.x,y=item.y+copy.y;
         body+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
       }
-    }
-    let gradientId=0;
-    for(const m of state.marks){
-      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);if(!layerIsRenderable(layer,true)||!m.points?.length)continue;
+      }
+      for(const m of state.marks){
+      if(layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id!==layer.id||!m.points?.length)continue;
       const first=m.points[0],last=m.points[m.points.length-1];
       let shape="";
       if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
@@ -1537,6 +1539,7 @@
         minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
         const copies=latticeCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
         for(const copy of copies)body+=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;
+      }
       }
     }
     const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
