@@ -36,6 +36,7 @@ jobs:
             sleep 0.5
           done
           if [ "$ok" != 1 ]; then cat /tmp/pf.log || true; exit 1; fi
+      # Re-run after correcting the project badge selector in the browser test.
       - name: Run Start again regression
         run: node tests/start-again-smoke.mjs
       - name: Re-run layer UX regression
