@@ -107,7 +107,7 @@ try{
 
   await page.locator('#ux2Export').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Export','Export palette should open');
-  assert(await page.getByText(/300 DPI metadata/).isVisible(),'export confidence should disclose 300 DPI metadata');
+  assert(await page.locator('#ux2PaletteBody .ux2-repeat-card span').filter({hasText:'300 DPI metadata'}).isVisible(),'export confidence should disclose 300 DPI metadata');
   const downloadPromise=page.waitForEvent('download',{timeout:12000});
   await page.locator('[data-export-old="saveProject"]').click();
   const download=await downloadPromise;
