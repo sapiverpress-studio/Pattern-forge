@@ -1,0 +1,50 @@
+name: Apply Pattern Forge alpha.6.4 image removal
+
+on:
+  push:
+    branches: [feature/mobile-density-v1.2]
+    paths:
+      - dev/apply-remove-image-alpha64.py
+      - .github/workflows/apply-remove-image-alpha64.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-remove-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/mobile-density-v1.2
+          fetch-depth: 0
+      - name: Apply guarded image removal patch
+        run: python3 dev/apply-remove-image-alpha64.py
+      - name: Check embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          m=re.search(r'<script>([\s\S]*?)</script>',s)
+          assert m, 'script block missing'
+          Path('/tmp/pf-script.js').write_text(m.group(1))
+          PY
+          node --check /tmp/pf-script.js
+      - name: Verify image removal guards
+        run: |
+          grep -q 'content="1.2.0-alpha.6.4"' index.html
+          grep -q 'function removeAssetFromLibrary(asset)' index.html
+          grep -q 'function nextAssetId()' index.html
+          grep -q 'className="assetRemove"' index.html
+      - name: Commit alpha.6.4
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No index change to commit'
+            exit 0
+          fi
+          git config user.name 'sapiverpress-studio'
+          git config user.email 'sapiverpress@gmail.com'
+          git add index.html
+          git commit -m 'Add safe image library removal in alpha.6.4'
+          git push origin HEAD:feature/mobile-density-v1.2
