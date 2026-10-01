@@ -6,7 +6,7 @@
 <title>Sapiver Pattern Forge — Seamless Pattern Design</title>
 <meta name="description" content="Create, preview and export seamless repeat patterns with Sapiver Pattern Forge.">
 <meta name="application-name" content="Sapiver Pattern Forge">
-<meta name="app-version" content="1.2.0-alpha.6.3">
+<meta name="app-version" content="1.2.0-alpha.6.4">
 <style>
   :root{
     --bg:#f4f1eb;
@@ -154,13 +154,16 @@
     background:rgba(255,255,255,.72);padding:2px 5px;border-radius:5px
   }
   .assetGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:225px;overflow:auto}
+  .assetWrap{position:relative;aspect-ratio:1;min-width:0}
   .asset{
-    position:relative;border:1px solid var(--line);border-radius:10px;background:#faf9f6;aspect-ratio:1;
+    position:relative;width:100%;height:100%;border:1px solid var(--line);border-radius:10px;background:#faf9f6;
     display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;cursor:pointer
   }
   .asset img{max-width:100%;max-height:100%;object-fit:contain}
   .asset:hover{outline:2px solid rgba(44,95,84,.35)}
   .asset span{position:absolute;left:4px;right:4px;bottom:3px;background:rgba(255,255,255,.82);font-size:.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 4px;border-radius:4px}
+  .assetRemove{position:absolute;z-index:3;top:4px;right:4px;width:28px;height:28px;border:1px solid rgba(138,46,46,.35);border-radius:999px;background:rgba(255,255,255,.94);color:var(--danger);font-weight:900;font-size:1rem;line-height:1;padding:0;box-shadow:0 2px 7px rgba(0,0,0,.12)}
+  .assetRemove:hover{background:#fff1ef;border-color:var(--danger)}
   .drop{
     border:1.5px dashed #aaa49a;border-radius:12px;padding:12px;text-align:center;background:#faf9f6;
     font-size:.8rem;color:var(--muted)
@@ -874,7 +877,7 @@
       await new Promise((resolve,reject)=>{
         img.onload=resolve;img.onerror=()=>reject(new Error(`“${file.name}” could not be decoded as an image.`));img.src=src;
       });
-      const assetId="a"+(state.assets.length+1);
+      const assetId=nextAssetId();
       state.assets.push({id:assetId,name:file.name,src,img,w:img.naturalWidth||1000,h:img.naturalHeight||1000,vector:file.type==="image/svg+xml"});
       state.recentAssetIds.unshift(assetId);
     }
@@ -885,17 +888,43 @@
     const extra=candidates.length>1?` ${candidates.length-1} more ${candidates.length===2?"image is":"images are"} ready in your image list.`:"";
     setStatus(`“${firstAdded?.name||candidates[0].name}” was added and placed on the tile.${extra} Tap a thumbnail to place another copy.`);
   }
+  function nextAssetId(){
+    const used=new Set(state.assets.map(asset=>String(asset.id)));
+    let max=0;
+    for(const id of used){const match=/^a(\d+)$/i.exec(id);if(match)max=Math.max(max,Number(match[1])||0);}
+    let n=max+1;while(used.has(`a${n}`))n++;return `a${n}`;
+  }
+  function removeAssetFromLibrary(asset){
+    const placed=state.items.filter(item=>String(item.assetId)===String(asset.id));
+    if(placed.length){
+      const copies=`${placed.length} placed cop${placed.length===1?"y":"ies"}`;
+      if(!confirm(`Remove “${asset.name}” from the image library and remove ${copies} from this project?`))return;
+    }
+    state.items=state.items.filter(item=>String(item.assetId)!==String(asset.id));
+    if(placed.some(item=>item.id===state.selectedId))state.selectedId=null;
+    state.assets=state.assets.filter(candidate=>String(candidate.id)!==String(asset.id));
+    state.recentAssetIds=state.recentAssetIds.filter(id=>String(id)!==String(asset.id));
+    rebuildAssetGrid();
+    renderAll();
+    const removedCopies=placed.length?` and ${placed.length} placed cop${placed.length===1?"y":"ies"}`:"";
+    setStatus(`Removed “${asset.name}” from the image library${removedCopies}.`);
+  }
   function rebuildAssetGrid(){
     const g=$("assetGrid");
     g.innerHTML="";
     state.assets.forEach(a=>{
+      const wrap=document.createElement("div");wrap.className="assetWrap";
       const d=document.createElement("button");
-      d.type="button"; d.className="asset"; d.title=`Add ${a.name}`;
-      const im=document.createElement("img"); im.src=a.src; im.alt="";
-      const sp=document.createElement("span"); sp.textContent=a.name;
+      d.type="button";d.className="asset";d.title=`Add ${a.name}`;d.setAttribute("aria-label",`Add ${a.name}`);
+      const im=document.createElement("img");im.src=a.src;im.alt="";
+      const sp=document.createElement("span");sp.textContent=a.name;
       d.append(im,sp);
       d.addEventListener("click",()=>addAssetInstance(a));
-      g.appendChild(d);
+      const remove=document.createElement("button");
+      remove.type="button";remove.className="assetRemove";remove.textContent="×";remove.title=`Remove ${a.name} from image library`;remove.setAttribute("aria-label",`Remove ${a.name} from image library`);
+      remove.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();removeAssetFromLibrary(a);});
+      wrap.append(d,remove);
+      g.appendChild(wrap);
     });
     rebuildFocusRecent();
   }
