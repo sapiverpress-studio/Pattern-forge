@@ -1,0 +1,49 @@
+name: Adapt and verify Expo mobile UX2
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - dev/adapt-mobile-ux2.py
+      - mobile/**
+      - .github/workflows/adapt-mobile-ux2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Adapt mobile shell
+        run: python3 dev/adapt-mobile-ux2.py
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: TypeScript
+        working-directory: mobile
+        run: npm run typecheck
+      - name: Expo Doctor
+        working-directory: mobile
+        run: npx expo-doctor
+      - name: Commit adapted mobile shell
+        run: |
+          if git diff --quiet -- mobile/App.tsx; then
+            echo 'Mobile shell already adapted.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mobile/App.tsx
+          git commit -m 'Adapt Expo shell to canvas-first UX2'
+          git push origin HEAD:feature/canvas-first-ux-v2
