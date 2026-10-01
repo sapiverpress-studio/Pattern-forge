@@ -13,6 +13,15 @@ This is an interaction-architecture redesign, not a rewrite of the repeat, drawi
 
 Pattern Forge may learn from established creative-tool interaction principles — canvas-first work, contextual controls, gestures, visual layers, tool libraries and progressive disclosure — but must not reproduce Procreate screens, proprietary icons, brush assets, wording, distinctive layouts or visual styling. Pattern Forge uses its own Sapiver visual language and task model.
 
+## Visual language
+
+- **Palette:** subtle slate-blue, soft silver and neutral greys. Green is no longer the primary product colour.
+- **Canvas:** visually quiet neutral workspace so artwork remains dominant.
+- **Icons:** an original Sapiver line-icon family created specifically for Pattern Forge. Do not trace, redraw or imitate another creative application's icons.
+- **Chrome:** restrained borders, light depth and low-contrast panels rather than heavy cards or web-form styling.
+- **Accent use:** blue indicates active tools, selections and primary actions; silver/grey carries structure and inactive controls.
+- **Brand character:** precise, calm and technical rather than decorative.
+
 ## Product principles
 
 1. **Canvas first** — artwork receives the majority of the screen.
@@ -95,6 +104,8 @@ The redesign exposes current functionality first, then expands depth in delibera
 
 ### Phase 0 — prototype shell
 - clickable Gallery and editor prototype
+- original Sapiver icon set
+- subtle blue/silver design system
 - tool rail
 - contextual inspector
 - Colour / Layers / Pattern palettes
