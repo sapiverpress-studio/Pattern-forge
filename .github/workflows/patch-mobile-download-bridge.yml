@@ -1,0 +1,44 @@
+name: Patch Pattern Forge mobile download bridge
+
+on:
+  push:
+    branches: [feature/expo-android-app-v1]
+    paths:
+      - dev/patch-mobile-download-bridge.py
+      - .github/workflows/patch-mobile-download-bridge.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/expo-android-app-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Patch native download interception
+        run: python dev/patch-mobile-download-bridge.py
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Typecheck
+        working-directory: mobile
+        run: npm run typecheck
+      - name: Expo Doctor
+        working-directory: mobile
+        run: npx expo-doctor
+      - name: Commit if green
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add mobile/App.tsx
+          git commit -m "Intercept Pattern Forge exports in Android WebView" || exit 0
+          git push origin HEAD:feature/expo-android-app-v1
