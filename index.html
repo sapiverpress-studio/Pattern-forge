@@ -189,6 +189,7 @@
   .mini{font-size:.72rem}
   .settingLabel{display:flex;justify-content:space-between;align-items:center;gap:6px}
   .settingValue{display:inline-block;max-width:58%;padding:2px 7px;border:1px solid #bfd0c8;border-radius:999px;background:#edf4f0;color:#244e44;font-size:.72rem;font-weight:750;text-align:right;white-space:normal;line-height:1.25}
+  .doodle-project #patternScatterDisclosure,.doodle-project #repeatControls,.doodle-project #repeatPreviewToggle,.doodle-project #repeatPreviewHeading,.doodle-project #preview,.doodle-project #previewScaleField{display:none!important}
   .advancedDisclosure{margin:12px 0;border:1px solid var(--line);border-radius:10px;background:#fff}
   .advancedDisclosure>summary{cursor:pointer;padding:10px 12px;color:#244e44;font-size:.84rem;font-weight:750;list-style-position:inside}
   .advancedDisclosure[open]>summary{border-bottom:1px solid var(--line)}
@@ -1908,7 +1909,7 @@
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
     $("cancelProjectSetup").hidden=!state.project;
     $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
-    $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named print project. Your drawing is kept, and its straight repeat stays in place.":"Jump straight into a practice tile, or set up a print project with its name, customer, colourway and repeat layout.";
+    $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named Pattern Project. Your drawing is kept, and its straight repeat stays in place.":"Jump straight into a practice tile, or create a seamless Pattern Project or standalone Doodle Project.";
     $("localProjectsSection").hidden=false;
     $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
     $("projectTypeInput").value="pattern";$("projectTypeInput").disabled=!!state.project?.isPractice;
