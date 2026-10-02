@@ -241,8 +241,10 @@
   };
   const updateStatus=()=>setText($('ux2Status'),$('status')?.textContent||'');
   const titleNode=$('projectNameDisplay'),statusNode=$('status'),selectionNode=$('selectedPanel');
+  const zoomLabelNode=$('zoomLabel');
   if(titleNode)new MutationObserver(updateIdentity).observe(titleNode,{subtree:true,childList:true,characterData:true});
   if($('paletteSwatches'))new MutationObserver(populateQuickPalette).observe($('paletteSwatches'),{childList:true,subtree:true});
+  if(zoomLabelNode)new MutationObserver(updateIdentity).observe(zoomLabelNode,{subtree:true,childList:true,characterData:true});
   if(statusNode)new MutationObserver(updateStatus).observe(statusNode,{subtree:true,childList:true,characterData:true});
   if(selectionNode)new MutationObserver(()=>{if(currentTool()==='select')renderContext('select')}).observe(selectionNode,{subtree:true,childList:true});
   new MutationObserver(updateIdentity).observe(document.body,{attributes:true,attributeFilter:['class']});

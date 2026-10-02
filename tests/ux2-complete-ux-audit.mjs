@@ -200,7 +200,7 @@ try{
     await page.locator('#ux2ZoomOut').click();
     await page.locator('#ux2Fit').click();
     const fitted=Number(await page.locator('#zoom').inputValue());
-    const expected=await page.locator('#editorCanvas').evaluate(el=>Math.round(Math.min(el.width,el.height)*.92/(4000*.38)*100));
+    const expected=await page.locator('#editorCanvas').evaluate(el=>Math.round(Math.min(el.width,el.height)*.92/(900*.38)*100));
     assert(fitted===expected,'Fit did not calculate a tile-sized view');
     assert((await page.locator('#ux2ZoomLabel').textContent()).trim()===`${fitted}%`,'Zoom readout did not follow Fit');
   });
