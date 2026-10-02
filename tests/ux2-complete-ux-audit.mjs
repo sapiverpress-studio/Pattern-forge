@@ -338,6 +338,7 @@ try{
     await page.locator('#ux2SymmetryGuides').click();
     const guideBefore=await page.locator('#editorCanvas').screenshot();
     await page.locator('#ux2Guide').selectOption('centre');
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const guideAfter=await page.locator('#editorCanvas').screenshot();
     assert(!guideBefore.equals(guideAfter),'Guide selection did not redraw the canvas immediately');
     assert(await page.locator('#constructionGuide').inputValue()==='centre','Construction guide failed');
