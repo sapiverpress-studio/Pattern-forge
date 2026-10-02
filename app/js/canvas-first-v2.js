@@ -122,9 +122,10 @@
   }
   function populateSwatches(){
     const target=$('ux2PaletteSwatches'); if(!target)return; target.innerHTML='';
+    const syncCurrentColour=colour=>{const input=$('ux2ColourInput');if(input)input.value=colour};
     const old=[...document.querySelectorAll('#paletteSwatches button')];
-    old.slice(0,10).forEach((button,i)=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.title=`Palette colour ${i+1}`;sw.style.background=getComputedStyle(button).backgroundColor||button.style.background||'#fff';sw.addEventListener('click',()=>button.click());target.appendChild(sw)});
-    if(!old.length){['#17202b','#526d8f','#6f89a8','#c5ccd5','#ffffff'].forEach(c=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.style.background=c;sw.addEventListener('click',()=>dispatchValue('ink',c));target.appendChild(sw)})}
+    old.slice(0,10).forEach((button,i)=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.title=`Palette colour ${i+1}`;sw.style.background=getComputedStyle(button).backgroundColor||button.style.background||'#fff';sw.addEventListener('click',()=>{button.click();syncCurrentColour(button.dataset.color||'#fff')});target.appendChild(sw)});
+    if(!old.length){['#17202b','#526d8f','#6f89a8','#c5ccd5','#ffffff'].forEach(c=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.style.background=c;sw.addEventListener('click',()=>{dispatchValue('ink',c);syncCurrentColour(c)});target.appendChild(sw)})}
   }
   function layerPanel(){
     const layers=[...document.querySelectorAll('#layerList .layerRow')];
