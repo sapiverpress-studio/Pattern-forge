@@ -410,6 +410,8 @@ try{
     assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern dock visible in Doodle');
     assert(await m.locator('#editorCanvas').isVisible(),'Doodle canvas missing');
     await shot(m,'11-doodle-landscape');
+    const topControls=await Promise.all(['#ux2Gallery','#ux2Undo','#ux2Redo','#ux2Fullscreen'].map(sel=>m.locator(sel).boundingBox()));
+    assert(topControls.every(box=>box&&box.y>=0),'Compact Doodle top-bar controls must stay inside the viewport');
     await collectLayout(m,'doodle-landscape-before-fullscreen');
   });
 
