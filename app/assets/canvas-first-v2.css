@@ -32,3 +32,38 @@ body.ux2-fullscreen .ux2-canvas-slot #stageWrap{width:min(calc(100dvh - var(--ux
 @media(orientation:landscape) and (max-height:600px){
   body.ux2-fullscreen .ux2-canvas-slot #stageWrap{height:calc(100% - 4px);width:auto;max-width:calc(100% - 4px)}
 }
+
+/* UX2 true immersive drawing fullscreen.
+   Fullscreen is for detailed canvas work: editor chrome gets out of the way while
+   Undo, Redo and Exit remain available as a small floating control cluster. */
+body.ux2-fullscreen .ux2-editor{display:block}
+body.ux2-fullscreen .ux2-topbar{
+  position:absolute;top:6px;right:6px;left:auto;width:auto;height:40px;
+  padding:3px;border:1px solid rgba(185,194,204,.9);border-radius:12px;
+  background:rgba(248,250,251,.9);box-shadow:0 4px 16px rgba(31,42,57,.16);
+  backdrop-filter:blur(8px);z-index:45
+}
+body.ux2-fullscreen .ux2-top-left,
+body.ux2-fullscreen .ux2-status,
+body.ux2-fullscreen #ux2Preview,
+body.ux2-fullscreen #ux2Export{display:none!important}
+body.ux2-fullscreen .ux2-top-actions{gap:2px}
+body.ux2-fullscreen .ux2-top-actions .ux2-icon-btn{width:34px;height:34px}
+body.ux2-fullscreen .ux2-work{position:absolute;inset:0;display:block}
+body.ux2-fullscreen .ux2-tools,
+body.ux2-fullscreen .ux2-dockbar,
+body.ux2-fullscreen .ux2-context,
+body.ux2-fullscreen .ux2-canvas-head{display:none!important}
+body.ux2-fullscreen .ux2-canvas-area{position:absolute;inset:0;display:block}
+body.ux2-fullscreen .ux2-canvas-slot{
+  position:absolute;inset:0;display:grid;place-items:center;padding:2px
+}
+body.ux2-fullscreen .ux2-palette{right:0;top:0;height:100%;z-index:50}
+body.ux2-fullscreen .ux2-canvas-slot #stageWrap{
+  width:min(calc(100dvh - 4px),calc(100vw - 4px));
+  height:min(calc(100dvh - 4px),calc(100vw - 4px));
+  max-width:none;max-height:none;aspect-ratio:1;margin:0
+}
+body.ux2-fullscreen .ux2-canvas-slot #editorCanvas{
+  width:100%!important;height:100%!important;object-fit:contain
+}

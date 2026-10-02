@@ -37,9 +37,15 @@ try{
   await page.locator('#ux2Fullscreen').click();
   await page.waitForTimeout(80);
   assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Pattern fullscreen should enter immersive UX2 mode');
+  assert(await page.locator('.ux2-tools').isHidden(),'Pattern fullscreen should hide the tool rail from the drawing area');
+  assert(await page.locator('.ux2-dockbar').isHidden(),'Pattern fullscreen should hide the palette dock from the drawing area');
+  assert(await page.locator('#ux2Context').isHidden(),'Pattern fullscreen should hide the contextual inspector from the drawing area');
+  assert(await page.locator('.ux2-canvas-head').isHidden(),'Pattern fullscreen should hide the canvas header from the drawing area');
+  assert(Number(await page.locator('#zoom').inputValue())===270,'Pattern fullscreen should enter at detailed 270% zoom');
   await page.locator('#ux2Fullscreen').click();
   await page.waitForTimeout(80);
   assert(!(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Pattern fullscreen should exit immersive UX2 mode');
+  assert(Number(await page.locator('#zoom').inputValue())===100,'Pattern fullscreen should restore the previous zoom on exit');
 
   const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   await page.locator('[data-ux2-tool="brush"]').click();
@@ -136,8 +142,15 @@ try{
   assert(await m.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Doodle');
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Doodle fullscreen should enter immersive UX2 mode');
+  assert(await m.locator('.ux2-tools').isHidden(),'Doodle fullscreen should hide the tool rail from the drawing area');
+  assert(await m.locator('.ux2-dockbar').isHidden(),'Doodle fullscreen should hide the palette dock from the drawing area');
+  assert(await m.locator('#ux2Context').isHidden(),'Doodle fullscreen should hide the contextual inspector from the drawing area');
+  assert(Number(await m.locator('#zoom').inputValue())===270,'Doodle fullscreen should enter at detailed 270% zoom');
+  const immersiveStage=await m.locator('#stageWrap').boundingBox();
+  assert(immersiveStage&&immersiveStage.height>330,'Doodle fullscreen should give the square canvas nearly the full landscape height');
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(!(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Doodle fullscreen should exit immersive UX2 mode');
+  assert(Number(await m.locator('#zoom').inputValue())===100,'Doodle fullscreen should restore the previous zoom on exit');
   await m.locator('[data-ux2-panel="layers"]').click();
   assert(await m.locator('#ux2Palette').isVisible(),'mobile landscape palette should overlay on demand');
   await m.screenshot({path:'ux2-real-shots/doodle-phone-landscape.png',fullPage:true});

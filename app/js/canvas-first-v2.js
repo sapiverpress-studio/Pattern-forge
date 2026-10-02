@@ -160,6 +160,7 @@
   }
 
   let ux2FullscreenActive=false;
+  let ux2FullscreenZoomBefore=null;
   function notifyNativeFullscreen(active){
     try{
       const bridge=window.PatternForgeAndroid;
@@ -174,24 +175,36 @@
     button.setAttribute('aria-pressed',String(ux2FullscreenActive));
   }
   async function setUx2Fullscreen(active){
-    ux2FullscreenActive=!!active;
+    const next=!!active;
+    if(next===ux2FullscreenActive)return;
+    ux2FullscreenActive=next;
+    if(ux2FullscreenActive){
+      ux2FullscreenZoomBefore=$('zoom')?.value||null;
+      const palette=$('ux2Palette');if(palette)palette.hidden=true;
+      document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'));
+    }
     document.body.classList.toggle('ux2-fullscreen',ux2FullscreenActive);
     syncFullscreenButton();
     notifyNativeFullscreen(ux2FullscreenActive);
     if(ux2FullscreenActive){
+      requestAnimationFrame(()=>{
+        if($('zoom'))dispatchValue('zoom','270');
+      });
       if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
         try{await document.documentElement.requestFullscreen({navigationUI:'hide'});}catch(_){/* Keep immersive in-app fallback. */}
       }
-    }else if(document.fullscreenElement&&document.exitFullscreen){
-      try{await document.exitFullscreen();}catch(_){/* UI state is already restored. */}
+    }else{
+      if(ux2FullscreenZoomBefore!==null&&$('zoom'))dispatchValue('zoom',ux2FullscreenZoomBefore);
+      ux2FullscreenZoomBefore=null;
+      if(document.fullscreenElement&&document.exitFullscreen){
+        try{await document.exitFullscreen();}catch(_){/* UI state is already restored. */}
+      }
     }
   }
   document.addEventListener('fullscreenchange',()=>{
-    if(!document.fullscreenElement&&ux2FullscreenActive){
-      ux2FullscreenActive=false;document.body.classList.remove('ux2-fullscreen');syncFullscreenButton();notifyNativeFullscreen(false);
-    }
+    if(!document.fullscreenElement&&ux2FullscreenActive)void setUx2Fullscreen(false);
   });
-  window.addEventListener('patternforge:native-fullscreen-exit',()=>setUx2Fullscreen(false));
+  window.addEventListener('patternforge:native-fullscreen-exit',()=>void setUx2Fullscreen(false));
 
   $('ux2Gallery').addEventListener('click',()=>{location.href='/'});
   $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
