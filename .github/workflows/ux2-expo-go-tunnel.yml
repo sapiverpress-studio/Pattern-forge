@@ -1,4 +1,5 @@
 # UX2 live tunnel refreshes from the branch head used for device QA.
+# Refresh: immersive drawing fullscreen ac89649d.
 name: UX2 Expo Go live test
 
 on:
