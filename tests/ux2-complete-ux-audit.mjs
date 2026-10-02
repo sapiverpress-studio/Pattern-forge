@@ -410,6 +410,7 @@ try{
     assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern dock visible in Doodle');
     assert(await m.locator('#editorCanvas').isVisible(),'Doodle canvas missing');
     await shot(m,'11-doodle-landscape');
+    await collectLayout(m,'doodle-landscape-before-fullscreen');
   });
 
   await step('Doodle landscape: visible tools are usable',async()=>{
@@ -424,9 +425,7 @@ try{
     await m.locator('[data-ux2-panel="layers"]').click();
     assert((await m.locator('#ux2PaletteTitle').textContent())==='Layers','Doodle Layers panel failed');
     await m.locator('#ux2PaletteClose').click();
-    await m.locator('#ux2Preview').click();
-    assert((await m.locator('#ux2PaletteTitle').textContent())==='Layers','Doodle Preview did not open Layers');
-    await m.locator('#ux2PaletteClose').click();
+    assert(await m.locator('#ux2Preview').isHidden(),'Compact Doodle landscape should hide redundant Preview button');
   });
 
   await step('Doodle fullscreen: camera-safe rail, tools, context and palettes remain usable',async()=>{
@@ -443,10 +442,10 @@ try{
     await m.locator('#ux2PaletteClose').click();
     await shot(m,'12-doodle-fullscreen');
     await collectLayout(m,'doodle-fullscreen-landscape');
-    await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(80);
+    await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(220);
   });
 
-  await collectLayout(m,'doodle-landscape-normal');
+  await collectLayout(m,'doodle-landscape-after-fullscreen');
   await mobile.close();
 
   const portrait=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
