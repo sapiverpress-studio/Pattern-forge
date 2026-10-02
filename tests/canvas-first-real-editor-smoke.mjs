@@ -126,12 +126,12 @@ try{
   assert(await page.locator('#layerList .layerRow').count()===layerCount+1,'new Layers palette should add a real layer');
 
   await page.locator('[data-ux2-panel="pattern"]').click();
-  assert((await page.locator('#ux2PaletteTitle').textContent())==='Pattern','Pattern palette should be discoverable');
-  assert(await page.locator('#ux2FullPreview').isVisible(),'repeat preview should be available from Pattern palette');
+  assert((await page.locator('#ux2PaletteTitle').textContent())==='Design setup','Design setup panel should be discoverable');
+  assert(await page.locator('#ux2FullPreview').isVisible(),'repeat preview should be available from Design setup');
   assert(await page.locator('#ux2SeamInspect').isVisible(),'seam inspection should be discoverable');
-  assert(await page.locator('#ux2Grid').isVisible(),'grid controls should be discoverable');
-  assert(await page.locator('#ux2Symmetry').isVisible(),'symmetry controls should be discoverable');
-  assert(await page.locator('#ux2SnapOn').isVisible(),'snapping should be discoverable');
+  assert(await page.locator('#ux2Grid').isVisible(),'grid controls should be discoverable in Design setup');
+  assert(await page.locator('#ux2Symmetry').isVisible(),'symmetry controls should be discoverable in Design setup');
+  assert(await page.locator('#ux2SnapOn').isVisible(),'snapping should be discoverable in Design setup');
 
   await page.locator('#ux2Export').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Export','Export palette should open');
