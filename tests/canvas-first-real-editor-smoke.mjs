@@ -154,6 +154,7 @@ try{
   assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern palette should hide in Doodle');
   assert(await m.locator('#editorCanvas').isVisible(),'Doodle should use real canvas in new shell');
   assert(await m.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Doodle');
+  const doodleZoomBeforeFullscreen=Number(await m.locator('#zoom').inputValue());
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Doodle fullscreen should enter immersive UX2 mode');
   assert(await m.locator('.ux2-tools').isVisible(),'Doodle fullscreen should keep creative tools available as a compact overlay');
@@ -172,7 +173,7 @@ try{
   await m.locator('#ux2PaletteClose').click();
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(!(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Doodle fullscreen should exit immersive UX2 mode');
-  assert(Number(await m.locator('#zoom').inputValue())===100,'Doodle fullscreen should restore the previous zoom on exit');
+  assert(Number(await m.locator('#zoom').inputValue())===doodleZoomBeforeFullscreen,'Doodle fullscreen should restore the previous zoom on exit');
   await m.locator('[data-ux2-panel="layers"]').click();
   assert(await m.locator('#ux2Palette').isVisible(),'mobile landscape palette should overlay on demand');
   await m.screenshot({path:'ux2-real-shots/doodle-phone-landscape.png',fullPage:true});
