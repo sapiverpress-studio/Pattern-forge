@@ -467,7 +467,9 @@ try{
       await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
       await view.waitForFunction(()=>Number(document.querySelector('#zoom')?.value)>=250);
       assert(await view.locator('#gridOn').isChecked(),size.label+': default construction grid is off');
-      const geometry=await view.evaluate(()=>{const stage=document.querySelector('#stageWrap').getBoundingClientRect(),canvas=document.querySelector('#editorCanvas').getBoundingClientRect();return {stage:{x:stage.x,y:stage.y,w:stage.width,h:stage.height},canvas:{x:canvas.x,y:canvas.y,w:canvas.width,h:canvas.height}}});
+      const geometry=await view.evaluate(()=>{const stage=document.querySelector('#stageWrap').getBoundingClientRect(),canvas=document.querySelector('#editorCanvas').getBoundingClientRect(),slot=document.querySelector('#ux2CanvasSlot').getBoundingClientRect();return {stage:{x:stage.x,y:stage.y,w:stage.width,h:stage.height},canvas:{x:canvas.x,y:canvas.y,w:canvas.width,h:canvas.height},slot:{x:slot.x,y:slot.y,w:slot.width,h:slot.height}}});
+      assert(geometry.stage.x>=geometry.slot.x-1&&geometry.stage.x+geometry.stage.w<=geometry.slot.x+geometry.slot.w+1,size.label+': tile overflows the available canvas width');
+      assert(geometry.stage.y>=geometry.slot.y-1&&geometry.stage.y+geometry.stage.h<=geometry.slot.y+geometry.slot.h+1,size.label+': tile overflows the available canvas height');
       assert(Math.abs((geometry.stage.x+geometry.stage.w/2)-(geometry.canvas.x+geometry.canvas.w/2))<2,size.label+': canvas tile is not horizontally centred');
       assert(Math.abs((geometry.stage.y+geometry.stage.h/2)-(geometry.canvas.y+geometry.canvas.h/2))<2,size.label+': canvas tile is not vertically centred');
       await shot(view,'pattern-fit-'+size.label);await context.close();
