@@ -1,0 +1,34 @@
+name: Package UX2 staging site
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - index.html
+      - _headers
+      - manifest.webmanifest
+      - assets/**
+      - app/**
+      - help/**
+      - .github/workflows/package-ux2-staging.yml
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - name: Assemble static staging site
+        run: |
+          mkdir -p ux2-staging-site
+          cp index.html _headers manifest.webmanifest ux2-staging-site/
+          cp -R assets app help ux2-staging-site/
+      - name: Upload staging site
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux2-staging-site
+          path: ux2-staging-site/**
+          if-no-files-found: error
+          retention-days: 2
