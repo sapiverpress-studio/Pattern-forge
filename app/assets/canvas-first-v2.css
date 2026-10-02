@@ -50,10 +50,51 @@ body.ux2-fullscreen #ux2Export{display:none!important}
 body.ux2-fullscreen .ux2-top-actions{gap:2px}
 body.ux2-fullscreen .ux2-top-actions .ux2-icon-btn{width:34px;height:34px}
 body.ux2-fullscreen .ux2-work{position:absolute;inset:0;display:block}
-body.ux2-fullscreen .ux2-tools,
-body.ux2-fullscreen .ux2-dockbar,
-body.ux2-fullscreen .ux2-context,
 body.ux2-fullscreen .ux2-canvas-head{display:none!important}
+
+/* Keep the full-size drawing surface, but return every creative control as a
+   floating overlay in the otherwise-unused landscape side space. */
+body.ux2-fullscreen .ux2-tools,
+body.ux2-fullscreen .ux2-dockbar{
+  position:absolute;top:50%;transform:translateY(-50%);width:46px;
+  max-height:calc(100dvh - 20px);padding:4px;gap:3px;
+  border:1px solid rgba(185,194,204,.9);border-radius:13px;
+  background:rgba(248,250,251,.92);box-shadow:0 4px 16px rgba(31,42,57,.16);
+  backdrop-filter:blur(8px);z-index:44;overflow-y:auto
+}
+body.ux2-fullscreen .ux2-tools{left:6px;border-right:1px solid rgba(185,194,204,.9)}
+body.ux2-fullscreen .ux2-dockbar{right:6px;border-left:1px solid rgba(185,194,204,.9)}
+body.ux2-fullscreen .ux2-tool,
+body.ux2-fullscreen .ux2-dock{
+  width:36px;min-height:36px;padding:0;border-radius:9px;flex:0 0 36px
+}
+body.ux2-fullscreen .ux2-tool b,
+body.ux2-fullscreen .ux2-dock b{display:none!important}
+body.ux2-fullscreen .ux2-tool svg,
+body.ux2-fullscreen .ux2-dock svg{width:20px;height:20px}
+body.ux2-fullscreen .ux2-tool.active:before,
+body.ux2-fullscreen .ux2-dock.active:before{left:-4px;height:22px}
+
+body.ux2-fullscreen .ux2-context{
+  display:flex!important;position:absolute;left:50%;bottom:8px;
+  transform:translateX(-50%);width:max-content;
+  max-width:calc(100vw - 128px);min-height:0;height:auto;
+  padding:5px 7px;gap:5px;border:1px solid rgba(185,194,204,.9);
+  border-radius:12px;background:rgba(248,250,251,.94);
+  box-shadow:0 4px 16px rgba(31,42,57,.16);backdrop-filter:blur(8px);
+  z-index:43;overflow-x:auto;overflow-y:hidden
+}
+body.ux2-fullscreen .ux2-context-group{gap:5px;padding-right:6px}
+body.ux2-fullscreen .ux2-chip,
+body.ux2-fullscreen .ux2-context select{padding:5px 7px;font-size:9px}
+body.ux2-fullscreen .ux2-slider{padding:3px 5px;font-size:9px}
+body.ux2-fullscreen .ux2-slider input{width:64px}
+
+body.ux2-fullscreen .ux2-palette{
+  right:58px;top:6px;bottom:6px;height:auto;max-height:calc(100% - 12px);
+  border:1px solid rgba(185,194,204,.95);border-radius:14px;
+  box-shadow:0 8px 30px rgba(31,42,57,.2);z-index:50
+}
 body.ux2-fullscreen .ux2-canvas-area{position:absolute;inset:0;display:block}
 body.ux2-fullscreen .ux2-canvas-slot{
   position:absolute;inset:0;display:grid;place-items:center;padding:2px
