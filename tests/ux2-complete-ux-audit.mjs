@@ -84,10 +84,10 @@ try{
     await page.getByRole('link',{name:'Quick guide'}).click();
     await page.waitForLoadState('networkidle');
     assert(page.url().includes('/help/'),'Quick guide did not open help route');
-    const home=page.getByRole('link',{name:'Main menu'});
-    assert(await home.isVisible(),'Help Main menu link missing');
+    const home=page.getByRole('link',{name:'Project home'});
+    assert(await home.isVisible(),'Help Project home link missing');
     await home.click();await page.waitForLoadState('networkidle');
-    assert(new URL(page.url()).pathname==='/','Main menu did not return home');
+    assert(new URL(page.url()).pathname==='/','Project home did not return home');
   });
 
   await step('Pattern setup: Straight, Half-drop and Brick cards drive the fixed repeat choice',async()=>{
@@ -217,6 +217,7 @@ try{
     await page.locator('[data-ux2-panel="layers"]').click();
     const before=await page.locator('#layerList .layerRow').count();
     await page.locator('#ux2AddLayer').click();
+    await page.waitForFunction(expected=>document.querySelectorAll('#layerList .layerRow').length===expected,before+1);
     const afterAdd=await page.locator('#layerList .layerRow').count();
     assert(afterAdd===before+1,'Add Layer failed');
     await page.locator('#ux2LayerName').fill('Audit Layer');
@@ -249,8 +250,8 @@ try{
     await page.locator('#ux2Symmetry').selectOption('quadrant');
     assert(await page.locator('#symmetry').inputValue()==='quadrant','Quadrant mirror failed');
     await page.locator('#ux2SymmetryGuides').click();
-    await page.locator('#ux2Guide').selectOption('cross');
-    assert(await page.locator('#constructionGuide').inputValue()==='cross','Construction guide failed');
+    await page.locator('#ux2Guide').selectOption('centre');
+    assert(await page.locator('#constructionGuide').inputValue()==='centre','Construction guide failed');
     await page.locator('#ux2SnapOn').click();
     await page.locator('#ux2Neighbour').evaluate(el=>{el.value='71';el.dispatchEvent(new Event('input',{bubbles:true}));});
     assert(await page.locator('#neighborOpacity').inputValue()==='71','Repeat visibility failed');
