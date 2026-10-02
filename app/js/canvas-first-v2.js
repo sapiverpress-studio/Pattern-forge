@@ -50,6 +50,10 @@
   oldLayout.before(shell);
   $('ux2CanvasSlot').appendChild(stage);
   document.body.classList.add('ux2-active');
+  if(document.body.classList.contains('doodle-project')){
+    const quickPalette=$('ux2QuickPalette'),toolRail=shell.querySelector('.ux2-tools');
+    if(quickPalette&&toolRail)toolRail.appendChild(quickPalette);
+  }
 
   const hiddenTool = tool => oldLayout.querySelector(`[data-tool="${tool}"]`);
   const favouriteTools=[{id:'select',label:'Select',icon:'select'},{id:'brush',label:'Brush',icon:'brush'},{id:'eraser',label:'Erase',icon:'eraser'},{id:'freefill',label:'Fill',icon:'fill'},{id:'pan',label:'Pan',icon:'pan'},{id:'image',label:'Image',icon:'image'},{id:'rect',label:'Shape',icon:'shape'}];
@@ -92,6 +96,7 @@
   const hints={select:'Select artwork to move, scale or rotate',brush:'Draw on the active layer',eraser:'Erase from the active layer',freefill:'Trace a closed area to fill',gradient:'Trace a closed area for gradient fill',pan:'Move around the canvas',line:'Draw a straight line',rect:'Draw a rectangle',ellipse:'Draw an ellipse'};
   function renderContext(tool=currentTool()){
     const context=$('ux2Context');
+    context.classList.remove('ux2-context--empty-selection');
     $('ux2Hint').textContent=hints[tool]||'Create on the canvas';
     if(tool==='brush'||tool==='eraser'){
       const size=$('brushSize')?.value||20, opacity=$('inkOpacity')?.value||100, style=$('brushStyle')?.value||'ink';
@@ -115,6 +120,7 @@
       context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Canvas</span><span style="font-size:11px;color:#6d7885">Use the zoom controls above, pinch, or mouse wheel to change the view.</span></div>`;
     } else {
       const scale=$('selScale'),rot=$('selRot'),opacity=$('selOpacity'),hasSelection=Boolean(scale||rot||opacity);
+      context.classList.toggle('ux2-context--empty-selection',tool==='select'&&!hasSelection);
       context.innerHTML=hasSelection
         ? `<div class="ux2-context-group"><span class="ux2-label">Transform</span>${scale?`<label class="ux2-slider">Scale <input id="ux2SelScale" type="range" min="${scale.min||1}" max="${scale.max||600}" value="${scale.value}"><b>${scale.value}%</b></label>`:''}${rot?`<label class="ux2-slider">Rotate <input id="ux2SelRot" type="range" min="-180" max="180" value="${rot.value}"><b>${rot.value}°</b></label>`:''}${opacity?`<label class="ux2-slider">Opacity <input id="ux2SelOpacity" type="range" min="5" max="100" value="${opacity.value}"><b>${opacity.value}%</b></label>`:''}</div><div class="ux2-context-group"><button class="ux2-chip" id="ux2Duplicate">Duplicate</button><button class="ux2-chip" id="ux2Delete">Delete</button><button class="ux2-chip" id="ux2Front">Bring front</button><button class="ux2-chip" id="ux2Back">Send back</button><button class="ux2-chip" id="ux2Snap">Snap</button></div>`
         : `<div class="ux2-context-group"><span class="ux2-label">Selection</span><span style="font-size:11px;color:#6d7885">Tap artwork to expose scale, rotation, opacity and arrange controls.</span><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
