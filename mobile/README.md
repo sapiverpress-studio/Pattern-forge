@@ -13,7 +13,7 @@ Expo SDK 57 Android shell for the hosted Sapiver Pattern Forge editor.
 ```bash
 npm install
 npx expo start
-```
+``
 Open in Expo Go for basic WebView testing.
 
 ## APK test build
@@ -22,7 +22,7 @@ npx eas-cli@latest build --platform android --profile preview
 ```
 
 ## UX2 staging APK
-The UX2 preview installs as a separate app alongside the production app, displays the UX2 label, and loads the UX2 Netlify staging site.
+The UX2 preview uses the existing Android application ID and signing credentials, and loads the UX2 Netlify staging site. Installing it updates the existing Pattern Forge app on the device.
 
 ```bash
 npx eas-cli@latest build --platform android --profile preview-ux2
