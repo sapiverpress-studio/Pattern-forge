@@ -33,6 +33,13 @@ try{
   assert((await page.locator('#ux2Title').textContent())?.includes('UX Engine QA'),'new shell should display project identity');
   assert(await page.locator('[data-ux2-action="image"]').isVisible(),'Image tool should be discoverable');
   assert(await page.locator('[data-ux2-tool="rect"]').isVisible(),'Shape tool should be discoverable');
+  assert(await page.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Pattern');
+  await page.locator('#ux2Fullscreen').click();
+  await page.waitForTimeout(80);
+  assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Pattern fullscreen should enter immersive UX2 mode');
+  await page.locator('#ux2Fullscreen').click();
+  await page.waitForTimeout(80);
+  assert(!(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Pattern fullscreen should exit immersive UX2 mode');
 
   const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   await page.locator('[data-ux2-tool="brush"]').click();
@@ -126,6 +133,11 @@ try{
   assert((await m.locator('#ux2Mode').textContent())==='Doodle','Doodle route should identify Doodle workspace');
   assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern palette should hide in Doodle');
   assert(await m.locator('#editorCanvas').isVisible(),'Doodle should use real canvas in new shell');
+  assert(await m.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Doodle');
+  await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
+  assert(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Doodle fullscreen should enter immersive UX2 mode');
+  await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
+  assert(!(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Doodle fullscreen should exit immersive UX2 mode');
   await m.locator('[data-ux2-panel="layers"]').click();
   assert(await m.locator('#ux2Palette').isVisible(),'mobile landscape palette should overlay on demand');
   await m.screenshot({path:'ux2-real-shots/doodle-phone-landscape.png',fullPage:true});
