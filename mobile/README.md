@@ -21,6 +21,15 @@ Open in Expo Go for basic WebView testing.
 npx eas-cli@latest build --platform android --profile preview
 ```
 
+## UX2 staging APK
+The UX2 preview installs as a separate app alongside the production app, displays the UX2 label, and loads the UX2 Netlify staging site.
+
+```bash
+npx eas-cli@latest build --platform android --profile preview-ux2
+```
+
+The Android launcher uses the Sapiver icon family in `assets/`: the full launcher icon, adaptive foreground/background, and Android themed monochrome icon.
+
 ## Play Store build
 ```bash
 npx eas-cli@latest build --platform android --profile production
