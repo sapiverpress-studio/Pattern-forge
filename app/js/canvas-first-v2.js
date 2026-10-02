@@ -35,7 +35,7 @@
         <button class="ux2-tool" data-ux2-tool="rect" aria-label="Shape">${icon('shape')}<b>Shape</b></button>
       </nav>
       <main class="ux2-canvas-area">
-        <div class="ux2-canvas-head"><span id="ux2Hint">Select artwork to move, scale or rotate</span><span class="spacer"></span><button class="ux2-btn" id="ux2Fit">Fit</button><span id="ux2ZoomLabel">100%</span></div>
+        <div class="ux2-canvas-head"><span id="ux2Hint">Select artwork to move, scale or rotate</span><div class="ux2-quick-palette" id="ux2QuickPalette" role="group" aria-label="Current palette colours"></div><span class="spacer"></span><div class="ux2-zoom-controls" role="group" aria-label="Canvas zoom"><button class="ux2-zoom-step" id="ux2ZoomOut" aria-label="Zoom out">−</button><output id="ux2ZoomLabel" aria-live="polite">100%</output><button class="ux2-zoom-step" id="ux2ZoomIn" aria-label="Zoom in">+</button><button class="ux2-btn" id="ux2Fit">Fit</button></div></div>
         <div class="ux2-canvas-slot" id="ux2CanvasSlot"></div>
       </main>
       <nav class="ux2-dockbar" aria-label="Quick palettes">
@@ -57,6 +57,11 @@
   };
   const dispatchChecked = (id, value) => {
     const el=$(id); if(!el) return; el.checked=!!value; el.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+  const dispatchSetting = (id,value) => {
+    const el=$(id);if(!el)return;
+    if(el.type==='checkbox'){el.checked=!!value;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
+    else{el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
   };
   const clickOld = id => { const el=$(id); if(el) el.click(); };
   const currentTool = () => [...oldLayout.querySelectorAll('[data-tool]')].find(b=>b.classList.contains('active'))?.dataset.tool || 'select';
@@ -84,8 +89,7 @@
       $('ux2GradientFill').addEventListener('click',()=>setTool('gradient'));
       $('ux2ColourShortcut').addEventListener('click',()=>openPanel('colour'));
     } else if(tool==='pan'){
-      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Canvas</span><button class="ux2-chip" id="ux2ZoomOut">− Zoom</button><button class="ux2-chip" id="ux2ZoomIn">+ Zoom</button><button class="ux2-chip" id="ux2FitContext">Fit</button></div>`;
-      $('ux2ZoomOut').addEventListener('click',()=>clickOld('zoomOut'));$('ux2ZoomIn').addEventListener('click',()=>clickOld('zoomIn'));$('ux2FitContext').addEventListener('click',()=>clickOld('fit'));
+      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Canvas</span><span style="font-size:11px;color:#6d7885">Use the zoom controls above, pinch, or mouse wheel to change the view.</span></div>`;
     } else {
       const scale=$('selScale'),rot=$('selRot'),opacity=$('selOpacity'),hasSelection=Boolean(scale||rot||opacity);
       context.innerHTML=hasSelection
@@ -160,7 +164,7 @@
       document.querySelectorAll('[data-layer-index]').forEach(b=>b.addEventListener('click',()=>{const row=document.querySelectorAll('#layerList .layerRow')[Number(b.dataset.layerIndex)];if(row)row.click();openPanel('layers')}));
       $('ux2AddLayer').addEventListener('click',()=>{clickOld('layerAdd');openPanel('layers')});$('ux2LayerDuplicate').addEventListener('click',()=>{clickOld('layerDuplicate');openPanel('layers')});$('ux2LayerDelete').addEventListener('click',()=>{clickOld('layerDelete');openPanel('layers')});$('ux2LayerUp').addEventListener('click',()=>{clickOld('layerUp');openPanel('layers')});$('ux2LayerDown').addEventListener('click',()=>{clickOld('layerDown');openPanel('layers')});$('ux2LayerOpacity').addEventListener('input',e=>dispatchValue('layerOpacity',e.target.value));$('ux2LayerName').addEventListener('change',e=>dispatchValue('layerName',e.target.value,'change'));$('ux2LayerVisible').addEventListener('change',e=>dispatchChecked('layerVisible',e.target.checked));$('ux2LayerLocked').addEventListener('change',e=>dispatchChecked('layerLocked',e.target.checked));$('ux2LayerExport').addEventListener('change',e=>dispatchChecked('layerExport',e.target.checked));
     }
-    if(name==='pattern'&&!document.body.classList.contains('doodle-project')){$('ux2FullPreview')?.addEventListener('click',()=>clickOld('repeatPreviewToggle'));$('ux2SeamInspect')?.addEventListener('click',()=>{dispatchValue('neighborOpacity','100');dispatchChecked('showTileBorder',true);clickOld('fit');const st=$('status');if(st)st.textContent='Seam inspection: repeat neighbours are at full visibility and the centre tile edge is marked.';openPanel('pattern')});$('ux2Neighbour')?.addEventListener('input',e=>dispatchValue('neighborOpacity',e.target.value));$('ux2TileEdge')?.addEventListener('change',e=>dispatchChecked('showTileBorder',e.target.checked));$('ux2Grid').value=String($('gridCount')?.value||16);$('ux2Grid').addEventListener('change',e=>dispatchValue('gridCount',e.target.value,'change'));$('ux2GridOn').addEventListener('change',e=>dispatchChecked('gridOn',e.target.checked));$('ux2Symmetry').value=$('symmetry')?.value||'off';$('ux2Symmetry').addEventListener('change',e=>dispatchValue('symmetry',e.target.value,'change'));$('ux2SymmetryGuides').addEventListener('change',e=>dispatchChecked('symmetryGuides',e.target.checked));$('ux2Guide').value=$('constructionGuide')?.value||'off';$('ux2Guide').addEventListener('change',e=>dispatchValue('constructionGuide',e.target.value,'change'));$('ux2SnapOn').addEventListener('change',e=>dispatchChecked('snapOn',e.target.checked))}
+    if(name==='pattern'&&!document.body.classList.contains('doodle-project')){$('ux2FullPreview')?.addEventListener('click',()=>clickOld('repeatPreviewToggle'));$('ux2SeamInspect')?.addEventListener('click',()=>{dispatchValue('neighborOpacity','100');dispatchChecked('showTileBorder',true);clickOld('fit');const st=$('status');if(st)st.textContent='Seam inspection: repeat neighbours are at full visibility and the centre tile edge is marked.';openPanel('pattern')});$('ux2Neighbour')?.addEventListener('input',e=>dispatchValue('neighborOpacity',e.target.value));$('ux2TileEdge')?.addEventListener('change',e=>dispatchChecked('showTileBorder',e.target.checked));$('ux2Grid').value=String($('gridCount')?.value||16);$('ux2Grid').addEventListener('change',e=>dispatchSetting('gridCount',e.target.value));$('ux2GridOn').addEventListener('change',e=>dispatchSetting('gridOn',e.target.checked));$('ux2Symmetry').value=$('symmetry')?.value||'off';$('ux2Symmetry').addEventListener('change',e=>dispatchSetting('symmetry',e.target.value));$('ux2SymmetryGuides').addEventListener('change',e=>dispatchSetting('symmetryGuides',e.target.checked));$('ux2Guide').value=$('constructionGuide')?.value||'off';$('ux2Guide').addEventListener('change',e=>dispatchSetting('constructionGuide',e.target.value));$('ux2SnapOn').addEventListener('change',e=>dispatchChecked('snapOn',e.target.checked))}
     if(name==='export')document.querySelectorAll('[data-export-old]').forEach(b=>b.addEventListener('click',()=>clickOld(b.dataset.exportOld)));
   }
 
@@ -215,13 +219,20 @@
   $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
   $('ux2Fullscreen').addEventListener('click',()=>setUx2Fullscreen(!ux2FullscreenActive));syncFullscreenButton();
   $('ux2Preview').addEventListener('click',()=>openPanel(document.body.classList.contains('doodle-project')?'layers':'pattern'));
-  $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));
+  $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));$('ux2ZoomOut').addEventListener('click',()=>clickOld('zoomOut'));$('ux2ZoomIn').addEventListener('click',()=>clickOld('zoomIn'));
   $('ux2PaletteClose').addEventListener('click',()=>{$('ux2Palette').hidden=true;document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'))});
   document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));
   document.querySelectorAll('[data-ux2-action="image"]').forEach(b=>b.addEventListener('click',()=>{const picker=document.getElementById('files');if(picker)picker.click()}));
   document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.addEventListener('click',()=>openPanel(b.dataset.ux2Panel)));
 
   const setText=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value};
+  function populateQuickPalette(){
+    const host=$('ux2QuickPalette'),source=$('paletteSwatches');if(!host||!source)return;
+    host.replaceChildren(...[...source.querySelectorAll('button')].map(swatch=>{
+      const button=document.createElement('button');button.type='button';button.className='ux2-quick-swatch';button.style.background=swatch.dataset.color;button.title=swatch.title;button.setAttribute('aria-label',swatch.getAttribute('aria-label')||swatch.title);
+      button.addEventListener('click',()=>swatch.click());return button;
+    }));
+  }
   const updateIdentity=()=>{
     setText($('ux2Title'),$('projectNameDisplay')?.textContent?.trim()||'Pattern Forge');
     const doodle=document.body.classList.contains('doodle-project');setText($('ux2Mode'),doodle?'Doodle':'Pattern');
@@ -231,9 +242,11 @@
   const updateStatus=()=>setText($('ux2Status'),$('status')?.textContent||'');
   const titleNode=$('projectNameDisplay'),statusNode=$('status'),selectionNode=$('selectedPanel');
   if(titleNode)new MutationObserver(updateIdentity).observe(titleNode,{subtree:true,childList:true,characterData:true});
+  if($('paletteSwatches'))new MutationObserver(populateQuickPalette).observe($('paletteSwatches'),{childList:true,subtree:true});
   if(statusNode)new MutationObserver(updateStatus).observe(statusNode,{subtree:true,childList:true,characterData:true});
   if(selectionNode)new MutationObserver(()=>{if(currentTool()==='select')renderContext('select')}).observe(selectionNode,{subtree:true,childList:true});
   new MutationObserver(updateIdentity).observe(document.body,{attributes:true,attributeFilter:['class']});
   $('zoom')?.addEventListener('input',updateIdentity);
+  populateQuickPalette();
   setTool(currentTool());updateIdentity();updateStatus();
 })();

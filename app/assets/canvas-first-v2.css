@@ -64,7 +64,7 @@ body.ux2-fullscreen .ux2-dockbar{
   backdrop-filter:blur(8px);z-index:44;overflow-y:auto
 }
 body.ux2-fullscreen .ux2-tools{
-  left:max(58px,calc(env(safe-area-inset-left) + 12px));
+  left:max(88px,calc(env(safe-area-inset-left) + 36px));
   border-right:1px solid rgba(185,194,204,.9)
 }
 body.ux2-fullscreen .ux2-dockbar{right:6px;border-left:1px solid rgba(185,194,204,.9)}
@@ -112,3 +112,31 @@ body.ux2-fullscreen .ux2-canvas-slot #stageWrap{
 body.ux2-fullscreen .ux2-canvas-slot #editorCanvas{
   width:100%!important;height:100%!important;object-fit:contain
 }
+
+/* Pattern setup captures the tools that define a new repeat project. */
+.patternSetupSettings{margin:13px 0 5px;padding:12px;border:1px solid #d4dce4;border-radius:14px;background:#f7f9fb}
+.patternSetupSettings legend{padding:0 5px;font-weight:800;color:#40566f;font-size:13px}
+.patternSetupSettings .row{align-items:end}
+.patternSetupSettings .field{margin:5px 0}
+.patternSetupSettings .check{margin:5px 0;font-size:12px}
+.patternSetupSettings select{min-height:40px}
+.ux2-quick-palette{display:flex;align-items:center;gap:4px;max-width:min(38vw,320px);overflow-x:auto;padding:2px 3px;scrollbar-width:thin}
+.ux2-quick-swatch{flex:0 0 24px;width:24px;height:24px;border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1px #aeb9c4;cursor:pointer}
+.ux2-quick-swatch:focus-visible{outline:2px solid #526d8f;outline-offset:2px}
+.ux2-zoom-controls{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.ux2-zoom-controls output{min-width:42px;text-align:center;color:#35475b;font-weight:800;font-size:11px}
+.ux2-zoom-step{width:28px;height:28px;border:1px solid #cbd4dd;border-radius:8px;background:#fff;color:#40566f;font-size:18px;line-height:1;cursor:pointer}
+@media(orientation:landscape) and (max-height:600px){
+  .ux2-quick-palette{max-width:min(30vw,220px);gap:3px}
+  .ux2-quick-swatch{flex-basis:21px;width:21px;height:21px}
+  .ux2-zoom-step{width:24px;height:24px}
+}
+body.ux2-fullscreen .ux2-canvas-head{
+  display:flex!important;position:absolute;z-index:42;left:50%;top:6px;transform:translateX(-50%);
+  width:max-content;max-width:calc(100vw - 176px);height:36px;padding:3px 6px;
+  border:1px solid rgba(185,194,204,.9);border-radius:11px;background:rgba(248,250,251,.92);
+  box-shadow:0 4px 16px rgba(31,42,57,.16);backdrop-filter:blur(8px)
+}
+body.ux2-fullscreen #ux2Hint{display:none}
+body.ux2-fullscreen .ux2-quick-palette{max-width:min(30vw,230px)}
+@media(max-width:600px){body.ux2-fullscreen .ux2-canvas-head{max-width:calc(100vw - 150px)}body.ux2-fullscreen .ux2-quick-palette{max-width:24vw}}

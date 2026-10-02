@@ -102,12 +102,23 @@ try{
       assert(await page.locator('#projectRepeatStyle').inputValue()===value,'Repeat card '+value+' did not update engine control');
     }
     await page.locator('.workspaceRepeatCard[data-repeat="half-drop"]').click();
+    await page.locator('#setupGridCount').selectOption('20');
+    await page.locator('#setupMirror').selectOption('radial');
+    await page.locator('#setupGuide').selectOption('centre');
+    await page.locator('#setupGridOn').uncheck();
+    await page.locator('#setupSnapOn').check();
     await shot(page,'02-pattern-setup');
     await page.locator('#createProject').click();
     await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     assert(await page.locator('#ux2Editor').isVisible(),'UX2 editor not visible after Create Pattern');
     assert((await page.locator('#ux2Mode').textContent())==='Pattern','Mode badge is not Pattern');
     assert((await page.locator('#projectNameDisplay').textContent()).includes('Half-drop'),'Created project did not retain Half-drop repeat style');
+    assert(await page.locator('#gridCount').inputValue()==='20','Project setup did not apply grid divisions');
+    assert(await page.locator('#symmetry').inputValue()==='radial','Project setup did not apply mirror mode');
+    assert(await page.locator('#constructionGuide').inputValue()==='centre','Project setup did not apply construction guide');
+    assert(!(await page.locator('#gridOn').isChecked()),'Project setup did not apply grid visibility');
+    assert(await page.locator('#snapOn').isChecked(),'Project setup did not apply snapping');
+    assert(await page.locator('#ux2QuickPalette .ux2-quick-swatch').count()===4,'Current palette swatches are not visible beside the canvas');
     await page.locator('[data-ux2-panel="pattern"]').click();
     assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
     await page.locator('#ux2PaletteClose').click();
@@ -179,7 +190,7 @@ try{
     assert(await activeOldTool(page,'gradient'),'Gradient Fill did not activate engine');
   });
 
-  await step('Pattern: Pan controls Zoom out, Zoom in and Fit',async()=>{
+  await step('Pattern: Canvas zoom buttons work and Fit fits the tile',async()=>{
     await page.locator('[data-ux2-tool="pan"]').click();
     assert(await activeOldTool(page,'pan'),'Pan did not activate engine');
     const initial=Number(await page.locator('#zoom').inputValue());
@@ -187,8 +198,11 @@ try{
     const zoomed=Number(await page.locator('#zoom').inputValue());
     assert(zoomed>initial,'Zoom in did not increase zoom');
     await page.locator('#ux2ZoomOut').click();
-    await page.locator('#ux2FitContext').click();
-    assert(Number(await page.locator('#zoom').inputValue())===100,'Fit did not restore 100%');
+    await page.locator('#ux2Fit').click();
+    const fitted=Number(await page.locator('#zoom').inputValue());
+    const expected=await page.locator('#editorCanvas').evaluate(el=>Math.round(Math.min(el.width,el.height)*.92/(4000*.38)*100));
+    assert(fitted===expected,'Fit did not calculate a tile-sized view');
+    assert((await page.locator('#ux2ZoomLabel').textContent()).trim()===`${fitted}%`,'Zoom readout did not follow Fit');
   });
 
   await step('Pattern: Shape tool exposes Line, Rectangle, Ellipse, width and fill',async()=>{
@@ -305,11 +319,17 @@ try{
     assert((await page.locator('#ux2PaletteTitle').textContent())==='Pattern','Pattern panel title wrong');
     await page.locator('#ux2Grid').selectOption('20');
     assert(await page.locator('#gridCount').inputValue()==='20','Grid divisions failed');
+    const gridOff=await page.locator('#editorCanvas').screenshot();
     await page.locator('#ux2GridOn').click();
+    const gridOn=await page.locator('#editorCanvas').screenshot();
+    assert(!gridOff.equals(gridOn),'Grid toggle did not redraw the canvas immediately');
     await page.locator('#ux2Symmetry').selectOption('quadrant');
     assert(await page.locator('#symmetry').inputValue()==='quadrant','Quadrant mirror failed');
     await page.locator('#ux2SymmetryGuides').click();
+    const guideBefore=await page.locator('#editorCanvas').screenshot();
     await page.locator('#ux2Guide').selectOption('centre');
+    const guideAfter=await page.locator('#editorCanvas').screenshot();
+    assert(!guideBefore.equals(guideAfter),'Guide selection did not redraw the canvas immediately');
     assert(await page.locator('#constructionGuide').inputValue()==='centre','Construction guide failed');
     await page.locator('#ux2SnapOn').click();
     await page.locator('#ux2Neighbour').evaluate(el=>{el.value='71';el.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -458,7 +478,7 @@ try{
   await step('Doodle fullscreen: camera-safe rail, tools, context and palettes remain usable',async()=>{
     await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(100);
     const tools=await m.locator('.ux2-tools').boundingBox();
-    assert(tools&&tools.x>=50,'Fullscreen tool rail is still in the camera/cutout zone');
+    assert(tools&&tools.x>=88,'Fullscreen tool rail is still in the camera/cutout zone');
     const stage=await m.locator('#stageWrap').boundingBox();
     assert(stage&&stage.height>330,'Doodle fullscreen canvas is too small');
     assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen context missing');

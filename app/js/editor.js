@@ -236,6 +236,7 @@
     });
     const select=$("savedPaletteSelect"),saved=state.savedPalettes||[];
     select.innerHTML='<option value="default">Forest &amp; clay</option>'+saved.map((p,i)=>`<option value="saved-${i}">${escapeHtml(p.name)}</option>`).join("");
+    const setup=$("setupPalette");if(setup){const chosen=setup.value;setup.innerHTML=select.innerHTML;if([...setup.options].some(o=>o.value===chosen))setup.value=chosen;}
   }
   function loadSavedPalettes(){
     try{const parsed=JSON.parse(localStorage.getItem("patternForgePalettes")||"[]");if(Array.isArray(parsed))state.savedPalettes=parsed.filter(p=>p&&typeof p.name==="string"&&Array.isArray(p.colors));}catch(_){state.savedPalettes=[];}
@@ -477,6 +478,11 @@
     $("zoom").value=Math.round(state.zoom*100);
     $("zoomLabel").textContent=Math.round(state.zoom*100)+"%";
     renderAll(false,false);
+  }
+  function fitCanvasView(){
+    const availableWidth=canvas.width,availableHeight=canvas.height;
+    const fitScale=Math.min(availableWidth,availableHeight)*.92/(TILE*.38);
+    state.panX=state.panY=0;setZoom(fitScale);
   }
   function drawEditor(){
     const W=canvas.width,H=canvas.height;
@@ -1467,6 +1473,13 @@
     const begin=()=>{
       const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice,requestedType=promotePractice?"pattern":($("projectTypeInput").value==="doodle"?"doodle":"pattern");
       state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),projectType:requestedType,repeatStyle:requestedType==="doodle"?"straight":(promotePractice?"straight":$("projectRepeatStyle").value),createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
+      if(!promotePractice&&requestedType==="pattern"){
+        $("gridCount").value=$("setupGridCount").value;$("gridOn").checked=$("setupGridOn").checked;
+        $("symmetry").value=$("setupMirror").value;$("symmetryGuides").checked=$("setupMirrorGuides").checked;
+        $("constructionGuide").value=$("setupGuide").value;$("snapOn").checked=$("setupSnapOn").checked;
+        updateSettingReadouts();
+        if($("savedPaletteSelect")){ $("savedPaletteSelect").value=$("setupPalette").value;$("savedPaletteSelect").dispatchEvent(new Event("change",{bubbles:true})); }
+      }
       if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
@@ -1776,7 +1789,7 @@
   $("neighborOpacity").addEventListener("input",()=>{$("neighborLabel").textContent=$("neighborOpacity").value+"%";renderAll(false,false);});
   $("zoomOut").onclick=()=>setZoom(state.zoom/1.25);
   $("zoomIn").onclick=()=>setZoom(state.zoom*1.25);
-  $("fit").onclick=()=>{state.panX=state.panY=0;setZoom(1);};
+  $("fit").onclick=fitCanvasView;
   $("focusPrintSize").addEventListener("input",updatePrintEligibility);
   $("repeatPreviewToggle").addEventListener("click",()=>{
     if(isDoodleProject()){setStatus("Doodle Projects use one standalone canvas and do not have a repeat preview.");return;}
