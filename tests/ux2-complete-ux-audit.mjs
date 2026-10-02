@@ -94,7 +94,7 @@ try{
     assert(new URL(page.url()).pathname==='/','Project home did not return home');
   });
 
-  await step('Pattern setup: Straight, Half-drop and Brick cards drive the fixed repeat choice',async()=>{
+  await step('Pattern setup: Repeat is chosen before entry; Design setup is inside the editor',async()=>{
     await page.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
     await page.locator('#newProjectSetup').waitFor({state:'visible'});
     for(const value of ['straight','half-drop','brick']){
@@ -102,25 +102,35 @@ try{
       assert(await page.locator('#projectRepeatStyle').inputValue()===value,'Repeat card '+value+' did not update engine control');
     }
     await page.locator('.workspaceRepeatCard[data-repeat="half-drop"]').click();
-    await page.locator('#setupGridCount').selectOption('20');
-    await page.locator('#setupMirror').selectOption('radial');
-    await page.locator('#setupGuide').selectOption('centre');
-    await page.locator('#setupGridOn').uncheck();
-    await page.locator('#setupSnapOn').check();
+    assert(await page.locator('#setupGridCount').count()===0,'Grid settings should not clutter project creation');
     await shot(page,'02-pattern-setup');
     await page.locator('#createProject').click();
     await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     assert(await page.locator('#ux2Editor').isVisible(),'UX2 editor not visible after Create Pattern');
     assert((await page.locator('#ux2Mode').textContent())==='Pattern','Mode badge is not Pattern');
     assert((await page.locator('#projectNameDisplay').textContent()).includes('Half-drop'),'Created project did not retain Half-drop repeat style');
-    assert(await page.locator('#gridCount').inputValue()==='20','Project setup did not apply grid divisions');
-    assert(await page.locator('#symmetry').inputValue()==='radial','Project setup did not apply mirror mode');
-    assert(await page.locator('#constructionGuide').inputValue()==='centre','Project setup did not apply construction guide');
-    assert(!(await page.locator('#gridOn').isChecked()),'Project setup did not apply grid visibility');
-    assert(await page.locator('#snapOn').isChecked(),'Project setup did not apply snapping');
+    await page.waitForFunction(()=>Number(document.querySelector('#zoom')?.value)>=250);
+    assert(await page.locator('#gridOn').isChecked(),'A new pattern should open with the grid visible');
+    assert(await page.locator('#editorCanvas').isVisible(),'Canvas should be visible in the editor');
+    assert(await page.locator('#ux2ZoomLabel').textContent()==='269%','New project should open fitted to the canvas');
     assert(await page.locator('#ux2QuickPalette .ux2-quick-swatch').count()===4,'Current palette swatches are not visible beside the canvas');
     await page.locator('[data-ux2-panel="pattern"]').click();
+    assert((await page.locator('#ux2PaletteTitle').textContent())==='Design setup','Pattern tools should be grouped under Design setup');
+    await page.locator('#ux2Grid').selectOption('20');
+    await page.locator('#ux2Symmetry').selectOption('radial');
+    await page.locator('#ux2Guide').selectOption('centre');
+    await page.locator('#ux2SnapOn').check();
+    assert(await page.locator('#gridCount').inputValue()==='20','Design setup grid divisions failed');
+    assert(await page.locator('#symmetry').inputValue()==='radial','Design setup mirror mode failed');
+    assert(await page.locator('#constructionGuide').inputValue()==='centre','Design setup guide failed');
+    assert(await page.locator('#snapOn').isChecked(),'Design setup snapping failed');
+    assert(await page.locator('#ux2SetupSwatches .ux2-setup-swatch').count()===4,'Design setup palette swatches missing');
     assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
+    await page.locator('.ux2-favourite-toggle[aria-label="Favourite Brush"]').check();
+    await page.locator('.ux2-favourite-toggle[aria-label="Favourite Erase"]').check();
+    assert(await page.locator('.ux2-favourite-shortcut').count()===2,'Favourite tools are not shown in the quick switcher');
+    await page.locator('.ux2-favourite-shortcut[aria-label="Switch to Erase"]').click();
+    assert(await activeOldTool(page,'eraser'),'Favourite shortcut did not switch to Erase');
     await page.locator('#ux2PaletteClose').click();
     await shot(page,'03-pattern-editor');
   });
@@ -316,7 +326,7 @@ try{
 
   await step('Pattern: specialist Pattern controls proxy to the repeat engine',async()=>{
     await page.locator('[data-ux2-panel="pattern"]').click();
-    assert((await page.locator('#ux2PaletteTitle').textContent())==='Pattern','Pattern panel title wrong');
+    assert((await page.locator('#ux2PaletteTitle').textContent())==='Design setup','Design setup panel title wrong');
     await page.locator('#ux2Grid').selectOption('20');
     assert(await page.locator('#gridCount').inputValue()==='20','Grid divisions failed');
     const gridOff=await page.locator('#editorCanvas').screenshot();
@@ -345,10 +355,11 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
-  await step('Pattern: Preview button opens the Pattern workspace',async()=>{
+  await step('Pattern: Preview button toggles the repeat preview',async()=>{
+    const before=await page.locator('#repeatPreviewToggle').textContent();
     await page.locator('#ux2Preview').click();
-    assert((await page.locator('#ux2PaletteTitle').textContent())==='Pattern','Preview did not open Pattern panel');
-    await page.locator('#ux2PaletteClose').click();
+    await page.waitForTimeout(50);
+    assert(await page.locator('#repeatPreviewToggle').textContent()!==before,'Preview did not toggle the repeat preview');
   });
 
   await step('Pattern: every export/open action works',async()=>{
@@ -374,9 +385,10 @@ try{
   });
 
   await step('Pattern: Fullscreen keeps tools functional while preserving the large canvas',async()=>{
+    const zoomBeforeFullscreen=Number(await page.locator('#zoom').inputValue());
     await page.locator('#ux2Fullscreen').click();await page.waitForTimeout(100);
     assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Fullscreen class missing');
-    assert(Number(await page.locator('#zoom').inputValue())===270,'Fullscreen detail zoom is not 270%');
+    assert(Number(await page.locator('#zoom').inputValue())>=250,'Fullscreen did not fit the tile into the drawing area');
     const stage=await page.locator('#stageWrap').boundingBox();assert(stage&&stage.height>760,'Fullscreen canvas lost its large size');
     assert(await page.locator('.ux2-tools').isVisible(),'Fullscreen tool rail hidden');
     assert(await page.locator('.ux2-dockbar').isVisible(),'Fullscreen palette dock hidden');
@@ -385,7 +397,7 @@ try{
       ['[data-ux2-tool="select"]','Select'],['[data-ux2-tool="brush"]','Brush'],['[data-ux2-tool="eraser"]','Erase'],
       ['[data-ux2-tool="freefill"]','Fill'],['[data-ux2-tool="pan"]','Pan'],['[data-ux2-action="image"]','Image'],
       ['[data-ux2-tool="rect"]','Shape'],['[data-ux2-panel="colour"]','Colour'],['[data-ux2-panel="layers"]','Layers'],
-      ['[data-ux2-panel="pattern"]','Pattern']
+      ['[data-ux2-panel="pattern"]','Design setup']
     ]) assert(await page.locator(selector).getAttribute('aria-label')===label,'Fullscreen control lacks accessible name: '+label);
     for(const tool of ['select','brush','eraser','freefill','pan','rect']){
       await page.locator('[data-ux2-tool="'+tool+'"]').click();
@@ -394,7 +406,7 @@ try{
     await shot(page,'10-pattern-fullscreen');
     await collectLayout(page,'pattern-fullscreen-desktop');
     await page.locator('#ux2Fullscreen').click();await page.waitForTimeout(80);
-    assert(Number(await page.locator('#zoom').inputValue())===100,'Fullscreen did not restore prior zoom');
+    assert(Number(await page.locator('#zoom').inputValue())===zoomBeforeFullscreen,'Fullscreen did not restore prior zoom');
   });
 
   await step('Pattern: Projects button returns to project home',async()=>{
@@ -444,6 +456,23 @@ try{
 
   await collectLayout(page,'home-after-pattern');
   await desktop.close();
+
+  await step('Pattern: a new tile opens centred with its grid in portrait and landscape',async()=>{
+    for(const size of [{width:390,height:844,label:'portrait'},{width:844,height:390,label:'landscape'}]){
+      const context=await browser.newContext({viewport:{width:size.width,height:size.height}});
+      const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'pattern-'+size.label);
+      await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+      await view.locator('#newProjectSetup').waitFor({state:'visible'});
+      await view.locator('#projectTitleInput').fill('Fit check '+size.label);
+      await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+      await view.waitForFunction(()=>Number(document.querySelector('#zoom')?.value)>=250);
+      assert(await view.locator('#gridOn').isChecked(),size.label+': default construction grid is off');
+      const geometry=await view.evaluate(()=>{const stage=document.querySelector('#stageWrap').getBoundingClientRect(),canvas=document.querySelector('#editorCanvas').getBoundingClientRect();return {stage:{x:stage.x,y:stage.y,w:stage.width,h:stage.height},canvas:{x:canvas.x,y:canvas.y,w:canvas.width,h:canvas.height}}});
+      assert(Math.abs((geometry.stage.x+geometry.stage.w/2)-(geometry.canvas.x+geometry.canvas.w/2))<2,size.label+': canvas tile is not horizontally centred');
+      assert(Math.abs((geometry.stage.y+geometry.stage.h/2)-(geometry.canvas.y+geometry.canvas.h/2))<2,size.label+': canvas tile is not vertically centred');
+      await shot(view,'pattern-fit-'+size.label);await context.close();
+    }
+  });
 
   const mobile=await browser.newContext({viewport:{width:844,height:390},deviceScaleFactor:1,acceptDownloads:true});
   const m=await mobile.newPage();m.setDefaultTimeout(12000);await attachErrors(m,'mobile-landscape');

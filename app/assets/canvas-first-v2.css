@@ -72,6 +72,7 @@ body.ux2-fullscreen .ux2-tool,
 body.ux2-fullscreen .ux2-dock{
   width:36px;min-height:36px;padding:0;border-radius:9px;flex:0 0 36px
 }
+body.ux2-fullscreen .ux2-tool-item{flex:0 0 36px}
 body.ux2-fullscreen .ux2-tool b,
 body.ux2-fullscreen .ux2-dock b{display:none!important}
 body.ux2-fullscreen .ux2-tool svg,
@@ -89,6 +90,9 @@ body.ux2-fullscreen .ux2-context{
   z-index:43;overflow-x:auto;overflow-y:hidden
 }
 body.ux2-fullscreen .ux2-context-group{gap:5px;padding-right:6px}
+body.ux2-fullscreen .ux2-favourite-tools{gap:3px;padding-right:5px}
+body.ux2-fullscreen .ux2-favourite-shortcut{min-height:28px;padding:3px 5px;font-size:9px}
+body.ux2-fullscreen .ux2-favourite-label{font-size:8px}
 body.ux2-fullscreen .ux2-chip,
 body.ux2-fullscreen .ux2-context select{padding:5px 7px;font-size:9px}
 body.ux2-fullscreen .ux2-slider{padding:3px 5px;font-size:9px}
@@ -123,6 +127,17 @@ body.ux2-fullscreen .ux2-canvas-slot #editorCanvas{
 .ux2-quick-palette{display:flex;align-items:center;gap:4px;max-width:min(38vw,320px);overflow-x:auto;padding:2px 3px;scrollbar-width:thin}
 .ux2-quick-swatch{flex:0 0 24px;width:24px;height:24px;border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1px #aeb9c4;cursor:pointer}
 .ux2-quick-swatch:focus-visible{outline:2px solid #526d8f;outline-offset:2px}
+.ux2-tool-item{position:relative;display:flex;flex:0 0 auto}
+.ux2-tool-item>.ux2-tool{width:100%}
+.ux2-favourite-toggle{position:absolute;right:3px;top:3px;z-index:2;width:15px;height:15px;margin:0;accent-color:#526d8f;cursor:pointer;filter:drop-shadow(0 0 2px #fff)}
+.ux2-favourite-toggle:focus-visible{outline:2px solid #526d8f;outline-offset:2px}
+.ux2-favourite-tools{display:flex;align-items:center;gap:4px;padding-right:8px;margin-right:2px;border-right:1px solid #d4dbe2}
+.ux2-favourite-label{font-size:9px;font-weight:850;color:#788492;text-transform:uppercase;letter-spacing:.06em}
+.ux2-favourite-shortcut{display:flex;align-items:center;gap:4px;min-height:34px;padding:4px 7px;border:1px solid #ccd4dd;border-radius:9px;background:#fff;color:#40566f;font-size:10px;font-weight:750;white-space:nowrap}
+.ux2-favourite-shortcut svg{width:15px;height:15px;flex:0 0 15px}
+.ux2-setup-swatches{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.ux2-setup-swatch{width:34px;height:34px;border:2px solid #fff;border-radius:9px;box-shadow:0 0 0 1px #aeb9c4;cursor:pointer}
+.ux2-palette-actions{display:flex;gap:7px}.ux2-palette-actions>*{flex:1}
 .ux2-zoom-controls{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .ux2-zoom-controls output{min-width:42px;text-align:center;color:#35475b;font-weight:800;font-size:11px}
 .ux2-zoom-step{width:28px;height:28px;border:1px solid #cbd4dd;border-radius:8px;background:#fff;color:#40566f;font-size:18px;line-height:1;cursor:pointer}

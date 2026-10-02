@@ -41,7 +41,7 @@
       <nav class="ux2-dockbar" aria-label="Quick palettes">
         <button class="ux2-dock" data-ux2-panel="colour" aria-label="Colour">${icon('colour')}<b>Colour</b></button>
         <button class="ux2-dock" data-ux2-panel="layers" aria-label="Layers">${icon('layers')}<b>Layers</b></button>
-        <button class="ux2-dock" data-ux2-panel="pattern" aria-label="Pattern">${icon('repeat')}<b>Pattern</b></button>
+        <button class="ux2-dock" data-ux2-panel="pattern" aria-label="Design setup">${icon('repeat')}<b>Design setup</b></button>
       </nav>
       <aside class="ux2-palette" id="ux2Palette" hidden><div class="ux2-palette-head"><span id="ux2PaletteTitle">Panel</span><button class="ux2-palette-close" id="ux2PaletteClose" aria-label="Close">×</button></div><div class="ux2-palette-body" id="ux2PaletteBody"></div></aside>
     </div>
@@ -52,6 +52,29 @@
   document.body.classList.add('ux2-active');
 
   const hiddenTool = tool => oldLayout.querySelector(`[data-tool="${tool}"]`);
+  const favouriteTools=[{id:'select',label:'Select',icon:'select'},{id:'brush',label:'Brush',icon:'brush'},{id:'eraser',label:'Erase',icon:'eraser'},{id:'freefill',label:'Fill',icon:'fill'},{id:'pan',label:'Pan',icon:'pan'},{id:'image',label:'Image',icon:'image'},{id:'rect',label:'Shape',icon:'shape'}];
+  const favouriteStorageKey='patternForgeUx2FavouriteTools';
+  let favouriteIds=[];
+  try{const stored=JSON.parse(localStorage.getItem(favouriteStorageKey)||'[]');if(Array.isArray(stored))favouriteIds=stored.filter(id=>favouriteTools.some(tool=>tool.id===id));}catch(_){}
+  function renderFavouriteShortcuts(){
+    const context=$('ux2Context');if(!context)return;
+    context.querySelector('.ux2-favourite-tools')?.remove();
+    const selected=favouriteTools.filter(tool=>favouriteIds.includes(tool.id));if(!selected.length)return;
+    const group=document.createElement('div');group.className='ux2-favourite-tools';group.setAttribute('role','group');group.setAttribute('aria-label','Favourite tools');
+    const label=document.createElement('span');label.className='ux2-favourite-label';label.textContent='Favourites';group.append(label);
+    selected.forEach(tool=>{const button=document.createElement('button');button.type='button';button.className='ux2-favourite-shortcut';button.title=tool.label;button.setAttribute('aria-label',`Switch to ${tool.label}`);button.innerHTML=`${icon(tool.icon)}<span>${tool.label}</span>`;button.addEventListener('click',()=>{const target=tool.id==='image'?document.querySelector('[data-ux2-action="image"]'):document.querySelector(`[data-ux2-tool="${tool.id}"]`);target?.click()});group.append(button)});
+    context.prepend(group);
+  }
+  function initFavouriteControls(){
+    document.querySelectorAll('.ux2-tools>.ux2-tool').forEach(toolButton=>{
+      const id=toolButton.dataset.ux2Tool||(toolButton.hasAttribute('data-ux2-action')?'image':'');
+      const tool=favouriteTools.find(item=>item.id===id);if(!tool)return;
+      const item=document.createElement('div');item.className='ux2-tool-item';item.dataset.toolId=id;toolButton.before(item);item.append(toolButton);
+      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='ux2-favourite-toggle';checkbox.checked=favouriteIds.includes(id);checkbox.setAttribute('role','checkbox');checkbox.setAttribute('aria-label',`Favourite ${tool.label}`);checkbox.title=`Favourite ${tool.label}`;
+      checkbox.addEventListener('change',()=>{favouriteIds=checkbox.checked?[...new Set([...favouriteIds,id])]:favouriteIds.filter(savedId=>savedId!==id);try{localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds))}catch(_){};document.querySelectorAll('.ux2-favourite-toggle').forEach(el=>{const toolId=el.closest('.ux2-tool-item')?.dataset.toolId;if(toolId)el.checked=favouriteIds.includes(toolId)});renderFavouriteShortcuts()});item.append(checkbox);
+    });
+  }
+  initFavouriteControls();
   const dispatchValue = (id, value, event='input') => {
     const el=$(id); if(!el) return; el.value=value; el.dispatchEvent(new Event(event,{bubbles:true}));
   };
@@ -104,6 +127,7 @@
       if($('ux2Back'))$('ux2Back').addEventListener('click',()=>clickOld('backSel'));
       if($('ux2Snap'))$('ux2Snap').addEventListener('click',()=>{const el=$('snapOn');if(el){el.checked=!el.checked;el.dispatchEvent(new Event('change',{bubbles:true}))}});
     }
+    renderFavouriteShortcuts();
   }
 
   function setTool(tool){
@@ -143,9 +167,10 @@
     const activeRepeat=badge.match(/·\s*(Straight|Half-drop|Brick)\s*$/i)?.[1]||'Straight';
     const repeat=doodle?'Doodle':activeRepeat.replace('-', ' ');
     if(doodle)return `<div class="ux2-panel-block"><div class="ux2-panel-label">Workspace</div><div class="ux2-repeat-card"><strong>Doodle</strong><span>Standalone transparent artwork. Repeat tools are intentionally hidden.</span></div></div>`;
-    const grid=$('gridCount')?.value||16,sym=$('symmetry')?.value||'off',guide=$('constructionGuide')?.value||'off';
-    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Repeat</div><div class="ux2-repeat-card"><strong>${repeat}</strong><span>${$('pixelReadout')?.textContent||'4000 × 4000'} · 300 DPI metadata</span></div><button class="ux2-btn" id="ux2FullPreview" style="width:100%;margin-top:8px">Full repeat preview</button><button class="ux2-btn" id="ux2SeamInspect" style="width:100%;margin-top:7px">Inspect seams</button><label class="ux2-slider" style="margin-top:8px">Repeat visibility <input id="ux2Neighbour" type="range" min="15" max="100" value="${$('neighborOpacity')?.value||35}"></label><label class="ux2-check"><input id="ux2TileEdge" type="checkbox" ${$('showTileBorder')?.checked?'checked':''}> Show centre tile edge</label></div><div class="ux2-panel-block"><div class="ux2-panel-label">Construction</div><label class="ux2-field-label">Grid divisions<select id="ux2Grid"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16">16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></label><label class="ux2-check"><input id="ux2GridOn" type="checkbox" ${$('gridOn')?.checked?'checked':''}> Show grid</label><label class="ux2-field-label">Mirror while drawing<select id="ux2Symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant">Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></label><label class="ux2-check"><input id="ux2SymmetryGuides" type="checkbox" ${$('symmetryGuides')?.checked?'checked':''}> Show mirror guides</label><label class="ux2-field-label">Guide<select id="ux2Guide"><option value="off">Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></label><label class="ux2-check"><input id="ux2SnapOn" type="checkbox" ${$('snapOn')?.checked?'checked':''}> Smart snapping</label></div>`;
+    const paletteOptions=[...($('savedPaletteSelect')?.options||[])].map(option=>`<option value="${option.value.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">${option.textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Repeat</div><div class="ux2-repeat-card"><strong>${repeat}</strong><span>${$('pixelReadout')?.textContent||'4000 × 4000'} · 300 DPI metadata</span></div><button class="ux2-btn" id="ux2FullPreview" style="width:100%;margin-top:8px">Full repeat preview</button><button class="ux2-btn" id="ux2SeamInspect" style="width:100%;margin-top:7px">Inspect seams</button><label class="ux2-slider" style="margin-top:8px">Repeat visibility <input id="ux2Neighbour" type="range" min="15" max="100" value="${$('neighborOpacity')?.value||35}"></label><label class="ux2-check"><input id="ux2TileEdge" type="checkbox" ${$('showTileBorder')?.checked?'checked':''}> Show centre tile edge</label></div><div class="ux2-panel-block"><div class="ux2-panel-label">Grid, guides & snapping</div><label class="ux2-field-label">Grid divisions<select id="ux2Grid"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16">16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></label><label class="ux2-check"><input id="ux2GridOn" type="checkbox" ${$('gridOn')?.checked?'checked':''}> Show grid</label><label class="ux2-field-label">Mirror while drawing<select id="ux2Symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant">Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></label><label class="ux2-check"><input id="ux2SymmetryGuides" type="checkbox" ${$('symmetryGuides')?.checked?'checked':''}> Show mirror guides</label><label class="ux2-field-label">Construction guide<select id="ux2Guide"><option value="off">Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></label><label class="ux2-check"><input id="ux2SnapOn" type="checkbox" ${$('snapOn')?.checked?'checked':''}> Smart snapping</label></div><div class="ux2-panel-block"><div class="ux2-panel-label">Palette</div><label class="ux2-field-label">Saved palettes<select id="ux2PaletteSelect">${paletteOptions}</select></label><div id="ux2SetupSwatches" class="ux2-setup-swatches" role="group" aria-label="Current palette colours"></div><div class="ux2-palette-actions"><button class="ux2-btn" id="ux2AddPaletteColour">Add current colour</button><button class="ux2-btn" id="ux2SavePalette">Save palette</button></div></div>`;
   }
+
   function exportPanel(){
     const quality=$('quality')?.textContent?.trim()||'Add artwork to calculate print quality.',pixels=$('pixelReadout')?.textContent||'4000 × 4000',doodle=document.body.classList.contains('doodle-project');
     const exportNote=doodle?'Transparent background is preserved for PNG and SVG. PNG carries 300 DPI metadata.':'PNG carries 300 DPI metadata.';
@@ -155,7 +180,7 @@
 
   function openPanel(name){
     const p=$('ux2Palette'), body=$('ux2PaletteBody'); p.hidden=false;
-    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='pattern'?'Pattern':name==='brushes'?'Brush Library':'Export';
+    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='pattern'?'Design setup':name==='brushes'?'Brush Library':'Export';
     body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
     document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.toggle('active',b.dataset.ux2Panel===name));
     if(name==='colour'){$('ux2ColourInput').addEventListener('input',e=>dispatchValue('ink',e.target.value));$('ux2Eyedropper').addEventListener('click',()=>setTool('eyedropper'));$('ux2AddPaletteColour')?.addEventListener('click',()=>{clickOld('addPaletteColour');populateSwatches()});$('ux2SavePalette')?.addEventListener('click',()=>clickOld('savePalette'));if($('ux2SavedPalette')&&$('savedPaletteSelect')){$('ux2SavedPalette').value=$('savedPaletteSelect').value;$('ux2SavedPalette').addEventListener('change',e=>dispatchValue('savedPaletteSelect',e.target.value,'change'))}populateSwatches()}
@@ -164,7 +189,7 @@
       document.querySelectorAll('[data-layer-index]').forEach(b=>b.addEventListener('click',()=>{const row=document.querySelectorAll('#layerList .layerRow')[Number(b.dataset.layerIndex)];if(row)row.click();openPanel('layers')}));
       $('ux2AddLayer').addEventListener('click',()=>{clickOld('layerAdd');openPanel('layers')});$('ux2LayerDuplicate').addEventListener('click',()=>{clickOld('layerDuplicate');openPanel('layers')});$('ux2LayerDelete').addEventListener('click',()=>{clickOld('layerDelete');openPanel('layers')});$('ux2LayerUp').addEventListener('click',()=>{clickOld('layerUp');openPanel('layers')});$('ux2LayerDown').addEventListener('click',()=>{clickOld('layerDown');openPanel('layers')});$('ux2LayerOpacity').addEventListener('input',e=>dispatchValue('layerOpacity',e.target.value));$('ux2LayerName').addEventListener('change',e=>dispatchValue('layerName',e.target.value,'change'));$('ux2LayerVisible').addEventListener('change',e=>dispatchChecked('layerVisible',e.target.checked));$('ux2LayerLocked').addEventListener('change',e=>dispatchChecked('layerLocked',e.target.checked));$('ux2LayerExport').addEventListener('change',e=>dispatchChecked('layerExport',e.target.checked));
     }
-    if(name==='pattern'&&!document.body.classList.contains('doodle-project')){$('ux2FullPreview')?.addEventListener('click',()=>clickOld('repeatPreviewToggle'));$('ux2SeamInspect')?.addEventListener('click',()=>{dispatchValue('neighborOpacity','100');dispatchChecked('showTileBorder',true);clickOld('fit');const st=$('status');if(st)st.textContent='Seam inspection: repeat neighbours are at full visibility and the centre tile edge is marked.';openPanel('pattern')});$('ux2Neighbour')?.addEventListener('input',e=>dispatchValue('neighborOpacity',e.target.value));$('ux2TileEdge')?.addEventListener('change',e=>dispatchChecked('showTileBorder',e.target.checked));$('ux2Grid').value=String($('gridCount')?.value||16);$('ux2Grid').addEventListener('change',e=>dispatchSetting('gridCount',e.target.value));$('ux2GridOn').addEventListener('change',e=>dispatchSetting('gridOn',e.target.checked));$('ux2Symmetry').value=$('symmetry')?.value||'off';$('ux2Symmetry').addEventListener('change',e=>dispatchSetting('symmetry',e.target.value));$('ux2SymmetryGuides').addEventListener('change',e=>dispatchSetting('symmetryGuides',e.target.checked));$('ux2Guide').value=$('constructionGuide')?.value||'off';$('ux2Guide').addEventListener('change',e=>dispatchSetting('constructionGuide',e.target.value));$('ux2SnapOn').addEventListener('change',e=>dispatchChecked('snapOn',e.target.checked))}
+    if(name==='pattern'&&!document.body.classList.contains('doodle-project')){$('ux2FullPreview')?.addEventListener('click',()=>clickOld('repeatPreviewToggle'));$('ux2SeamInspect')?.addEventListener('click',()=>{dispatchValue('neighborOpacity','100');dispatchChecked('showTileBorder',true);clickOld('fit');const st=$('status');if(st)st.textContent='Seam inspection: repeat neighbours are at full visibility and the centre tile edge is marked.';openPanel('pattern')});$('ux2Neighbour')?.addEventListener('input',e=>dispatchValue('neighborOpacity',e.target.value));$('ux2TileEdge')?.addEventListener('change',e=>dispatchChecked('showTileBorder',e.target.checked));$('ux2Grid').value=String($('gridCount')?.value||16);$('ux2Grid').addEventListener('change',e=>dispatchSetting('gridCount',e.target.value));$('ux2GridOn').addEventListener('change',e=>dispatchSetting('gridOn',e.target.checked));$('ux2Symmetry').value=$('symmetry')?.value||'off';$('ux2Symmetry').addEventListener('change',e=>dispatchSetting('symmetry',e.target.value));$('ux2SymmetryGuides').addEventListener('change',e=>dispatchSetting('symmetryGuides',e.target.checked));$('ux2Guide').value=$('constructionGuide')?.value||'off';$('ux2Guide').addEventListener('change',e=>dispatchSetting('constructionGuide',e.target.value));$('ux2SnapOn').addEventListener('change',e=>dispatchChecked('snapOn',e.target.checked));$('ux2PaletteSelect').value=$('savedPaletteSelect')?.value||'default';$('ux2PaletteSelect').addEventListener('change',e=>{dispatchValue('savedPaletteSelect',e.target.value,'change');openPanel('pattern')});$('ux2SetupSwatches').replaceChildren(...[...($('paletteSwatches')?.querySelectorAll('.swatch')||[])].map(source=>{const button=document.createElement('button');button.type='button';button.className='ux2-setup-swatch';button.style.background=source.dataset.color;button.title=source.title;button.setAttribute('aria-label',source.getAttribute('aria-label')||source.title);button.addEventListener('click',()=>source.click());return button}));$('ux2AddPaletteColour').addEventListener('click',()=>{clickOld('addPaletteColour');openPanel('pattern')});$('ux2SavePalette').addEventListener('click',()=>{clickOld('savePalette');setTimeout(()=>openPanel('pattern'),0)})}
     if(name==='export')document.querySelectorAll('[data-export-old]').forEach(b=>b.addEventListener('click',()=>clickOld(b.dataset.exportOld)));
   }
 
@@ -197,7 +222,7 @@
     notifyNativeFullscreen(ux2FullscreenActive);
     if(ux2FullscreenActive){
       requestAnimationFrame(()=>{
-        if($('zoom'))dispatchValue('zoom','270');
+        clickOld('fit');
       });
       if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
         try{await document.documentElement.requestFullscreen({navigationUI:'hide'});}catch(_){/* Keep immersive in-app fallback. */}
@@ -218,7 +243,7 @@
   $('ux2Gallery').addEventListener('click',()=>{location.href='/'});
   $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
   $('ux2Fullscreen').addEventListener('click',()=>setUx2Fullscreen(!ux2FullscreenActive));syncFullscreenButton();
-  $('ux2Preview').addEventListener('click',()=>openPanel(document.body.classList.contains('doodle-project')?'layers':'pattern'));
+  $('ux2Preview').addEventListener('click',()=>clickOld('repeatPreviewToggle'));
   $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));$('ux2ZoomOut').addEventListener('click',()=>clickOld('zoomOut'));$('ux2ZoomIn').addEventListener('click',()=>clickOld('zoomIn'));
   $('ux2PaletteClose').addEventListener('click',()=>{$('ux2Palette').hidden=true;document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'))});
   document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));
@@ -248,6 +273,8 @@
   if(statusNode)new MutationObserver(updateStatus).observe(statusNode,{subtree:true,childList:true,characterData:true});
   if(selectionNode)new MutationObserver(()=>{if(currentTool()==='select')renderContext('select')}).observe(selectionNode,{subtree:true,childList:true});
   new MutationObserver(updateIdentity).observe(document.body,{attributes:true,attributeFilter:['class']});
+  const setupOverlay=$('projectSetupOverlay');
+  if(setupOverlay)new MutationObserver(()=>{if(setupOverlay.hidden)requestAnimationFrame(()=>clickOld('fit'))}).observe(setupOverlay,{attributes:true,attributeFilter:['hidden']});
   $('zoom')?.addEventListener('input',updateIdentity);
   populateQuickPalette();
   setTool(currentTool());updateIdentity();updateStatus();

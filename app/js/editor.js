@@ -236,7 +236,6 @@
     });
     const select=$("savedPaletteSelect"),saved=state.savedPalettes||[];
     select.innerHTML='<option value="default">Forest &amp; clay</option>'+saved.map((p,i)=>`<option value="saved-${i}">${escapeHtml(p.name)}</option>`).join("");
-    const setup=$("setupPalette");if(setup){const chosen=setup.value;setup.innerHTML=select.innerHTML;if([...setup.options].some(o=>o.value===chosen))setup.value=chosen;}
   }
   function loadSavedPalettes(){
     try{const parsed=JSON.parse(localStorage.getItem("patternForgePalettes")||"[]");if(Array.isArray(parsed))state.savedPalettes=parsed.filter(p=>p&&typeof p.name==="string"&&Array.isArray(p.colors));}catch(_){state.savedPalettes=[];}
@@ -1474,11 +1473,10 @@
       const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice,requestedType=promotePractice?"pattern":($("projectTypeInput").value==="doodle"?"doodle":"pattern");
       state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),projectType:requestedType,repeatStyle:requestedType==="doodle"?"straight":(promotePractice?"straight":$("projectRepeatStyle").value),createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
       if(!promotePractice&&requestedType==="pattern"){
-        $("gridCount").value=$("setupGridCount").value;$("gridOn").checked=$("setupGridOn").checked;
-        $("symmetry").value=$("setupMirror").value;$("symmetryGuides").checked=$("setupMirrorGuides").checked;
-        $("constructionGuide").value=$("setupGuide").value;$("snapOn").checked=$("setupSnapOn").checked;
+        // New pattern projects begin with a visible construction grid. More detailed
+        // grid, mirror, snapping and palette choices live in the editor's Design setup.
+        $("gridOn").checked=true;
         updateSettingReadouts();
-        if($("savedPaletteSelect")){ $("savedPaletteSelect").value=$("setupPalette").value;$("savedPaletteSelect").dispatchEvent(new Event("change",{bubbles:true})); }
       }
       if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
