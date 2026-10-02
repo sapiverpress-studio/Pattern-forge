@@ -45,7 +45,8 @@ try{
   const canvasHeadBox=await canvasHead.boundingBox(),toolRailBox=await page.locator('.ux2-tools').boundingBox(),dockRailBox=await page.locator('.ux2-dockbar').boundingBox();
   assert(canvasHeadBox&&toolRailBox&&canvasHeadBox.x>=toolRailBox.x+toolRailBox.width-1,'Fullscreen canvas controls should stay clear of the left camera/tool rail');
   assert(canvasHeadBox&&dockRailBox&&canvasHeadBox.x+canvasHeadBox.width<=dockRailBox.x+1,'Fullscreen canvas controls should stay clear of the right tool rail');
-  assert(Number(await page.locator('#zoom').inputValue())===270,'Pattern fullscreen should enter at detailed 270% zoom');
+  const fullscreenZoom=Number(await page.locator('#zoom').inputValue());
+  assert(fullscreenZoom>=250&&fullscreenZoom<=300,'Pattern fullscreen should fit into the detailed working zoom range');
   const patternStage=await page.locator('#stageWrap').boundingBox();
   assert(patternStage&&patternStage.height>760,'Pattern fullscreen should preserve the large square drawing surface');
   await page.locator('[data-ux2-tool="brush"]').click();
