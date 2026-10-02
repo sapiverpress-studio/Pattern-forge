@@ -40,7 +40,11 @@ try{
   assert(await page.locator('.ux2-tools').isVisible(),'Pattern fullscreen should keep the creative tool rail available as an overlay');
   assert(await page.locator('.ux2-dockbar').isVisible(),'Pattern fullscreen should keep quick palettes available as an overlay');
   assert(await page.locator('#ux2Context').isVisible(),'Pattern fullscreen should keep contextual tool controls available as an overlay');
-  assert(await page.locator('.ux2-canvas-head').isHidden(),'Pattern fullscreen should hide the canvas header from the drawing area');
+  const canvasHead=page.locator('.ux2-canvas-head');
+  assert(await canvasHead.isVisible(),'Pattern fullscreen should keep Fit, zoom and palette controls available');
+  const canvasHeadBox=await canvasHead.boundingBox(),toolRailBox=await page.locator('.ux2-tools').boundingBox(),dockRailBox=await page.locator('.ux2-dockbar').boundingBox();
+  assert(canvasHeadBox&&toolRailBox&&canvasHeadBox.x>=toolRailBox.x+toolRailBox.width-1,'Fullscreen canvas controls should stay clear of the left camera/tool rail');
+  assert(canvasHeadBox&&dockRailBox&&canvasHeadBox.x+canvasHeadBox.width<=dockRailBox.x+1,'Fullscreen canvas controls should stay clear of the right tool rail');
   assert(Number(await page.locator('#zoom').inputValue())===270,'Pattern fullscreen should enter at detailed 270% zoom');
   const patternStage=await page.locator('#stageWrap').boundingBox();
   assert(patternStage&&patternStage.height>760,'Pattern fullscreen should preserve the large square drawing surface');
