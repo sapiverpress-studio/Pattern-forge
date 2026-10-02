@@ -201,3 +201,21 @@ body.ux2-fullscreen.doodle-project .ux2-tools #ux2QuickPalette{
 body.ux2-fullscreen.doodle-project .ux2-context.ux2-context--empty-selection{
   display:none!important
 }
+/* Doodle contextual controls stay in side space, clear of the drawing tile. */
+body.ux2-fullscreen.doodle-project .ux2-context:not(.ux2-context--empty-selection){
+  left:auto;right:58px;top:50%;bottom:auto;transform:translateY(-50%);
+  width:min(220px,calc((100vw - 100dvh)/2 - 58px));
+  max-width:min(220px,calc((100vw - 100dvh)/2 - 58px));
+  max-height:calc(100dvh - 24px);flex-direction:column;align-items:stretch;
+  white-space:normal;overflow-x:hidden;overflow-y:auto
+}
+body.ux2-fullscreen.doodle-project .ux2-context-group{
+  display:flex;flex-wrap:wrap;width:100%;box-sizing:border-box;
+  padding:0 0 5px;border-right:0;border-bottom:1px solid #d4dbe2
+}
+body.ux2-fullscreen.doodle-project .ux2-context-group:last-child{border-bottom:0}
+body.ux2-fullscreen.doodle-project .ux2-context select{max-width:100%}
+body.ux2-fullscreen.doodle-project .ux2-slider{
+  width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap
+}
+body.ux2-fullscreen.doodle-project .ux2-slider input{width:72px}
