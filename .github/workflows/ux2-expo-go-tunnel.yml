@@ -57,7 +57,19 @@ jobs:
             sleep 2
           done
           test -s ux2-web-url.txt || { echo 'Timed out waiting for UX2 web tunnel'; cat ux2-web-tunnel.log; exit 1; }
-          curl -LfsS "$(cat ux2-web-url.txt)/app/" >/dev/null
+          WEB_URL=$(cat ux2-web-url.txt)
+          for i in $(seq 1 60); do
+            if curl -LfsS "$WEB_URL/app/" >/dev/null 2>&1; then
+              echo "UX2 web tunnel is reachable."
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "UX2 web tunnel DNS/HTTP did not become ready."
+              cat ux2-web-tunnel.log
+              exit 1
+            fi
+            sleep 2
+          done
       - name: Start Expo Go tunnel against UX2
         shell: bash
         run: |
