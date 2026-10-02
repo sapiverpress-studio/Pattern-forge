@@ -62,7 +62,10 @@ body.ux2-fullscreen .ux2-dockbar{
   background:rgba(248,250,251,.92);box-shadow:0 4px 16px rgba(31,42,57,.16);
   backdrop-filter:blur(8px);z-index:44;overflow-y:auto
 }
-body.ux2-fullscreen .ux2-tools{left:6px;border-right:1px solid rgba(185,194,204,.9)}
+body.ux2-fullscreen .ux2-tools{
+  left:max(58px,calc(env(safe-area-inset-left) + 12px));
+  border-right:1px solid rgba(185,194,204,.9)
+}
 body.ux2-fullscreen .ux2-dockbar{right:6px;border-left:1px solid rgba(185,194,204,.9)}
 body.ux2-fullscreen .ux2-tool,
 body.ux2-fullscreen .ux2-dock{

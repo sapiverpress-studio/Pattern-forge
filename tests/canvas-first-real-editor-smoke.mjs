@@ -151,6 +151,8 @@ try{
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Doodle fullscreen should enter immersive UX2 mode');
   assert(await m.locator('.ux2-tools').isVisible(),'Doodle fullscreen should keep creative tools available as a compact overlay');
+  const fullscreenTools=await m.locator('.ux2-tools').boundingBox();
+  assert(fullscreenTools&&fullscreenTools.x>=50,'Doodle fullscreen tool rail should clear the landscape camera cutout area');
   assert(await m.locator('.ux2-dockbar').isVisible(),'Doodle fullscreen should keep Colour and Layers available as a compact overlay');
   assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen should keep contextual tool controls available as an overlay');
   assert(Number(await m.locator('#zoom').inputValue())===270,'Doodle fullscreen should enter at detailed 270% zoom');
