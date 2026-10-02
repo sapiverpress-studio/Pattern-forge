@@ -101,12 +101,16 @@ try{
       await page.locator('.workspaceRepeatCard[data-repeat="'+value+'"]').click();
       assert(await page.locator('#projectRepeatStyle').inputValue()===value,'Repeat card '+value+' did not update engine control');
     }
-    await page.locator('.workspaceRepeatCard[data-repeat="straight"]').click();
+    await page.locator('.workspaceRepeatCard[data-repeat="half-drop"]').click();
     await shot(page,'02-pattern-setup');
     await page.locator('#createProject').click();
     await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     assert(await page.locator('#ux2Editor').isVisible(),'UX2 editor not visible after Create Pattern');
     assert((await page.locator('#ux2Mode').textContent())==='Pattern','Mode badge is not Pattern');
+    assert((await page.locator('#projectNameDisplay').textContent()).includes('Half-drop'),'Created project did not retain Half-drop repeat style');
+    await page.locator('[data-ux2-panel="pattern"]').click();
+    assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
+    await page.locator('#ux2PaletteClose').click();
     await shot(page,'03-pattern-editor');
   });
 
@@ -248,6 +252,10 @@ try{
     await page.locator('#ux2AddPaletteColour').click();
     const after=await page.locator('.ux2-swatches .ux2-swatch').count();
     assert(after>=before,'Add palette colour regressed');
+    const selectedSwatch=(await page.locator('#paletteSwatches button').nth(1).getAttribute('data-color')).toLowerCase();
+    await page.locator('#ux2PaletteSwatches .ux2-swatch').nth(1).click();
+    assert((await page.locator('#ink').inputValue()).toLowerCase()===selectedSwatch,'Palette swatch did not update brush colour');
+    assert((await page.locator('#ux2ColourInput').inputValue()).toLowerCase()===selectedSwatch,'Current colour display did not follow palette swatch selection');
     assert(await visible(page,'#ux2Eyedropper'),'Eyedropper missing');
     page.once('dialog',dialog=>dialog.accept('Audit Palette'));
     await page.locator('#ux2SavePalette').click();
