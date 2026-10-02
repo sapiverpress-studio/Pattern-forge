@@ -161,11 +161,13 @@ try{
   const fullscreenTools=await m.locator('.ux2-tools').boundingBox();
   assert(fullscreenTools&&fullscreenTools.x>=50,'Doodle fullscreen tool rail should clear the landscape camera cutout area');
   assert(await m.locator('.ux2-dockbar').isVisible(),'Doodle fullscreen should keep Colour and Layers available as a compact overlay');
-  assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen should keep contextual tool controls available as an overlay');
+  assert(await m.locator('#ux2Context').isHidden(),'Empty Selection help should stay off the Doodle canvas');
+  assert(await m.locator('.ux2-tools #ux2QuickPalette').isVisible(),'Doodle quick colours should be in the left tool rail');
   assert(Number(await m.locator('#zoom').inputValue())>=250,'Doodle fullscreen should enter at detailed canvas zoom');
   const immersiveStage=await m.locator('#stageWrap').boundingBox();
   assert(immersiveStage&&immersiveStage.height>330,'Doodle fullscreen should give the square canvas nearly the full landscape height');
   await m.locator('[data-ux2-tool="brush"]').click();
+  assert(await m.locator('#ux2Context').isVisible(),'Doodle Brush controls should remain available outside the empty-selection state');
   assert(await m.locator('#ux2BrushLibrary').isVisible(),'Doodle fullscreen Brush should expose size, opacity and brush-library controls');
   assert(await m.locator('.layout [data-tool="brush"]').first().evaluate(el=>el.classList.contains('active')),'Doodle fullscreen Brush should still drive the real drawing engine');
   await m.locator('[data-ux2-panel="layers"]').click();
