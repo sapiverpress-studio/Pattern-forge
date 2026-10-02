@@ -94,7 +94,8 @@ const ANDROID_BRIDGE = String.raw`
 
   window.PatternForgeAndroid = {
     saveFile: function (payload) { return send('saveFile', payload); },
-    shareFile: function (payload) { return send('shareFile', payload); }
+    shareFile: function (payload) { return send('shareFile', payload); },
+    setFullscreen: function (payload) { return send('setFullscreen', payload); }
   };
 
   // Production Pattern Forge may still use normal browser Blob downloads.
@@ -260,6 +261,7 @@ export default function App() {
   const [loadError, setLoadError] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [currentUrl, setCurrentUrl] = useState(PATTERN_FORGE_URL);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -305,6 +307,8 @@ export default function App() {
         }
       } else if (message.action === 'workspace') {
         await setWorkspaceOrientation(String(message.payload?.workspace || 'other'));
+      } else if (message.action === 'setFullscreen') {
+        setFullscreen(Boolean(message.payload?.active));
       } else if (message.action === 'saveFile') {
         await saveFile(message.payload || {});
       } else if (message.action === 'shareFile') {
@@ -321,8 +325,8 @@ export default function App() {
   }, []);
 
   return (
-    <View style={styles.safeArea}>
-      <ExpoStatusBar style="dark" />
+    <View style={[styles.safeArea, fullscreen && styles.fullscreenSafeArea]}>
+      <ExpoStatusBar style="dark" hidden={fullscreen} />
       <View style={styles.container}>
         <WebView
           ref={webRef}
@@ -399,6 +403,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) : 0,
     backgroundColor: '#eef1f4',
+  },
+  fullscreenSafeArea: {
+    paddingTop: 0,
   },
   container: {
     flex: 1,
