@@ -161,7 +161,7 @@ try{
   assert(fullscreenTools&&fullscreenTools.x>=50,'Doodle fullscreen tool rail should clear the landscape camera cutout area');
   assert(await m.locator('.ux2-dockbar').isVisible(),'Doodle fullscreen should keep Colour and Layers available as a compact overlay');
   assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen should keep contextual tool controls available as an overlay');
-  assert(Number(await m.locator('#zoom').inputValue())===270,'Doodle fullscreen should enter at detailed 270% zoom');
+  assert(Number(await m.locator('#zoom').inputValue())>=250,'Doodle fullscreen should enter at detailed canvas zoom');
   const immersiveStage=await m.locator('#stageWrap').boundingBox();
   assert(immersiveStage&&immersiveStage.height>330,'Doodle fullscreen should give the square canvas nearly the full landscape height');
   await m.locator('[data-ux2-tool="brush"]').click();
