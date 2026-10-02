@@ -1,3 +1,4 @@
+# UX2 live tunnel refreshes from the branch head used for device QA.
 name: UX2 Expo Go live test
 
 on:
