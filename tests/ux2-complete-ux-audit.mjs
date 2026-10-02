@@ -464,7 +464,7 @@ try{
       const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'pattern-'+size.label);
       await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
       await view.locator('#newProjectSetup').waitFor({state:'visible'});
-      await view.locator('#projectTitleInput').fill('Fit check '+size.label);
+      await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();
       await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
       await view.waitForFunction(()=>Number(document.querySelector('#zoom')?.value)>=250);
       assert(await view.locator('#gridOn').isChecked(),size.label+': default construction grid is off');
