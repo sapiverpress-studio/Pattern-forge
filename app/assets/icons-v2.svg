@@ -21,6 +21,7 @@
     <symbol id="i-grid" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM9.7 5v14M14.3 5v14M5 9.7h14M5 14.3h14" fill="none" stroke="currentColor" stroke-width="1.45"/></symbol>
     <symbol id="i-symmetry" viewBox="0 0 24 24"><path d="M12 4v16M9.5 7.2C7 8.4 5.5 10 5.5 12s1.5 3.6 4 4.8M14.5 7.2C17 8.4 18.5 10 18.5 12s-1.5 3.6-4 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
     <symbol id="i-seam" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM12 5v14" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m9.5 9 2.5 3-2.5 3M14.5 9 12 12l2.5 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M9 5H5v4M15 5h4v4M9 19H5v-4M15 19h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
