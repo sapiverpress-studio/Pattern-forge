@@ -1,0 +1,111 @@
+name: UX2 Expo Go live test
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - .github/workflows/ux2-expo-go-tunnel.yml
+  workflow_dispatch:
+
+jobs:
+  expo-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Verify web and mobile sources
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/workspace.js
+          node --check app/js/canvas-first-v2.js
+          cd mobile
+          npm ci
+          npm run typecheck
+          npx expo-doctor
+      - name: Serve UX2 branch
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > ux2-web-server.log 2>&1 &
+          echo $! > ux2-web-server.pid
+          sleep 2
+          curl -fsS http://127.0.0.1:4173/app/ >/dev/null
+      - name: Start temporary UX2 web tunnel
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          nohup ./cloudflared tunnel --url http://127.0.0.1:4173 --no-autoupdate > ux2-web-tunnel.log 2>&1 &
+          echo $! > ux2-web-tunnel.pid
+          for i in $(seq 1 90); do
+            WEB_URL=$(grep -Eo 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' ux2-web-tunnel.log | head -1 || true)
+            if [ -n "$WEB_URL" ]; then
+              printf '%s\n' "$WEB_URL" > ux2-web-url.txt
+              echo "UX2 web URL: $WEB_URL"
+              break
+            fi
+            if ! kill -0 "$(cat ux2-web-tunnel.pid)" 2>/dev/null; then
+              cat ux2-web-tunnel.log
+              exit 1
+            fi
+            sleep 2
+          done
+          test -s ux2-web-url.txt || { echo 'Timed out waiting for UX2 web tunnel'; cat ux2-web-tunnel.log; exit 1; }
+          curl -LfsS "$(cat ux2-web-url.txt)/app/" >/dev/null
+      - name: Start Expo Go tunnel against UX2
+        shell: bash
+        run: |
+          npm install --global @expo/ngrok
+          export CI=1
+          export EXPO_NO_DEV_CLIENT=1
+          export EXPO_NO_REACT_NATIVE_DEVTOOLS=1
+          export EXPO_PUBLIC_PATTERN_FORGE_URL="$(cat ux2-web-url.txt)/"
+          cd mobile
+          nohup npx expo start --tunnel --clear > ../expo-go-ux2.log 2>&1 &
+          echo $! > ../expo-go-ux2.pid
+          cd ..
+          for i in $(seq 1 120); do
+            PUBLIC_URL=$(curl -fsS http://127.0.0.1:4040/api/tunnels 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);const t=(j.tunnels||[]).find(x=>String(x.public_url||'').startsWith('https://'));if(t)process.stdout.write(t.public_url)}catch(e){}})" || true)
+            if [ -n "$PUBLIC_URL" ]; then
+              HOST=${PUBLIC_URL#https://}
+              URL="exp://$HOST"
+              printf '%s\n' "$URL" > expo-go-ux2-url.txt
+              echo "Expo Go UX2 URL: $URL"
+              break
+            fi
+            if ! kill -0 "$(cat expo-go-ux2.pid)" 2>/dev/null; then
+              echo 'Expo tunnel stopped before publishing a URL.'
+              cat expo-go-ux2.log
+              exit 1
+            fi
+            sleep 2
+          done
+          test -s expo-go-ux2-url.txt || { echo 'Timed out waiting for Expo Go URL'; cat expo-go-ux2.log; exit 1; }
+      - name: Upload live test connection info
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux2-expo-go-live
+          path: |
+            ux2-web-url.txt
+            expo-go-ux2-url.txt
+            ux2-web-tunnel.log
+            expo-go-ux2.log
+          retention-days: 1
+      - name: Keep both tunnels available
+        shell: bash
+        run: |
+          EXPO_PID=$(cat expo-go-ux2.pid)
+          WEB_PID=$(cat ux2-web-tunnel.pid)
+          echo "UX2 web: $(cat ux2-web-url.txt)"
+          echo "Expo Go: $(cat expo-go-ux2-url.txt)"
+          for i in $(seq 1 5400); do
+            kill -0 "$EXPO_PID" 2>/dev/null || { echo 'Expo tunnel stopped.'; cat expo-go-ux2.log; exit 1; }
+            kill -0 "$WEB_PID" 2>/dev/null || { echo 'UX2 web tunnel stopped.'; cat ux2-web-tunnel.log; exit 1; }
+            sleep 1
+          done
