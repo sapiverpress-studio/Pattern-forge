@@ -159,3 +159,24 @@ body.ux2-fullscreen .ux2-canvas-head{
 body.ux2-fullscreen #ux2Hint{display:none}
 body.ux2-fullscreen .ux2-quick-palette{max-width:min(30vw,230px)}
 @media(max-width:600px){body.ux2-fullscreen .ux2-canvas-head{max-width:calc(100vw - 150px)}body.ux2-fullscreen .ux2-quick-palette{max-width:24vw}}
+
+/* Narrow-phone control fit: retain the essential app and canvas actions. */
+@media(max-width:600px){
+  .ux2-topbar{gap:4px;padding:0 6px;min-width:0}
+  .ux2-top-left,.ux2-top-actions{gap:4px}
+  .ux2-title{display:none}
+  .ux2-gallery{height:32px;width:auto;padding:0 4px;gap:3px;font-size:10px}
+  .ux2-mode{padding:3px 5px;font-size:9px}
+  .ux2-top-actions .ux2-icon-btn{width:32px;height:32px}
+  .ux2-top-actions .ux2-btn{padding:6px 7px;font-size:10px;white-space:nowrap}
+  .ux2-canvas-head{min-width:0;height:36px;gap:4px;padding:0 6px;overflow:hidden}
+  #ux2Hint{display:none}
+  .ux2-canvas-head .spacer{display:none}
+  .ux2-quick-palette{width:52px;max-width:52px;min-width:0;flex:0 1 52px;overflow-x:auto;scrollbar-width:none}
+  .ux2-quick-palette::-webkit-scrollbar{display:none}
+  .ux2-zoom-controls{flex:0 0 auto;gap:3px;margin-left:auto}
+  .ux2-zoom-controls output{min-width:32px;font-size:10px}
+  .ux2-zoom-step{width:28px;height:30px}
+  #ux2Fit{padding:6px 8px;font-size:11px}
+}
+@media(max-width:380px){#ux2Preview{display:none!important}}
