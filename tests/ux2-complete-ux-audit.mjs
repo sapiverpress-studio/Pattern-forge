@@ -35,7 +35,11 @@ async function activeOldTool(page,tool){
 async function collectLayout(page,label){
   const data=await page.evaluate(()=>{
     const viewport={w:innerWidth,h:innerHeight};
+    const gate=document.getElementById('doodleLandscapeGate');
+    const gateStyle=gate?getComputedStyle(gate):null;
+    const gateVisible=!!gate&&gateStyle.display!=='none'&&gateStyle.visibility!=='hidden';
     const els=[...document.querySelectorAll('button,a[href],input,select')].filter(el=>{
+      if(gateVisible&&!gate.contains(el))return false;
       const s=getComputedStyle(el),r=el.getBoundingClientRect();
       return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
     }).map(el=>{
@@ -232,10 +236,12 @@ try{
       assert((await target.isChecked())!==old,id+' toggle did not change');
     }
     await page.locator('#ux2LayerDuplicate').click();
+    await page.waitForFunction(expected=>document.querySelectorAll('#layerList .layerRow').length===expected,afterAdd+1);
     assert(await page.locator('#layerList .layerRow').count()===afterAdd+1,'Duplicate Layer failed');
     await page.locator('#ux2LayerUp').click();
     await page.locator('#ux2LayerDown').click();
     await page.locator('#ux2LayerDelete').click();
+    await page.waitForFunction(expected=>document.querySelectorAll('#layerList .layerRow').length===expected,afterAdd);
     assert(await page.locator('#layerList .layerRow').count()===afterAdd,'Delete Layer failed');
     await shot(page,'07-layers-panel');
     await page.locator('#ux2PaletteClose').click();
