@@ -337,11 +337,11 @@ try{
     assert(await page.locator('#symmetry').inputValue()==='quadrant','Quadrant mirror failed');
     await page.locator('#ux2SymmetryGuides').click();
     const guideBefore=await page.locator('#editorCanvas').screenshot();
-    await page.locator('#ux2Guide').selectOption('centre');
+    await page.locator('#ux2Guide').selectOption('diagonals');
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const guideAfter=await page.locator('#editorCanvas').screenshot();
     assert(!guideBefore.equals(guideAfter),'Guide selection did not redraw the canvas immediately');
-    assert(await page.locator('#constructionGuide').inputValue()==='centre','Construction guide failed');
+    assert(await page.locator('#constructionGuide').inputValue()==='diagonals','Construction guide failed');
     await page.locator('#ux2SnapOn').click();
     await page.locator('#ux2Neighbour').evaluate(el=>{el.value='71';el.dispatchEvent(new Event('input',{bubbles:true}));});
     assert(await page.locator('#neighborOpacity').inputValue()==='71','Repeat visibility failed');
