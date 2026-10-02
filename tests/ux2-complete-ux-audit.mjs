@@ -352,6 +352,13 @@ try{
     const stage=await page.locator('#stageWrap').boundingBox();assert(stage&&stage.height>760,'Fullscreen canvas lost its large size');
     assert(await page.locator('.ux2-tools').isVisible(),'Fullscreen tool rail hidden');
     assert(await page.locator('.ux2-dockbar').isVisible(),'Fullscreen palette dock hidden');
+    for(const [selector,label] of [
+      ['#ux2Undo','Undo'],['#ux2Redo','Redo'],['#ux2Fullscreen','Exit full screen'],
+      ['[data-ux2-tool="select"]','Select'],['[data-ux2-tool="brush"]','Brush'],['[data-ux2-tool="eraser"]','Erase'],
+      ['[data-ux2-tool="freefill"]','Fill'],['[data-ux2-tool="pan"]','Pan'],['[data-ux2-action="image"]','Image'],
+      ['[data-ux2-tool="rect"]','Shape'],['[data-ux2-panel="colour"]','Colour'],['[data-ux2-panel="layers"]','Layers'],
+      ['[data-ux2-panel="pattern"]','Pattern']
+    ]) assert(await page.locator(selector).getAttribute('aria-label')===label,'Fullscreen control lacks accessible name: '+label);
     for(const tool of ['select','brush','eraser','freefill','pan','rect']){
       await page.locator('[data-ux2-tool="'+tool+'"]').click();
       assert(await activeOldTool(page,tool),'Fullscreen tool '+tool+' failed');
@@ -397,6 +404,16 @@ try{
     await page.locator('#ux2Gallery').click();await page.waitForLoadState('networkidle');
   });
 
+  await step('Doodle desktop: preview shortcut is removed and transparent export is stated',async()=>{
+    await page.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});
+    assert(await page.locator('#ux2Preview').isHidden(),'Doodle should not show a Preview button that opens Layers');
+    await page.locator('#ux2Export').click();
+    assert(await page.getByText('Transparent background is preserved for PNG and SVG.',{exact:false}).isVisible(),'Doodle export transparency is not stated');
+    assert(await page.getByText('PNG carries 300 DPI metadata.',{exact:false}).isVisible(),'Doodle PNG resolution metadata is not stated');
+    await page.locator('#ux2PaletteClose').click();
+    await page.locator('#ux2Gallery').click();await page.waitForLoadState('networkidle');
+  });
+
   await collectLayout(page,'home-after-pattern');
   await desktop.close();
 
@@ -427,7 +444,7 @@ try{
     await m.locator('[data-ux2-panel="layers"]').click();
     assert((await m.locator('#ux2PaletteTitle').textContent())==='Layers','Doodle Layers panel failed');
     await m.locator('#ux2PaletteClose').click();
-    assert(await m.locator('#ux2Preview').isHidden(),'Compact Doodle landscape should hide redundant Preview button');
+    assert(await m.locator('#ux2Preview').isHidden(),'Doodle should not show a Preview button that opens Layers');
   });
 
   await step('Doodle fullscreen: camera-safe rail, tools, context and palettes remain usable',async()=>{

@@ -17,8 +17,8 @@
       </div>
       <div class="ux2-top-actions">
         <span class="ux2-status" id="ux2Status"></span>
-        <button class="ux2-icon-btn" id="ux2Undo" title="Undo">${icon('undo')}</button>
-        <button class="ux2-icon-btn" id="ux2Redo" title="Redo">${icon('redo')}</button>
+        <button class="ux2-icon-btn" id="ux2Undo" title="Undo" aria-label="Undo">${icon('undo')}</button>
+        <button class="ux2-icon-btn" id="ux2Redo" title="Redo" aria-label="Redo">${icon('redo')}</button>
         <button class="ux2-icon-btn" id="ux2Fullscreen" title="Full screen" aria-label="Enter full screen">${icon('fullscreen')}</button>
         <button class="ux2-btn" id="ux2Preview">Preview</button>
         <button class="ux2-btn primary" id="ux2Export">Export</button>
@@ -26,22 +26,22 @@
     </header>
     <div class="ux2-work">
       <nav class="ux2-tools" aria-label="Creative tools">
-        <button class="ux2-tool active" data-ux2-tool="select">${icon('select')}<b>Select</b></button>
-        <button class="ux2-tool" data-ux2-tool="brush">${icon('brush')}<b>Brush</b></button>
-        <button class="ux2-tool" data-ux2-tool="eraser">${icon('eraser')}<b>Erase</b></button>
-        <button class="ux2-tool" data-ux2-tool="freefill">${icon('fill')}<b>Fill</b></button>
-        <button class="ux2-tool" data-ux2-tool="pan">${icon('pan')}<b>Pan</b></button>
-        <button class="ux2-tool" data-ux2-action="image">${icon('image')}<b>Image</b></button>
-        <button class="ux2-tool" data-ux2-tool="rect">${icon('shape')}<b>Shape</b></button>
+        <button class="ux2-tool active" data-ux2-tool="select" aria-label="Select">${icon('select')}<b>Select</b></button>
+        <button class="ux2-tool" data-ux2-tool="brush" aria-label="Brush">${icon('brush')}<b>Brush</b></button>
+        <button class="ux2-tool" data-ux2-tool="eraser" aria-label="Erase">${icon('eraser')}<b>Erase</b></button>
+        <button class="ux2-tool" data-ux2-tool="freefill" aria-label="Fill">${icon('fill')}<b>Fill</b></button>
+        <button class="ux2-tool" data-ux2-tool="pan" aria-label="Pan">${icon('pan')}<b>Pan</b></button>
+        <button class="ux2-tool" data-ux2-action="image" aria-label="Image">${icon('image')}<b>Image</b></button>
+        <button class="ux2-tool" data-ux2-tool="rect" aria-label="Shape">${icon('shape')}<b>Shape</b></button>
       </nav>
       <main class="ux2-canvas-area">
         <div class="ux2-canvas-head"><span id="ux2Hint">Select artwork to move, scale or rotate</span><span class="spacer"></span><button class="ux2-btn" id="ux2Fit">Fit</button><span id="ux2ZoomLabel">100%</span></div>
         <div class="ux2-canvas-slot" id="ux2CanvasSlot"></div>
       </main>
       <nav class="ux2-dockbar" aria-label="Quick palettes">
-        <button class="ux2-dock" data-ux2-panel="colour">${icon('colour')}<b>Colour</b></button>
-        <button class="ux2-dock" data-ux2-panel="layers">${icon('layers')}<b>Layers</b></button>
-        <button class="ux2-dock" data-ux2-panel="pattern">${icon('repeat')}<b>Pattern</b></button>
+        <button class="ux2-dock" data-ux2-panel="colour" aria-label="Colour">${icon('colour')}<b>Colour</b></button>
+        <button class="ux2-dock" data-ux2-panel="layers" aria-label="Layers">${icon('layers')}<b>Layers</b></button>
+        <button class="ux2-dock" data-ux2-panel="pattern" aria-label="Pattern">${icon('repeat')}<b>Pattern</b></button>
       </nav>
       <aside class="ux2-palette" id="ux2Palette" hidden><div class="ux2-palette-head"><span id="ux2PaletteTitle">Panel</span><button class="ux2-palette-close" id="ux2PaletteClose" aria-label="Close">×</button></div><div class="ux2-palette-body" id="ux2PaletteBody"></div></aside>
     </div>
@@ -139,8 +139,9 @@
     return `<div class="ux2-panel-block"><div class="ux2-panel-label">Repeat</div><div class="ux2-repeat-card"><strong>${repeat}</strong><span>${$('pixelReadout')?.textContent||'4000 × 4000'} · 300 DPI metadata</span></div><button class="ux2-btn" id="ux2FullPreview" style="width:100%;margin-top:8px">Full repeat preview</button><button class="ux2-btn" id="ux2SeamInspect" style="width:100%;margin-top:7px">Inspect seams</button><label class="ux2-slider" style="margin-top:8px">Repeat visibility <input id="ux2Neighbour" type="range" min="15" max="100" value="${$('neighborOpacity')?.value||35}"></label><label class="ux2-check"><input id="ux2TileEdge" type="checkbox" ${$('showTileBorder')?.checked?'checked':''}> Show centre tile edge</label></div><div class="ux2-panel-block"><div class="ux2-panel-label">Construction</div><label class="ux2-field-label">Grid divisions<select id="ux2Grid"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16">16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></label><label class="ux2-check"><input id="ux2GridOn" type="checkbox" ${$('gridOn')?.checked?'checked':''}> Show grid</label><label class="ux2-field-label">Mirror while drawing<select id="ux2Symmetry"><option value="off">Off</option><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="quadrant">Quadrant · 4 copies</option><option value="radial">8-way radial</option></select></label><label class="ux2-check"><input id="ux2SymmetryGuides" type="checkbox" ${$('symmetryGuides')?.checked?'checked':''}> Show mirror guides</label><label class="ux2-field-label">Guide<select id="ux2Guide"><option value="off">Off</option><option value="centre">Centre cross</option><option value="diagonals">Diagonals</option><option value="diamond">Diamond</option><option value="all">All guides</option></select></label><label class="ux2-check"><input id="ux2SnapOn" type="checkbox" ${$('snapOn')?.checked?'checked':''}> Smart snapping</label></div>`;
   }
   function exportPanel(){
-    const quality=$('quality')?.textContent?.trim()||'Add artwork to calculate print quality.',pixels=$('pixelReadout')?.textContent||'4000 × 4000';
-    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Export confidence</div><div class="ux2-repeat-card"><strong>${pixels}</strong><span>PNG carries 300 DPI metadata.</span></div><p class="ux2-info">${quality}</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Artwork</div><button class="ux2-btn primary" data-export-old="exportPng" style="width:100%;margin-bottom:7px">Export PNG · 300 DPI</button><button class="ux2-btn" data-export-old="exportSvg" style="width:100%">Export SVG</button></div><div class="ux2-panel-block"><div class="ux2-panel-label">Editable project</div><button class="ux2-btn" data-export-old="saveProject" style="width:100%;margin-bottom:7px">Save editable project</button><button class="ux2-btn" data-export-old="openProject" style="width:100%;margin-bottom:7px">Open project file</button><button class="ux2-btn" data-export-old="exportZip" style="width:100%">Download project bundle</button></div>`;
+    const quality=$('quality')?.textContent?.trim()||'Add artwork to calculate print quality.',pixels=$('pixelReadout')?.textContent||'4000 × 4000',doodle=document.body.classList.contains('doodle-project');
+    const exportNote=doodle?'Transparent background is preserved for PNG and SVG. PNG carries 300 DPI metadata.':'PNG carries 300 DPI metadata.';
+    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Export confidence</div><div class="ux2-repeat-card"><strong>${pixels}</strong><span>${exportNote}</span></div><p class="ux2-info">${quality}</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Artwork</div><button class="ux2-btn primary" data-export-old="exportPng" style="width:100%;margin-bottom:7px">Export PNG · 300 DPI</button><button class="ux2-btn" data-export-old="exportSvg" style="width:100%">Export SVG</button></div><div class="ux2-panel-block"><div class="ux2-panel-label">Editable project</div><button class="ux2-btn" data-export-old="saveProject" style="width:100%;margin-bottom:7px">Save editable project</button><button class="ux2-btn" data-export-old="openProject" style="width:100%;margin-bottom:7px">Open project file</button><button class="ux2-btn" data-export-old="exportZip" style="width:100%">Download project bundle</button></div>`;
   }
 
 
