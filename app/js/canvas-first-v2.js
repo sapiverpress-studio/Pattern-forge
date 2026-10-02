@@ -19,6 +19,7 @@
         <span class="ux2-status" id="ux2Status"></span>
         <button class="ux2-icon-btn" id="ux2Undo" title="Undo">${icon('undo')}</button>
         <button class="ux2-icon-btn" id="ux2Redo" title="Redo">${icon('redo')}</button>
+        <button class="ux2-icon-btn" id="ux2Fullscreen" title="Full screen" aria-label="Enter full screen">${icon('fullscreen')}</button>
         <button class="ux2-btn" id="ux2Preview">Preview</button>
         <button class="ux2-btn primary" id="ux2Export">Export</button>
       </div>
@@ -158,8 +159,43 @@
     if(name==='export')document.querySelectorAll('[data-export-old]').forEach(b=>b.addEventListener('click',()=>clickOld(b.dataset.exportOld)));
   }
 
+  let ux2FullscreenActive=false;
+  function notifyNativeFullscreen(active){
+    try{
+      const bridge=window.PatternForgeAndroid;
+      if(bridge&&typeof bridge.setFullscreen==='function')bridge.setFullscreen(JSON.stringify({active:!!active}));
+    }catch(_){/* Browser build or native bridge unavailable. */}
+  }
+  function syncFullscreenButton(){
+    const button=$('ux2Fullscreen');if(!button)return;
+    button.classList.toggle('active',ux2FullscreenActive);
+    button.title=ux2FullscreenActive?'Exit full screen':'Full screen';
+    button.setAttribute('aria-label',ux2FullscreenActive?'Exit full screen':'Enter full screen');
+    button.setAttribute('aria-pressed',String(ux2FullscreenActive));
+  }
+  async function setUx2Fullscreen(active){
+    ux2FullscreenActive=!!active;
+    document.body.classList.toggle('ux2-fullscreen',ux2FullscreenActive);
+    syncFullscreenButton();
+    notifyNativeFullscreen(ux2FullscreenActive);
+    if(ux2FullscreenActive){
+      if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+        try{await document.documentElement.requestFullscreen({navigationUI:'hide'});}catch(_){/* Keep immersive in-app fallback. */}
+      }
+    }else if(document.fullscreenElement&&document.exitFullscreen){
+      try{await document.exitFullscreen();}catch(_){/* UI state is already restored. */}
+    }
+  }
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement&&ux2FullscreenActive){
+      ux2FullscreenActive=false;document.body.classList.remove('ux2-fullscreen');syncFullscreenButton();notifyNativeFullscreen(false);
+    }
+  });
+  window.addEventListener('patternforge:native-fullscreen-exit',()=>setUx2Fullscreen(false));
+
   $('ux2Gallery').addEventListener('click',()=>{location.href='/'});
   $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
+  $('ux2Fullscreen').addEventListener('click',()=>setUx2Fullscreen(!ux2FullscreenActive));syncFullscreenButton();
   $('ux2Preview').addEventListener('click',()=>openPanel(document.body.classList.contains('doodle-project')?'layers':'pattern'));
   $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));
   $('ux2PaletteClose').addEventListener('click',()=>{$('ux2Palette').hidden=true;document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'))});
