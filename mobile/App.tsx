@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f4f1e9',
+    backgroundColor: '#eef1f4',
   },
   loadingText: {
     marginTop: 14,
