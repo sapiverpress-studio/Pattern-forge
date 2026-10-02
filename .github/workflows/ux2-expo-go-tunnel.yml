@@ -1,5 +1,5 @@
 # UX2 live tunnel refreshes from the branch head used for device QA.
-# Refresh: fullscreen controls restored 945d2ac1.
+# Refresh: camera-safe fullscreen tool rail 595a7247.
 name: UX2 Expo Go live test
 
 on:
