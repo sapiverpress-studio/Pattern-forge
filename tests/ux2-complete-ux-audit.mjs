@@ -166,6 +166,11 @@ try{
     await page.locator('[data-ux2-tool="freefill"]').click();
     assert(await activeOldTool(page,'freefill'),'Freehand Fill did not activate engine');
     assert(await visible(page,'#ux2GradientFill'),'Gradient Fill shortcut missing');
+    assert(await visible(page,'#ux2ColourShortcut'),'Fill colour shortcut missing');
+    await page.locator('#ux2ColourShortcut').click();
+    assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Fill colour shortcut did not open Colour panel');
+    await page.locator('#ux2PaletteClose').click();
+    await page.locator('[data-ux2-tool="freefill"]').click();
     await page.locator('#ux2GradientFill').click();
     assert(await activeOldTool(page,'gradient'),'Gradient Fill did not activate engine');
   });
@@ -188,6 +193,13 @@ try{
     await page.locator('#ux2Line').click();assert(await activeOldTool(page,'line'),'Line failed');
     await page.locator('#ux2Rect').click();assert(await activeOldTool(page,'rect'),'Rectangle failed');
     assert(await visible(page,'#ux2ShapeFill'),'Rectangle fill toggle missing');
+    const fillBefore=await page.locator('#shapeFill').isChecked();
+    await page.locator('#ux2ShapeFill').click();
+    assert((await page.locator('#shapeFill').isChecked())!==fillBefore,'Shape fill toggle did not proxy to engine');
+    await page.locator('#ux2ShapeColour').click();
+    assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Shape Colour shortcut did not open Colour panel');
+    await page.locator('#ux2PaletteClose').click();
+    await page.locator('[data-ux2-tool="rect"]').click();
     await page.locator('#ux2Ellipse').click();assert(await activeOldTool(page,'ellipse'),'Ellipse failed');
     assert(await visible(page,'#ux2ShapeWidth'),'Shape width missing');
     await shot(page,'05-shape-controls');
@@ -203,6 +215,30 @@ try{
     assert(assetCount>0 || (await page.locator('#status').textContent()||'').length>0,'Image import gave no visible engine response');
   });
 
+  await step('Pattern: Selection transform, duplicate, arrange, snap and delete controls work',async()=>{
+    await page.locator('[data-ux2-tool="select"]').click();
+    if(!(await visible(page,'#ux2SelScale'))){
+      const box=await page.locator('#editorCanvas').boundingBox();assert(box,'Canvas bounds unavailable for selection');
+      await page.mouse.click(box.x+box.width*.5,box.y+box.height*.5);
+      await page.waitForTimeout(120);
+    }
+    assert(await visible(page,'#ux2SelScale'),'Selection scale control missing');
+    assert(await visible(page,'#ux2SelRot'),'Selection rotate control missing');
+    assert(await visible(page,'#ux2SelOpacity'),'Selection opacity control missing');
+    await page.locator('#ux2SelScale').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2SelRot').evaluate(el=>{el.value='18';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2SelOpacity').evaluate(el=>{el.value='82';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
+    await page.locator('#ux2Duplicate').click();await page.waitForTimeout(120);
+    const duplicated=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
+    assert(duplicated!==before,'Selection Duplicate produced no canvas change');
+    await page.locator('#ux2Front').click();await page.waitForTimeout(50);
+    await page.locator('#ux2Back').click();await page.waitForTimeout(50);
+    await page.locator('#ux2Snap').click();await page.waitForTimeout(50);
+    assert(await visible(page,'#ux2Delete'),'Selection Delete missing');
+    await shot(page,'05b-selection-controls');
+  });
+
   await step('Pattern: Colour panel updates ink, adds a swatch and exposes eyedropper',async()=>{
     await page.locator('[data-ux2-panel="colour"]').click();
     assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Colour panel title wrong');
@@ -213,6 +249,15 @@ try{
     const after=await page.locator('.ux2-swatches .ux2-swatch').count();
     assert(after>=before,'Add palette colour regressed');
     assert(await visible(page,'#ux2Eyedropper'),'Eyedropper missing');
+    page.once('dialog',dialog=>dialog.accept('Audit Palette'));
+    await page.locator('#ux2SavePalette').click();
+    await page.waitForTimeout(80);
+    const options=await page.locator('#savedPaletteSelect option').count();
+    assert(options>=2,'Save palette did not create a saved palette option');
+    await page.locator('#ux2SavedPalette').selectOption('default');
+    assert(await page.locator('#savedPaletteSelect').inputValue()==='default','Saved palette selector did not proxy to engine');
+    await page.locator('#ux2Eyedropper').click();
+    assert(await activeOldTool(page,'eyedropper'),'Eyedropper did not activate engine');
     await shot(page,'06-colour-panel');
     await page.locator('#ux2PaletteClose').click();
   });
@@ -261,6 +306,10 @@ try{
     await page.locator('#ux2SnapOn').click();
     await page.locator('#ux2Neighbour').evaluate(el=>{el.value='71';el.dispatchEvent(new Event('input',{bubbles:true}));});
     assert(await page.locator('#neighborOpacity').inputValue()==='71','Repeat visibility failed');
+    const previewBefore=await page.locator('#repeatPreviewToggle').textContent();
+    await page.locator('#ux2FullPreview').click();await page.waitForTimeout(60);
+    const previewAfter=await page.locator('#repeatPreviewToggle').textContent();
+    assert(previewAfter!==previewBefore,'Full repeat preview button did not toggle engine preview state');
     await page.locator('#ux2SeamInspect').click();
     assert(await page.locator('#neighborOpacity').inputValue()==='100','Inspect seams did not set neighbours to 100%');
     assert(await page.locator('#showTileBorder').isChecked(),'Inspect seams did not enable centre tile edge');
@@ -274,15 +323,24 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
-  await step('Pattern: Export panel exposes PNG, SVG, editable project, open and ZIP',async()=>{
+  await step('Pattern: every export/open action works',async()=>{
     await page.locator('#ux2Export').click();
     for(const action of ['exportPng','exportSvg','saveProject','openProject','exportZip']){
       assert(await visible(page,'[data-export-old="'+action+'"]'),'Export action '+action+' missing');
     }
-    const downloadPromise=page.waitForEvent('download');
-    await page.locator('[data-export-old="saveProject"]').click();
-    const download=await downloadPromise;
-    assert(download.suggestedFilename().endsWith('.json'),'Editable project did not download JSON');
+    const pngP=page.waitForEvent('download');await page.locator('[data-export-old="exportPng"]').click();const png=await pngP;
+    assert(png.suggestedFilename().toLowerCase().endsWith('.png'),'PNG export did not download PNG');
+    const svgP=page.waitForEvent('download');await page.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;
+    assert(svg.suggestedFilename().toLowerCase().endsWith('.svg'),'SVG export did not download SVG');
+    const jsonP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const json=await jsonP;
+    assert(json.suggestedFilename().toLowerCase().endsWith('.json'),'Editable project did not download JSON');
+    const jsonPath=await json.path();assert(jsonPath,'Editable project download path unavailable');
+    const chooserP=page.waitForEvent('filechooser');await page.locator('[data-export-old="openProject"]').click();const chooser=await chooserP;
+    await chooser.setFiles(jsonPath);await page.waitForTimeout(150);
+    await page.locator('#ux2Export').click();
+    const zipP=page.waitForEvent('download');await page.locator('[data-export-old="exportZip"]').click();const zip=await zipP;
+    assert(zip.suggestedFilename().toLowerCase().endsWith('.zip'),'Project bundle did not download ZIP');
+    await page.locator('#ux2Export').click();
     await shot(page,'09-export-panel');
     await page.locator('#ux2PaletteClose').click();
   });
@@ -307,6 +365,36 @@ try{
   await step('Pattern: Projects button returns to project home',async()=>{
     await page.locator('#ux2Gallery').click();await page.waitForLoadState('networkidle');
     assert(new URL(page.url()).pathname==='/','Projects did not return home');
+  });
+
+  await step('Project setup: Cancel returns a fresh generic editor route to project home',async()=>{
+    await page.goto(BASE+'/app/',{waitUntil:'networkidle'});
+    if(await page.locator('#resumePrompt').isVisible()){
+      await page.locator('#startNewFromResume').click();
+    }
+    assert(await page.locator('#projectSetupOverlay').isVisible(),'Generic project setup did not open');
+    const cancel=page.locator('#cancelProjectSetup');
+    assert(await cancel.isVisible(),'Project setup Cancel missing');
+    await cancel.click();await page.waitForLoadState('networkidle');
+    assert(new URL(page.url()).pathname==='/','Cancel did not return to project home');
+  });
+
+  await step('Project home: recent project entry appears after saved work',async()=>{
+    await page.waitForTimeout(1200);
+    await page.reload({waitUntil:'networkidle'});
+    const recentText=await page.locator('#recentProjects').textContent();
+    assert(recentText&&!recentText.includes('Recent projects will appear here'),'No recent project entry appeared after saved work');
+  });
+
+  await step('Open Project: saved-project resume prompt exposes Continue and Start new',async()=>{
+    await page.goto(BASE+'/app/',{waitUntil:'networkidle'});await page.waitForTimeout(200);
+    assert(await page.locator('#resumePrompt').isVisible(),'Resume prompt missing for saved work');
+    assert(await page.locator('#continuePrevious').isVisible(),'Continue previous missing');
+    assert(await page.locator('#startNewFromResume').isVisible(),'Start new missing');
+    await page.locator('#continuePrevious').click();
+    await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    assert(await page.locator('#ux2Editor').isVisible(),'Continue previous did not open editor');
+    await page.locator('#ux2Gallery').click();await page.waitForLoadState('networkidle');
   });
 
   await collectLayout(page,'home-after-pattern');
@@ -335,6 +423,9 @@ try{
     await m.locator('#ux2PaletteClose').click();
     await m.locator('[data-ux2-panel="layers"]').click();
     assert((await m.locator('#ux2PaletteTitle').textContent())==='Layers','Doodle Layers panel failed');
+    await m.locator('#ux2PaletteClose').click();
+    await m.locator('#ux2Preview').click();
+    assert((await m.locator('#ux2PaletteTitle').textContent())==='Layers','Doodle Preview did not open Layers');
     await m.locator('#ux2PaletteClose').click();
   });
 
