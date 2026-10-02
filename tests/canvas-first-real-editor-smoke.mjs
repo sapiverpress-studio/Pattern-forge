@@ -34,6 +34,7 @@ try{
   assert(await page.locator('[data-ux2-action="image"]').isVisible(),'Image tool should be discoverable');
   assert(await page.locator('[data-ux2-tool="rect"]').isVisible(),'Shape tool should be discoverable');
   assert(await page.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Pattern');
+  const zoomBeforeFullscreen=Number(await page.locator('#zoom').inputValue());
   await page.locator('#ux2Fullscreen').click();
   await page.waitForTimeout(80);
   assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Pattern fullscreen should enter immersive UX2 mode');
@@ -58,7 +59,7 @@ try{
   await page.locator('#ux2Fullscreen').click();
   await page.waitForTimeout(80);
   assert(!(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))),'Pattern fullscreen should exit immersive UX2 mode');
-  assert(Number(await page.locator('#zoom').inputValue())===100,'Pattern fullscreen should restore the previous zoom on exit');
+  assert(Number(await page.locator('#zoom').inputValue())===zoomBeforeFullscreen,'Pattern fullscreen should restore the previous zoom on exit');
 
   const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
   await page.locator('[data-ux2-tool="brush"]').click();
