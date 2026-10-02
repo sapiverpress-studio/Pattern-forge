@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
-    backgroundColor: '#f4f1e9',
+    backgroundColor: '#eef1f4',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFill,
