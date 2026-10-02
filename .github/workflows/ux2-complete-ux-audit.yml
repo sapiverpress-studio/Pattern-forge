@@ -1,0 +1,51 @@
+name: UX2 complete UX audit
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - index.html
+      - assets/**
+      - app/**
+      - help/**
+      - tests/ux2-complete-ux-audit.mjs
+      - .github/workflows/ux2-complete-ux-audit.yml
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/workspace.js
+          node --check app/js/canvas-first-v2.js
+          node --check tests/ux2-complete-ux-audit.mjs
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Serve UX2 branch
+        run: |
+          python3 -m http.server 4173 >/tmp/pf-ux2-audit.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:4173/app/ >/dev/null
+      - name: Run complete UX audit
+        run: node tests/ux2-complete-ux-audit.mjs
+      - name: Upload UX audit report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux2-complete-ux-audit
+          path: ux2-audit/**
+          if-no-files-found: error
+          retention-days: 7
