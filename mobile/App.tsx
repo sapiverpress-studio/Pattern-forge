@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
-    backgroundColor: '#f4f1e9',
+    backgroundColor: '#eef1f4',
   },
   errorTitle: {
     fontSize: 22,
