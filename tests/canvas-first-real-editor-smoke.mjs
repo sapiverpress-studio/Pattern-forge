@@ -1,3 +1,4 @@
+// UX2 current-head verification
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
