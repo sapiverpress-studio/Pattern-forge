@@ -14,6 +14,7 @@
       <div class="ux2-top-left">
         <button class="ux2-icon-btn ux2-gallery" id="ux2Gallery" title="Project home">${icon('gallery')}<b>Projects</b></button>
         <div class="ux2-project"><strong class="ux2-title" id="ux2Title">Pattern Forge</strong><span class="ux2-mode" id="ux2Mode">Pattern</span></div>
+        <button class="ux2-btn ux2-tool-menu-trigger" id="ux2ToolMenuTrigger" aria-expanded="false">Tools</button>
       </div>
       <div class="ux2-top-actions">
         <span class="ux2-status" id="ux2Status"></span>
@@ -45,6 +46,7 @@
       </nav>
       <aside class="ux2-palette" id="ux2Palette" hidden><div class="ux2-palette-head"><span id="ux2PaletteTitle">Panel</span><button class="ux2-palette-close" id="ux2PaletteClose" aria-label="Close">×</button></div><div class="ux2-palette-body" id="ux2PaletteBody"></div></aside>
     </div>
+    <section class="ux2-tool-menu" id="ux2ToolMenu" hidden aria-label="Tools and quick tools"></section>
     <footer class="ux2-context" id="ux2Context"></footer>`;
 
   oldLayout.before(shell);
@@ -58,9 +60,11 @@
   const hiddenTool = tool => oldLayout.querySelector(`[data-tool="${tool}"]`);
   const favouriteTools=[{id:'select',label:'Select',icon:'select'},{id:'brush',label:'Brush',icon:'brush'},{id:'eraser',label:'Erase',icon:'eraser'},{id:'freefill',label:'Fill',icon:'fill'},{id:'pan',label:'Pan',icon:'pan'},{id:'image',label:'Image',icon:'image'},{id:'rect',label:'Shape',icon:'shape'}];
   const favouriteStorageKey='patternForgeUx2FavouriteTools';
+  const isDoodle=document.body.classList.contains('doodle-project');
   let favouriteIds=[];
   try{const stored=JSON.parse(localStorage.getItem(favouriteStorageKey)||'[]');if(Array.isArray(stored))favouriteIds=stored.filter(id=>favouriteTools.some(tool=>tool.id===id));}catch(_){}
   function renderFavouriteShortcuts(){
+    if(isDoodle)return;
     const context=$('ux2Context');if(!context)return;
     context.querySelector('.ux2-favourite-tools')?.remove();
     const selected=favouriteTools.filter(tool=>favouriteIds.includes(tool.id));if(!selected.length)return;
@@ -69,16 +73,22 @@
     selected.forEach(tool=>{const button=document.createElement('button');button.type='button';button.className='ux2-favourite-shortcut';button.title=tool.label;button.setAttribute('aria-label',`Switch to ${tool.label}`);button.innerHTML=`${icon(tool.icon)}<span>${tool.label}</span>`;button.addEventListener('click',()=>{const target=tool.id==='image'?document.querySelector('[data-ux2-action="image"]'):document.querySelector(`[data-ux2-tool="${tool.id}"]`);target?.click()});group.append(button)});
     context.prepend(group);
   }
+  function saveFavouriteTools(){try{localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds))}catch(_){}}
+  function renderFavouriteRail(){if(isDoodle)document.querySelectorAll('.ux2-tool-item').forEach(item=>{item.hidden=!favouriteIds.includes(item.dataset.toolId)});}
+  function selectToolFromMenu(id){const target=id==='image'?document.querySelector('[data-ux2-action="image"]'):document.querySelector('[data-ux2-tool="'+id+'"]');target?.click();$('ux2ToolMenu').hidden=true;$('ux2ToolMenuTrigger').setAttribute('aria-expanded','false');}
+  function renderDoodleToolMenu(){if(!isDoodle)return;const menu=$('ux2ToolMenu');if(!menu)return;menu.innerHTML='<div class="ux2-tool-menu-head"><strong>Tools</strong><span>Choose quick tools</span></div>';const grid=document.createElement('div');grid.className='ux2-tool-menu-grid';favouriteTools.forEach(tool=>{const row=document.createElement('div');row.className='ux2-tool-menu-row';const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';use.innerHTML=icon(tool.icon)+'<span>'+tool.label+'</span>';use.addEventListener('click',()=>selectToolFromMenu(tool.id));const favourite=document.createElement('label');favourite.className='ux2-tool-menu-favourite';const check=document.createElement('input');check.type='checkbox';check.checked=favouriteIds.includes(tool.id);check.setAttribute('aria-label','Show '+tool.label+' in quick tools');check.addEventListener('change',()=>{favouriteIds=check.checked?[...new Set([...favouriteIds,tool.id])]:favouriteIds.filter(savedId=>savedId!==tool.id);saveFavouriteTools();renderFavouriteRail();renderDoodleToolMenu()});favourite.append(check,document.createTextNode(' Quick'));row.append(use,favourite);grid.append(row)});menu.append(grid);}
   function initFavouriteControls(){
     document.querySelectorAll('.ux2-tools>.ux2-tool').forEach(toolButton=>{
       const id=toolButton.dataset.ux2Tool||(toolButton.hasAttribute('data-ux2-action')?'image':'');
       const tool=favouriteTools.find(item=>item.id===id);if(!tool)return;
       const item=document.createElement('div');item.className='ux2-tool-item';item.dataset.toolId=id;toolButton.before(item);item.append(toolButton);
-      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='ux2-favourite-toggle';checkbox.checked=favouriteIds.includes(id);checkbox.setAttribute('role','checkbox');checkbox.setAttribute('aria-label',`Favourite ${tool.label}`);checkbox.title=`Favourite ${tool.label}`;
-      checkbox.addEventListener('change',()=>{favouriteIds=checkbox.checked?[...new Set([...favouriteIds,id])]:favouriteIds.filter(savedId=>savedId!==id);try{localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds))}catch(_){};document.querySelectorAll('.ux2-favourite-toggle').forEach(el=>{const toolId=el.closest('.ux2-tool-item')?.dataset.toolId;if(toolId)el.checked=favouriteIds.includes(toolId)});renderFavouriteShortcuts()});item.append(checkbox);
+      if(!isDoodle){const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='ux2-favourite-toggle';checkbox.checked=favouriteIds.includes(id);checkbox.setAttribute('role','checkbox');checkbox.setAttribute('aria-label',`Favourite ${tool.label}`);checkbox.title=`Favourite ${tool.label}`;
+        checkbox.addEventListener('change',()=>{favouriteIds=checkbox.checked?[...new Set([...favouriteIds,id])]:favouriteIds.filter(savedId=>savedId!==id);saveFavouriteTools();document.querySelectorAll('.ux2-favourite-toggle').forEach(el=>{const toolId=el.closest('.ux2-tool-item')?.dataset.toolId;if(toolId)el.checked=favouriteIds.includes(toolId)});renderFavouriteShortcuts()});item.append(checkbox);}
     });
+    renderFavouriteRail();
   }
   initFavouriteControls();
+  if(isDoodle){$('ux2ToolMenuTrigger').addEventListener('click',()=>{const menu=$('ux2ToolMenu'),open=menu.hidden;menu.hidden=!open;$('ux2ToolMenuTrigger').setAttribute('aria-expanded',String(open));if(open)renderDoodleToolMenu()});renderDoodleToolMenu();}
   const dispatchValue = (id, value, event='input') => {
     const el=$(id); if(!el) return; el.value=value; el.dispatchEvent(new Event(event,{bubbles:true}));
   };
