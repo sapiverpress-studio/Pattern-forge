@@ -569,7 +569,6 @@
   }
 
   function symmetryTransforms(){
-    if(isDoodleProject())return [[false,false,0]];
     const mode=$("symmetry").value;
     if(mode==="vertical")return [[false,false,0],[true,false,0]];
     if(mode==="horizontal")return [[false,false,0],[false,true,0]];
