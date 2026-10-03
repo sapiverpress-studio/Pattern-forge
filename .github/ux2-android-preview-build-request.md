@@ -1,0 +1,1 @@
+Temporary marker for an isolated UX2 Android preview build. This branch exists only to request the Expo GitHub preview build; it must not be merged. The app source is the current feature/canvas-first-ux-v2 branch and the preview profile points to UX2 staging.
