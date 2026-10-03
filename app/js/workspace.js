@@ -92,7 +92,12 @@
       if(workspace==='doodle'){
         // Doodle is one direct, standalone canvas. Reopen its own autosave or
         // start a blank one immediately; it never needs a creation decision.
-        if(savedType!=='doodle')document.getElementById('createProject')?.click();
+        const openDoodle=()=>{if(window.PatternForgeAutosaveState?.projectType!=='doodle')document.getElementById('createProject')?.click()};
+        openDoodle();
+        // IndexedDB resolves after some web views have painted their legacy
+        // resume layer. Re-evaluate once it has completed so Doodle still
+        // opens straight into its canvas rather than surfacing a choice.
+        setTimeout(openDoodle,300);
         return;
       }
       if(savedType===workspace)return;
