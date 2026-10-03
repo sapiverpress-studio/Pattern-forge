@@ -62,7 +62,7 @@
   const favouriteStorageKey='patternForgeUx2FavouriteTools';
   const isDoodle=document.body.classList.contains('doodle-project');
   let favouriteIds=[];
-  try{const stored=JSON.parse(localStorage.getItem(favouriteStorageKey)||'[]');if(Array.isArray(stored))favouriteIds=stored.filter(id=>favouriteTools.some(tool=>tool.id===id));}catch(_){}
+  try{const saved=localStorage.getItem(favouriteStorageKey),stored=JSON.parse(saved||'[]');if(Array.isArray(stored))favouriteIds=stored.filter(id=>favouriteTools.some(tool=>tool.id===id));if(isDoodle&&saved===null){favouriteIds=['brush','eraser','pan'];localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds));}}catch(_){}
   function renderFavouriteShortcuts(){
     if(isDoodle)return;
     const context=$('ux2Context');if(!context)return;
