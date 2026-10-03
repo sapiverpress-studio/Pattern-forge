@@ -265,8 +265,9 @@
     }));
   }
   const updateIdentity=()=>{
-    setText($('ux2Title'),$('projectNameDisplay')?.textContent?.trim()||'Pattern Forge');
-    const doodle=document.body.classList.contains('doodle-project');setText($('ux2Mode'),doodle?'Doodle':'Pattern');
+    const doodle=document.body.classList.contains('doodle-project');
+    setText($('ux2Title'),doodle?'Doodle':($('projectNameDisplay')?.textContent?.trim()||'Pattern Forge'));
+    setText($('ux2Mode'),doodle?'Doodle':'Pattern');
     if(doodle){const quickPalette=$('ux2QuickPalette'),toolRail=document.querySelector('.ux2-tools');if(quickPalette&&toolRail&&quickPalette.parentElement!==toolRail)toolRail.appendChild(quickPalette);}
     const patternDock=document.querySelector('[data-ux2-panel="pattern"]');if(patternDock){patternDock.hidden=doodle;patternDock.style.display=doodle?'none':'';}
     setText($('ux2ZoomLabel'),$('zoomLabel')?.textContent||'100%');
