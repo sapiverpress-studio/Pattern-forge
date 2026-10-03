@@ -170,13 +170,7 @@ body.ux2-fullscreen .ux2-canvas-head{
 }
 /* Doodle uses the outer landscape gutter for zoom. The canvas must stay clear
    for drawing, rather than carrying controls across its top edge. */
-@media(orientation:landscape) and (min-width:1200px){
-  body.ux2-fullscreen.doodle-project .ux2-canvas-head{
-    left:max(88px,calc((100vw - 100dvh)/2 - 318px));right:auto;transform:none;
-    max-width:calc((100vw - 100dvh)/2 - 12px)
-  }
-}
-@media(orientation:landscape) and (max-width:1199px){
+@media(orientation:landscape){
   body.ux2-fullscreen.doodle-project .ux2-canvas-head{
     left:max(88px,calc((100vw - 100dvh)/2 - 58px));right:auto;transform:none;
     width:46px;max-width:46px;height:auto;max-height:calc(100dvh - 12px);padding:4px
