@@ -238,3 +238,51 @@
       ux2FullscreenZoomBefore=null;
       if(document.fullscreenElement&&document.exitFullscreen){
         try{await document.exitFullscreen();}catch(_){/* UI state is already restored. */}
+      }
+    }
+  }
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement&&ux2FullscreenActive)void setUx2Fullscreen(false);
+  });
+  window.addEventListener('patternforge:native-fullscreen-exit',()=>void setUx2Fullscreen(false));
+
+  $('ux2Gallery').addEventListener('click',()=>{location.href='/'});
+  $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
+  $('ux2Fullscreen').addEventListener('click',()=>setUx2Fullscreen(!ux2FullscreenActive));syncFullscreenButton();
+  $('ux2Preview').addEventListener('click',()=>clickOld('repeatPreviewToggle'));
+  $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));$('ux2ZoomOut').addEventListener('click',()=>clickOld('zoomOut'));$('ux2ZoomIn').addEventListener('click',()=>clickOld('zoomIn'));
+  $('ux2PaletteClose').addEventListener('click',()=>{$('ux2Palette').hidden=true;document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'))});
+  document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));
+  document.querySelectorAll('[data-ux2-action="image"]').forEach(b=>b.addEventListener('click',()=>{const picker=document.getElementById('files');if(picker)picker.click()}));
+  document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.addEventListener('click',()=>openPanel(b.dataset.ux2Panel)));
+
+  const setText=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value};
+  function populateQuickPalette(){
+    const host=$('ux2QuickPalette'),source=$('paletteSwatches');if(!host||!source)return;
+    host.replaceChildren(...[...source.querySelectorAll('button')].map(swatch=>{
+      const button=document.createElement('button');button.type='button';button.className='ux2-quick-swatch';button.style.background=swatch.dataset.color;button.title=swatch.title;button.setAttribute('aria-label',swatch.getAttribute('aria-label')||swatch.title);
+      button.addEventListener('click',()=>swatch.click());return button;
+    }));
+  }
+  const updateIdentity=()=>{
+    setText($('ux2Title'),$('projectNameDisplay')?.textContent?.trim()||'Pattern Forge');
+    const doodle=document.body.classList.contains('doodle-project');setText($('ux2Mode'),doodle?'Doodle':'Pattern');
+    if(doodle){const quickPalette=$('ux2QuickPalette'),toolRail=document.querySelector('.ux2-tools');if(quickPalette&&toolRail&&quickPalette.parentElement!==toolRail)toolRail.appendChild(quickPalette);}
+    const patternDock=document.querySelector('[data-ux2-panel="pattern"]');if(patternDock){patternDock.hidden=doodle;patternDock.style.display=doodle?'none':'';}
+    setText($('ux2ZoomLabel'),$('zoomLabel')?.textContent||'100%');
+  };
+  const updateStatus=()=>setText($('ux2Status'),$('status')?.textContent||'');
+  const titleNode=$('projectNameDisplay'),statusNode=$('status'),selectionNode=$('selectedPanel');
+  const zoomLabelNode=$('zoomLabel');
+  if(titleNode)new MutationObserver(updateIdentity).observe(titleNode,{subtree:true,childList:true,characterData:true});
+  if($('paletteSwatches'))new MutationObserver(populateQuickPalette).observe($('paletteSwatches'),{childList:true,subtree:true});
+  if(zoomLabelNode)new MutationObserver(updateIdentity).observe(zoomLabelNode,{subtree:true,childList:true,characterData:true});
+  if(statusNode)new MutationObserver(updateStatus).observe(statusNode,{subtree:true,childList:true,characterData:true});
+  if(selectionNode)new MutationObserver(()=>{if(currentTool()==='select')renderContext('select')}).observe(selectionNode,{subtree:true,childList:true});
+  new MutationObserver(updateIdentity).observe(document.body,{attributes:true,attributeFilter:['class']});
+  const setupOverlay=$('projectSetupOverlay');
+  if(setupOverlay)new MutationObserver(()=>{if(setupOverlay.hidden)requestAnimationFrame(()=>clickOld('fit'))}).observe(setupOverlay,{attributes:true,attributeFilter:['hidden']});
+  $('zoom')?.addEventListener('input',updateIdentity);
+  populateQuickPalette();
+  setTool(currentTool());updateIdentity();updateStatus();
+})();
