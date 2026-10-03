@@ -49,7 +49,9 @@ try{
   const fullscreenZoom=Number(await page.locator('#zoom').inputValue());
   assert(fullscreenZoom>=250&&fullscreenZoom<=300,'Pattern fullscreen should fit into the detailed working zoom range');
   const patternStage=await page.locator('#stageWrap').boundingBox();
-  assert(patternStage&&patternStage.height>760,'Pattern fullscreen should preserve the large square drawing surface');
+  assert(patternStage&&patternStage.height>700,'Pattern fullscreen should preserve a large square drawing surface while leaving room for controls');
+  const patternContext=await page.locator('#ux2Context').boundingBox();
+  assert(patternStage&&patternContext&&patternStage.y+patternStage.height<=patternContext.y+1,'Pattern fullscreen context strip must not cover the drawing tile');
   await page.locator('[data-ux2-tool="brush"]').click();
   assert(await page.locator('#ux2BrushLibrary').isVisible(),'Pattern fullscreen Brush should expose contextual brush controls');
   assert(await page.locator('.layout [data-tool="brush"]').first().evaluate(el=>el.classList.contains('active')),'Pattern fullscreen Brush should still drive the real engine');
