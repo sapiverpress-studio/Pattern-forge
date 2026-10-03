@@ -1,6 +1,12 @@
-name: Deploy UX2 staging (manual)
+name: Deploy UX2 staging
 
 on:
+  # A change to this isolated deploy definition triggers one staging deploy.
+  # Normal source pushes remain manual, so staging cannot be changed accidentally.
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - .github/workflows/deploy-ux2-staging.yml
   workflow_dispatch:
     inputs:
       confirm:
@@ -18,7 +24,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: inputs.confirm == 'deploy-ux2-staging'
+    if: github.event_name == 'push' || inputs.confirm == 'deploy-ux2-staging'
     runs-on: ubuntu-latest
     env:
       NETLIFY_SITE_ID: b27b1208-9ab0-4166-ad28-661aff39e579
