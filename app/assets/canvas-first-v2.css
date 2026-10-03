@@ -168,6 +168,23 @@ body.ux2-fullscreen .ux2-canvas-head{
   border:1px solid rgba(185,194,204,.9);border-radius:11px;background:rgba(248,250,251,.92);
   box-shadow:0 4px 16px rgba(31,42,57,.16);backdrop-filter:blur(8px)
 }
+/* Doodle uses the outer landscape gutter for zoom. The canvas must stay clear
+   for drawing, rather than carrying controls across its top edge. */
+@media(orientation:landscape) and (min-width:1200px){
+  body.ux2-fullscreen.doodle-project .ux2-canvas-head{
+    left:max(88px,calc((100vw - 100dvh)/2 - 318px));right:auto;transform:none;
+    max-width:calc((100vw - 100dvh)/2 - 12px)
+  }
+}
+@media(orientation:landscape) and (max-width:1199px){
+  body.ux2-fullscreen.doodle-project .ux2-canvas-head{
+    left:max(88px,calc((100vw - 100dvh)/2 - 58px));right:auto;transform:none;
+    width:46px;max-width:46px;height:auto;max-height:calc(100dvh - 12px);padding:4px
+  }
+  body.ux2-fullscreen.doodle-project .ux2-zoom-controls{flex-direction:column;gap:3px}
+  body.ux2-fullscreen.doodle-project .ux2-zoom-controls output{min-width:34px}
+  body.ux2-fullscreen.doodle-project #ux2Fit{width:34px;padding:5px 0}
+}
 body.ux2-fullscreen #ux2Hint{display:none}
 body.ux2-fullscreen .ux2-quick-palette{max-width:min(30vw,230px)}
 @media(max-width:600px){body.ux2-fullscreen .ux2-canvas-head{max-width:calc(100vw - 150px)}body.ux2-fullscreen .ux2-quick-palette{max-width:24vw}}
