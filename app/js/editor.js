@@ -1560,8 +1560,8 @@
     $("projectSetupOverlay").hidden=false;
   }
   async function loadAutosave(){
-    let available=false;
-    window.PatternForgeAutosaveState={status:"pending",available:false};
+    let available=false,projectType=null;
+    window.PatternForgeAutosaveState={status:"pending",available:false,projectType:null};
     try{let json;
       try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
         const current=req.result;if(typeof current==="string"&&current.startsWith("pf-project-")){const get=store.get(current);get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);}else resolve(current);
@@ -1569,13 +1569,14 @@
       catch(_){json=localStorage.getItem("patternForgeAutosave");}
       if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
       validateProjectData(data);
+      projectType=data.project?.projectType==="doodle"?"doodle":"pattern";
       showResumePrompt(data);
       available=true;
       setStatus("A saved project is available on this device.");
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
     finally{
-      window.PatternForgeAutosaveState={status:"complete",available};
-      window.dispatchEvent(new CustomEvent("patternforge:autosave-checked",{detail:{available}}));
+      window.PatternForgeAutosaveState={status:"complete",available,projectType};
+      window.dispatchEvent(new CustomEvent("patternforge:autosave-checked",{detail:{available,projectType}}));
     }
   }
   function validateProjectData(data){
