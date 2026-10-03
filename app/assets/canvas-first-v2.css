@@ -113,6 +113,18 @@ body.ux2-fullscreen .ux2-canvas-slot #stageWrap{
   height:min(calc(100dvh - 4px),calc(100vw - 4px));
   max-width:none;max-height:none;aspect-ratio:1;margin:0
 }
+/* Pattern keeps a clear lower gutter for the contextual strip. Doodle uses its
+   separate side-space layout below, so its larger canvas remains unaffected. */
+body.ux2-fullscreen:not(.doodle-project) .ux2-canvas-slot #stageWrap{
+  width:min(calc(100dvh - 96px),calc(100vw - 4px));
+  height:min(calc(100dvh - 96px),calc(100vw - 4px))
+}
+@media(orientation:landscape) and (max-height:600px){
+  body.ux2-fullscreen:not(.doodle-project) .ux2-canvas-slot #stageWrap{
+    width:min(calc(100dvh - 90px),calc(100vw - 4px));
+    height:min(calc(100dvh - 90px),calc(100vw - 4px))
+  }
+}
 body.ux2-fullscreen .ux2-canvas-slot #editorCanvas{
   width:100%!important;height:100%!important;object-fit:contain
 }
