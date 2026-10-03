@@ -19,7 +19,7 @@ try{
   await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
-  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.2.0-alpha.7.0','wrong app version');
+  assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.3.0-ux2-alpha.1','wrong app version');
 
   await page.locator('#layerAdd').click();
   await page.waitForFunction(()=>document.querySelectorAll('.layerRow').length===3);
@@ -51,8 +51,24 @@ try{
   layerNames=await names();
   assert(layerNames[0]==='Layer 5',`new layer after deleting an earlier layer should advance to Layer 5, got ${layerNames[0]}`);
   assert(new Set(layerNames).size===layerNames.length,`duplicate layer names found: ${layerNames.join(' | ')}`);
+
+  // UX2 is a proxy shell over the legacy editor controls. Verify that its
+  // layer field commits through focus/input/blur instead of only firing a
+  // change event that leaves the underlying model unchanged.
+  await page.locator('[data-ux2-panel="layers"]').click();
+  await page.locator('#ux2Palette').waitFor({state:'visible'});
+  const ux2Before=await page.locator('.ux2-layer-row').count();
+  await page.locator('#ux2AddLayer').click();
+  await page.waitForFunction(expected=>document.querySelectorAll('.ux2-layer-row').length===expected,ux2Before+1);
+  await page.locator('#ux2LayerName').fill('UX2 ink outline');
+  await page.locator('#ux2LayerName').press('Tab');
+  await page.waitForFunction(()=>document.querySelector('.layerRow.active .layerRowName')?.textContent==='UX2 ink outline');
+  await page.locator('#ux2PaletteClose').click();
+  await page.locator('[data-ux2-panel="layers"]').click();
+  assert(await page.locator('#ux2LayerName').inputValue()==='UX2 ink outline','UX2 layer rename did not persist after closing and reopening the panel');
+  assert((await page.locator('.ux2-layer-row').first().innerText()).includes('UX2 ink outline'),'UX2 layer list did not refresh after add/rename');
   assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
-  console.log('PASS layer UX: live rename works and default layer numbers never duplicate after rename/delete');
+  console.log('PASS layer UX: legacy and UX2 rename/add flows persist and default layer numbers never duplicate after rename/delete');
 }finally{
   await browser.close();
 }
