@@ -143,7 +143,7 @@ body.ux2-fullscreen .ux2-canvas-slot #editorCanvas{
 .ux2-quick-palette{display:flex;align-items:center;gap:4px;max-width:min(38vw,320px);overflow-x:auto;padding:2px 3px;scrollbar-width:thin}
 .ux2-quick-swatch{flex:0 0 24px;width:24px;height:24px;border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1px #aeb9c4;cursor:pointer}
 .ux2-quick-swatch:focus-visible{outline:2px solid #526d8f;outline-offset:2px}
-.ux2-tool-item{position:relative;display:flex;flex:0 0 auto}
+.ux2-tool-item{position:relative;display:flex;flex:0 0 auto}.ux2-tool-item[hidden]{display:none!important}
 .ux2-tool-item>.ux2-tool{width:100%}
 .ux2-favourite-toggle{-webkit-appearance:none;appearance:none;position:absolute;right:2px;top:2px;z-index:2;width:12px;height:12px;margin:0;border:1px solid #8996a4;border-radius:4px;background:rgba(255,255,255,.9);display:grid;place-items:center;cursor:pointer;opacity:.72}
 .ux2-favourite-toggle::after{content:"";width:7px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px);opacity:0}
