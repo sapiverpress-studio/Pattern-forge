@@ -80,7 +80,15 @@
       if(heading)heading.textContent='New Doodle';if(intro)intro.textContent='Opening a blank transparent drawing canvas…';if(repeat)repeat.hidden=true;if(create)create.textContent='Create Doodle';document.title='Sapiver Pattern Forge — Doodle';
     }
     const cleanPath=workspace==='pattern'?'/app/pattern/':'/app/doodle/';if(location.pathname!==cleanPath||location.search)history.replaceState({workspace},'',cleanPath);
-    if(workspace==='doodle')setTimeout(()=>{const overlay=document.getElementById('projectSetupOverlay'),newSetup=document.getElementById('newProjectSetup'),resume=document.getElementById('resumePrompt');if(overlay&&!overlay.hidden&&newSetup&&!newSetup.hidden&&(!resume||resume.hidden))document.getElementById('createProject')?.click()},40);
+    if(workspace==='doodle'){
+      const createDoodleIfNeeded=()=>{
+        if(window.PatternForgeAutosaveState?.available)return;
+        const overlay=document.getElementById('projectSetupOverlay'),newSetup=document.getElementById('newProjectSetup'),resume=document.getElementById('resumePrompt');
+        if(overlay&&!overlay.hidden&&newSetup&&!newSetup.hidden&&(!resume||resume.hidden))document.getElementById('createProject')?.click();
+      };
+      if(window.PatternForgeAutosaveState?.status==='pending')window.addEventListener('patternforge:autosave-checked',createDoodleIfNeeded,{once:true});
+      else createDoodleIfNeeded();
+    }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(applyWorkspaceEntry,0),{once:true});else setTimeout(applyWorkspaceEntry,0);
 })();
