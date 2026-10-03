@@ -1397,8 +1397,8 @@
   function setProjectBadge(){
     const p=state.project;
     const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"},doodle=p?.projectType==="doodle";
-    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${doodle?"Doodle":styles[p.repeatStyle]||"Straight"}`:"Tile editor";
-    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,doodle?"Doodle Project":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?(doodle?"Doodle":`${p.title} · ${styles[p.repeatStyle]||"Straight"}`):"Tile editor";
+    $("projectNameDisplay").title=p?[doodle?"Doodle":p.title,p.customer,p.theme,p.variation,doodle?"Standalone canvas":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
   }
   function updateSetupProjectType(){
     const doodle=$("projectTypeInput").value==="doodle";
@@ -1482,7 +1482,7 @@
       if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
-      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle Project “${title}” saved. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
     };
     if(state.project)saveAutosave().then(begin);else begin();
   }
@@ -1570,6 +1570,16 @@
       if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
       validateProjectData(data);
       projectType=data.project?.projectType==="doodle"?"doodle":"pattern";
+      const directDoodle=location.pathname.includes("/app/doodle/");
+      if(directDoodle){
+        available=true;
+        if(projectType==="doodle"){
+          await restoreProject(data);
+          $("projectSetupOverlay").hidden=true;
+          setStatus("Doodle restored on this device.");
+        }
+        return;
+      }
       showResumePrompt(data);
       available=true;
       setStatus("A saved project is available on this device.");
