@@ -102,7 +102,9 @@ try {
   assert((await page.locator('#exportPng').textContent()).includes('artwork'), 'PNG export label is not Doodle-specific');
   assert((await page.locator('#exportSvg').textContent()).includes('artwork'), 'SVG export label is not Doodle-specific');
 
-  await page.locator('#symmetry').selectOption('off');
+  // Doodle must ignore any Pattern mirror setting. This reproduces the real
+  // cross-workspace case rather than clearing the setting before drawing.
+  await page.locator('#symmetry').selectOption('quadrant');
   if (await page.locator('#gridOn').isChecked()) await page.locator('#gridOn').uncheck();
   if (await page.locator('#snapOn').isChecked()) await page.locator('#snapOn').uncheck();
   await setRange(page, '#brushSize', 80);
@@ -158,6 +160,24 @@ try {
   assert((await page.locator('#stageHelpHint').textContent()).includes('full repeat swatch'), 'Pattern Project lost repeat export guidance');
   assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Pattern tile editor', 'Pattern Project canvas label changed unexpectedly');
   assert(!(await page.locator('#backgroundSettingsRow').isHidden()), 'Pattern Project background controls were hidden');
+
+  // A direct Doodle route must create a fresh Doodle when the current project
+  // is a Pattern, then offer to resume that Doodle on reload without replacing it.
+  await page.waitForTimeout(1300);
+  await page.goto('http://127.0.0.1:4173/app/doodle/', { waitUntil: 'networkidle' });
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
+  assert((await page.locator('#projectNameDisplay').textContent()).includes('Doodle'), 'direct Doodle route did not create a Doodle project');
+  await page.locator('[data-tool="brush"]').first().click();
+  await drawWorld(page, { x: 680, y: 330 }, { x: 760, y: 390 }, 12);
+  await page.waitForTimeout(1300);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.locator('#resumePrompt').waitFor({ state: 'visible', timeout: 5000 });
+  assert((await page.locator('#resumePromptDetail').textContent()).includes('Doodle'), 'direct Doodle reload did not retain the Doodle resume target');
+  await page.locator('#continuePrevious').click();
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
+  const directReopened = await downloadJson(page);
+  assert(directReopened.json.project?.projectType === 'doodle', 'direct Doodle reload restored the wrong project type');
+  assert(directReopened.json.marks.some(m => m.type === 'brush'), 'direct Doodle reload lost the drawn brush mark');
 
   assert(errors.length === 0, `browser errors: ${errors.join(' | ')}`);
   console.log('PASS Doodle Mode: standalone workflow terminology, transparent no-wrap export, explicit resume and Pattern wording fallback');
