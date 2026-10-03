@@ -1,0 +1,51 @@
+name: Deploy UX2 staging (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type deploy-ux2-staging to confirm the isolated staging deploy.
+        required: true
+        default: deploy-ux2-staging
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ux2-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: inputs.confirm == 'deploy-ux2-staging'
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_SITE_ID: b27b1208-9ab0-4166-ad28-661aff39e579
+      EXPECTED_COMMIT: f966a2896eec7789d27ca5c2fe56770b237045a2
+    steps:
+      - name: Check out the audited UX2 commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_COMMIT }}
+
+      - name: Verify the exact source commit
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+
+      - name: Assemble the static staging site
+        run: |
+          mkdir -p ux2-staging-site
+          cp index.html _headers manifest.webmanifest ux2-staging-site/
+          cp -R assets app help ux2-staging-site/
+
+      - name: Deploy only to the separate UX2 staging site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN"
+          # --prod updates the primary URL of this *staging* site ID only.
+          npx --yes netlify-cli@latest deploy \
+            --dir ux2-staging-site \
+            --site "$NETLIFY_SITE_ID" \
+            --auth "$NETLIFY_AUTH_TOKEN" \
+            --prod
