@@ -10,6 +10,8 @@ body.ux2-active .projectSetupCard{border-color:var(--ux2-line);box-shadow:0 24px
 body.ux2-active .projectSetupCard .btn.primary{background:var(--ux2-blue-deep);border-color:var(--ux2-blue-deep)}
 body.ux2-active input[type=range]{accent-color:var(--ux2-blue-deep)}
 body.doodle-project #ux2Preview{display:none!important}
+/* Direct Doodle never exposes project creation or recovery choices. */
+body.doodle-project #projectSetupOverlay,body.doodle-project #resumePrompt{display:none!important}
 .ux2-editor{height:100dvh;min-width:0;width:100%;max-width:100vw;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:var(--ux2-top) minmax(0,1fr) var(--ux2-context);background:#dfe4e9;overflow:hidden}
 .ux2-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;padding:0 12px;border-bottom:1px solid #cfd6de;background:linear-gradient(180deg,#fbfcfd,#f2f5f7);box-shadow:0 2px 8px rgba(36,48,64,.06);z-index:20}
 .ux2-top-left,.ux2-top-actions{display:flex;align-items:center;gap:8px;min-width:0}.ux2-project{min-width:0;display:flex;align-items:center;gap:9px}.ux2-title{font-weight:800;font-size:14px;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ux2-mode{border:1px solid #c7d0da;background:#edf2f6;color:#536a84;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
