@@ -569,6 +569,7 @@
   }
 
   function symmetryTransforms(){
+    if(isDoodleProject())return [[false,false,0]];
     const mode=$("symmetry").value;
     if(mode==="vertical")return [[false,false,0],[true,false,0]];
     if(mode==="horizontal")return [[false,false,0],[false,true,0]];
@@ -1559,6 +1560,8 @@
     $("projectSetupOverlay").hidden=false;
   }
   async function loadAutosave(){
+    let available=false;
+    window.PatternForgeAutosaveState={status:"pending",available:false};
     try{let json;
       try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
         const current=req.result;if(typeof current==="string"&&current.startsWith("pf-project-")){const get=store.get(current);get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);}else resolve(current);
@@ -1567,8 +1570,13 @@
       if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
       validateProjectData(data);
       showResumePrompt(data);
+      available=true;
       setStatus("A saved project is available on this device.");
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
+    finally{
+      window.PatternForgeAutosaveState={status:"complete",available};
+      window.dispatchEvent(new CustomEvent("patternforge:autosave-checked",{detail:{available}}));
+    }
   }
   function validateProjectData(data){
     if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
