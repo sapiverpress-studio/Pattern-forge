@@ -153,6 +153,7 @@ try{
   await m.goto('http://127.0.0.1:4173/app/doodle/',{waitUntil:'networkidle'});
   await m.locator('#projectSetupOverlay').waitFor({state:'hidden'});
   assert((await m.locator('#ux2Mode').textContent())==='Doodle','Doodle route should identify Doodle workspace');
+  assert(await m.locator('.setupDivider').evaluate(el=>getComputedStyle(el).display==='none'),'Doodle must not expose a redundant “Choose a project type” divider');
   assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern palette should hide in Doodle');
   assert(await m.locator('#editorCanvas').isVisible(),'Doodle should use real canvas in new shell');
   assert(await m.locator('#ux2Fullscreen').isVisible(),'fullscreen control should be visible in Doodle');
