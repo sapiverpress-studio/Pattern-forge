@@ -63,6 +63,13 @@
     document.querySelectorAll('.workspaceRepeatCard').forEach(button=>{const active=button.dataset.repeat===value;button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active))});
   }
 
+  function prepareDirectDoodle(){
+    if(resolveWorkspace()!=='doodle')return;
+    document.body.dataset.workspace='doodle';
+    document.body.classList.add('doodle-project');
+    const overlay=document.getElementById('projectSetupOverlay');if(overlay)overlay.hidden=true;
+  }
+
   function applyWorkspaceEntry(){
     ensureDoodleLandscapeGate();
     const workspace=resolveWorkspace();if(!workspace)return;
@@ -82,11 +89,14 @@
     const cleanPath=workspace==='pattern'?'/app/pattern/':'/app/doodle/';if(location.pathname!==cleanPath||location.search)history.replaceState({workspace},'',cleanPath);
     const applySavedWorkspaceDecision=()=>{
       const savedType=window.PatternForgeAutosaveState?.projectType;
-      if(savedType===workspace)return;
       if(workspace==='doodle'){
-        const overlay=document.getElementById('projectSetupOverlay'),newSetup=document.getElementById('newProjectSetup'),resume=document.getElementById('resumePrompt');
-        if(overlay&&!overlay.hidden&&newSetup&&!newSetup.hidden&&(!resume||resume.hidden))document.getElementById('createProject')?.click();
-      }else if(savedType){
+        // Doodle is one direct, standalone canvas. Reopen its own autosave or
+        // start a blank one immediately; it never needs a creation decision.
+        if(savedType!=='doodle')document.getElementById('createProject')?.click();
+        return;
+      }
+      if(savedType===workspace)return;
+      if(savedType){
         const resume=document.getElementById('resumePrompt');
         if(resume&&!resume.hidden)document.getElementById('startNewFromResume')?.click();
       }
@@ -94,5 +104,6 @@
     if(window.PatternForgeAutosaveState?.status==='pending')window.addEventListener('patternforge:autosave-checked',applySavedWorkspaceDecision,{once:true});
     else applySavedWorkspaceDecision();
   }
+  prepareDirectDoodle();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(applyWorkspaceEntry,0),{once:true});else setTimeout(applyWorkspaceEntry,0);
 })();
