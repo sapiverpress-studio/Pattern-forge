@@ -168,6 +168,8 @@ try{
   assert(Number(await m.locator('#zoom').inputValue())>=250,'Doodle fullscreen should enter at detailed canvas zoom');
   const immersiveStage=await m.locator('#stageWrap').boundingBox();
   assert(immersiveStage&&immersiveStage.height>330,'Doodle fullscreen should give the square canvas nearly the full landscape height');
+  const doodleZoom=await m.locator('.ux2-zoom-controls').boundingBox();
+  assert(doodleZoom&&immersiveStage&&(doodleZoom.x+doodleZoom.width<=immersiveStage.x||doodleZoom.x>=immersiveStage.x+immersiveStage.width||doodleZoom.y+doodleZoom.height<=immersiveStage.y||doodleZoom.y>=immersiveStage.y+immersiveStage.height),'Doodle fullscreen zoom controls must not cover the drawing tile');
   await m.locator('[data-ux2-tool="brush"]').click();
   assert(await m.locator('#ux2Context').isVisible(),'Doodle Brush controls should remain available outside the empty-selection state');
   assert(await m.locator('#ux2BrushLibrary').isVisible(),'Doodle fullscreen Brush should expose size, opacity and brush-library controls');
