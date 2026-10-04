@@ -126,8 +126,8 @@ try{
   });
   await check('recovery cancelled ZIP share preserves artwork',async()=>{
     const {context,page}=await fresh();try{await importFile(page,sample);const before=await saved(page);let downloads=0;page.on('download',()=>downloads++);
-      await page.evaluate(()=>{Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{throw new DOMException('User cancelled','AbortError')}});});
-      await page.locator('#exportZip').click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Sharing cancelled'));
+      await page.evaluate(()=>{window.shareCancellationObserved=false;new MutationObserver(()=>{if(document.querySelector('#status').textContent.includes('Sharing cancelled'))window.shareCancellationObserved=true;}).observe(document.querySelector('#status'),{childList:true,characterData:true,subtree:true});Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{throw new DOMException('User cancelled','AbortError')}});});
+      await page.locator('#exportZip').click();await page.waitForFunction(()=>window.shareCancellationObserved,{},{timeout:60000});
       assert.equal(downloads,0,'cancelled share unexpectedly downloaded a file');assert.deepEqual(stable(await saved(page)),stable(before));
     }finally{await context.close();}
   });
