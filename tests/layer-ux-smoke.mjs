@@ -16,7 +16,7 @@ async function selectLayer(name){
 }
 
 try{
-  await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4173/app/?legacy=1',{waitUntil:'networkidle'});
   await page.locator('#startPractice').click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
   assert(await page.locator('meta[name="app-version"]').getAttribute('content')==='1.3.0-ux2-alpha.1','wrong app version');
@@ -55,6 +55,10 @@ try{
   // UX2 is a proxy shell over the legacy editor controls. Verify that its
   // layer field commits through focus/input/blur instead of only firing a
   // change event that leaves the underlying model unchanged.
+  await page.waitForTimeout(1300);
+  await page.goto('http://127.0.0.1:4173/app/',{waitUntil:'networkidle'});
+  await page.locator('#continuePrevious').click();
+  await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
   await page.locator('[data-ux2-panel="layers"]').click();
   await page.locator('#ux2Palette').waitFor({state:'visible'});
   const ux2Before=await page.locator('.ux2-layer-row').count();
