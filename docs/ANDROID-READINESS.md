@@ -2,6 +2,8 @@
 
 Updated 4 October 2026. Browser regression tests pass; a fresh physical-device Android release check is still required. See [the current handover](UX2-HANDOVER-2026-10-04.md) for evidence and deployment identifiers.
 
+The extended browser pass now covers 30 export/recovery/favourites/layout/load cases, including forced storage failures and a larger rectangular export. See [the extended report](UX2-EXTENDED-TEST-REPORT-2026-10-04.md). These desktop Chromium results do not close the physical-device gates below. Compact zoom and colour controls still need touch-ergonomics review.
+
 ## Stable entry points
 - `/` — product launcher
 - `/app/` — shared editor engine / existing-project entry
