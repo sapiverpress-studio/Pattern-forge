@@ -1536,7 +1536,8 @@
     autosaveTimer=null;
     if(!state.project)return;
     try{const db=await openAutosaveDb(),data=projectData(),json=JSON.stringify(data);
-      await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readwrite"),store=tx.objectStore("projects");store.put(json,data.project.id);store.put(data.project.id,"current");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Local autosave failed."));});
+      await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readwrite"),store=tx.objectStore("projects");tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Local autosave failed."));store.put(json,data.project.id);store.put(data.project.id,"current");});
+      try{localStorage.removeItem("patternForgeAutosave");}catch(_){}
       setStatus("Autosaved on this device.");
     }catch(err){try{const json=JSON.stringify(projectData());if(json.length>3_500_000)throw err;localStorage.setItem("patternForgeAutosave",json);setStatus("Autosaved on this device.");}catch(_){setStatus("Automatic device save is unavailable. Export a project ZIP to keep a portable copy.");}}
   }
@@ -1565,9 +1566,17 @@
       try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
         const current=req.result;if(typeof current==="string"&&current.startsWith("pf-project-")){const get=store.get(current);get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);}else resolve(current);
       };req.onerror=()=>reject(req.error);});}
-      catch(_){json=localStorage.getItem("patternForgeAutosave");}
-      if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
-      validateProjectData(data);
+      catch(_){/* The fallback may contain a newer save after a failed transaction. */}
+      let fallback=null;try{fallback=localStorage.getItem("patternForgeAutosave");}catch(_){}
+      if(!json&&!fallback)return;
+      const candidates=[];
+      for(const raw of [json,fallback]){
+        if(!raw)continue;
+        try{const value=typeof raw==="string"?JSON.parse(raw):raw;validateProjectData(value);candidates.push(value);}catch(_){}
+      }
+      if(!candidates.length)throw new Error("No valid autosave could be reopened.");
+      candidates.sort((a,b)=>(Date.parse(b.project?.updatedAt)||0)-(Date.parse(a.project?.updatedAt)||0));
+      const data=candidates[0];
       projectType=data.project?.projectType==="doodle"?"doodle":"pattern";
       const directDoodle=location.pathname.includes("/app/doodle/");
       if(directDoodle){
@@ -1604,13 +1613,14 @@
     }
     const assetIds=new Set();
     for(const a of data.assets){
-      if(!a||a.id===undefined||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h)))throw new Error("invalid-assets");
+      if(!a||a.id===undefined||assetIds.has(String(a.id))||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h))||Number(a.w)<=0||Number(a.h)<=0)throw new Error("invalid-assets");
       assetIds.add(String(a.id));
     }
     for(const item of data.items){
       if(!item||item.id===undefined||!assetIds.has(String(item.assetId))||![item.x,item.y,item.scale].every(v=>Number.isFinite(Number(v)))||Number(item.scale)<=0)throw new Error("invalid-items");
     }
-    if(data.marks.some(mark=>!mark||typeof mark!=="object"||typeof mark.type!=="string"||!Array.isArray(mark.points)))throw new Error("invalid-marks");
+    const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","gradient"]);
+    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
     const code=err?.message||"";

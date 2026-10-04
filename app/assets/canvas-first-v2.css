@@ -181,6 +181,11 @@ body.ux2-fullscreen .ux2-canvas-head{
    column clears a possible camera cut-out; favourites remain immediately to
    its right, with both controls outside the drawing tile. */
 @media(orientation:landscape){
+  body.ux2-fullscreen.doodle-project{--doodle-side-space:max(186px,calc(env(safe-area-inset-left) + 140px))}
+  body.ux2-fullscreen.doodle-project .ux2-canvas-slot #stageWrap{
+    width:min(calc(100dvh - 4px),calc(100vw - 2 * var(--doodle-side-space)));
+    height:min(calc(100dvh - 4px),calc(100vw - 2 * var(--doodle-side-space)))
+  }
   body.ux2-fullscreen.doodle-project .ux2-tools{
     left:max(112px,calc(env(safe-area-inset-left) + 66px))
   }
@@ -240,8 +245,9 @@ body.ux2-fullscreen.doodle-project .ux2-context.ux2-context--empty-selection{
 /* Doodle contextual controls stay in side space, clear of the drawing tile. */
 body.ux2-fullscreen.doodle-project .ux2-context:not(.ux2-context--empty-selection){
   left:auto;right:58px;top:50%;bottom:auto;transform:translateY(-50%);
-  width:min(220px,calc((100vw - 100dvh)/2 - 58px));
-  max-width:min(220px,calc((100vw - 100dvh)/2 - 58px));
+  box-sizing:border-box;
+  width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));
+  max-width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));
   max-height:calc(100dvh - 24px);flex-direction:column;align-items:stretch;
   white-space:normal;overflow-x:hidden;overflow-y:auto
 }
