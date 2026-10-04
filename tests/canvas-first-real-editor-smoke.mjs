@@ -38,6 +38,7 @@ try{
   await page.locator('#ux2Fullscreen').click();
   await page.waitForTimeout(80);
   assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Pattern fullscreen should enter immersive UX2 mode');
+  assert(await page.locator('#ux2Export').isVisible(),'Pattern fullscreen should retain Export for device backup');
   assert(await page.locator('.ux2-tools').isVisible(),'Pattern fullscreen should keep the creative tool rail available as an overlay');
   assert(await page.locator('.ux2-dockbar').isVisible(),'Pattern fullscreen should keep quick palettes available as an overlay');
   assert(await page.locator('#ux2Context').isVisible(),'Pattern fullscreen should keep contextual tool controls available as an overlay');
@@ -137,6 +138,7 @@ try{
 
   await page.locator('#ux2Export').click();
   assert((await page.locator('#ux2PaletteTitle').textContent())==='Export','Export palette should open');
+  assert(await page.getByText('Autosave stays on this device.').isVisible(),'Export should explain that autosave is not a backup');
   assert(await page.locator('#ux2PaletteBody .ux2-repeat-card span').filter({hasText:'300 DPI metadata'}).isVisible(),'export confidence should disclose 300 DPI metadata');
   const downloadPromise=page.waitForEvent('download',{timeout:12000});
   await page.locator('[data-export-old="saveProject"]').click();
@@ -174,6 +176,7 @@ try{
   const doodleZoomBeforeFullscreen=Number(await m.locator('#zoom').inputValue());
   await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(60);
   assert(await m.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Doodle fullscreen should enter immersive UX2 mode');
+  assert(await m.locator('#ux2Export').isVisible(),'Doodle fullscreen should retain Export for device backup');
   assert(await m.locator('.ux2-tools').isVisible(),'Doodle fullscreen should keep creative tools available as a compact overlay');
   const fullscreenTools=await m.locator('.ux2-tools').boundingBox();
   assert(fullscreenTools&&fullscreenTools.x>=50,'Doodle fullscreen tool rail should clear the landscape camera cutout area');
