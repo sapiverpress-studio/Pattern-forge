@@ -181,6 +181,11 @@ try{
           await page.locator('#ux2ToolMenuTrigger').click();
         }
         for(const el of await page.locator('.ux2-tools .ux2-tool:visible').all()){const id=await el.getAttribute('aria-label');await accessible(`[aria-label="${id}"].ux2-tool`,`${full?'full':'normal'} tool ${id}`);}
+        if(type==='doodle'){
+          for(let i=1;i<=4;i++)await accessible(`#ux2QuickPalette button:nth-child(${i})`,`${full?'full':'normal'} quick colour ${i}`);
+          const rail=await page.locator('.ux2-tools').evaluate(el=>({overflow:getComputedStyle(el).overflowY,height:el.clientHeight,content:el.scrollHeight}));
+          if(rail.content>rail.height+1&&!['auto','scroll'].includes(rail.overflow))problems.push({label:'quick tools cannot be scrolled by the user',...rail});
+        }
         await page.locator('[data-ux2-tool="brush"]').click();
         await accessible('#ux2BrushLibrary',`${full?'full':'normal'} brush library`);
         await page.locator('[data-ux2-panel="pattern"]').click();await accessible('#ux2Symmetry',`${full?'full':'normal'} mirror`);await page.locator('#ux2PaletteClose').click();

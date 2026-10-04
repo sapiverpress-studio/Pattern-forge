@@ -390,7 +390,7 @@ try{
     await page.locator('#ux2Fullscreen').click();await page.waitForTimeout(100);
     assert(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')),'Fullscreen class missing');
     assert(Number(await page.locator('#zoom').inputValue())>=250,'Fullscreen did not fit the tile into the drawing area');
-    const stage=await page.locator('#stageWrap').boundingBox();assert(stage&&stage.height>760,'Fullscreen canvas lost its large size');
+    const stage=await page.locator('#stageWrap').boundingBox();assert(stage&&stage.height>700,'Fullscreen canvas lost its large size after reserving the context-control gutter');
     assert(await page.locator('.ux2-tools').isVisible(),'Fullscreen tool rail hidden');
     assert(await page.locator('.ux2-dockbar').isVisible(),'Fullscreen palette dock hidden');
     for(const [selector,label] of [
@@ -452,7 +452,8 @@ try{
     assert(await page.getByText('Transparent background is preserved for PNG and SVG.',{exact:false}).isVisible(),'Doodle export transparency is not stated');
     assert(await page.getByText('PNG carries 300 DPI metadata.',{exact:false}).isVisible(),'Doodle PNG resolution metadata is not stated');
     await page.locator('#ux2PaletteClose').click();
-    await page.locator('#ux2Gallery').click();await page.waitForLoadState('networkidle');
+    assert(await page.locator('#ux2Gallery').isHidden(),'Standalone Doodle should not expose project gallery controls');
+    await page.goto(BASE+'/',{waitUntil:'networkidle'});
   });
 
   await collectLayout(page,'home-after-pattern');
@@ -484,15 +485,18 @@ try{
     await m.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});
     await m.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     assert((await m.locator('#ux2Mode').textContent())==='Doodle','Doodle mode badge wrong');
-    assert(await m.locator('[data-ux2-panel="pattern"]').isHidden(),'Pattern dock visible in Doodle');
+    assert(await m.locator('[data-ux2-panel="pattern"]').getAttribute('aria-label')==='Canvas setup','Doodle drawing assists should be available through Canvas setup');
     assert(await m.locator('#editorCanvas').isVisible(),'Doodle canvas missing');
     await shot(m,'11-doodle-landscape');
-    const topControls=await Promise.all(['#ux2Gallery','#ux2Undo','#ux2Redo','#ux2Fullscreen'].map(sel=>m.locator(sel).boundingBox()));
+    const topControls=await Promise.all(['#ux2ToolMenuTrigger','#ux2Undo','#ux2Redo','#ux2Fullscreen','#ux2Export'].map(sel=>m.locator(sel).boundingBox()));
     assert(topControls.every(box=>box&&box.y>=0),'Compact Doodle top-bar controls must stay inside the viewport');
     await collectLayout(m,'doodle-landscape-before-fullscreen');
   });
 
   await step('Doodle landscape: visible tools are usable',async()=>{
+    await m.locator('#ux2ToolMenuTrigger').click();
+    for(const checkbox of await m.locator('#ux2ToolMenu input').all())await checkbox.check();
+    await m.locator('#ux2ToolMenuTrigger').click();
     for(const tool of ['select','brush','eraser','freefill','pan','rect']){
       await m.locator('[data-ux2-tool="'+tool+'"]').click();
       assert(await activeOldTool(m,tool),'Doodle tool '+tool+' failed');
@@ -513,8 +517,8 @@ try{
     assert(tools&&tools.x>=88,'Fullscreen tool rail is still in the camera/cutout zone');
     const stage=await m.locator('#stageWrap').boundingBox();
     assert(stage&&stage.height>330,'Doodle fullscreen canvas is too small');
-    assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen context missing');
     await m.locator('[data-ux2-tool="brush"]').click();
+    assert(await m.locator('#ux2Context').isVisible(),'Doodle fullscreen Brush context missing');
     assert(await visible(m,'#ux2BrushLibrary'),'Doodle fullscreen Brush controls missing');
     await m.locator('[data-ux2-panel="layers"]').click();
     assert(await m.locator('#ux2Palette').isVisible(),'Doodle fullscreen Layers panel failed');
