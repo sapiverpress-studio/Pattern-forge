@@ -42,6 +42,7 @@
       <nav class="ux2-dockbar" aria-label="Quick palettes">
         <button class="ux2-dock" data-ux2-panel="colour" aria-label="Colour">${icon('colour')}<b>Colour</b></button>
         <button class="ux2-dock" data-ux2-panel="layers" aria-label="Layers">${icon('layers')}<b>Layers</b></button>
+        <button class="ux2-dock" data-ux2-panel="motifs" aria-label="My Motifs">${icon('image')}<b>Motifs</b></button>
         <button class="ux2-dock" data-ux2-panel="pattern" aria-label="Design setup">${icon('repeat')}<b>Design setup</b></button>
       </nav>
       <aside class="ux2-palette" id="ux2Palette" hidden><div class="ux2-palette-head"><span id="ux2PaletteTitle">Panel</span><button class="ux2-palette-close" id="ux2PaletteClose" aria-label="Close">×</button></div><div class="ux2-palette-body" id="ux2PaletteBody"></div></aside>
@@ -219,6 +220,39 @@
     old.slice(0,10).forEach((button,i)=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.title=`Palette colour ${i+1}`;sw.style.background=getComputedStyle(button).backgroundColor||button.style.background||'#fff';sw.addEventListener('click',()=>{button.click();syncCurrentColour(button.dataset.color||'#fff')});target.appendChild(sw)});
     if(!old.length){['#17202b','#526d8f','#6f89a8','#c5ccd5','#ffffff'].forEach(c=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.style.background=c;sw.addEventListener('click',()=>{dispatchValue('ink',c);syncCurrentColour(c)});target.appendChild(sw)})}
   }
+  function motifPanel(){
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Save reusable motif</div><label class="ux2-field-label">Name<input id="ux2MotifName" type="text" maxlength="80" placeholder="e.g. Wildflower"></label><button class="ux2-btn primary" id="ux2SaveMotif" style="width:100%">Save current selection</button><p class="ux2-info">Select one or more editable artwork items first. Motifs stay on this device until exported as part of a project.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">My Motifs</div><div id="ux2MotifList"><p class="ux2-info">Loading motifs…</p></div></div>';
+  }
+  async function refreshMotifList(){
+    const list=$('ux2MotifList');if(!list)return;
+    const api=window.PatternForgeMotifs;if(!api){list.innerHTML='<p class="ux2-info">Motif library is unavailable.</p>';return;}
+    try{
+      const motifs=await api.list();
+      if(!motifs.length){list.innerHTML='<p class="ux2-info">No saved motifs yet.</p>';return;}
+      list.innerHTML='';
+      motifs.forEach(motif=>{
+        const row=document.createElement('div');row.className='ux2-layer-row';row.dataset.motifId=motif.id;
+        const thumb=document.createElement('span');thumb.className='ux2-layer-thumb';
+        const meta=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');
+        strong.textContent=motif.name||'Untitled motif';small.textContent=((motif.items?.length||0)+(motif.marks?.length||0))+' editable item'+(((motif.items?.length||0)+(motif.marks?.length||0))===1?'':'s');
+        meta.append(strong,small);
+        const actions=document.createElement('span');actions.className='ux2-motif-actions';
+        const insert=document.createElement('button');insert.type='button';insert.className='ux2-btn';insert.textContent='Insert';insert.addEventListener('click',async()=>{insert.disabled=true;try{await api.insert(motif.id);openPanel('motifs')}catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not insert motif.'}finally{insert.disabled=false}});
+        const remove=document.createElement('button');remove.type='button';remove.className='ux2-btn';remove.textContent='Delete';remove.addEventListener('click',async()=>{remove.disabled=true;try{await api.remove(motif.id);await refreshMotifList()}catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not delete motif.'}});
+        actions.append(insert,remove);row.append(thumb,meta,actions);list.append(row);
+      });
+    }catch(err){list.innerHTML='<p class="ux2-info">Could not open My Motifs on this device.</p>';}
+  }
+  function wireMotifPanel(){
+    const api=window.PatternForgeMotifs;
+    $('ux2SaveMotif')?.addEventListener('click',async()=>{
+      const button=$('ux2SaveMotif'),name=$('ux2MotifName')?.value||'';button.disabled=true;
+      try{await api?.saveSelection(name);if($('ux2MotifName'))$('ux2MotifName').value='';await refreshMotifList()}
+      catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not save motif.'}
+      finally{button.disabled=false}
+    });
+    refreshMotifList();
+  }
   function layerPanel(){
     const layers=[...document.querySelectorAll('#layerList .layerRow')];
     const rows=layers.map((row,i)=>`<button class="ux2-layer-row ${row.classList.contains('active')?'active':''}" data-layer-index="${i}"><span class="ux2-layer-thumb"></span><span><strong>${row.querySelector('.layerRowName')?.textContent||`Layer ${i+1}`}</strong><small>${row.querySelector('.layerRowMeta')?.textContent||'Artwork layer'}</small></span><span>›</span></button>`).join('')||'<p style="color:#687483;font-size:12px">Layers will appear here when a project is open.</p>';
@@ -247,10 +281,11 @@
 
   function openPanel(name){
     const p=$('ux2Palette'), body=$('ux2PaletteBody'); p.hidden=false;
-    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='pattern'?(document.body.classList.contains('doodle-project')?'Canvas setup':'Design setup'):name==='brushes'?'Brush Library':'Export';
-    body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
+    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='motifs'?'My Motifs':name==='pattern'?(document.body.classList.contains('doodle-project')?'Canvas setup':'Design setup'):name==='brushes'?'Brush Library':'Export';
+    body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='motifs'?motifPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
     document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.toggle('active',b.dataset.ux2Panel===name));
     if(name==='colour'){$('ux2ColourInput').addEventListener('input',e=>dispatchValue('ink',e.target.value));$('ux2Eyedropper').addEventListener('click',()=>setTool('eyedropper'));$('ux2AddPaletteColour')?.addEventListener('click',()=>{clickOld('addPaletteColour');populateSwatches()});$('ux2SavePalette')?.addEventListener('click',()=>clickOld('savePalette'));if($('ux2SavedPalette')&&$('savedPaletteSelect')){$('ux2SavedPalette').value=$('savedPaletteSelect').value;$('ux2SavedPalette').addEventListener('change',e=>dispatchValue('savedPaletteSelect',e.target.value,'change'))}populateSwatches()}
+    if(name==='motifs')wireMotifPanel();
     if(name==='brushes'){document.querySelectorAll('[data-brush-style]').forEach(b=>b.addEventListener('click',()=>{dispatchValue('brushStyle',b.dataset.brushStyle,'change');setTool('brush');openPanel('brushes')}));document.querySelectorAll('[data-stamp]').forEach(b=>b.addEventListener('click',()=>dispatchValue('stampShape',b.dataset.stamp,'change')))}
     if(name==='layers'){
       document.querySelectorAll('[data-layer-index]').forEach(b=>b.addEventListener('click',()=>{const row=document.querySelectorAll('#layerList .layerRow')[Number(b.dataset.layerIndex)];if(row)row.click();openPanel('layers')}));
