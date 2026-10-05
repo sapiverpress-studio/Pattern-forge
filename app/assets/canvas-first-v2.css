@@ -212,6 +212,7 @@ body.ux2-fullscreen .ux2-quick-palette{max-width:min(30vw,230px)}
   .ux2-mode{padding:3px 5px;font-size:9px}
   .ux2-top-actions .ux2-icon-btn{width:32px;height:32px}
   .ux2-top-actions .ux2-btn{padding:6px 7px;font-size:10px;white-space:nowrap}
+  #ux2Preview{display:none!important}
   .ux2-canvas-head{min-width:0;height:36px;gap:4px;padding:0 6px;overflow:hidden}
   #ux2Hint{display:none}
   .ux2-canvas-head .spacer{display:none}
@@ -222,7 +223,6 @@ body.ux2-fullscreen .ux2-quick-palette{max-width:min(30vw,230px)}
   .ux2-zoom-step{width:28px;height:30px}
   #ux2Fit{padding:6px 8px;font-size:11px}
 }
-@media(max-width:380px){#ux2Preview{display:none!important}}
 
 /* Doodle: put quick colours with the left tools, outside the drawing tile. */
 body.doodle-project .ux2-tools #ux2QuickPalette{
