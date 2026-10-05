@@ -1202,6 +1202,15 @@
     const [a,b]=[...state.pointers.values()];
     return {distance:Math.hypot(a.x-b.x,a.y-b.y),mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
   }
+  function startSelectionMove(ids,w){
+    const members=(ids||[]).map(id=>{
+      const record=selectableArtworkRecord(id);if(!record)return null;
+      if(record.kind==="item")return {kind:"item",id,x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};
+      const t=markTransformValues(record.artwork);return {kind:"mark",id,x:t.x,y:t.y};
+    }).filter(Boolean);
+    state.transformState={kind:"selection",mode:"move",startPointer:{x:w.x,y:w.y},members};
+    state.dragging=false;state.resizeState=null;
+  }
   canvas.addEventListener("pointerdown",e=>{
     e.preventDefault();canvas.setPointerCapture(e.pointerId);
     const p=pointerPos(e);state.pointers.set(e.pointerId,p);
