@@ -166,7 +166,7 @@
     dragStart: null,
     past: [], future: [],
     recentAssetIds:[], colorPalette:["#2c5f54","#d66a4d","#e8bc52","#20242b"],
-    savedPalettes:[],focusMode:false,focusRepeatPreview:false,
+    savedPalettes:[],variations:[],focusMode:false,focusRepeatPreview:false,
     pendingPreview: false, pendingSelected: false
   };
 
@@ -1166,17 +1166,35 @@
     const r=canvas.getBoundingClientRect();
     return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
   }
+  function historySnapshot(){
+    return {
+      items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId,
+      appearance:{background:$("bg").value,transparent:$("transparent").checked,palette:[...state.colorPalette],ink:$("ink").value,
+        settings:{neighborOpacity:$("neighborOpacity").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked}}
+    };
+  }
   function saveHistory(){
-    state.past.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
+    state.past.push(JSON.stringify(historySnapshot()));
     if(state.past.length>40)state.past.shift();
     state.future=[];
   }
+  function applyHistoryAppearance(appearance){
+    if(!appearance)return;
+    if(typeof appearance.background==="string")$("bg").value=appearance.background;
+    if(appearance.transparent!==undefined)$("transparent").checked=isDoodleProject()?true:!!appearance.transparent;
+    if(Array.isArray(appearance.palette))state.colorPalette=[...appearance.palette];
+    if(typeof appearance.ink==="string")setInkColour(appearance.ink);
+    const s=appearance.settings||{};
+    for(const id of ["neighborOpacity","count","minScale","maxScale","rotationAmount","scatterSpacing"])if(s[id]!==undefined)$(id).value=s[id];
+    for(const id of ["scatterOverlap","scatterPreserveManual"])if(s[id]!==undefined)$(id).checked=!!s[id];
+    rebuildPaletteUI();updateSettingReadouts();
+  }
   function restoreHistory(from,to){
     if(!from.length)return;
-    to.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
+    to.push(JSON.stringify(historySnapshot()));
     const s=JSON.parse(from.pop());
     state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
-    state.selectedId=null;state.activeMark=null;renderAll();
+    applyHistoryAppearance(s.appearance);clearSelection();state.activeMark=null;renderAll();
   }
   function startAgain(){
     const itemCount=state.items.length;
@@ -1738,6 +1756,34 @@
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
   }
+  function variationSnapshot(){
+    return {
+      background:$("bg").value,transparent:$("transparent").checked,palette:[...state.colorPalette],ink:$("ink").value,
+      items:state.items.map(item=>({id:item.id,x:item.x,y:item.y,scale:item.scale,rotation:item.rotation,opacity:item.opacity,scatterGenerated:!!item.scatterGenerated})),
+      marks:state.marks.map(mark=>({id:mark.id,color:mark.color,endColor:mark.endColor,opacity:mark.opacity,transformX:mark.transformX,transformY:mark.transformY,transformScale:mark.transformScale,transformRotation:mark.transformRotation})),
+      settings:{neighborOpacity:$("neighborOpacity").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked}
+    };
+  }
+  function saveVariation(name){
+    const title=String(name||"").trim().slice(0,80);if(!title){setStatus("Give the variation a name.");return null;}
+    const now=new Date().toISOString(),variation={id:"variation-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),name:title,createdAt:now,updatedAt:now,snapshot:variationSnapshot()};
+    state.variations.unshift(variation);if(state.variations.length>30)state.variations.length=30;scheduleAutosave();setStatus("Saved variation “"+title+"”.");return variation;
+  }
+  function applyVariation(id){
+    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot){setStatus("That variation is unavailable.");return false;}
+    saveHistory();const snap=variation.snapshot,itemMap=new Map((snap.items||[]).map(item=>[String(item.id),item])),markMap=new Map((snap.marks||[]).map(mark=>[String(mark.id),mark]));
+    for(const item of state.items){const saved=itemMap.get(String(item.id));if(!saved)continue;for(const key of ["x","y","scale","rotation","opacity"])if(saved[key]!==undefined)item[key]=saved[key];if(saved.scatterGenerated)item.scatterGenerated=true;else delete item.scatterGenerated;}
+    for(const mark of state.marks){const saved=markMap.get(String(mark.id));if(!saved)continue;for(const key of ["color","endColor","opacity","transformX","transformY","transformScale","transformRotation"])if(saved[key]!==undefined)mark[key]=saved[key];}
+    if(typeof snap.background==="string")$("bg").value=snap.background;$("transparent").checked=isDoodleProject()?true:!!snap.transparent;
+    if(Array.isArray(snap.palette))state.colorPalette=[...snap.palette];if(typeof snap.ink==="string")setInkColour(snap.ink);
+    const s=snap.settings||{};for(const key of ["neighborOpacity","count","minScale","maxScale","rotationAmount","scatterSpacing"])if(s[key]!==undefined)$(key).value=s[key];
+    for(const key of ["scatterOverlap","scatterPreserveManual"])if(s[key]!==undefined)$(key).checked=!!s[key];
+    if(state.project)state.project.variation=variation.name;rebuildPaletteUI();updateSettingReadouts();renderAll();setStatus("Applied variation “"+variation.name+"”.");return true;
+  }
+  function deleteVariation(id){
+    const before=state.variations.length;state.variations=state.variations.filter(v=>v.id!==id);if(state.variations.length===before)return false;scheduleAutosave();setStatus("Variation deleted.");return true;
+  }
+  window.PatternForgeVariations={list:()=>state.variations.map(v=>({id:v.id,name:v.name,createdAt:v.createdAt,updatedAt:v.updatedAt})),save:saveVariation,apply:applyVariation,remove:deleteVariation};
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
     return {format:"pattern-forge-v4",tile:4000,dpi:300,
@@ -1747,7 +1793,7 @@
       seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
-      items:state.items,marks:state.marks,nextId:state.nextId};
+      items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
   }
   function compactProjectData(){
     const data=projectData(),usedIds=new Set(data.items.map(item=>String(item.assetId))),assetBySource=new Map(),assetIdMap=new Map(),assets=[];
@@ -1905,6 +1951,7 @@
   function validateProjectData(data){
     if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
     if(data.assets.length>500||data.items.length>10000||data.marks.length>10000||(Array.isArray(data.layers)&&data.layers.length>100))throw new Error("too-large");
+    if(data.variations!==undefined&&(!Array.isArray(data.variations)||data.variations.length>30||data.variations.some(v=>!v||typeof v.id!=="string"||typeof v.name!=="string"||!v.snapshot||typeof v.snapshot!=="object")))throw new Error("wrong-format");
     if(data.format==="pattern-forge-v4"){
       if(!Array.isArray(data.layers)||!data.layers.length)throw new Error("invalid-layers");
       const layerIds=new Set();
@@ -1947,7 +1994,7 @@
     const drawingFallback=validLayerIds.has(BASE_LAYER_IDS.drawing)?BASE_LAYER_IDS.drawing:state.layers[state.layers.length-1].id;
     state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
-    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
+    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.variations=Array.isArray(data.variations)?data.variations.slice(0,30):[];state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"]])if(s[key]!==undefined)$(id).checked=!!s[key];
