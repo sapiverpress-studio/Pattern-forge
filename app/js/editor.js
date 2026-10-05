@@ -1757,9 +1757,10 @@
     }
     for(const item of data.items){
       if(!item||item.id===undefined||!assetIds.has(String(item.assetId))||![item.x,item.y,item.scale].every(v=>Number.isFinite(Number(v)))||Number(item.scale)<=0)throw new Error("invalid-items");
+      if(item.groupId!==undefined&&item.groupId!==null&&(typeof item.groupId!=="string"||item.groupId.length>100))throw new Error("invalid-items");
     }
     const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","gradient"]);
-    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))))throw new Error("invalid-marks");
+    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
     const code=err?.message||"";
@@ -1779,8 +1780,8 @@
     const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;
     const drawingFallback=validLayerIds.has(BASE_LAYER_IDS.drawing)?BASE_LAYER_IDS.drawing:state.layers[state.layers.length-1].id;
     state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
-    state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
-    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
+    state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
+    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
