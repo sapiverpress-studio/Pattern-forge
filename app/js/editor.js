@@ -591,29 +591,30 @@
     drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
     drawSnapGuides(ctx,sc);
-    const item=selectedItem();
-    if(item){
-      const a=assetOf(item),iw=a.w*item.scale,ih=a.h*item.scale;
-      ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rotation);
-      ctx.setLineDash([7/sc,5/sc]);ctx.strokeStyle="#cc523e";ctx.lineWidth=2/sc;
-      ctx.strokeRect(-iw/2,-ih/2,iw,ih);ctx.setLineDash([]);
-      for(const [x,y] of [[-iw/2,-ih/2],[iw/2,-ih/2],[iw/2,ih/2],[-iw/2,ih/2]]){
-        ctx.beginPath();ctx.arc(x,y,8/sc,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
-        ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.stroke();
+    const selection=selectedArtwork(),showHandles=selection.length===1;
+    for(const record of selection){
+      if(record.kind==="item"){
+        const item=record.artwork,a=assetOf(item);if(!a)continue;const iw=a.w*item.scale,ih=a.h*item.scale;
+        ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rotation);
+        ctx.setLineDash([7/sc,5/sc]);ctx.strokeStyle="#cc523e";ctx.lineWidth=2/sc;
+        ctx.strokeRect(-iw/2,-ih/2,iw,ih);ctx.setLineDash([]);
+        if(showHandles){
+          for(const [x,y] of [[-iw/2,-ih/2],[iw/2,-ih/2],[iw/2,ih/2],[-iw/2,ih/2]]){
+            ctx.beginPath();ctx.arc(x,y,8/sc,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+            ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.stroke();
+          }
+          drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
+          drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
+        }
+        ctx.restore();
+      }else if(record.kind==="mark"){
+        if(layerIsRenderable(record.layer,false)&&!record.layer.locked)drawSelectedMarkOverlay(ctx,record.artwork,sc,showHandles);
       }
-      drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
-      drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
-      ctx.restore();
-    }
-    const mark=selectedMark();
-    if(mark){
-      const layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
-      if(layerIsRenderable(layer,false)&&!layer.locked)drawSelectedMarkOverlay(ctx,mark,sc);
     }
     ctx.restore();
   }
 
-  function drawImageTransformHandle(c,x,y,mode,sc){
+    function drawImageTransformHandle(c,x,y,mode,sc){
     const r=13/sc;
     c.save();c.translate(x,y);c.setLineDash([]);c.lineWidth=2/sc;
     c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fillStyle="#fff";c.fill();
