@@ -456,6 +456,26 @@
     const ids=new Set(selectionIds());if(!ids.size)return;saveHistory();
     state.items=state.items.filter(item=>!ids.has(item.id));state.marks=state.marks.filter(mark=>!ids.has(mark.id));clearSelection();renderAll();setStatus("Deleted "+ids.size+" artwork item"+(ids.size===1?"":"s")+".");
   }
+  function normaliseHexColour(value){
+    const raw=String(value||"").trim();return /^#[0-9a-f]{6}$/i.test(raw)?raw.toLowerCase():null;
+  }
+  function colourDistance(a,b){
+    const ca=normaliseHexColour(a),cb=normaliseHexColour(b);if(!ca||!cb)return Infinity;
+    const nums=hex=>[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
+    const [ar,ag,ab]=nums(ca),[br,bg,bb]=nums(cb);return Math.hypot(ar-br,ag-bg,ab-bb);
+  }
+  function selectedRecolourableMarks(){return selectedArtwork().filter(record=>record.kind==="mark"&&record.artwork.type!=="eraser").map(record=>record.artwork);}
+  function recolourSelectedMarks(colour){
+    const next=normaliseHexColour(colour),marks=selectedRecolourableMarks();if(!next||!marks.length)return 0;
+    saveHistory();for(const mark of marks)mark.color=next;renderAll();setStatus("Recoloured "+marks.length+" editable mark"+(marks.length===1?"":"s")+".");return marks.length;
+  }
+  function replaceMatchingMarkColour(fromColour,toColour,tolerance=0){
+    const from=normaliseHexColour(fromColour),to=normaliseHexColour(toColour),limit=clamp(Number(tolerance)||0,0,100)*4.42;
+    if(!from||!to)return 0;
+    const matches=state.marks.filter(mark=>mark.type!=="eraser"&&normaliseHexColour(mark.color)&&colourDistance(mark.color,from)<=limit);
+    if(!matches.length){setStatus("No editable marks matched that colour.");return 0;}
+    saveHistory();for(const mark of matches)mark.color=to;renderAll();setStatus("Recoloured "+matches.length+" matching mark"+(matches.length===1?"":"s")+" across this project.");return matches.length;
+  }
   function artworkCenter(record){
     if(record.kind==="item")return {x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};
     const b=markPrimaryBounds(record.artwork);return {x:b.cx,y:b.cy};
@@ -509,7 +529,9 @@
     delete:deleteSelectedArtwork,
     beginTransform(){if(selectionIds().length>1)saveHistory();},
     scaleBy:scaleSelectedArtwork,
-    rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);}
+    rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);},
+    recolour:recolourSelectedMarks,
+    replaceMatching:replaceMatchingMarkColour
   };
   function latticeCoordinates(x,y,basis){
     const [a,b]=basis,det=a.x*b.y-a.y*b.x;
@@ -974,6 +996,9 @@
     const groupIds=new Set(selected.map(record=>record.artwork.groupId).filter(Boolean));
     const grouped=selected.length>1&&groupIds.size===1&&selected.every(record=>record.artwork.groupId);
     panel.dataset.selectionGrouped=grouped?"true":"false";
+    const recolourable=selected.filter(record=>record.kind==="mark"&&record.artwork.type!=="eraser").map(record=>record.artwork);
+    panel.dataset.recolourableCount=String(recolourable.length);
+    panel.dataset.selectionColour=recolourable[0]?.color||"";
     if(selected.length>1){
       panel.innerHTML='<div class="field"><label>Selection</label><div class="mini"><strong>'+selected.length+' artwork items</strong>'+(grouped?' · grouped':'')+'</div><p class="help">Drag any selected artwork to move the selection together. Use Add selection in the UX2 toolbar to add or remove artwork.</p></div><div class="btns"><button id="duplicateSel" class="btn">Duplicate selection</button><button id="deleteSel" class="btn danger">Delete selection</button>'+(grouped?'<button id="ungroupSel" class="btn">Ungroup</button>':'<button id="groupSel" class="btn">Group</button>')+'</div>';
       $("duplicateSel").onclick=duplicateSelectedArtwork;
