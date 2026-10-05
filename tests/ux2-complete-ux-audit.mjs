@@ -285,6 +285,13 @@ try{
     await page.locator('#ux2Group').click();
     await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='true');
     assert(await visible(page,'#ux2Ungroup'),'Grouped selection did not expose Ungroup');
+    assert(await visible(page,'#ux2GroupScale'),'Grouped selection scale control missing');
+    assert(await visible(page,'#ux2GroupRotate'),'Grouped selection rotate control missing');
+    const beforeTransform=await page.locator('#editorCanvas').evaluate(el=>el.toDataURL());
+    await page.locator('#ux2GroupScale').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2GroupRotate').evaluate(el=>{el.value='25';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.waitForTimeout(100);
+    assert(await page.locator('#editorCanvas').evaluate(el=>el.toDataURL())!==beforeTransform,'Scale/rotate multi-selection produced no canvas change');
 
     await page.locator('#ux2Export').click();
     const projectP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const projectDownload=await projectP;
