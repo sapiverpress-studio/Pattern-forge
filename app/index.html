@@ -194,9 +194,14 @@
         <label for="rotationAmount">Random rotation ± <span id="rotationLabel">25°</span></label>
         <input id="rotationAmount" type="range" min="0" max="180" value="25">
       </div>
+      <div class="row">
+        <div class="field"><label for="scatterSpacing">Minimum spacing % of tile</label><input id="scatterSpacing" type="number" min="0" max="50" step="1" value="0"></div>
+        <div class="field"><label><input id="scatterOverlap" type="checkbox" checked> Allow motif overlap</label><label><input id="scatterPreserveManual" type="checkbox" checked> Preserve hand-positioned items</label></div>
+      </div>
       <div class="btns">
         <button id="generate" class="btn primary full">Generate seamless pattern</button>
         <button id="shuffle" class="btn">New seed</button>
+        <button id="freezeScatter" class="btn">Freeze scatter</button>
         <button id="clear" class="btn danger">Clear artwork</button>
       </div>
       </div>
