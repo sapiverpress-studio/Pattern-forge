@@ -213,6 +213,43 @@ try{
     assert(await canvas.evaluate(c=>c.toDataURL())===after,'Redo failed');
   });
 
+  await step('Pattern: pen pressure stores per-point width data and exports variable-width SVG',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'pressure-width');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('[data-ux2-tool="brush"]').click();
+    assert(await visible(view,'#ux2PressureWidth'),'Pressure-width control missing');
+    await view.locator('#ux2Stabilisation').selectOption('off');
+    await view.locator('#ux2PressureWidth').check();
+
+    await view.evaluate(async()=>{
+      const canvas=document.querySelector('#editorCanvas');canvas.setPointerCapture=()=>{};
+      const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+      const client=(x,y)=>({clientX:rect.x+(ox+x*scale)*rect.width/canvas.width,clientY:rect.y+(oy+y*scale)*rect.height/canvas.height});
+      const points=[[220,450,.1],[320,430,.25],[420,470,.5],[520,435,.75],[660,450,1]];
+      const fire=(type,x,y,pressure,buttons)=>{const p=client(x,y);canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:91,pointerType:'pen',pressure,buttons,button:0,...p}))};
+      fire('pointerdown',...points[0],1);
+      for(const point of points.slice(1))fire('pointermove',...point,1);
+      fire('pointerup',660,450,1,0);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
+
+    await view.locator('#ux2Export').click();
+    const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Pressure project download unavailable');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),brush=data.marks.filter(mark=>mark.type==='brush').at(-1);
+    assert(brush?.pressureWidth===true,'Pressure-enabled brush flag was not saved');
+    const pressures=(brush.points||[]).map(point=>Number(point.p)).filter(Number.isFinite);
+    assert(pressures.length>=4&&Math.min(...pressures)<=.15&&Math.max(...pressures)>=.95,'Pen pressure values were not captured across the stroke');
+    assert(data.settings.pressureWidth===true,'Pressure-width preference was not persisted');
+
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Pressure SVG download unavailable');
+    const svgText=fs.readFileSync(svgPath,'utf8'),widths=[...svgText.matchAll(/stroke-width="([0-9.]+)"/g)].map(match=>Number(match[1])).filter(Number.isFinite);
+    const unique=[...new Set(widths.map(width=>width.toFixed(4)))];
+    assert(unique.length>=2,'Pressure SVG did not contain multiple vector stroke widths');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'pressure-width');await context.close();
+  });
+
   await step('Pattern: Eraser exposes size and opacity and activates real eraser',async()=>{
     await page.locator('[data-ux2-tool="eraser"]').click();
     assert(await activeOldTool(page,'eraser'),'Eraser did not activate engine');
