@@ -921,6 +921,10 @@
     return out;
   }
 
+  window.PatternForgeProductPreview=()=>{
+    const mult=exportMultipliers(),base=360,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
+    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle()};
+  };
   function renderPreview(){
     const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     const data=thumb.toDataURL("image/png");
