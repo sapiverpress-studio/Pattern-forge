@@ -132,6 +132,7 @@
       const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
       layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false,clipToBelow:!!raw.clipToBelow});
     }
+    if(layers.length)layers[0].clipToBelow=false;
     return layers.length?layers:defaultLayers();
   }
   function layerById(id){return state.layers.find(layer=>layer.id===id)||null;}
@@ -921,18 +922,28 @@
     const uniform=Math.sqrt(sx*sy);
     const mapped=state.items.map(it=>({...it,x:it.x*sx,y:it.y*sy,scale:it.scale*uniform}));
     const basis=repeatBasis(baseW,baseH,style);
-    for(const layer of state.layers){
-      if(!layerIsRenderable(layer,forExport))continue;
+    let clipBaseSurface=null;
+    for(let layerIndex=0;layerIndex<state.layers.length;layerIndex++){
+      const layer=state.layers[layerIndex],renderable=layerIsRenderable(layer,forExport);
+      if(!renderable){if(!layer.clipToBelow)clipBaseSurface=null;continue;}
       const hasEraser=state.marks.some(m=>m.type==="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
-      if(!hasEraser){
+      const nextLayer=state.layers[layerIndex+1],needsClipBase=!!nextLayer?.clipToBelow;
+      const needsSurface=hasEraser||layer.clipToBelow||needsClipBase;
+      if(!needsSurface){
         for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);}
         drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,forExport);
+        clipBaseSurface=null;
         continue;
       }
       const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
       for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);}
       drawMarksWrapped(lc,W,H,baseW,baseH,style,layer.id,1,forExport);
+      if(layer.clipToBelow){
+        if(!clipBaseSurface)continue;
+        lc.save();lc.globalCompositeOperation="destination-in";lc.drawImage(clipBaseSurface,0,0);lc.restore();
+      }
       c.save();c.globalAlpha=layer.opacity;c.drawImage(surface,0,0);c.restore();
+      if(!layer.clipToBelow)clipBaseSurface=surface;
     }
     return out;
   }
