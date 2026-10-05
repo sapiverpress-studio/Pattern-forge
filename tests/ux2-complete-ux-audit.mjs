@@ -535,6 +535,29 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
+  await step('Pattern: product-scale preview responds to physical tile and product size',async()=>{
+    await page.locator('[data-ux2-panel="pattern"]').click();
+    assert(await visible(page,'#ux2ProductScaleStage'),'Product-scale preview missing');
+    await page.locator('#ux2ProductScaleType').selectOption('cushion');await page.waitForTimeout(60);
+    const object=page.locator('#ux2ProductScaleObject');
+    await page.waitForFunction(()=>document.querySelector('#ux2ProductScaleObject')?.style.backgroundImage.includes('data:image/png'));
+    const cushion=await object.boundingBox();assert(cushion&&Math.abs(cushion.width-cushion.height)<3,'Cushion preview is not square');
+    const size30=parseFloat((await object.evaluate(el=>el.style.backgroundSize)).split('px')[0]);assert(size30>0,'Product repeat background size missing');
+
+    await page.locator('#ux2ProductTileWidth').fill('15');await page.locator('#ux2ProductTileWidth').dispatchEvent('input');await page.waitForTimeout(70);
+    const size15=parseFloat((await object.evaluate(el=>el.style.backgroundSize)).split('px')[0]);
+    assert(size15<size30*.55&&size15>size30*.45,'Halving printed tile width did not approximately halve preview repeat size');
+    assert(await page.locator('#focusPrintSize').inputValue()==='15','Product tile width did not update physical print setting');
+
+    await page.locator('#ux2ProductScaleType').selectOption('phone');await page.waitForTimeout(50);
+    const phone=await object.boundingBox();assert(phone&&phone.height/phone.width>1.8,'Phone preview did not adopt tall product proportions');
+    assert((await page.locator('#ux2ProductScaleReadout').textContent()).includes('15.0 cm'),'Scale preview readout did not reflect physical tile width');
+
+    await page.locator('#ux2Export').click();const p=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const d=await p;const file=await d.path();assert(file,'Scale preview project download unavailable');
+    const data=JSON.parse(fs.readFileSync(file,'utf8'));assert(data.settings.focusPrintSize==='15'&&data.settings.focusPrintUnit==='cm','Physical tile scale did not persist in project JSON');
+    await page.locator('#ux2PaletteClose').click();
+  });
+
   await step('Pattern: Preview button toggles the repeat preview',async()=>{
     const before=await page.locator('#repeatPreviewToggle').textContent();
     await page.locator('#ux2Preview').click();
