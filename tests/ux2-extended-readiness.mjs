@@ -109,7 +109,7 @@ try{
   };
   for(const [label,damage] of Object.entries(corruptions))await check('recovery rejects '+label,async()=>{
     const {context,page}=await fresh();try{await importFile(page,sample);const before=await saved(page);await importFile(page,damage(structuredClone(before)));
-      assert((await page.locator('#status').textContent()).includes('unchanged'),'damaged file was accepted');assert.deepEqual(stable(await saved(page)),stable(before),'failed import modified artwork');
+      const rejectionStatus=await page.locator('#status').textContent();assert(rejectionStatus.includes('unchanged'),'damaged file was accepted; status: '+rejectionStatus);assert.deepEqual(stable(await saved(page)),stable(before),'failed import modified artwork');
     }finally{await context.close();}
   });
   await check('recovery truncated ZIP and cancelled reset',async()=>{
