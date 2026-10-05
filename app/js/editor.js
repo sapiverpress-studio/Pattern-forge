@@ -1224,9 +1224,10 @@
     const w=worldPoint(p);
     if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
     if(state.tool==="select"){
-      let current=selectedItem(),currentMark=selectedMark();
+      const currentIds=selectionIds(),singleSelection=currentIds.length===1;
+      let current=singleSelection?selectedItem():null,currentMark=singleSelection?selectedMark():null;
       const currentLayer=current?layerForArtwork(current,BASE_LAYER_IDS.motifs):currentMark?layerForArtwork(currentMark,BASE_LAYER_IDS.drawing):null;
-      if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){state.selectedId=null;current=null;currentMark=null;}
+      if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){clearSelection();current=null;currentMark=null;}
       const markHandle=currentMark&&markHandleAt(currentMark,w.x,w.y);
       if(markHandle){
         saveHistory();const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);
@@ -1249,7 +1250,23 @@
       if(current&&resizeHandleHit(current,w.x,w.y)){
         const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
       }
-      const hit=hitTestArtwork(w.x,w.y);state.selectedId=hit?.artwork?.id??null;state.dragging=hit?.kind==="item";
+      const hit=hitTestArtwork(w.x,w.y),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
+      if(additive){
+        if(hit){
+          const hitIds=expandedArtworkIds(hit.artwork),next=new Set(currentIds),allSelected=hitIds.every(id=>next.has(id));
+          if(allSelected)for(const id of hitIds)next.delete(id);else for(const id of hitIds)next.add(id);
+          setSelection([...next],allSelected?([...next].at(-1)??null):hit.artwork.id);
+        }
+        renderAll();return;
+      }
+      if(hit&&currentIds.length>1&&currentIds.includes(hit.artwork.id)){
+        saveHistory();startSelectionMove(currentIds,w);renderAll();return;
+      }
+      const hitIds=hit?expandedArtworkIds(hit.artwork):[];
+      if(hitIds.length>1){
+        setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);renderAll();return;
+      }
+      setSelection(hit?[hit.artwork.id]:[],hit?.artwork?.id??null);state.dragging=hit?.kind==="item";
       if(hit?.kind==="item"){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
       else if(hit?.kind==="mark"){
         saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
