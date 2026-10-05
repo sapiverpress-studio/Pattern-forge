@@ -51,7 +51,7 @@ async function draw(page){
   await page.mouse.move(b.x+b.width*.56,b.y+b.height*.57,{steps:16});await page.mouse.up();
 }
 async function autosave(page){
-  return page.evaluate(async()=>{const db=await new Promise((res,rej)=>{const r=indexedDB.open('pattern-forge-local',1);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return new Promise((res,rej)=>{const s=db.transaction('projects').objectStore('projects'),r=s.get('current');r.onsuccess=()=>{const q=s.get(r.result);q.onsuccess=()=>res(JSON.parse(q.result));q.onerror=()=>rej(q.error)};r.onerror=()=>rej(r.error)});});
+  return page.evaluate(async()=>{const db=await new Promise((res,rej)=>{const r=indexedDB.open('pattern-forge-local',2);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return new Promise((res,rej)=>{const s=db.transaction('projects').objectStore('projects'),r=s.get('current');r.onsuccess=()=>{const q=s.get(r.result);q.onsuccess=()=>res(JSON.parse(q.result));q.onerror=()=>rej(q.error)};r.onerror=()=>rej(r.error)});});
 }
 async function fixture(page,type='pattern',repeat='straight'){
   await create(page,type,repeat);
