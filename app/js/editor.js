@@ -1600,8 +1600,9 @@
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     let gradientId=0;
     let maskIndex=0;
+    let clipBaseSvg="";
     for(const layer of state.layers){
-      if(!layerIsRenderable(layer,true))continue;
+      if(!layerIsRenderable(layer,true)){if(!layer.clipToBelow)clipBaseSvg="";continue;}
       let layerBody="";
       for(const srcItem of state.items){
       if(layerForArtwork(srcItem,BASE_LAYER_IDS.motifs)?.id!==layer.id)continue;
@@ -1671,7 +1672,15 @@
       }
       if(m.type==="eraser"&&eraserNodes){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;}
       }
-      body+=layerBody;
+      if(layer.clipToBelow){
+        if(!clipBaseSvg)continue;
+        const clipMaskId=`pf-clip-${++maskIndex}`;
+        gradientDefs+=`<mask id="${clipMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">${clipBaseSvg}</mask>`;
+        body+=`<g mask="url(#${clipMaskId})">${layerBody}</g>`;
+      }else{
+        body+=layerBody;
+        clipBaseSvg=layerBody;
+      }
     }
     const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
     return new Blob([svg],{type:"image/svg+xml"});
