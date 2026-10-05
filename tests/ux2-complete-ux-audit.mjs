@@ -276,6 +276,49 @@ try{
     assert(assetCount>0 || (await page.locator('#status').textContent()||'').length>0,'Image import gave no visible engine response');
   });
 
+  await step('Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'scatter-controls');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(160);
+
+    const saveProject=async()=>{
+      await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p;
+      const file=await d.path();assert(file,'Scatter project download unavailable');const data=JSON.parse(fs.readFileSync(file,'utf8'));await view.locator('#ux2PaletteClose').click();return data;
+    };
+
+    await view.locator('[data-ux2-panel="pattern"]').click();
+    await view.locator('#ux2ScatterCount').fill('6');await view.locator('#ux2ScatterMinScale').fill('6');await view.locator('#ux2ScatterMaxScale').fill('6');
+    await view.locator('#ux2ScatterSpacing').fill('0');
+    if(!(await view.locator('#ux2ScatterOverlap').isChecked()))await view.locator('#ux2ScatterOverlap').check();
+    if(!(await view.locator('#ux2ScatterPreserve').isChecked()))await view.locator('#ux2ScatterPreserve').check();
+    await view.locator('#ux2ScatterGenerate').click();await view.waitForTimeout(120);
+    let data=await saveProject();
+    assert(data.items.filter(item=>item.scatterGenerated).length===6,'Scatter did not create six tagged generated copies');
+    assert(data.items.some(item=>!item.scatterGenerated),'Scatter did not preserve the manually placed import');
+
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2ScatterFreeze').click();await view.waitForTimeout(80);
+    data=await saveProject();assert(data.items.every(item=>!item.scatterGenerated),'Freeze scatter did not convert generated copies to ordinary artwork');
+
+    await view.locator('[data-ux2-panel="pattern"]').click();
+    await view.locator('#ux2ScatterCount').fill('5');await view.locator('#ux2ScatterMinScale').fill('6');await view.locator('#ux2ScatterMaxScale').fill('6');await view.locator('#ux2ScatterSpacing').fill('8');
+    if(await view.locator('#ux2ScatterOverlap').isChecked())await view.locator('#ux2ScatterOverlap').uncheck();
+    if(await view.locator('#ux2ScatterPreserve').isChecked())await view.locator('#ux2ScatterPreserve').uncheck();
+    await view.locator('#ux2ScatterGenerate').click();await view.waitForTimeout(120);
+    data=await saveProject();
+    assert(data.items.length===5&&data.items.every(item=>item.scatterGenerated),'Constrained scatter did not replace prior artwork with five generated copies');
+    assert(data.settings.scatterSpacing==='8'&&data.settings.scatterOverlap===false&&data.settings.scatterPreserveManual===false,'Scatter settings were not persisted');
+    const assets=new Map(data.assets.map(asset=>[String(asset.id),asset])),spacing=900*.08;
+    for(let i=0;i<data.items.length;i++)for(let j=i+1;j<data.items.length;j++){
+      const a=data.items[i],b=data.items[j],aa=assets.get(String(a.assetId)),ba=assets.get(String(b.assetId));
+      const dx0=Math.abs(a.x-b.x),dy0=Math.abs(a.y-b.y),dx=Math.min(dx0,900-dx0),dy=Math.min(dy0,900-dy0),distance=Math.hypot(dx,dy);
+      const ar=Math.hypot(aa.w*a.scale,aa.h*a.scale)/2,br=Math.hypot(ba.w*b.scale,ba.h*b.scale)/2;
+      assert(distance+0.01>=spacing+ar+br,'No-overlap spacing failed across repeat seam');
+    }
+    await shot(view,'scatter-controls');await context.close();
+  });
+
   await step('Pattern: Selection transform, duplicate, arrange, snap and delete controls work',async()=>{
     await page.locator('[data-ux2-tool="select"]').click();
     if(!(await visible(page,'#ux2SelScale'))){
