@@ -2,7 +2,7 @@ name: UX2 complete UX audit
 
 on:
   push:
-    branches: [feature/canvas-first-ux-v2]
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
     paths:
       - index.html
       - assets/**
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/canvas-first-ux-v2
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
