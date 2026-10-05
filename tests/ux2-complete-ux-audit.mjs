@@ -562,6 +562,53 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
+  await step('Pattern: clipping mask constrains artwork in PNG preview and SVG export',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'clipping-mask');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#transparent').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('input',{bubbles:true}))});
+    const worldToClient=async(x,y)=>view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{
+      const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+      return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};
+    },{x,y});
+    const dragWorld=async(a,b)=>{
+      const p1=await worldToClient(a[0],a[1]),p2=await worldToClient(b[0],b[1]);
+      await view.mouse.move(p1.x,p1.y);await view.mouse.down();await view.mouse.move(p2.x,p2.y,{steps:12});await view.mouse.up();await view.waitForTimeout(80);
+    };
+
+    await view.locator('[data-ux2-tool="rect"]').click();await view.locator('#ux2Rect').click();
+    if(!(await view.locator('#ux2ShapeFill').isChecked()))await view.locator('#ux2ShapeFill').check();
+    await view.locator('#ink').evaluate(el=>{el.value='#2244aa';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([300,300],[600,600]);
+
+    await view.locator('[data-ux2-panel="layers"]').click();await view.locator('#ux2AddLayer').click();
+    assert(await view.locator('#ux2LayerClipToBelow').isEnabled(),'New upper layer cannot enable clipping');
+    await view.locator('#ux2LayerClipToBelow').check();await view.waitForTimeout(80);await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="brush"]').click();
+    await view.locator('#ux2Size').evaluate(el=>{el.value='180';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ink').evaluate(el=>{el.value='#dd2244';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([180,450],[720,450]);
+
+    const pixels=await view.evaluate(async()=>{
+      const data=window.PatternForgeProductPreview().dataUrl,img=new Image();
+      await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=data});
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);
+      const sample=(wx,wy)=>Array.from(x.getImageData(Math.round(wx/900*c.width),Math.round(wy/900*c.height),1,1).data);
+      return {outside:sample(230,450),inside:sample(450,450)};
+    });
+    assert(pixels.outside[3]===0,'Clipped brush leaked outside the base-layer transparency');
+    assert(pixels.inside[3]>0&&pixels.inside[0]>pixels.inside[2],'Clipped brush is not visible inside the base-layer alpha');
+
+    await view.locator('#ux2Export').click();
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Clipping SVG path unavailable');
+    const svgText=fs.readFileSync(svgPath,'utf8');assert(svgText.includes('pf-clip-')&&svgText.includes('mask-type:alpha'),'SVG export did not preserve the clipping mask');
+    const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Clipping project path unavailable');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8'));assert(data.layers.some(layer=>layer.clipToBelow===true),'Clipping layer state did not persist');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'clipping-mask');await context.close();
+  });
+
   await step('Pattern: Preview button toggles the repeat preview',async()=>{
     const before=await page.locator('#repeatPreviewToggle').textContent();
     await page.locator('#ux2Preview').click();
