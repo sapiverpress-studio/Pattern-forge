@@ -120,8 +120,8 @@
   const BASE_LAYER_IDS = Object.freeze({motifs:"layer-motifs",drawing:"layer-drawing"});
   function defaultLayers(){
     return [
-      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true},
-      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true}
+      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true,clipToBelow:false},
+      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true,clipToBelow:false}
     ];
   }
   function normaliseLayers(rawLayers){
@@ -130,7 +130,7 @@
     for(const raw of rawLayers){
       if(!raw||typeof raw!=="object")continue;
       const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
-      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false});
+      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false,clipToBelow:!!raw.clipToBelow});
     }
     return layers.length?layers:defaultLayers();
   }
@@ -181,18 +181,18 @@
     [...state.layers].reverse().forEach(layer=>{
       const button=document.createElement("button");button.type="button";button.className="layerRow"+(layer.id===state.activeLayerId?" active":"");
       const name=document.createElement("span");name.className="layerRowName";name.textContent=layer.name;
-      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");
+      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");if(layer.clipToBelow)flags.push("clipped");
       const meta=document.createElement("span");meta.className="layerRowMeta";meta.textContent=`${layerArtworkCount(layer.id)} item${layerArtworkCount(layer.id)===1?"":"s"}${flags.length?" · "+flags.join(" · "):""}`;
       button.append(name,meta);
       button.addEventListener("click",()=>{state.activeLayerId=layer.id;rebuildLayerUI();scheduleAutosave();setStatus(`“${layer.name}” is the active layer.`);});
       list.appendChild(button);
     });
     const layer=activeLayer(),index=layer?state.layers.indexOf(layer):-1;
-    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerDuplicate","layerDelete","layerUp","layerDown"];
+    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerClipToBelow","layerDuplicate","layerDelete","layerUp","layerDown"];
     controls.forEach(id=>$(id).disabled=!layer);
     if(!layer)return;
     $("layerName").value=layer.name;$("layerOpacity").value=Math.round(layer.opacity*100);$("layerOpacityValue").textContent=Math.round(layer.opacity*100)+"%";
-    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;
+    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;$("layerClipToBelow").checked=!!layer.clipToBelow;$("layerClipToBelow").disabled=index<=0;
     $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
     $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
   }
@@ -205,7 +205,7 @@
     return `Layer ${Math.max(state.layers.length,maxNumber)+1}`;
   }
   function addLayer(){
-    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true};
+    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true,clipToBelow:false};
     state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
   }
   function duplicateActiveLayer(){
@@ -2160,6 +2160,7 @@
   $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(!layer.visible&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
   $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(layer.locked&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
   $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
+  $("layerClipToBelow").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const index=state.layers.indexOf(layer);if(index<=0){$("layerClipToBelow").checked=false;setStatus("The bottom layer cannot be clipped because there is no layer below it.");return;}saveHistory();layer.clipToBelow=$("layerClipToBelow").checked;renderAll();setStatus(layer.clipToBelow?"Layer clipped to the transparency of the layer below.":"Layer clipping removed.");});
   rebuildLayerUI();
   loadSavedPalettes();rebuildPaletteUI();
   $("savedPaletteSelect").addEventListener("change",e=>{
