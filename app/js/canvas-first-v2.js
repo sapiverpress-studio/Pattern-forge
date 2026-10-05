@@ -211,7 +211,9 @@
   function colourPanel(){
     const colour=$('ink')?.value||'#6f89a8';
     const palettes=$('savedPaletteSelect')?[...$('savedPaletteSelect').options].map(o=>`<option value="${o.value}">${o.textContent}</option>`).join(''):'';
-    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Current colour</div><input id="ux2ColourInput" type="color" value="${colour}" style="width:100%;height:58px;border:1px solid #c7d0da;border-radius:12px;padding:4px;background:#fff"></div><div class="ux2-panel-block"><div class="ux2-panel-label">Current palette</div><div id="ux2PaletteSwatches" class="ux2-swatches"></div><button class="ux2-btn" id="ux2AddPaletteColour" style="width:100%;margin-top:9px">Add current colour</button></div><div class="ux2-panel-block"><div class="ux2-panel-label">Saved palettes</div><select id="ux2SavedPalette" style="width:100%;margin-bottom:8px">${palettes}</select><button class="ux2-btn" id="ux2SavePalette" style="width:100%">Save current palette</button></div><div class="ux2-panel-block"><button class="ux2-btn" id="ux2Eyedropper" style="width:100%">Pick colour from canvas</button></div>`;
+    const selectedPanel=$('selectedPanel'),recolourable=Number(selectedPanel?.dataset.recolourableCount||0),selectedColour=selectedPanel?.dataset.selectionColour||colour;
+    const selectionBlock=recolourable>0?`<div class="ux2-panel-block"><div class="ux2-panel-label">Selected artwork</div><p class="ux2-info">${recolourable} editable mark${recolourable===1?'':'s'} selected. Imported PNG/JPG/SVG images are not recoloured by this control.</p><label class="ux2-field-label">New colour<input id="ux2SelectionColour" type="color" value="${selectedColour}"></label><button class="ux2-btn primary" id="ux2RecolourSelection" style="width:100%;margin-bottom:8px">Recolour selected marks</button><label class="ux2-field-label">Replace tolerance <span id="ux2ColourToleranceLabel">0%</span><input id="ux2ColourTolerance" type="range" min="0" max="100" value="0"></label><button class="ux2-btn" id="ux2ReplaceMatchingColour" style="width:100%">Replace matching ${selectedColour} across project</button></div>`:'';
+    return selectionBlock+`<div class="ux2-panel-block"><div class="ux2-panel-label">Current colour</div><input id="ux2ColourInput" type="color" value="${colour}" style="width:100%;height:58px;border:1px solid #c7d0da;border-radius:12px;padding:4px;background:#fff"></div><div class="ux2-panel-block"><div class="ux2-panel-label">Current palette</div><div id="ux2PaletteSwatches" class="ux2-swatches"></div><button class="ux2-btn" id="ux2AddPaletteColour" style="width:100%;margin-top:9px">Add current colour</button></div><div class="ux2-panel-block"><div class="ux2-panel-label">Saved palettes</div><select id="ux2SavedPalette" style="width:100%;margin-bottom:8px">${palettes}</select><button class="ux2-btn" id="ux2SavePalette" style="width:100%">Save current palette</button></div><div class="ux2-panel-block"><button class="ux2-btn" id="ux2Eyedropper" style="width:100%">Pick colour from canvas</button></div>`;
   }
   function populateSwatches(){
     const target=$('ux2PaletteSwatches'); if(!target)return; target.innerHTML='';
@@ -284,7 +286,18 @@
     $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='motifs'?'My Motifs':name==='pattern'?(document.body.classList.contains('doodle-project')?'Canvas setup':'Design setup'):name==='brushes'?'Brush Library':'Export';
     body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='motifs'?motifPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
     document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.toggle('active',b.dataset.ux2Panel===name));
-    if(name==='colour'){$('ux2ColourInput').addEventListener('input',e=>dispatchValue('ink',e.target.value));$('ux2Eyedropper').addEventListener('click',()=>setTool('eyedropper'));$('ux2AddPaletteColour')?.addEventListener('click',()=>{clickOld('addPaletteColour');populateSwatches()});$('ux2SavePalette')?.addEventListener('click',()=>clickOld('savePalette'));if($('ux2SavedPalette')&&$('savedPaletteSelect')){$('ux2SavedPalette').value=$('savedPaletteSelect').value;$('ux2SavedPalette').addEventListener('change',e=>dispatchValue('savedPaletteSelect',e.target.value,'change'))}populateSwatches()}
+    if(name==='colour'){
+      $('ux2ColourInput').addEventListener('input',e=>dispatchValue('ink',e.target.value));
+      $('ux2Eyedropper').addEventListener('click',()=>setTool('eyedropper'));
+      $('ux2AddPaletteColour')?.addEventListener('click',()=>{clickOld('addPaletteColour');populateSwatches()});
+      $('ux2SavePalette')?.addEventListener('click',()=>clickOld('savePalette'));
+      if($('ux2SavedPalette')&&$('savedPaletteSelect')){$('ux2SavedPalette').value=$('savedPaletteSelect').value;$('ux2SavedPalette').addEventListener('change',e=>dispatchValue('savedPaletteSelect',e.target.value,'change'))}
+      const selectionApi=window.PatternForgeSelection,selectedPanel=$('selectedPanel'),sourceColour=selectedPanel?.dataset.selectionColour||'';
+      $('ux2ColourTolerance')?.addEventListener('input',e=>{if($('ux2ColourToleranceLabel'))$('ux2ColourToleranceLabel').textContent=e.target.value+'%'});
+      $('ux2RecolourSelection')?.addEventListener('click',()=>{selectionApi?.recolour($('ux2SelectionColour')?.value);openPanel('colour')});
+      $('ux2ReplaceMatchingColour')?.addEventListener('click',()=>{selectionApi?.replaceMatching(sourceColour,$('ux2SelectionColour')?.value,$('ux2ColourTolerance')?.value||0);openPanel('colour')});
+      populateSwatches();
+    }
     if(name==='motifs')wireMotifPanel();
     if(name==='brushes'){document.querySelectorAll('[data-brush-style]').forEach(b=>b.addEventListener('click',()=>{dispatchValue('brushStyle',b.dataset.brushStyle,'change');setTool('brush');openPanel('brushes')}));document.querySelectorAll('[data-stamp]').forEach(b=>b.addEventListener('click',()=>dispatchValue('stampShape',b.dataset.stamp,'change')))}
     if(name==='layers'){
