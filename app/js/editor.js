@@ -812,6 +812,14 @@
     return {minX:b.minX+dx,maxX:b.maxX+dx,minY:b.minY+dy,maxY:b.maxY+dy,cx:b.cx+dx,cy:b.cy+dy};
   }
 
+  function strokeStabilisationBase(){
+    return {off:1,light:.76,medium:.56,strong:.38}[$("strokeStabilisation")?.value||"off"]||1;
+  }
+  function stabiliseStrokePoint(last,raw){
+    const base=strokeStabilisationBase();if(base>=.999)return raw;
+    const distance=Math.hypot(raw.x-last.x,raw.y-last.y),factor=clamp(base+Math.min(.34,distance/95),base,.9);
+    return {x:last.x+(raw.x-last.x)*factor,y:last.y+(raw.y-last.y)*factor};
+  }
   function drawMark(c,m,alphaMultiplier=1){
     const pts=m.points;if(!pts.length)return;
     const opacity=clamp(Number(m.opacity??1),.05,1)*clamp(Number(alphaMultiplier??1),0,1),style=m.brushStyle||"ink";
@@ -1407,7 +1415,7 @@
     if(state.activeMark){
       const m=state.activeMark;
       if(m.type==="brush"||m.type==="eraser"||m.type==="freefill"||m.type==="gradient"){
-        const last=m.points[m.points.length-1],next=nearestLatticePoint(w.x,w.y,last.x,last.y);
+        const last=m.points[m.points.length-1],raw=nearestLatticePoint(w.x,w.y,last.x,last.y),next=m.type==="brush"?stabiliseStrokePoint(last,raw):raw;
         if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
       }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
       renderAll(false,false);return;
@@ -1421,6 +1429,10 @@
     }
   });
   function endDrag(e){
+    if(state.activeMark?.type==="brush"&&strokeStabilisationBase()<.999&&state.activeMark.points.length){
+      const last=state.activeMark.points[state.activeMark.points.length-1],w=worldPoint(pointerPos(e)),end=nearestLatticePoint(w.x,w.y,last.x,last.y);
+      if(Math.hypot(end.x-last.x,end.y-last.y)>.5)state.activeMark.points.push(end);
+    }
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
     if(state.transformState?.kind==="selection"){
       for(const member of state.transformState.members||[]){if(member.kind==="mark"){const mark=state.marks.find(m=>m.id===member.id);if(mark)normaliseMarkTranslation(mark);}}
@@ -1708,7 +1720,7 @@
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,nextId:state.nextId};
@@ -1913,7 +1925,7 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
     $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
@@ -2002,6 +2014,7 @@
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
+  $("strokeStabilisation").addEventListener("change",scheduleAutosave);
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
   $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
