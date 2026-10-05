@@ -467,7 +467,7 @@
   function selectedRecolourableMarks(){return selectedArtwork().filter(record=>record.kind==="mark"&&record.artwork.type!=="eraser").map(record=>record.artwork);}
   function recolourSelectedMarks(colour){
     const next=normaliseHexColour(colour),marks=selectedRecolourableMarks();if(!next||!marks.length)return 0;
-    saveHistory();for(const mark of marks)mark.color=next;renderAll();setStatus("Recoloured "+marks.length+" editable mark"+(marks.length===1?"":"s")+".");return marks.length;
+    saveHistory();for(const mark of marks)mark.color=next;const panel=$("selectedPanel");if(panel)panel.dataset.selectionColour=next;renderAll();setStatus("Recoloured "+marks.length+" editable mark"+(marks.length===1?"":"s")+".");return marks.length;
   }
   function replaceMatchingMarkColour(fromColour,toColour,tolerance=0){
     const from=normaliseHexColour(fromColour),to=normaliseHexColour(toColour),limit=clamp(Number(tolerance)||0,0,100)*4.42;
