@@ -169,6 +169,33 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
+  await step('Pattern: stroke stabilisation changes new brush geometry and persists',async()=>{
+    await page.locator('[data-ux2-tool="brush"]').click();
+    assert(await visible(page,'#ux2Stabilisation'),'Stroke stabilisation control missing');
+    await page.locator('#ux2BrushStyle').selectOption('ink');
+    const canvas=page.locator('#editorCanvas'),box=await canvas.boundingBox();assert(box,'Canvas bounds unavailable for stabilisation');
+    const drawPath=async(offsetY)=>{
+      const pts=[[.24,.34+offsetY],[.32,.43+offsetY],[.40,.31+offsetY],[.49,.46+offsetY],[.58,.35+offsetY]];
+      await page.mouse.move(box.x+box.width*pts[0][0],box.y+box.height*pts[0][1]);await page.mouse.down();
+      for(const [x,y] of pts.slice(1))await page.mouse.move(box.x+box.width*x,box.y+box.height*y,{steps:5});
+      await page.mouse.up();await page.waitForTimeout(70);
+    };
+    await page.locator('#ux2Stabilisation').selectOption('off');await drawPath(0);
+    await page.locator('[data-ux2-tool="brush"]').click();await page.locator('#ux2Stabilisation').selectOption('strong');await drawPath(.18);
+    assert(await page.locator('#strokeStabilisation').inputValue()==='strong','Stabilisation did not reach engine setting');
+    await page.locator('#ux2Export').click();
+    const projectP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const project=await projectP;
+    const projectPath=await project.path();assert(projectPath,'Stabilisation project download unavailable');
+    const data=JSON.parse(fs.readFileSync(projectPath,'utf8')),brushes=data.marks.filter(mark=>mark.type==='brush'&&mark.brushStyle==='ink');
+    assert(data.settings.strokeStabilisation==='strong','Stabilisation setting was not persisted');
+    assert(brushes.length>=2,'Stabilisation test strokes missing from project');
+    const [offMark,strongMark]=brushes.slice(-2);
+    const shape=mark=>mark.points.slice(1,-1).map(point=>[Math.round((point.x-mark.points[0].x)*10)/10,Math.round((point.y-mark.points[0].y)*10)/10]);
+    assert(JSON.stringify(shape(offMark))!==JSON.stringify(shape(strongMark)),'Strong stabilisation recorded the same intermediate path as Off');
+    await page.locator('#ux2PaletteClose').click();
+    await page.locator('[data-ux2-tool="brush"]').click();await page.locator('#ux2Stabilisation').selectOption('off');
+  });
+
   await step('Pattern: Brush drawing, Undo and Redo change the real canvas',async()=>{
     await page.locator('[data-ux2-tool="brush"]').click();
     const canvas=page.locator('#editorCanvas');
