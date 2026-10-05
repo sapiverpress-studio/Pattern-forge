@@ -319,6 +319,40 @@ try{
     await shot(view,'scatter-controls');await context.close();
   });
 
+  await step('Pattern: saved variation restores design state and Undo reverses the apply',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'variations');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(140);
+    const saveProject=async()=>{
+      await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p;const file=await d.path();assert(file,'Variation project path unavailable');const data=JSON.parse(fs.readFileSync(file,'utf8'));await view.locator('#ux2PaletteClose').click();return data;
+    };
+    const baseline=await saveProject(),baseItem=baseline.items[0];assert(baseItem,'Variation baseline item missing');
+
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2VariationName').fill('Baseline colourway');await view.locator('#ux2SaveVariation').click();
+    await view.getByText('Baseline colourway',{exact:true}).waitFor();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="select"]').click();
+    if(!(await visible(view,'#ux2SelScale'))){const box=await view.locator('#editorCanvas').boundingBox();assert(box,'Variation canvas unavailable');await view.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await view.waitForTimeout(80);}
+    assert(await visible(view,'#ux2SelScale'),'Variation test could not select imported item');
+    await view.locator('#ux2SelScale').evaluate(el=>{el.value='155';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await view.locator('#ux2SelRot').evaluate(el=>{el.value='33';el.dispatchEvent(new Event('input',{bubbles:true}));});await view.waitForTimeout(80);
+    const modified=await saveProject(),modifiedItem=modified.items.find(item=>item.id===baseItem.id);assert(modifiedItem,'Modified variation item missing');
+    assert(Math.abs(modifiedItem.scale-baseItem.scale)>1e-5||Math.abs(modifiedItem.rotation-baseItem.rotation)>1e-5,'Variation test did not alter the item');
+
+    await view.locator('[data-ux2-panel="pattern"]').click();
+    const row=view.locator('[data-variation-id]').filter({hasText:'Baseline colourway'});await row.waitFor({state:'visible'});await row.getByRole('button',{name:'Apply',exact:true}).click();await view.waitForTimeout(100);
+    const applied=await saveProject(),appliedItem=applied.items.find(item=>item.id===baseItem.id);
+    assert(Math.abs(appliedItem.scale-baseItem.scale)<1e-6&&Math.abs(appliedItem.rotation-baseItem.rotation)<1e-6,'Applying saved variation did not restore item transform');
+    assert(applied.variations?.some(v=>v.name==='Baseline colourway'),'Saved variation was not persisted in project JSON');
+
+    await view.locator('#ux2Undo').click();await view.waitForTimeout(100);
+    const undone=await saveProject(),undoneItem=undone.items.find(item=>item.id===baseItem.id);
+    assert(Math.abs(undoneItem.scale-modifiedItem.scale)<1e-6&&Math.abs(undoneItem.rotation-modifiedItem.rotation)<1e-6,'Undo did not reverse variation application');
+    await shot(view,'saved-variation');await context.close();
+  });
+
   await step('Pattern: Selection transform, duplicate, arrange, snap and delete controls work',async()=>{
     await page.locator('[data-ux2-tool="select"]').click();
     if(!(await visible(page,'#ux2SelScale'))){
