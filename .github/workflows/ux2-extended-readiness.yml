@@ -3,7 +3,7 @@ name: UX2 extended readiness
 on:
   workflow_dispatch:
   push:
-    branches: [feature/canvas-first-ux-v2]
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
     paths:
       - app/js/editor.js
       - app/js/canvas-first-v2.js
