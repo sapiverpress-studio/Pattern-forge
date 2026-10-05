@@ -1301,7 +1301,17 @@
     }
     const w=worldPoint(p);
     if(state.transformState){
-      if(state.transformState.kind==="mark"){
+      if(state.transformState.kind==="selection"){
+        const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y;
+        for(const member of state.transformState.members){
+          const record=artworkRecord(member.id);if(!record)continue;
+          if(member.kind==="item"){
+            const next={x:member.x+dx,y:member.y+dy},pos=isDoodleProject()?next:canonicalPoint(next.x,next.y);record.artwork.x=pos.x;record.artwork.y=pos.y;
+          }else{
+            record.artwork.transformX=member.x+dx;record.artwork.transformY=member.y+dy;
+          }
+        }
+      }else if(state.transformState.kind==="mark"){
         const mark=state.marks.find(m=>m.id===state.transformState.id);if(!mark)return;
         if(state.transformState.mode==="move"){
           const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y,bounds=markPrimaryBounds(mark),snapped=smartSnapPosition(state.transformState.baseCenter.x+dx,state.transformState.baseCenter.y+dy,(bounds.maxX-bounds.minX)/2,(bounds.maxY-bounds.minY)/2);
@@ -1343,7 +1353,11 @@
   });
   function endDrag(e){
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
-    const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
+    if(state.transformState?.kind==="selection"){
+      for(const member of state.transformState.members||[]){if(member.kind==="mark"){const mark=state.marks.find(m=>m.id===member.id);if(mark)normaliseMarkTranslation(mark);}}
+    }else{
+      const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
+    }
     state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();renderAll();
   }
   canvas.addEventListener("pointerup",endDrag);
