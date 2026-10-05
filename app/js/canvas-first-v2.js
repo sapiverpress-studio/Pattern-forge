@@ -65,9 +65,12 @@
   try{
     const saved=localStorage.getItem(favouriteStorageKey),stored=JSON.parse(saved||'[]');
     if(Array.isArray(stored))favouriteIds=stored.filter(id=>favouriteTools.some(tool=>tool.id===id));
-    // A first-time Doodle needs drawing controls immediately. Once changed,
-    // the saved selection—including an intentionally empty one—wins.
-    if(isDoodle&&saved===null){favouriteIds=['brush','eraser','pan'];localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds));}
+    // Start each workspace with a useful rail, then let the one saved choice
+    // drive quick tools consistently across Pattern and Doodle.
+    if(saved===null){
+      favouriteIds=isDoodle?['brush','eraser','pan']:favouriteTools.map(tool=>tool.id);
+      localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds));
+    }
   }catch(_){}
   function renderFavouriteShortcuts(){
     if(isDoodle)return;
@@ -81,7 +84,6 @@
   }
   function saveFavouriteTools(){try{localStorage.setItem(favouriteStorageKey,JSON.stringify(favouriteIds))}catch(_){}}
   function renderFavouriteRail(){
-    if(!isDoodle)return;
     document.querySelectorAll('.ux2-tool-item').forEach(item=>{item.hidden=!favouriteIds.includes(item.dataset.toolId)});
   }
   function selectToolFromMenu(id){
@@ -89,8 +91,7 @@
     target?.click();
     $('ux2ToolMenu').hidden=true;$('ux2ToolMenuTrigger').setAttribute('aria-expanded','false');
   }
-  function renderDoodleToolMenu(){
-    if(!isDoodle)return;
+  function renderToolMenu(){
     const menu=$('ux2ToolMenu');if(!menu)return;
     menu.innerHTML='<div class="ux2-tool-menu-head"><strong>Tools</strong><span>Choose quick tools</span></div>';
     const grid=document.createElement('div');grid.className='ux2-tool-menu-grid';
@@ -99,7 +100,7 @@
       const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';use.innerHTML=`${icon(tool.icon)}<span>${tool.label}</span>`;use.addEventListener('click',()=>selectToolFromMenu(tool.id));
       const favourite=document.createElement('label');favourite.className='ux2-tool-menu-favourite';
       const check=document.createElement('input');check.type='checkbox';check.checked=favouriteIds.includes(tool.id);check.setAttribute('aria-label',`Show ${tool.label} in quick tools`);
-      check.addEventListener('change',()=>{favouriteIds=check.checked?[...new Set([...favouriteIds,tool.id])]:favouriteIds.filter(savedId=>savedId!==tool.id);saveFavouriteTools();renderFavouriteRail();renderDoodleToolMenu()});
+      check.addEventListener('change',()=>{favouriteIds=check.checked?[...new Set([...favouriteIds,tool.id])]:favouriteIds.filter(savedId=>savedId!==tool.id);saveFavouriteTools();renderFavouriteRail();renderToolMenu()});
       favourite.append(check,document.createTextNode(' Quick'));
       row.append(use,favourite);grid.append(row);
     });
@@ -110,13 +111,12 @@
       const id=toolButton.dataset.ux2Tool||(toolButton.hasAttribute('data-ux2-action')?'image':'');
       const tool=favouriteTools.find(item=>item.id===id);if(!tool)return;
       const item=document.createElement('div');item.className='ux2-tool-item';item.dataset.toolId=id;toolButton.before(item);item.append(toolButton);
-      if(!isDoodle){const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='ux2-favourite-toggle';checkbox.checked=favouriteIds.includes(id);checkbox.setAttribute('role','checkbox');checkbox.setAttribute('aria-label',`Favourite ${tool.label}`);checkbox.title=`Favourite ${tool.label}`;
-        checkbox.addEventListener('change',()=>{favouriteIds=checkbox.checked?[...new Set([...favouriteIds,id])]:favouriteIds.filter(savedId=>savedId!==id);saveFavouriteTools();document.querySelectorAll('.ux2-favourite-toggle').forEach(el=>{const toolId=el.closest('.ux2-tool-item')?.dataset.toolId;if(toolId)el.checked=favouriteIds.includes(toolId)});renderFavouriteShortcuts()});item.append(checkbox);}
     });
     renderFavouriteRail();
   }
   initFavouriteControls();
-  if(isDoodle){$('ux2ToolMenuTrigger').addEventListener('click',()=>{const menu=$('ux2ToolMenu'),open=menu.hidden;menu.hidden=!open;$('ux2ToolMenuTrigger').setAttribute('aria-expanded',String(open));if(open)renderDoodleToolMenu()});renderDoodleToolMenu();}
+  $('ux2ToolMenuTrigger').addEventListener('click',()=>{const menu=$('ux2ToolMenu'),open=menu.hidden;menu.hidden=!open;$('ux2ToolMenuTrigger').setAttribute('aria-expanded',String(open));if(open)renderToolMenu()});
+  renderToolMenu();
   const dispatchValue = (id, value, event='input') => {
     const el=$(id); if(!el) return; el.value=value; el.dispatchEvent(new Event(event,{bubbles:true}));
   };
@@ -171,7 +171,6 @@
       if($('ux2Back'))$('ux2Back').addEventListener('click',()=>clickOld('backSel'));
       if($('ux2Snap'))$('ux2Snap').addEventListener('click',()=>{const el=$('snapOn');if(el){el.checked=!el.checked;el.dispatchEvent(new Event('change',{bubbles:true}))}});
     }
-    renderFavouriteShortcuts();
   }
 
   function setTool(tool){
