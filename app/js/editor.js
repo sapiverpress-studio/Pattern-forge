@@ -1659,6 +1659,18 @@
         stamp(first.x,first.y,0);for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);for(let d=carry;d<=len;d+=spacing){const t=d/len;stamp(a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx));}carry=((carry-len)%spacing+spacing)%spacing||spacing;}
         shape=parts.join("");
       }
+      if(m.type==="brush"&&m.pressureWidth&&(m.brushStyle||"ink")!=="stamp"){
+        const pressureStyle=m.brushStyle||"ink",segments=[];
+        if(m.points.length===1){
+          const width=brushWidthAtPressure(m,pressureStyle,m.points[0].p);segments.push(`<circle cx="${m.points[0].x}" cy="${m.points[0].y}" r="${width/2}" fill="${svgEscape(m.color)}" stroke="none"/>`);
+        }else{
+          for(let i=1;i<m.points.length;i++){
+            const a=m.points[i-1],b=m.points[i],pressure=((Number(a.p)||1)+(Number(b.p)||1))/2,width=brushWidthAtPressure(m,pressureStyle,pressure);
+            segments.push(`<path d="M ${a.x} ${a.y} L ${b.x} ${b.y}" stroke-width="${width}" fill="none"/>`);
+          }
+        }
+        shape=segments.join("");
+      }
       if(m.type==="brush"&&(m.brushStyle||"")==="texture"&&Number(m.texture||0)>0){
         const amount=clamp(Number(m.texture)||0,0,1),rng=mulberry32(hashString(String(m.id)+"texture")),step=Math.max(4,m.width*(1.4-amount)),dots=[];
         for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],len=Math.hypot(b.x-a.x,b.y-a.y),count=Math.min(80,Math.ceil(len/step));for(let j=0;j<count;j++){const t=(j+rng())/Math.max(1,count),x=a.x+(b.x-a.x)*t+(rng()-.5)*m.width*.6,y=a.y+(b.y-a.y)*t+(rng()-.5)*m.width*.6,r=Math.max(.45,m.width*(.035+amount*.07)*rng());dots.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${svgEscape(m.color)}" stroke="none" opacity="${.3+amount*.55}"/>`);}}
@@ -1674,7 +1686,9 @@
       }else{
         const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
         const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
-        style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
+        style=m.type==="brush"&&m.pressureWidth&&brush!=="stamp"
+          ?`stroke="${svgEscape(m.color)}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${opacity}"`
+          :`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
       }
       let eraserNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
