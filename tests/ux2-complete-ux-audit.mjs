@@ -779,6 +779,77 @@ try{
     await shot(view,'motif-doodle-to-pattern');await context.close();
   });
 
+  await step('Integration: pressure motif, grouping, clipping, save-reopen and exports stay compatible',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(15000);await attachErrors(view,'integration-pressure-motif-clip');
+
+    await view.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});await view.waitForTimeout(300);
+    await view.locator('[data-ux2-tool="brush"]').click();
+    await view.locator('#ux2Stabilisation').selectOption('off');
+    await view.locator('#ux2PressureWidth').check();
+    await view.evaluate(async()=>{
+      const canvas=document.querySelector('#editorCanvas');canvas.setPointerCapture=()=>{};
+      const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+      const client=(x,y)=>({clientX:rect.x+(ox+x*scale)*rect.width/canvas.width,clientY:rect.y+(oy+y*scale)*rect.height/canvas.height});
+      const stroke=(id,points)=>{
+        const fire=(type,x,y,pressure,buttons)=>{const p=client(x,y);canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'pen',pressure,buttons,button:0,...p}))};
+        fire('pointerdown',...points[0],1);for(const point of points.slice(1))fire('pointermove',...point,1);const last=points.at(-1);fire('pointerup',last[0],last[1],last[2],0);
+      };
+      stroke(201,[[230,390,.1],[330,365,.35],[440,405,.7],[560,380,1]]);
+      stroke(202,[[260,520,.2],[360,495,.45],[470,535,.8],[610,505,1]]);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
+
+    await view.locator('#ux2ToolMenuTrigger').click();await view.locator('#ux2ToolMenu').getByRole('button',{name:'Select',exact:true}).click();
+    await view.locator('#ux2SelectAll').click();
+    await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    await view.locator('[data-ux2-panel="motifs"]').click();await view.locator('#ux2MotifName').fill('Pressure pair');await view.locator('#ux2SaveMotif').click();
+    await view.getByText('Pressure pair',{exact:true}).waitFor();
+
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.waitForTimeout(350);
+    if(await view.locator('#resumePrompt').isVisible())await view.locator('#startNewFromResume').click();
+    if(await view.locator('#newProjectSetup').isVisible()){
+      await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    }
+
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(160);
+    await view.locator('[data-ux2-panel="motifs"]').click();
+    const motifRow=view.locator('[data-motif-id]').filter({hasText:'Pressure pair'});await motifRow.waitFor({state:'visible'});await motifRow.getByRole('button',{name:'Insert',exact:true}).click();
+    await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    assert(await view.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Inserted pressure motif did not remain one group');
+
+    await view.locator('[data-ux2-panel="layers"]').click();
+    const drawingRow=view.locator('[data-layer-index]').filter({hasText:'Drawing'}).first();await drawingRow.click();
+    assert(await view.locator('#ux2LayerClipToBelow').isEnabled(),'Drawing layer could not clip to the motif layer below');
+    if(!(await view.locator('#ux2LayerClipToBelow').isChecked()))await view.locator('#ux2LayerClipToBelow').check();
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#ux2Export').click();
+    const pngP=view.waitForEvent('download');await view.locator('[data-export-old="exportPng"]').click();const png=await pngP;const pngPath=await png.path();assert(pngPath&&fs.statSync(pngPath).size>1000,'Combined PNG export failed');
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Combined SVG export failed');
+    const svgText=fs.readFileSync(svgPath,'utf8');
+    assert(svgText.includes('pf-clip-')&&svgText.includes('mask-type:alpha'),'Combined SVG lost clipping');
+    const widths=[...svgText.matchAll(/stroke-width="([0-9.]+)"/g)].map(match=>Number(match[1])).filter(Number.isFinite);
+    assert(new Set(widths.map(width=>width.toFixed(4))).size>=2,'Combined SVG lost pressure width variation');
+
+    const saveP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const savedDownload=await saveP;const savedPath=await savedDownload.path();assert(savedPath,'Combined project save failed');
+    const before=JSON.parse(fs.readFileSync(savedPath,'utf8')),pressureMarks=before.marks.filter(mark=>mark.pressureWidth===true);
+    assert(pressureMarks.length>=2,'Pressure marks were not preserved in Pattern');
+    const groupIds=new Set(pressureMarks.map(mark=>mark.groupId).filter(Boolean));assert(groupIds.size===1,'Pressure motif group identity was not preserved');
+    assert(before.layers.some(layer=>layer.name==='Drawing'&&layer.clipToBelow===true),'Clipping state was not saved');
+
+    await view.locator('#ux2PaletteClose').click();
+    await view.locator('#projectFile').setInputFiles({name:'combined-roundtrip.json',mimeType:'application/json',buffer:fs.readFileSync(savedPath)});
+    await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(150);
+    await view.locator('#ux2Export').click();
+    const reopenP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const reopened=await reopenP;const reopenedPath=await reopened.path();assert(reopenedPath,'Reopened combined project save failed');
+    const after=JSON.parse(fs.readFileSync(reopenedPath,'utf8')),afterPressure=after.marks.filter(mark=>mark.pressureWidth===true);
+    assert(afterPressure.length===pressureMarks.length,'Pressure marks changed after reopen');
+    assert(new Set(afterPressure.map(mark=>mark.groupId).filter(Boolean)).size===1,'Group identity changed after reopen');
+    assert(after.layers.some(layer=>layer.name==='Drawing'&&layer.clipToBelow===true),'Clipping state changed after reopen');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'integration-pressure-motif-clip');await context.close();
+  });
+
   await step('Pattern: a new tile opens centred with its grid in portrait and landscape',async()=>{
     for(const size of [{width:390,height:844,label:'portrait'},{width:844,height:390,label:'landscape'}]){
       const context=await browser.newContext({viewport:{width:size.width,height:size.height}});
