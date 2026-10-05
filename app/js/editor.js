@@ -441,7 +441,7 @@
     const records=selectedArtwork();if(!records.length)return;saveHistory();
     const copiedIds=[],groupMap=new Map();
     for(const record of records){
-      const original=record.artwork,copy=JSON.parse(JSON.stringify(original));copy.id=state.nextId++;
+      const original=record.artwork,copy=JSON.parse(JSON.stringify(original));copy.id=state.nextId++;delete copy.scatterGenerated;
       if(original.groupId){if(!groupMap.has(original.groupId))groupMap.set(original.groupId,newGroupId());copy.groupId=groupMap.get(original.groupId);}
       if(record.kind==="item"){
         const pos=canonicalPoint(Number(original.x)+40,Number(original.y)+40);copy.x=pos.x;copy.y=pos.y;state.items.push(copy);
@@ -1079,7 +1079,7 @@
     });
     $("duplicateSel").onclick=()=>{
       saveHistory();
-      const copy={...item,id:state.nextId++,x:(item.x+40)%TILE,y:(item.y+40)%TILE};
+      const copy={...item,id:state.nextId++,x:(item.x+40)%TILE,y:(item.y+40)%TILE};delete copy.scatterGenerated;
       state.items.push(copy);state.selectedId=copy.id;renderAll();
     };
     $("deleteSel").onclick=()=>{
@@ -1111,6 +1111,22 @@
     });
   }
 
+  function scatterRadius(item){
+    const asset=assetOf(item);if(!asset)return 0;
+    return Math.hypot(asset.w*item.scale,asset.h*item.scale)/2;
+  }
+  function scatterCandidateFits(candidate,existing,minSpacing,allowOverlap){
+    for(const other of existing){
+      const delta=nearestLatticeDelta(candidate.x,candidate.y,other.x,other.y),distance=Math.sqrt(delta.distance);
+      const required=minSpacing+(allowOverlap?0:scatterRadius(candidate)+scatterRadius(other));
+      if(distance<required)return false;
+    }
+    return true;
+  }
+  function freezeScatter(){
+    const generated=state.items.filter(item=>item.scatterGenerated);if(!generated.length){setStatus("There are no generated scatter items to freeze.");return;}
+    saveHistory();for(const item of generated)delete item.scatterGenerated;renderAll();setStatus("Frozen "+generated.length+" scatter item"+(generated.length===1?"":"s")+" as ordinary editable artwork.");
+  }
   function generate(){
     if(isDoodleProject()){setStatus("Image scatter is available in Pattern Projects. Doodle Projects keep one standalone canvas.");return;}
     if(state.assets.length===0){ setStatus("Add at least one drawing first."); return; }
@@ -1119,20 +1135,28 @@
     let hi=Math.max(1,parseFloat($("maxScale").value)||42)/100;
     if(hi<lo)[lo,hi]=[hi,lo];
     const rot=clamp(parseFloat($("rotationAmount").value)||0,0,180)*Math.PI/180;
+    const minSpacing=TILE*clamp(parseFloat($("scatterSpacing").value)||0,0,50)/100;
+    const allowOverlap=$("scatterOverlap").checked,preserveManual=$("scatterPreserveManual").checked;
     const rand=mulberry32(hashString($("seed").value||"pattern"));
-    saveHistory();state.items=[];
+    saveHistory();
+    state.items=preserveManual?state.items.filter(item=>!item.scatterGenerated):[];
+    const protectedCount=state.items.length;
+    let placed=0;
     for(let i=0;i<n;i++){
       const a=state.assets[Math.floor(rand()*state.assets.length)];
-      const base=TILE/Math.max(a.w,a.h);
-      const normalized=base*(lo+(hi-lo)*rand());
-      state.items.push({
-        id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),
-        x:rand()*TILE,y:rand()*TILE,
-        scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
-      });
+      const base=TILE/Math.max(a.w,a.h),normalized=base*(lo+(hi-lo)*rand());
+      let accepted=null;
+      for(let attempt=0;attempt<140;attempt++){
+        const candidate={id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),x:rand()*TILE,y:rand()*TILE,scale:normalized,rotation:(rand()*2-1)*rot,opacity:1,scatterGenerated:true};
+        if(scatterCandidateFits(candidate,state.items,minSpacing,allowOverlap)){accepted=candidate;break;}
+      }
+      if(!accepted)continue;
+      state.items.push(accepted);placed++;
     }
-    state.selectedId=null;
-    setStatus(`Generated ${n} wrapped motif copies. The tile edges are mathematically periodic.`);
+    clearSelection();
+    const constrained=placed<n?(" Placed "+placed+" of "+n+" because the spacing/overlap limits are tight."):"";
+    const protectedNote=preserveManual&&protectedCount?(" Preserved "+protectedCount+" hand-positioned item"+(protectedCount===1?"":"s")+"."):"";
+    setStatus("Generated "+placed+" wrapped motif cop"+(placed===1?"y":"ies")+"."+protectedNote+constrained);
     renderAll();
   }
 
@@ -1282,7 +1306,7 @@
   function startSelectionMove(ids,w){
     const members=(ids||[]).map(id=>{
       const record=selectableArtworkRecord(id);if(!record)return null;
-      if(record.kind==="item")return {kind:"item",id,x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};
+      if(record.kind==="item"){delete record.artwork.scatterGenerated;return {kind:"item",id,x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};}
       const t=markTransformValues(record.artwork);return {kind:"mark",id,x:t.x,y:t.y};
     }).filter(Boolean);
     state.transformState={kind:"selection",mode:"move",startPointer:{x:w.x,y:w.y},members};
@@ -1319,13 +1343,13 @@
       if(handle){
         saveHistory();
         if(handle==="rotate"){
-          const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
+          delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
           state.transformState={kind:"item",mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
         }else state.transformState={kind:"item",mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
         state.dragging=false;state.resizeState=null;renderAll();return;
       }
       if(current&&resizeHandleHit(current,w.x,w.y)){
-        const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
+        delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
       }
       const hit=hitTestArtwork(w.x,w.y),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
       if(additive){
@@ -1344,7 +1368,7 @@
         setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);renderAll();return;
       }
       setSelection(hit?[hit.artwork.id]:[],hit?.artwork?.id??null);state.dragging=hit?.kind==="item";
-      if(hit?.kind==="item"){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
+      if(hit?.kind==="item"){saveHistory();delete hit.artwork.scatterGenerated;state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
       else if(hit?.kind==="mark"){
         saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
       }
@@ -1720,7 +1744,7 @@
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,nextId:state.nextId};
@@ -1925,8 +1949,8 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
-    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
     $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
@@ -2007,6 +2031,7 @@
   $("drop").addEventListener("drop",e=>addFiles([...e.dataTransfer.files]).catch(()=>setStatus("The dropped image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
 
   $("generate").onclick=generate;
+  $("freezeScatter").onclick=freezeScatter;
   $("shuffle").onclick=()=>{$("seed").value="pattern-"+Math.random().toString(36).slice(2,8);generate();};
   $("clear").onclick=()=>{saveHistory();state.items=[];state.marks=[];state.selectedId=null;renderAll();setStatus("Artwork cleared. Uploaded images remain available.");};
   $("exportPng").onclick=()=>exportPNG().catch(err=>setStatus("PNG export failed: "+err.message));
@@ -2015,6 +2040,7 @@
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
   $("strokeStabilisation").addEventListener("change",scheduleAutosave);
+  ["scatterSpacing","scatterOverlap","scatterPreserveManual"].forEach(id=>$(id).addEventListener("change",scheduleAutosave));
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
   $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
