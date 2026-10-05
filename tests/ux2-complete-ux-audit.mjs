@@ -394,8 +394,10 @@ try{
     const beforeTransform=await page.locator('#editorCanvas').evaluate(el=>el.toDataURL());
     await page.locator('#ux2GroupScale').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('input',{bubbles:true}));});
     await page.locator('#ux2GroupRotate').evaluate(el=>{el.value='25';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    assert(await visible(page,'#ux2FlipH')&&await visible(page,'#ux2FlipV'),'Group flip controls missing');
+    await page.locator('#ux2FlipH').click();await page.locator('#ux2FlipV').click();
     await page.waitForTimeout(100);
-    assert(await page.locator('#editorCanvas').evaluate(el=>el.toDataURL())!==beforeTransform,'Scale/rotate multi-selection produced no canvas change');
+    assert(await page.locator('#editorCanvas').evaluate(el=>el.toDataURL())!==beforeTransform,'Scale/rotate/flip multi-selection produced no canvas change');
 
     await page.locator('#ux2Export').click();
     const projectP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const projectDownload=await projectP;
@@ -403,6 +405,8 @@ try{
     const groupedData=JSON.parse(fs.readFileSync(groupedPath,'utf8'));
     const groupedArtwork=[...groupedData.items,...groupedData.marks].filter(artwork=>typeof artwork.groupId==='string'&&artwork.groupId);
     assert(groupedArtwork.length>=selectedCount,'Group IDs were not persisted to the editable project');
+    assert(groupedData.items.some(item=>item.flipX===true&&item.flipY===true),'Imported artwork flip state was not persisted');
+    assert(groupedData.marks.some(mark=>mark.type!=='eraser'&&mark.transformFlipX===true&&mark.transformFlipY===true),'Drawn mark flip state was not persisted');
     await page.locator('#ux2PaletteClose').click();
 
     const canvas=page.locator('#editorCanvas'),beforeMove=await canvas.evaluate(el=>el.toDataURL()),box=await canvas.boundingBox();assert(box,'Canvas bounds unavailable for multi-move');
