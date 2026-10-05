@@ -532,7 +532,7 @@ try{
       await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     }
     await view.locator('[data-ux2-panel="motifs"]').click();
-    const row=view.locator('[data-motif-id]').filter({hasText:'Cross-workspace motif'});assert(await row.isVisible(),'Saved Doodle motif did not appear in Pattern');
+    const row=view.locator('[data-motif-id]').filter({hasText:'Cross-workspace motif'});await row.waitFor({state:'visible'});
     await row.getByRole('button',{name:'Insert',exact:true}).click();
     await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
     assert(await view.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Inserted motif was not kept as one editable group');
