@@ -456,6 +456,47 @@
     const ids=new Set(selectionIds());if(!ids.size)return;saveHistory();
     state.items=state.items.filter(item=>!ids.has(item.id));state.marks=state.marks.filter(mark=>!ids.has(mark.id));clearSelection();renderAll();setStatus("Deleted "+ids.size+" artwork item"+(ids.size===1?"":"s")+".");
   }
+  function artworkCenter(record){
+    if(record.kind==="item")return {x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};
+    const b=markPrimaryBounds(record.artwork);return {x:b.cx,y:b.cy};
+  }
+  function selectionTransformGeometry(){
+    const records=selectedArtwork();if(records.length<2)return null;
+    const primary=records.find(record=>record.artwork.id===state.selectedId)||records[0],anchor=artworkCenter(primary),members=[];
+    for(const record of records){
+      const centre=artworkCenter(record),delta=nearestLatticeDelta(centre.x,centre.y,anchor.x,anchor.y),unwrapped={x:anchor.x+delta.x,y:anchor.y+delta.y};
+      members.push({record,centre,unwrapped});
+    }
+    const center=members.reduce((sum,member)=>({x:sum.x+member.unwrapped.x,y:sum.y+member.unwrapped.y}),{x:0,y:0});
+    center.x/=members.length;center.y/=members.length;
+    return {members,center};
+  }
+  function scaleSelectedArtwork(factor){
+    factor=Number(factor);if(!Number.isFinite(factor)||factor<=0)return;
+    const geometry=selectionTransformGeometry();if(!geometry)return;
+    for(const member of geometry.members){
+      const target={x:geometry.center.x+(member.unwrapped.x-geometry.center.x)*factor,y:geometry.center.y+(member.unwrapped.y-geometry.center.y)*factor};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.scale=clamp(item.scale*factor,.01,60);
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformScale=clamp(t.scale*factor,.01,60);
+      }
+    }
+    renderAll(false,false);
+  }
+  function rotateSelectedArtwork(deltaRadians){
+    deltaRadians=Number(deltaRadians);if(!Number.isFinite(deltaRadians)||Math.abs(deltaRadians)<1e-12)return;
+    const geometry=selectionTransformGeometry();if(!geometry)return;const cos=Math.cos(deltaRadians),sin=Math.sin(deltaRadians);
+    for(const member of geometry.members){
+      const dx=member.unwrapped.x-geometry.center.x,dy=member.unwrapped.y-geometry.center.y,target={x:geometry.center.x+dx*cos-dy*sin,y:geometry.center.y+dx*sin+dy*cos};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.rotation+=deltaRadians;
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformRotation=t.rotation+deltaRadians;
+      }
+    }
+    renderAll(false,false);
+  }
   window.PatternForgeSelection={
     get count(){return selectionIds().length;},
     get addMode(){return !!state.selectionAddMode;},
@@ -465,7 +506,10 @@
     group:groupSelectedArtwork,
     ungroup:ungroupSelectedArtwork,
     duplicate:duplicateSelectedArtwork,
-    delete:deleteSelectedArtwork
+    delete:deleteSelectedArtwork,
+    beginTransform(){if(selectionIds().length>1)saveHistory();},
+    scaleBy:scaleSelectedArtwork,
+    rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);}
   };
   function latticeCoordinates(x,y,basis){
     const [a,b]=basis,det=a.x*b.y-a.y*b.x;
