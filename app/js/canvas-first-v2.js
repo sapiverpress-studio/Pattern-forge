@@ -168,7 +168,7 @@
         context.innerHTML=selectionControls+`<div class="ux2-context-group"><span style="font-size:11px;color:#6d7885">Tap artwork to select it. Use Add to build a multi-selection.</span><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
       }
       const selectionApi=window.PatternForgeSelection;
-      if($('ux2AddSelection'))$('ux2AddSelection').addEventListener('click',()=>{selectionApi?.toggleAddMode();renderContext('select')});
+      if($('ux2AddSelection'))$('ux2AddSelection').addEventListener('click',e=>{const active=selectionApi?.toggleAddMode();e.currentTarget.classList.toggle('active',!!active)});
       if($('ux2SelectAll'))$('ux2SelectAll').addEventListener('click',()=>selectionApi?.selectAll());
       if($('ux2ClearSelection'))$('ux2ClearSelection').addEventListener('click',()=>selectionApi?.clear());
       if($('ux2Group'))$('ux2Group').addEventListener('click',()=>selectionApi?.group());
