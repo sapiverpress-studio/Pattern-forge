@@ -96,6 +96,31 @@ try{
       }finally{await context.close();}
     });
   }
+  await check('legacy v4 project without advanced fields still opens and exports',async()=>{
+    const {context,page}=await fresh();try{
+      const legacy=structuredClone(sample);
+      legacy.format='pattern-forge-v4';
+      delete legacy.variations;
+      for(const key of ['pressureWidth','pressureMin','pressureSensitivity','strokeStabilisation','scatterSpacing','scatterOverlap','scatterPreserveManual','productScaleCm'])delete legacy.settings?.[key];
+      for(const layer of legacy.layers||[])delete layer.clipToBelow;
+      for(const item of legacy.items||[]){delete item.groupId;delete item.flipX;delete item.flipY;delete item.scatterGenerated;}
+      for(const mark of legacy.marks||[]){
+        delete mark.groupId;delete mark.transformFlipX;delete mark.transformFlipY;delete mark.pressureWidth;
+        for(const point of mark.points||[])delete point.p;
+      }
+      await importFile(page,legacy,'historical-v4.json');await page.waitForTimeout(150);
+      const opened=await saved(page);
+      assert.equal(opened.format,'pattern-forge-v4','legacy v4 format changed on open');
+      assert.equal(opened.items.length,legacy.items.length,'legacy items did not survive open');
+      assert.equal(opened.marks.length,legacy.marks.length,'legacy marks did not survive open');
+      assert.equal(opened.layers.length,legacy.layers.length,'legacy layers did not survive open');
+      const png=await exported(page,'exportPng'),svg=await exported(page,'exportSvg');
+      assert(png.buffer.length>1000,'legacy v4 PNG export was empty');
+      assert(svg.buffer.toString().includes('<svg'),'legacy v4 SVG export was invalid');
+      return {items:opened.items.length,marks:opened.marks.length,layers:opened.layers.length,pngBytes:png.buffer.length,svgBytes:svg.buffer.length};
+    }finally{await context.close();}
+  });
+
   const corruptions={
     'invalid JSON':()=>Buffer.from('{broken'),
     'wrong format':d=>({...d,format:'unrelated'}),
