@@ -1705,8 +1705,11 @@
     if(autosaveDbPromise)return autosaveDbPromise;
     autosaveDbPromise=new Promise((resolve,reject)=>{
       if(typeof indexedDB==="undefined"){reject(new Error("Local project storage is not supported here."));return;}
-      const req=indexedDB.open("pattern-forge-local",1);
-      req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("projects"))req.result.createObjectStore("projects");};
+      const req=indexedDB.open("pattern-forge-local",2);
+      req.onupgradeneeded=()=>{
+        if(!req.result.objectStoreNames.contains("projects"))req.result.createObjectStore("projects");
+        if(!req.result.objectStoreNames.contains("motifs"))req.result.createObjectStore("motifs",{keyPath:"id"});
+      };
       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("Could not open local project storage."));
     });return autosaveDbPromise;
   }
