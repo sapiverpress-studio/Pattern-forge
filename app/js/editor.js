@@ -1713,6 +1713,64 @@
       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("Could not open local project storage."));
     });return autosaveDbPromise;
   }
+  function motifLibraryTransaction(mode="readonly"){
+    return openAutosaveDb().then(db=>{
+      if(!db.objectStoreNames.contains("motifs"))throw new Error("Motif library is unavailable.");
+      return db.transaction("motifs",mode);
+    });
+  }
+  async function listSavedMotifs(){
+    const tx=await motifLibraryTransaction("readonly");
+    return await new Promise((resolve,reject)=>{const req=tx.objectStore("motifs").getAll();req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0)));req.onerror=()=>reject(req.error);});
+  }
+  async function saveSelectionAsMotif(name){
+    const records=selectedArtwork();if(!records.length)throw new Error("Select artwork before saving a motif.");
+    const title=String(name||"").trim().slice(0,80);if(!title)throw new Error("Give the motif a name.");
+    const geometry=records.length>1?selectionTransformGeometry():null,origin=geometry?.center||artworkCenter(records[0]);
+    const assetIds=new Set(records.filter(record=>record.kind==="item").map(record=>String(record.artwork.assetId)));
+    const assets=state.assets.filter(asset=>assetIds.has(String(asset.id))).map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector}));
+    const ids=new Set(records.map(record=>record.artwork.id));
+    const now=new Date().toISOString(),motif={
+      id:"motif-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9),
+      name:title,createdAt:now,updatedAt:now,origin,
+      assets,
+      items:state.items.filter(item=>ids.has(item.id)).map(item=>JSON.parse(JSON.stringify(item))),
+      marks:state.marks.filter(mark=>ids.has(mark.id)).map(mark=>JSON.parse(JSON.stringify(mark)))
+    };
+    const tx=await motifLibraryTransaction("readwrite");
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Could not save motif."));tx.objectStore("motifs").put(motif);});
+    window.dispatchEvent(new CustomEvent("patternforge:motifs-changed"));
+    setStatus("Saved “"+title+"” to My Motifs.");return motif;
+  }
+  async function deleteSavedMotif(id){
+    const tx=await motifLibraryTransaction("readwrite");
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Could not delete motif."));tx.objectStore("motifs").delete(id);});
+    window.dispatchEvent(new CustomEvent("patternforge:motifs-changed"));setStatus("Motif removed from this device.");
+  }
+  async function decodeMotifAsset(asset){
+    const existing=state.assets.find(candidate=>candidate.src===asset.src);if(existing)return existing;
+    const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error("A saved motif image could not be decoded."));img.src=asset.src;});
+    const added={...asset,id:nextAssetId(),img,w:Number(asset.w)||img.naturalWidth||1000,h:Number(asset.h)||img.naturalHeight||1000};
+    state.assets.push(added);state.recentAssetIds.unshift(added.id);return added;
+  }
+  async function insertSavedMotif(id){
+    const tx=await motifLibraryTransaction("readonly");
+    const motif=await new Promise((resolve,reject)=>{const req=tx.objectStore("motifs").get(id);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+    if(!motif)throw new Error("That motif is no longer in the library.");
+    const assetMap=new Map();for(const asset of motif.assets||[])assetMap.set(String(asset.id),(await decodeMotifAsset(asset)).id);
+    saveHistory();
+    const target=worldPoint({x:canvas.width/2,y:canvas.height/2}),origin=motif.origin||{x:TILE/2,y:TILE/2},dx=target.x-origin.x,dy=target.y-origin.y,newIds=[],groupId=newGroupId();
+    for(const original of motif.items||[]){
+      const copy=JSON.parse(JSON.stringify(original)),pos=isDoodleProject()?{x:Number(original.x)+dx,y:Number(original.y)+dy}:canonicalPoint(Number(original.x)+dx,Number(original.y)+dy);
+      copy.id=state.nextId++;copy.assetId=assetMap.get(String(original.assetId))??original.assetId;copy.layerId=motifTargetLayerId();copy.groupId=groupId;copy.x=pos.x;copy.y=pos.y;state.items.push(copy);newIds.push(copy.id);
+    }
+    const markLayer=layerById(BASE_LAYER_IDS.drawing)?.id||activeLayer()?.id||state.layers[0]?.id;
+    for(const original of motif.marks||[]){
+      const copy=JSON.parse(JSON.stringify(original)),t=markTransformValues(copy);copy.id=state.nextId++;copy.layerId=markLayer;copy.groupId=groupId;copy.transformX=t.x+dx;copy.transformY=t.y+dy;state.marks.push(copy);newIds.push(copy.id);
+    }
+    rebuildAssetGrid();setSelection(newIds,newIds.at(-1));renderAll();setStatus("Inserted “"+String(motif.name||"motif")+"” as an editable group.");return newIds.length;
+  }
+  window.PatternForgeMotifs={list:listSavedMotifs,saveSelection:saveSelectionAsMotif,insert:insertSavedMotif,remove:deleteSavedMotif};
   function scheduleAutosave(){
     if(autosaveTimer)clearTimeout(autosaveTimer);
     if(!autosaveMaxTimer)autosaveMaxTimer=setTimeout(()=>{if(autosaveTimer)clearTimeout(autosaveTimer);autosaveTimer=null;autosaveMaxTimer=null;saveAutosave();},5000);
