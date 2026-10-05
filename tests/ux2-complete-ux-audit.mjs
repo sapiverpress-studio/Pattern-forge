@@ -509,6 +509,35 @@ try{
   await collectLayout(page,'home-after-pattern');
   await desktop.close();
 
+  await step('Motifs: editable Doodle artwork can be reused in Pattern',async()=>{
+    const context=await browser.newContext({viewport:{width:844,height:390}});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'motif-cross-workspace');
+    await view.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});await view.waitForTimeout(350);
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);
+    await view.waitForTimeout(180);await view.locator('[data-ux2-tool="select"]').click();
+    if(!(await visible(view,'#ux2Duplicate'))){
+      const box=await view.locator('#editorCanvas').boundingBox();assert(box,'Doodle canvas bounds unavailable');await view.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await view.waitForTimeout(80);
+    }
+    assert(await visible(view,'#ux2Duplicate'),'Imported Doodle artwork was not selectable');
+    await view.locator('#ux2Duplicate').click();await view.locator('#ux2SelectAll').click();
+    await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    await view.locator('[data-ux2-panel="motifs"]').click();
+    await view.locator('#ux2MotifName').fill('Cross-workspace motif');await view.locator('#ux2SaveMotif').click();
+    await view.getByText('Cross-workspace motif',{exact:true}).waitFor();
+
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.waitForTimeout(400);
+    if(await view.locator('#resumePrompt').isVisible())await view.locator('#startNewFromResume').click();
+    if(await view.locator('#newProjectSetup').isVisible()){
+      await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    }
+    await view.locator('[data-ux2-panel="motifs"]').click();
+    const row=view.locator('[data-motif-id]').filter({hasText:'Cross-workspace motif'});assert(await row.isVisible(),'Saved Doodle motif did not appear in Pattern');
+    await row.getByRole('button',{name:'Insert',exact:true}).click();
+    await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    assert(await view.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Inserted motif was not kept as one editable group');
+    await shot(view,'motif-doodle-to-pattern');await context.close();
+  });
+
   await step('Pattern: a new tile opens centred with its grid in portrait and landscape',async()=>{
     for(const size of [{width:390,height:844,label:'portrait'},{width:844,height:390,label:'landscape'}]){
       const context=await browser.newContext({viewport:{width:size.width,height:size.height}});
