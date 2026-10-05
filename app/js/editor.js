@@ -147,6 +147,8 @@
     layers: defaultLayers(),
     activeLayerId: BASE_LAYER_IDS.drawing,
     selectedId: null,
+    selectedIds: [],
+    selectionAddMode: false,
     nextId: 1,
     dragging: false,
     resizeState: null,
@@ -385,6 +387,86 @@
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
+  function artworkRecord(id){
+    const item=state.items.find(i=>i.id===id);if(item)return {kind:"item",artwork:item,layer:layerForArtwork(item,BASE_LAYER_IDS.motifs)};
+    const mark=state.marks.find(m=>m.id===id);if(mark)return {kind:"mark",artwork:mark,layer:layerForArtwork(mark,BASE_LAYER_IDS.drawing)};
+    return null;
+  }
+  function selectableArtworkRecord(id){
+    const record=artworkRecord(id);if(!record||(record.kind==="mark"&&record.artwork.type==="eraser"))return null;
+    if(!layerIsRenderable(record.layer,false)||record.layer.locked)return null;
+    return record;
+  }
+  function selectionIds(){
+    if(state.selectedId===null||state.selectedId===undefined)return [];
+    const raw=Array.isArray(state.selectedIds)&&state.selectedIds.includes(state.selectedId)?state.selectedIds:[state.selectedId],seen=new Set(),ids=[];
+    for(const id of raw){if(seen.has(id)||!selectableArtworkRecord(id))continue;seen.add(id);ids.push(id);}
+    if(!ids.includes(state.selectedId))state.selectedId=ids[0]??null;
+    state.selectedIds=ids;
+    return ids;
+  }
+  function selectedArtwork(){return selectionIds().map(artworkRecord).filter(Boolean);}
+  function isSelected(id){return selectionIds().includes(id);}
+  function setSelection(ids,primaryId=null){
+    const unique=[],seen=new Set();
+    for(const id of ids||[]){if(seen.has(id)||!selectableArtworkRecord(id))continue;seen.add(id);unique.push(id);}
+    state.selectedIds=unique;
+    state.selectedId=unique.includes(primaryId)?primaryId:(unique.at(-1)??null);
+  }
+  function clearSelection(){state.selectedId=null;state.selectedIds=[];}
+  function newGroupId(){return "group-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
+  function groupMembers(groupId){
+    if(!groupId)return [];
+    return [...state.items,...state.marks].filter(artwork=>artwork.groupId===groupId).map(artwork=>selectableArtworkRecord(artwork.id)).filter(Boolean);
+  }
+  function expandedArtworkIds(artwork){
+    if(!artwork)return [];
+    const grouped=groupMembers(artwork.groupId);return grouped.length?grouped.map(record=>record.artwork.id):[artwork.id];
+  }
+  function selectAllArtwork(){
+    setSelection([...state.items,...state.marks].map(artwork=>artwork.id));
+    renderAll();setStatus(selectionIds().length?"Selected "+selectionIds().length+" artwork items.":"There is no selectable artwork on visible unlocked layers.");
+  }
+  function groupSelectedArtwork(){
+    const records=selectedArtwork();if(records.length<2){setStatus("Select two or more artwork items to make a group.");return;}
+    saveHistory();const groupId=newGroupId();for(const record of records)record.artwork.groupId=groupId;
+    setSelection(records.map(record=>record.artwork.id),state.selectedId);renderAll();setStatus("Grouped "+records.length+" artwork items.");
+  }
+  function ungroupSelectedArtwork(){
+    const records=selectedArtwork(),groups=new Set(records.map(record=>record.artwork.groupId).filter(Boolean));if(!groups.size){setStatus("The current selection is not grouped.");return;}
+    saveHistory();for(const artwork of [...state.items,...state.marks])if(groups.has(artwork.groupId))delete artwork.groupId;
+    setSelection(records.map(record=>record.artwork.id),state.selectedId);renderAll();setStatus(groups.size===1?"Group released.":"Groups released.");
+  }
+  function duplicateSelectedArtwork(){
+    const records=selectedArtwork();if(!records.length)return;saveHistory();
+    const copiedIds=[],groupMap=new Map();
+    for(const record of records){
+      const original=record.artwork,copy=JSON.parse(JSON.stringify(original));copy.id=state.nextId++;
+      if(original.groupId){if(!groupMap.has(original.groupId))groupMap.set(original.groupId,newGroupId());copy.groupId=groupMap.get(original.groupId);}
+      if(record.kind==="item"){
+        const pos=canonicalPoint(Number(original.x)+40,Number(original.y)+40);copy.x=pos.x;copy.y=pos.y;state.items.push(copy);
+      }else{
+        const base=markTransformValues(original);copy.transformX=base.x+40;copy.transformY=base.y+40;copy.transformScale=base.scale;copy.transformRotation=base.rotation;state.marks.push(copy);
+      }
+      copiedIds.push(copy.id);
+    }
+    setSelection(copiedIds,copiedIds.at(-1));renderAll();setStatus("Duplicated "+records.length+" artwork item"+(records.length===1?"":"s")+".");
+  }
+  function deleteSelectedArtwork(){
+    const ids=new Set(selectionIds());if(!ids.size)return;saveHistory();
+    state.items=state.items.filter(item=>!ids.has(item.id));state.marks=state.marks.filter(mark=>!ids.has(mark.id));clearSelection();renderAll();setStatus("Deleted "+ids.size+" artwork item"+(ids.size===1?"":"s")+".");
+  }
+  window.PatternForgeSelection={
+    get count(){return selectionIds().length;},
+    get addMode(){return !!state.selectionAddMode;},
+    toggleAddMode(){state.selectionAddMode=!state.selectionAddMode;renderAll();setStatus(state.selectionAddMode?"Add-to-selection mode on. Tap artwork to add or remove it.":"Add-to-selection mode off.");return state.selectionAddMode;},
+    selectAll:selectAllArtwork,
+    clear(){clearSelection();renderAll();setStatus("Selection cleared.");},
+    group:groupSelectedArtwork,
+    ungroup:ungroupSelectedArtwork,
+    duplicate:duplicateSelectedArtwork,
+    delete:deleteSelectedArtwork
+  };
   function latticeCoordinates(x,y,basis){
     const [a,b]=basis,det=a.x*b.y-a.y*b.x;
     return {k:(x*b.y-y*b.x)/det,n:(a.x*y-a.y*x)/det};
