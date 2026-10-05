@@ -513,7 +513,8 @@ try{
     const context=await browser.newContext({viewport:{width:844,height:390}});
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'motif-cross-workspace');
     await view.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});await view.waitForTimeout(350);
-    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);
+    await view.locator('#ux2ToolMenuTrigger').click();
+    const chooserP=view.waitForEvent('filechooser');await view.locator('#ux2ToolMenu').getByRole('button',{name:'Image',exact:true}).click();const chooser=await chooserP;await chooser.setFiles(fixture);
     await view.waitForTimeout(180);await view.locator('[data-ux2-tool="select"]').click();
     if(!(await visible(view,'#ux2Duplicate'))){
       const box=await view.locator('#editorCanvas').boundingBox();assert(box,'Doodle canvas bounds unavailable');await view.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await view.waitForTimeout(80);
