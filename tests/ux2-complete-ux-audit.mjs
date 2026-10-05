@@ -273,6 +273,43 @@ try{
     await shot(page,'05b-selection-controls');
   });
 
+  await step('Pattern: multi-select groups, moves, persists, duplicates and ungroups',async()=>{
+    await page.locator('[data-ux2-tool="select"]').click();
+    assert(await visible(page,'#ux2SelectAll'),'Select All control missing');
+    await page.locator('#ux2SelectAll').click();
+    await page.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>1);
+    const selectedCount=Number(await page.locator('#selectedPanel').getAttribute('data-selection-count'));
+    assert(selectedCount>1,'Select All did not create a multi-selection');
+    assert(await visible(page,'#ux2Group'),'Group control missing for a multi-selection');
+
+    await page.locator('#ux2Group').click();
+    await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='true');
+    assert(await visible(page,'#ux2Ungroup'),'Grouped selection did not expose Ungroup');
+
+    await page.locator('#ux2Export').click();
+    const projectP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const projectDownload=await projectP;
+    const groupedPath=await projectDownload.path();assert(groupedPath,'Grouped project download path unavailable');
+    const groupedData=JSON.parse(fs.readFileSync(groupedPath,'utf8'));
+    const groupedArtwork=[...groupedData.items,...groupedData.marks].filter(artwork=>typeof artwork.groupId==='string'&&artwork.groupId);
+    assert(groupedArtwork.length>=selectedCount,'Group IDs were not persisted to the editable project');
+    await page.locator('#ux2PaletteClose').click();
+
+    const canvas=page.locator('#editorCanvas'),beforeMove=await canvas.evaluate(el=>el.toDataURL()),box=await canvas.boundingBox();assert(box,'Canvas bounds unavailable for multi-move');
+    await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.55,box.y+box.height*.54,{steps:6});await page.mouse.up();await page.waitForTimeout(100);
+    const afterMove=await canvas.evaluate(el=>el.toDataURL());assert(afterMove!==beforeMove,'Dragging a grouped selection produced no canvas change');
+
+    const beforeDuplicate=await canvas.evaluate(el=>el.toDataURL());await page.locator('#ux2Duplicate').click();await page.waitForTimeout(100);
+    assert(await canvas.evaluate(el=>el.toDataURL())!==beforeDuplicate,'Duplicating a grouped selection produced no canvas change');
+    assert(await visible(page,'#ux2Ungroup'),'Duplicated group lost grouped selection state');
+    await page.locator('#ux2Ungroup').click();await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='false');
+    assert(await visible(page,'#ux2Group'),'Ungroup did not return the Group action');
+
+    await page.locator('#ux2ClearSelection').click();await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionCount==='0');
+    await page.locator('#ux2AddSelection').click();assert(await page.locator('#ux2AddSelection').evaluate(el=>el.classList.contains('active')),'Add-to-selection mode did not turn on');
+    await page.locator('#ux2AddSelection').click();assert(!(await page.locator('#ux2AddSelection').evaluate(el=>el.classList.contains('active'))),'Add-to-selection mode did not turn off');
+    await shot(page,'05c-multi-selection');
+  });
+
   await step('Pattern: Colour panel updates ink, adds a swatch and exposes eyedropper',async()=>{
     await page.locator('[data-ux2-panel="colour"]').click();
     assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Colour panel title wrong');
