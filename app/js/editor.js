@@ -924,7 +924,20 @@
   }
 
   function rebuildSelectedPanel(){
-    const panel=$("selectedPanel"), item=selectedItem(), mark=selectedMark();
+    const panel=$("selectedPanel"),selected=selectedArtwork(),item=selectedItem(),mark=selectedMark();
+    panel.dataset.selectionCount=String(selected.length);
+    panel.dataset.selectionAddMode=state.selectionAddMode?"true":"false";
+    const groupIds=new Set(selected.map(record=>record.artwork.groupId).filter(Boolean));
+    const grouped=selected.length>1&&groupIds.size===1&&selected.every(record=>record.artwork.groupId);
+    panel.dataset.selectionGrouped=grouped?"true":"false";
+    if(selected.length>1){
+      panel.innerHTML='<div class="field"><label>Selection</label><div class="mini"><strong>'+selected.length+' artwork items</strong>'+(grouped?' · grouped':'')+'</div><p class="help">Drag any selected artwork to move the selection together. Use Add selection in the UX2 toolbar to add or remove artwork.</p></div><div class="btns"><button id="duplicateSel" class="btn">Duplicate selection</button><button id="deleteSel" class="btn danger">Delete selection</button>'+(grouped?'<button id="ungroupSel" class="btn">Ungroup</button>':'<button id="groupSel" class="btn">Group</button>')+'</div>';
+      $("duplicateSel").onclick=duplicateSelectedArtwork;
+      $("deleteSel").onclick=deleteSelectedArtwork;
+      if($("groupSel"))$("groupSel").onclick=groupSelectedArtwork;
+      if($("ungroupSel"))$("ungroupSel").onclick=ungroupSelectedArtwork;
+      return;
+    }
     if(mark){
       const t=markTransformValues(mark),pct=Math.round(t.scale*100),rawDeg=t.rotation*180/Math.PI,deg=Math.round(((rawDeg+180)%360+360)%360-180),layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
       const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
