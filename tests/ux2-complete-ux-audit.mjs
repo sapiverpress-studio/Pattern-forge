@@ -317,6 +317,31 @@ try{
     await shot(page,'05c-multi-selection');
   });
 
+  await step('Pattern: selected editable marks recolour and matching colours replace project-wide',async()=>{
+    await page.locator('[data-ux2-tool="select"]').click();
+    await page.locator('#ux2SelectAll').click();
+    await page.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.recolourableCount||0)>0);
+    await page.locator('[data-ux2-panel="colour"]').click();
+    assert(await visible(page,'#ux2SelectionColour'),'Selected-mark recolour control missing');
+    const canvas=page.locator('#editorCanvas'),before=await canvas.evaluate(el=>el.toDataURL());
+    await page.locator('#ux2SelectionColour').evaluate(el=>{el.value='#aa3377';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2RecolourSelection').click();await page.waitForTimeout(100);
+    const recoloured=await canvas.evaluate(el=>el.toDataURL());assert(recoloured!==before,'Recolour selection produced no canvas change');
+    assert((await page.locator('#selectedPanel').getAttribute('data-selection-colour')).toLowerCase()==='#aa3377','Selected mark colour did not update in engine state');
+
+    await page.locator('#ux2SelectionColour').evaluate(el=>{el.value='#3377aa';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2ColourTolerance').evaluate(el=>{el.value='8';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.locator('#ux2ReplaceMatchingColour').click();await page.waitForTimeout(100);
+    const replaced=await canvas.evaluate(el=>el.toDataURL());assert(replaced!==recoloured,'Replace matching colour produced no canvas change');
+
+    await page.locator('#ux2Export').click();
+    const projectP=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const project=await projectP;
+    const projectPath=await project.path();assert(projectPath,'Recoloured project download path unavailable');
+    const data=JSON.parse(fs.readFileSync(projectPath,'utf8')),editable=data.marks.filter(mark=>mark.type!=='eraser');
+    assert(editable.some(mark=>String(mark.color).toLowerCase()==='#3377aa'),'Recoloured marks were not persisted to project JSON');
+    await page.locator('#ux2PaletteClose').click();
+  });
+
   await step('Pattern: Colour panel updates ink, adds a swatch and exposes eyedropper',async()=>{
     await page.locator('[data-ux2-panel="colour"]').click();
     assert((await page.locator('#ux2PaletteTitle').textContent())==='Colour','Colour panel title wrong');
