@@ -632,13 +632,16 @@
     c.restore();
   }
 
-  function drawSelectedMarkOverlay(c,m,sc){
+  function drawSelectedMarkOverlay(c,m,sc,showHandles=true){
     const b=markPrimaryBounds(m),w=Math.max(1,b.maxX-b.minX),h=Math.max(1,b.maxY-b.minY);
     c.save();c.setLineDash([7/sc,5/sc]);c.strokeStyle="#cc523e";c.lineWidth=2/sc;c.strokeRect(b.minX,b.minY,w,h);c.setLineDash([]);
-    for(const [x,y] of [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]]){
-      c.beginPath();c.arc(x,y,8/sc,0,Math.PI*2);c.fillStyle="#fff";c.fill();c.strokeStyle="#173d36";c.lineWidth=2/sc;c.stroke();
+    if(showHandles){
+      for(const [x,y] of [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]]){
+        c.beginPath();c.arc(x,y,8/sc,0,Math.PI*2);c.fillStyle="#fff";c.fill();c.strokeStyle="#173d36";c.lineWidth=2/sc;c.stroke();
+      }
+      drawImageTransformHandle(c,b.cx,b.minY-22/sc,"rotate",sc);drawImageTransformHandle(c,b.cx,b.maxY+22/sc,"move",sc);
     }
-    drawImageTransformHandle(c,b.cx,b.minY-22/sc,"rotate",sc);drawImageTransformHandle(c,b.cx,b.maxY+22/sc,"move",sc);c.restore();
+    c.restore();
   }
   function markHandleAt(m,x,y){
     const b=markPrimaryBounds(m),limit=20/viewScale();
