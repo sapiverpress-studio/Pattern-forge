@@ -155,7 +155,11 @@ try{
       const expected=['brush','pan','rect'];assert.deepEqual((await page.evaluate(()=>JSON.parse(localStorage.getItem('patternForgeUx2FavouriteTools')))).sort(),expected.sort());
       await page.reload({waitUntil:'networkidle'});assert(await page.locator('.ux2-tools [data-ux2-tool="rect"]').isVisible());assert(await page.locator('.ux2-tools [data-ux2-tool="eraser"]').isHidden());
       await page.goto(BASE+'/app/?workspace=pattern',{waitUntil:'networkidle'});await page.locator('#createProject').click();
-      assert(await page.getByRole('checkbox',{name:'Favourite Shape',exact:true}).isChecked());assert(!(await page.getByRole('checkbox',{name:'Favourite Erase',exact:true}).isChecked()));
+      assert(await page.locator('#ux2ToolMenuTrigger').isVisible(),'Pattern Tools chooser missing after workspace switch');
+      assert(await page.locator('.ux2-tools [data-ux2-tool="rect"]').isVisible(),'Pattern quick rail did not retain Shape favourite');
+      assert(await page.locator('.ux2-tools [data-ux2-tool="eraser"]').isHidden(),'Pattern quick rail did not retain Erase removal');
+      await page.locator('#ux2ToolMenuTrigger').click();
+      assert(await page.getByRole('checkbox',{name:'Show Shape in quick tools',exact:true}).isChecked());assert(!(await page.getByRole('checkbox',{name:'Show Erase in quick tools',exact:true}).isChecked()));
       await page.goto(BASE+'/app/?workspace=doodle',{waitUntil:'networkidle'});await page.locator('#ux2ToolMenuTrigger').click();
       for(const name of ['Brush','Pan','Shape'])await page.getByRole('checkbox',{name:`Show ${name} in quick tools`,exact:true}).uncheck();
       await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('.ux2-tool-item:visible').count(),0);assert(await page.locator('#ux2ToolMenuTrigger').isVisible());
