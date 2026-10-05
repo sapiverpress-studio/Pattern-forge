@@ -517,6 +517,19 @@
     }
     renderAll(false,false);
   }
+  function flipSelectedArtwork(axis){
+    const records=selectedArtwork();if(!records.length)return 0;saveHistory();
+    const geometry=records.length>1?selectionTransformGeometry():{members:records.map(record=>({record,unwrapped:artworkCenter(record)})),center:artworkCenter(records[0])};
+    for(const member of geometry.members){
+      const target=axis==="horizontal"?{x:2*geometry.center.x-member.unwrapped.x,y:member.unwrapped.y}:{x:member.unwrapped.x,y:2*geometry.center.y-member.unwrapped.y};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.rotation=-Number(item.rotation||0);if(axis==="horizontal")item.flipX=!item.flipX;else item.flipY=!item.flipY;delete item.scatterGenerated;
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformRotation=-t.rotation;if(axis==="horizontal")mark.transformFlipX=!t.flipX;else mark.transformFlipY=!t.flipY;
+      }
+    }
+    renderAll();setStatus("Flipped "+records.length+" selected artwork item"+(records.length===1?"":"s")+" "+(axis==="horizontal"?"horizontally.":"vertically."));return records.length;
+  }
   window.PatternForgeSelection={
     get count(){return selectionIds().length;},
     get addMode(){return !!state.selectionAddMode;},
@@ -530,6 +543,8 @@
     beginTransform(){if(selectionIds().length>1)saveHistory();},
     scaleBy:scaleSelectedArtwork,
     rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);},
+    flipHorizontal(){return flipSelectedArtwork("horizontal");},
+    flipVertical(){return flipSelectedArtwork("vertical");},
     recolour:recolourSelectedMarks,
     replaceMatching:replaceMatchingMarkColour
   };
@@ -596,6 +611,7 @@
         targetCtx.save();
         targetCtx.translate(px,py);
         targetCtx.rotate(item.rotation);
+        targetCtx.scale(item.flipX?-1:1,item.flipY?-1:1);
         targetCtx.drawImage(a.img,-iw/2,-ih/2,iw,ih);
         if(showSelection && item.id===state.selectedId){
           targetCtx.globalAlpha=1;
@@ -768,11 +784,11 @@
   }
   function markTransformValues(m){
     const rawScale=Number(m?.transformScale),rawRotation=Number(m?.transformRotation),rawX=Number(m?.transformX),rawY=Number(m?.transformY);
-    return {x:Number.isFinite(rawX)?rawX:0,y:Number.isFinite(rawY)?rawY:0,scale:Number.isFinite(rawScale)?clamp(rawScale,.01,60):1,rotation:Number.isFinite(rawRotation)?rawRotation:0};
+    return {x:Number.isFinite(rawX)?rawX:0,y:Number.isFinite(rawY)?rawY:0,scale:Number.isFinite(rawScale)?clamp(rawScale,.01,60):1,rotation:Number.isFinite(rawRotation)?rawRotation:0,flipX:!!m?.transformFlipX,flipY:!!m?.transformFlipY};
   }
-  function markHasTransform(m){const t=markTransformValues(m);return Math.abs(t.x)>1e-9||Math.abs(t.y)>1e-9||Math.abs(t.scale-1)>1e-9||Math.abs(t.rotation)>1e-9;}
+  function markHasTransform(m){const t=markTransformValues(m);return Math.abs(t.x)>1e-9||Math.abs(t.y)>1e-9||Math.abs(t.scale-1)>1e-9||Math.abs(t.rotation)>1e-9||t.flipX||t.flipY;}
   function markTransformPoint(p,m){
-    const b=markGeometryBounds(m),t=markTransformValues(m),dx=(p.x-b.cx)*t.scale,dy=(p.y-b.cy)*t.scale,c=Math.cos(t.rotation),s=Math.sin(t.rotation);
+    const b=markGeometryBounds(m),t=markTransformValues(m),dx=(p.x-b.cx)*t.scale*(t.flipX?-1:1),dy=(p.y-b.cy)*t.scale*(t.flipY?-1:1),c=Math.cos(t.rotation),s=Math.sin(t.rotation);
     return {x:b.cx+t.x+dx*c-dy*s,y:b.cy+t.y+dx*s+dy*c};
   }
   function markTransformedBounds(m,mirrorX=false,mirrorY=false,angle=0){
@@ -785,18 +801,18 @@
   }
   function applyMarkTransformContext(c,m){
     const b=markGeometryBounds(m),t=markTransformValues(m);if(!markHasTransform(m))return;
-    c.translate(b.cx+t.x,b.cy+t.y);c.rotate(t.rotation);c.scale(t.scale,t.scale);c.translate(-b.cx,-b.cy);
+    c.translate(b.cx+t.x,b.cy+t.y);c.rotate(t.rotation);c.scale(t.scale*(t.flipX?-1:1),t.scale*(t.flipY?-1:1));c.translate(-b.cx,-b.cy);
   }
   function applySymmetryContext(c,mirrorX,mirrorY,angle){
     c.translate(TILE/2,TILE/2);c.rotate(angle);c.scale(mirrorX?-1:1,mirrorY?-1:1);c.translate(-TILE/2,-TILE/2);
   }
   function markSvgTransform(m){
     const b=markGeometryBounds(m),t=markTransformValues(m),deg=t.rotation*180/Math.PI;
-    return `translate(${b.cx+t.x} ${b.cy+t.y}) rotate(${deg}) scale(${t.scale}) translate(${-b.cx} ${-b.cy})`;
+    return `translate(${b.cx+t.x} ${b.cy+t.y}) rotate(${deg}) scale(${t.scale*(t.flipX?-1:1)} ${t.scale*(t.flipY?-1:1)}) translate(${-b.cx} ${-b.cy})`;
   }
   function inverseMarkTransformPoint(p,m){
     const b=markGeometryBounds(m),t=markTransformValues(m),dx=p.x-(b.cx+t.x),dy=p.y-(b.cy+t.y),c=Math.cos(-t.rotation),s=Math.sin(-t.rotation);
-    return {x:b.cx+(dx*c-dy*s)/t.scale,y:b.cy+(dx*s+dy*c)/t.scale};
+    return {x:b.cx+(dx*c-dy*s)/(t.scale*(t.flipX?-1:1)),y:b.cy+(dx*s+dy*c)/(t.scale*(t.flipY?-1:1))};
   }
   function unreflectPoint(p,mirrorX,mirrorY,angle){
     let x=p.x-TILE/2,y=p.y-TILE/2;const c=Math.cos(-angle),s=Math.sin(-angle),rx=x*c-y*s,ry=x*s+y*c;x=mirrorX?-rx:rx;y=mirrorY?-ry:ry;
@@ -1594,7 +1610,7 @@
       const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
       for(const copy of copies){
         const x=item.x+copy.x,y=item.y+copy.y;
-        layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
+        layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg}) scale(${item.flipX?-1:1} ${item.flipY?-1:1})"/>`;
       }
       }
       for(const m of state.marks){
@@ -1975,9 +1991,10 @@
     for(const item of data.items){
       if(!item||item.id===undefined||!assetIds.has(String(item.assetId))||![item.x,item.y,item.scale].every(v=>Number.isFinite(Number(v)))||Number(item.scale)<=0)throw new Error("invalid-items");
       if(item.groupId!==undefined&&item.groupId!==null&&(typeof item.groupId!=="string"||item.groupId.length>100))throw new Error("invalid-items");
+      if((item.flipX!==undefined&&typeof item.flipX!=="boolean")||(item.flipY!==undefined&&typeof item.flipY!=="boolean"))throw new Error("invalid-items");
     }
     const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","gradient"]);
-    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))))throw new Error("invalid-marks");
+    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
     const code=err?.message||"";
