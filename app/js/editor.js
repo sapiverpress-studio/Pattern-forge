@@ -252,7 +252,7 @@
     document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===returnTool));
     updateToolHighlight();
     canvas.style.cursor=returnTool==="pan"?"grab":returnTool==="select"?"default":"crosshair";
-    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[returnTool]||"Previous";
+    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",bucket:"Bucket fill",gradient:"Gradient fill"}[returnTool]||"Previous";
     setStatus(`Eyedropper picked ${hex}. ${toolName} tool restored.`);
   }
   function hashString(str){
@@ -977,6 +977,139 @@
     return out;
   }
 
+  const BUCKET_SAMPLE_SIZE=1800;
+  let bucketBusy=false;
+  function makeBucketSampleCanvas(size,layerId,sampleVisible){
+    if(sampleVisible)return makeTileCanvas(size,size,size,size,projectRepeatStyle(),false);
+    const out=document.createElement("canvas");out.width=size;out.height=size;const c=out.getContext("2d");
+    const scale=size/TILE,basis=repeatBasis(size,size,projectRepeatStyle());
+    const mapped=state.items.map(item=>({...item,x:item.x*scale,y:item.y*scale,scale:item.scale*scale}));
+    for(const item of mapped)if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layerId)drawWrapped(c,item,size,size,false,basis,1);
+    drawMarksWrapped(c,size,size,size,size,projectRepeatStyle(),layerId,1,false);
+    return out;
+  }
+  function bucketPixelDistance(data,index,target){
+    const a=data[index+3],ta=target[3],af=a/255,taf=ta/255;
+    const dr=data[index]*af-target[0]*taf,dg=data[index+1]*af-target[1]*taf,db=data[index+2]*af-target[2]*taf,da=(a-ta)*1.5;
+    return Math.hypot(dr,dg,db,da)/(255*Math.sqrt(5.25))*100;
+  }
+  function bucketNeighbourIndex(x,y,dx,dy,w,h,wrap,style){
+    let nx=x+dx,ny=y+dy;
+    if(!wrap){
+      if(nx<0||nx>=w||ny<0||ny>=h)return -1;
+      return ny*w+nx;
+    }
+    if(style==="half-drop"){
+      if(nx<0)nx+=w;else if(nx>=w)nx-=w;
+      if(ny<0){ny+=h;nx=(nx+w/2)%w;}
+      else if(ny>=h){ny-=h;nx=(nx-w/2+w)%w;}
+    }else if(style==="brick"){
+      if(ny<0)ny+=h;else if(ny>=h)ny-=h;
+      if(nx<0){nx+=w;ny=(ny+h/2)%h;}
+      else if(nx>=w){nx-=w;ny=(ny-h/2+h)%h;}
+    }else{
+      nx=(nx+w)%w;ny=(ny+h)%h;
+    }
+    return ny*w+nx;
+  }
+  function floodBucketMask(imageData,seedX,seedY,tolerance,wrap,style){
+    const w=imageData.width,h=imageData.height,data=imageData.data,n=w*h,states=new Uint8Array(n),queue=new Uint32Array(n);
+    const seed=seedY*w+seedX,target=[data[seed*4],data[seed*4+1],data[seed*4+2],data[seed*4+3]],limit=clamp(Number(tolerance)||0,0,100);
+    let head=0,tail=0;states[seed]=1;queue[tail++]=seed;
+    while(head<tail){
+      const index=queue[head++],x=index%w,y=Math.floor(index/w);
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const next=bucketNeighbourIndex(x,y,dx,dy,w,h,wrap,style);if(next<0||states[next])continue;
+        const matches=bucketPixelDistance(data,next*4,target)<=limit;states[next]=matches?1:2;if(matches)queue[tail++]=next;
+      }
+    }
+    return {mask:states,count:tail,target};
+  }
+  function bucketBoundarySide(mask,w,h,x,y,side){
+    const index=y*w+x;if(mask[index]!==1)return false;
+    if(side===0)return y===0||mask[(y-1)*w+x]!==1;
+    if(side===1)return x===w-1||mask[y*w+x+1]!==1;
+    if(side===2)return y===h-1||mask[(y+1)*w+x]!==1;
+    return x===0||mask[y*w+x-1]!==1;
+  }
+  function bucketEdgeStart(x,y,side){
+    if(side===0)return {x,y};if(side===1)return {x:x+1,y};if(side===2)return {x:x+1,y:y+1};return {x,y:y+1};
+  }
+  function bucketEdgeEnd(x,y,side){
+    if(side===0)return {x:x+1,y};if(side===1)return {x:x+1,y:y+1};if(side===2)return {x,y:y+1};return {x,y};
+  }
+  function bucketOutgoingEdges(mask,visited,w,h,vx,vy){
+    const candidates=[[vx,vy,0],[vx-1,vy,1],[vx-1,vy-1,2],[vx,vy-1,3]],out=[];
+    for(const [x,y,side] of candidates){
+      if(x<0||x>=w||y<0||y>=h)continue;const index=y*w+x,bit=1<<side;
+      if(bucketBoundarySide(mask,w,h,x,y,side)&&!(visited[index]&bit))out.push({x,y,side,dir:side});
+    }
+    return out;
+  }
+  function bucketRdp(points,epsilon){
+    if(points.length<=2)return points.slice();const keep=new Uint8Array(points.length);keep[0]=keep[points.length-1]=1;const stack=[[0,points.length-1]];
+    while(stack.length){
+      const [start,end]=stack.pop(),a=points[start],b=points[end],dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;let best=-1,bestDist=-1;
+      for(let i=start+1;i<end;i++){const p=points[i],t=len2?clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/len2,0,1):0,qx=a.x+t*dx,qy=a.y+t*dy,d=Math.hypot(p.x-qx,p.y-qy);if(d>bestDist){bestDist=d;best=i;}}
+      if(best>start&&best<end&&bestDist>epsilon){keep[best]=1;stack.push([start,best],[best,end]);}
+    }
+    return points.filter((_,i)=>keep[i]);
+  }
+  function bucketSimplifyClosed(points,epsilon){
+    if(points.length>1&&points[0].x===points.at(-1).x&&points[0].y===points.at(-1).y)points=points.slice(0,-1);
+    if(points.length<=4)return points;
+    let far=1,farDist=0;for(let i=1;i<points.length;i++){const d=(points[i].x-points[0].x)**2+(points[i].y-points[0].y)**2;if(d>farDist){farDist=d;far=i;}}
+    const a=bucketRdp(points.slice(0,far+1),epsilon),b=bucketRdp(points.slice(far).concat([points[0]]),epsilon);
+    return a.slice(0,-1).concat(b.slice(0,-1));
+  }
+  function bucketPolygonArea(points){
+    let area=0;for(let i=0,j=points.length-1;i<points.length;j=i++)area+=points[j].x*points[i].y-points[i].x*points[j].y;return area/2;
+  }
+  function bucketContours(mask,w,h){
+    const visited=new Uint8Array(w*h),paths=[],scaleX=TILE/w,scaleY=TILE/h,epsilon=Math.max(.75,Math.max(scaleX,scaleY)*1.8);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const index=y*w+x;if(mask[index]!==1)continue;
+      for(let side=0;side<4;side++){
+        const bit=1<<side;if((visited[index]&bit)||!bucketBoundarySide(mask,w,h,x,y,side))continue;
+        let edge={x,y,side,dir:side},start=bucketEdgeStart(x,y,side),loop=[],closed=false,safety=0;
+        while(edge&&safety++<w*h*2){
+          const edgeIndex=edge.y*w+edge.x,edgeBit=1<<edge.side;if(visited[edgeIndex]&edgeBit)break;visited[edgeIndex]|=edgeBit;
+          if(!loop.length)loop.push(bucketEdgeStart(edge.x,edge.y,edge.side));
+          const end=bucketEdgeEnd(edge.x,edge.y,edge.side);loop.push(end);
+          if(end.x===start.x&&end.y===start.y){closed=true;break;}
+          const choices=bucketOutgoingEdges(mask,visited,w,h,end.x,end.y);if(!choices.length)break;
+          const priority=delta=>delta===1?0:delta===0?1:delta===3?2:3;
+          choices.sort((a,b)=>priority((a.dir-edge.dir+4)%4)-priority((b.dir-edge.dir+4)%4));edge=choices[0];
+        }
+        if(!closed||loop.length<4)continue;
+        const logical=loop.map(p=>({x:p.x*scaleX,y:p.y*scaleY})),simplified=bucketSimplifyClosed(logical,epsilon);
+        if(simplified.length>=3&&Math.abs(bucketPolygonArea(simplified))>.08)paths.push(simplified);
+      }
+    }
+    return paths;
+  }
+  async function bucketFillAt(world,drawLayer){
+    if(bucketBusy){setStatus("Bucket fill is already analysing a region.");return;}
+    bucketBusy=true;state.dragStart=null;setStatus("Detecting bucket fill region…");
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    try{
+      const size=BUCKET_SAMPLE_SIZE,sampleVisible=$("bucketSampleVisible").checked,tolerance=Number($("bucketTolerance").value)||0;
+      const source=makeBucketSampleCanvas(size,drawLayer.id,sampleVisible),sample=source.getContext("2d",{willReadFrequently:true}).getImageData(0,0,size,size);
+      const point=isDoodleProject()?{x:clamp(world.x,0,TILE-.0001),y:clamp(world.y,0,TILE-.0001)}:canonicalPoint(world.x,world.y);
+      const seedX=clamp(Math.floor(point.x/TILE*size),0,size-1),seedY=clamp(Math.floor(point.y/TILE*size),0,size-1);
+      const started=performance.now(),result=floodBucketMask(sample,seedX,seedY,tolerance,!isDoodleProject(),projectRepeatStyle());
+      const paths=bucketContours(result.mask,size,size),totalPoints=paths.reduce((sum,path)=>sum+path.length,0);
+      if(!paths.length)throw new Error("No fillable region was found at that point.");
+      if(totalPoints>25000)throw new Error("That region boundary is too complex to keep editable. Increase tolerance slightly or simplify the source artwork.");
+      saveHistory();
+      const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
+      state.marks.push(mark);setSelection([mark.id],mark.id);renderAll();
+      const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started);
+      setStatus(`Bucket filled ${pct}% of the tile as editable vector contours in ${elapsed} ms.`);
+    }catch(err){setStatus(err?.message||"Bucket fill could not analyse that region.");}
+    finally{bucketBusy=false;}
+  }
+
   window.PatternForgeProductPreview=()=>{
     const mult=exportMultipliers(),base=360,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle()};
@@ -1455,6 +1588,7 @@
     }
     const drawLayer=activeLayer();
     if(!drawLayer||drawLayer.visible===false||drawLayer.locked){setStatus(!drawLayer?"Choose an active layer before drawing.":drawLayer.locked?`“${drawLayer.name}” is locked. Unlock it to draw.`:`“${drawLayer.name}” is hidden. Make it visible to draw.`);state.dragStart=null;return;}
+    if(state.tool==="bucket"){void bucketFillAt(w,drawLayer);return;}
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y),pressureEnabled=state.tool==="brush"&&$("pressureWidth").checked;
     if(pressureEnabled)markStart.p=pointerPressure(e);
@@ -1762,7 +1896,7 @@
     $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
     $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;$("backgroundSettingsRow").hidden=doodle;
     $("stageDescription").textContent=doodle?"4000 px standalone artwork canvas · transparent":"4000 px master tile · seamless repeat preview";
-    $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
+    $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
     $("tileSettingsSummary").textContent=doodle?"Canvas and placement settings":"Tile and placement settings";
     $("snapHelp").textContent=doodle?"Smart snapping uses the grid plus canvas centre lines and canvas edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.":"Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.";
     $("assetPlacementHelp").textContent=doodle?"The first selected image is placed on the canvas automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.":"The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.";
@@ -1878,7 +2012,7 @@
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
@@ -2061,8 +2195,12 @@
       if(item.groupId!==undefined&&item.groupId!==null&&(typeof item.groupId!=="string"||item.groupId.length>100))throw new Error("invalid-items");
       if((item.flipX!==undefined&&typeof item.flipX!=="boolean")||(item.flipY!==undefined&&typeof item.flipY!=="boolean"))throw new Error("invalid-items");
     }
-    const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","gradient"]);
-    if(data.marks.some(mark=>!mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||(point.p!==undefined&&(!Number.isFinite(Number(point.p))||Number(point.p)<0||Number(point.p)>1)))||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean")))throw new Error("invalid-marks");
+    const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","bucket","gradient"]);
+    if(data.marks.some(mark=>{
+      const badPoint=point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||(point.p!==undefined&&(!Number.isFinite(Number(point.p))||Number(point.p)<0||Number(point.p)>1));
+      const badBucket=mark?.type==="bucket"&&(!Array.isArray(mark.paths)||mark.paths.length>512||mark.paths.some(path=>!Array.isArray(path)||path.length<3||path.some(badPoint))||mark.paths.reduce((sum,path)=>sum+path.length,0)>25000);
+      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean");
+    }))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
     const code=err?.message||"";
@@ -2085,8 +2223,8 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.variations=Array.isArray(data.variations)?data.variations.slice(0,30):[];state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
-    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"]])if(s[key]!==undefined)$(id).checked=!!s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
     $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
@@ -2175,6 +2313,8 @@
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
+  $("bucketTolerance").addEventListener("input",()=>{$("bucketToleranceLabel").textContent=$("bucketTolerance").value+"%";scheduleAutosave();});
+  $("bucketSampleVisible").addEventListener("change",scheduleAutosave);
   $("strokeStabilisation").addEventListener("change",scheduleAutosave);
   $("pressureWidth").addEventListener("change",scheduleAutosave);
   ["scatterSpacing","scatterOverlap","scatterPreserveManual"].forEach(id=>$(id).addEventListener("change",scheduleAutosave));
