@@ -354,8 +354,10 @@ try{
     const tap=await worldToClient(200,450);
     await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();
     await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+    const zeroMetrics=await view.evaluate(()=>window.PatternForgeBucketMetrics);
+    assert(zeroMetrics.fillRatio>.45&&zeroMetrics.fillRatio<.55,'Zero-tolerance flood ratio was not one half: '+JSON.stringify(zeroMetrics));
     await view.locator('#ux2Export').click();let p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();let d=await p;let file=await d.path();let zero=JSON.parse(fs.readFileSync(file,'utf8')).marks.filter(mark=>mark.type==='bucket').at(-1);await view.locator('#ux2PaletteClose').click();
-    const zeroBounds={min:Math.min(...zero.points.map(p=>p.x)),max:Math.max(...zero.points.map(p=>p.x))};assert(zeroBounds.max-zeroBounds.min<=451,'Zero-tolerance bucket crossed into the second colour');
+    const zeroBounds={min:Math.min(...zero.points.map(p=>p.x)),max:Math.max(...zero.points.map(p=>p.x))};assert(zeroBounds.max-zeroBounds.min<=451,'Zero-tolerance contour spanned too far: '+JSON.stringify({zeroBounds,zeroMetrics}));
 
     await view.locator('#ux2Undo').click();await view.waitForTimeout(100);await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();
     await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
