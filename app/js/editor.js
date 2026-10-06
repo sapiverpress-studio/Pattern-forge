@@ -1853,7 +1853,7 @@
           ?`stroke="${svgEscape(m.color)}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${opacity}"`
           :`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}"${m.type==="bucket"?' fill-rule="evenodd"':''} opacity="${opacity}"`;
       }
-      let eraserNodes="";
+      let eraserNodes="",markNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         const transform=`translate(${TILE/2} ${TILE/2}) rotate(${angle*180/Math.PI}) scale(${mirrorX?-1:1} ${mirrorY?-1:1}) translate(${-TILE/2} ${-TILE/2})`;
         if(!markHasTransform(m)){
@@ -1862,13 +1862,23 @@
           for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
           minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
           const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else markNodes+=node;}
         }else{
           const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else markNodes+=node;}
         }
       }
-      if(m.type==="eraser"&&eraserNodes){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;}
+      if(m.type==="eraser"&&eraserNodes){
+        const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;
+      }else if(markNodes){
+        if(m.alphaLocked){
+          if(layerBody){
+            const alphaMaskId=`pf-alpha-lock-${++maskIndex}`;
+            gradientDefs+=`<mask id="${alphaMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">${layerBody}</mask>`;
+            layerBody+=`<g mask="url(#${alphaMaskId})">${markNodes}</g>`;
+          }
+        }else layerBody+=markNodes;
+      }
       }
       if(layer.clipToBelow){
         if(!clipBaseSvg)continue;
