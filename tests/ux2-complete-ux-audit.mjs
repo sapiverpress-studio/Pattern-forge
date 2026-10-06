@@ -29,6 +29,15 @@ async function attachErrors(page,label){
   page.on('console',m=>{if(m.type()==='error')browserErrors.push(label+': console: '+m.text());});
 }
 async function visible(page,selector){return await page.locator(selector).isVisible().catch(()=>false);}
+function zipEntryNames(buffer){
+  const names=[];let offset=0;
+  while(offset+30<=buffer.length&&buffer.readUInt32LE(offset)===0x04034b50){
+    const compressed=buffer.readUInt32LE(offset+18),nameLen=buffer.readUInt16LE(offset+26),extraLen=buffer.readUInt16LE(offset+28),nameStart=offset+30;
+    names.push(buffer.subarray(nameStart,nameStart+nameLen).toString('utf8'));
+    offset=nameStart+nameLen+extraLen+compressed;
+  }
+  return names;
+}
 async function activeOldTool(page,tool){
   return await page.locator('.layout [data-tool="'+tool+'"]').first().evaluate(el=>el.classList.contains('active'));
 }
@@ -563,6 +572,59 @@ try{
     const undone=await saveProject(),undoneItem=undone.items.find(item=>item.id===baseItem.id);
     assert(Math.abs(undoneItem.scale-modifiedItem.scale)<1e-6&&Math.abs(undoneItem.rotation-modifiedItem.rotation)<1e-6,'Undo did not reverse variation application');
     await shot(view,'saved-variation');await context.close();
+  });
+
+  await step('Pattern: colourway manager renames, duplicates, compares and exports without changing work',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(30000);await attachErrors(view,'colourway-export');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#files').setInputFiles(fixture);await view.waitForTimeout(140);
+
+    const saveProject=async()=>{
+      await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p,file=await d.path();
+      assert(file,'Colourway editable project path unavailable');const data=JSON.parse(fs.readFileSync(file,'utf8'));await view.locator('#ux2PaletteClose').click();return data;
+    };
+    const stable=data=>{const copy=structuredClone(data);if(copy.project)delete copy.project.updatedAt;return copy;};
+
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2VariationName').fill('Blue & Cream');await view.locator('#ux2SaveVariation').click();
+    await view.getByText('Blue & Cream',{exact:true}).waitFor();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="select"]').click();
+    if(!(await visible(view,'#ux2SelScale'))){const box=await view.locator('#editorCanvas').boundingBox();assert(box,'Colourway canvas unavailable');await view.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await view.waitForTimeout(80);}
+    await view.locator('#ux2SelScale').evaluate(el=>{el.value='142';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.waitForTimeout(60);
+    await view.locator('[data-ux2-panel="colour"]').click();await view.locator('#ux2ColourInput').evaluate(el=>{el.value='#b8643f';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2VariationName').fill('Terracotta');await view.locator('#ux2SaveVariation').click();
+    await view.getByText('Terracotta',{exact:true}).waitFor();
+    const terraRow=view.locator('[data-variation-id]').filter({hasText:'Terracotta'}),blueRow=view.locator('[data-variation-id]').filter({hasText:'Blue & Cream'});
+    assert((await terraRow.locator('small').textContent())==='Matches current design','Current colourway comparison did not report a match');
+    assert((await blueRow.locator('small').textContent())!=='Matches current design','Older colourway comparison did not report differences');
+
+    await blueRow.getByRole('button',{name:'Duplicate',exact:true}).click();await view.getByText('Copy of Blue & Cream',{exact:true}).waitFor();
+    const copyRow=view.locator('[data-variation-id]').filter({hasText:'Copy of Blue & Cream'});
+    view.once('dialog',dialog=>dialog.accept('Green Study'));await copyRow.getByRole('button',{name:'Rename',exact:true}).click();await view.getByText('Green Study',{exact:true}).waitFor();
+    const greenRow=view.locator('[data-variation-id]').filter({hasText:'Green Study'});await greenRow.getByRole('button',{name:'Delete',exact:true}).click();
+    assert(await view.getByText('Green Study',{exact:true}).count()===0,'Deleted duplicate colourway remained visible');
+
+    await view.locator('#ux2PaletteClose').click();
+    const beforeCanvas=await view.locator('#editorCanvas').evaluate(el=>el.toDataURL()),before=await saveProject();
+    assert(before.variations.length===2,'Colourway manager should have two saved variations before export');
+
+    await view.locator('[data-ux2-panel="pattern"]').click();
+    const zipP=view.waitForEvent('download',{timeout:120000});await view.locator('#ux2ExportVariations').click();const zip=await zipP,zipPath=await zip.path();assert(zipPath,'Colourway ZIP path unavailable');
+    assert(zip.suggestedFilename().endsWith('-colourways.zip'),'Colourway export used the wrong ZIP filename');
+    const names=zipEntryNames(fs.readFileSync(zipPath));
+    assert(names.filter(name=>name.endsWith('.png')).length===2,'Colourway ZIP did not contain two PNG files');
+    assert(names.filter(name=>name.endsWith('.svg')).length===2,'Colourway ZIP did not contain two SVG files');
+    assert(names.filter(name=>name.endsWith('-editable-project.json')).length===1,'Colourway ZIP did not contain one editable project');
+    assert(names.some(name=>/Terracotta/i.test(name))&&names.some(name=>/Blue-Cream/i.test(name)),'Colourway ZIP filenames did not preserve saved variation names');
+
+    await view.locator('#ux2PaletteClose').click();
+    const afterCanvas=await view.locator('#editorCanvas').evaluate(el=>el.toDataURL()),after=await saveProject();
+    assert(afterCanvas===beforeCanvas,'Colourway batch export changed the working canvas');
+    assert(JSON.stringify(stable(after))===JSON.stringify(stable(before)),'Colourway batch export changed the editable working project');
+    await shot(view,'colourway-export');await context.close();
   });
 
   await step('Pattern: Selection transform, duplicate, arrange, snap and delete controls work',async()=>{
