@@ -344,7 +344,7 @@ try{
     await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     await view.locator('#ux2Export').click();const baseP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const baseD=await baseP;const basePath=await baseD.path();let data=JSON.parse(fs.readFileSync(basePath,'utf8'));await view.locator('#ux2PaletteClose').click();
     const layer=data.layers.find(layer=>layer.id==='layer-drawing')||data.layers.at(-1),id1=data.nextId++,id2=data.nextId++;
-    data.transparent=true;data.marks.push(
+    data.transparent=true;data.settings.symmetry='off';data.settings.symmetryGuides=false;data.marks.push(
       {id:id1,layerId:layer.id,type:'rect',color:'#808080',width:1,fill:true,opacity:1,points:[{x:0,y:0},{x:450,y:900}]},
       {id:id2,layerId:layer.id,type:'rect',color:'#888888',width:1,fill:true,opacity:1,points:[{x:450,y:0},{x:900,y:900}]}
     );
@@ -376,7 +376,7 @@ try{
       const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true}),view=await context.newPage();view.setDefaultTimeout(30000);await attachErrors(view,'bucket-seam-'+testCase.repeat);
       await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="'+testCase.repeat+'"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
       await view.locator('#ux2Export').click();const baseP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const baseD=await baseP,basePath=await baseD.path();let data=JSON.parse(fs.readFileSync(basePath,'utf8'));await view.locator('#ux2PaletteClose').click();
-      const layer=data.layers.find(layer=>layer.id==='layer-drawing')||data.layers.at(-1);data.transparent=true;data.marks.push({id:data.nextId++,layerId:layer.id,type:'rect',color:'#111111',width:18,fill:false,opacity:1,points:testCase.points});
+      const layer=data.layers.find(layer=>layer.id==='layer-drawing')||data.layers.at(-1);data.transparent=true;data.settings.symmetry='off';data.settings.symmetryGuides=false;data.marks.push({id:data.nextId++,layerId:layer.id,type:'rect',color:'#111111',width:18,fill:false,opacity:1,points:testCase.points});
       await view.locator('#projectFile').setInputFiles({name:'bucket-seam-'+testCase.repeat+'.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(120);
       const client=await view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};},{x:testCase.tap[0],y:testCase.tap[1]});
       await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}))});
