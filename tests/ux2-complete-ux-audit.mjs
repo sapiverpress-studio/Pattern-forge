@@ -318,7 +318,8 @@ try{
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'scatter-controls');
     await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
     await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
-    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(160);
+    await view.locator('#ux2ToolMenuTrigger').click();
+    const chooserP=view.waitForEvent('filechooser');await view.locator('#ux2ToolMenu').getByRole('button',{name:'Image',exact:true}).click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(160);
 
     const saveProject=async()=>{
       await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p;
