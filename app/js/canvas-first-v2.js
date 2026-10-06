@@ -322,7 +322,7 @@
     $('ux2ProductScaleType')?.addEventListener('change',e=>{productScaleType=e.target.value;render()});
     $('ux2ProductScaleWindow')?.addEventListener('change',e=>{productScaleWindow=e.target.value;render()});
     $('ux2ProductTileWidth')?.addEventListener('input',e=>{dispatchValue('focusPrintSize',e.target.value);render()});
-    $('ux2ProductTileUnit')?.addEventListener('change',e=>{dispatchValue('focusPrintUnit',e.target.value,'change');render()});
+    $('ux2ProductTileUnit')?.addEventListener('change',e=>{dispatchValue('focusPrintUnit',e.target.value,'change');const converted=$('focusPrintSize')?.value;if(converted!==undefined&&$('ux2ProductTileWidth'))$('ux2ProductTileWidth').value=converted;render()});
     render();
   }
   function variationPanel(){
