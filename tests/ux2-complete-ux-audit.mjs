@@ -289,14 +289,21 @@ try{
     for(const mark of recent)assert(mark.pressureWidth===true&&(mark.points||[]).some(point=>Number(point.p)<.5)&&(mark.points||[]).some(point=>Number(point.p)>=.99),mark.brushStyle+' lost pressure data');
 
     const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Pressure style SVG unavailable');
-    const svgText=fs.readFileSync(svgPath,'utf8');
-    for(const colour of ['#cc2244','#228844','#2244cc']){
-      const matches=[...svgText.matchAll(new RegExp('stroke="'+colour+'"[^>]*stroke-width="([0-9.]+)"','g'))].map(match=>Number(match[1]));
-      assert(new Set(matches.map(width=>width.toFixed(4))).size>=2,'Pressure SVG width variation missing for '+colour);
+    const svgText=fs.readFileSync(svgPath,'utf8'),svgWidths=[...svgText.matchAll(/stroke-width="([0-9.]+)"/g)].map(match=>Number(match[1])).filter(Number.isFinite);
+    const responseWidth=(mark,pressure)=>{
+      const min=Math.max(.05,Math.min(.8,Number(mark.pressureMin??18)/100)),sensitivity=Math.max(0,Math.min(1,Number(mark.pressureSensitivity??100)/100));
+      const response=1-(1-pressure)*sensitivity,factor=mark.brushStyle==='pencil'?.72:mark.brushStyle==='marker'?1.8:1;
+      return Number(mark.width)*factor*(min+(1-min)*response);
+    };
+    const expected={};
+    for(const mark of recent){
+      const pressurePairs=[];for(let i=1;i<mark.points.length;i++)pressurePairs.push((Number(mark.points[i-1].p)+Number(mark.points[i].p))/2);
+      expected[mark.brushStyle]=pressurePairs.map(pressure=>responseWidth(mark,pressure));
+      assert(expected[mark.brushStyle].length>=2,mark.brushStyle+' pressure SVG expectation had too few segments');
+      for(const width of expected[mark.brushStyle])assert(svgWidths.some(actual=>Math.abs(actual-width)<Math.max(.02,width*.002)),mark.brushStyle+' expected pressure width '+width.toFixed(4)+' missing from SVG');
     }
-    const widthsByColour=Object.fromEntries(['#cc2244','#228844','#2244cc'].map(colour=>[colour,[...svgText.matchAll(new RegExp('stroke="'+colour+'"[^>]*stroke-width="([0-9.]+)"','g'))].map(match=>Number(match[1]))]));
-    assert(Math.max(...widthsByColour['#228844'])<Math.max(...widthsByColour['#cc2244']),'Pencil pressure width did not remain narrower than Ink');
-    assert(Math.max(...widthsByColour['#2244cc'])>Math.max(...widthsByColour['#cc2244']),'Marker pressure width did not remain broader than Ink');
+    assert(Math.max(...expected.pencil)<Math.max(...expected.ink),'Pencil pressure width did not remain narrower than Ink');
+    assert(Math.max(...expected.marker)>Math.max(...expected.ink),'Marker pressure width did not remain broader than Ink');
     await view.locator('#ux2PaletteClose').click();await shot(view,'pressure-style-compat');await context.close();
   });
 
