@@ -270,6 +270,117 @@ try{
     assert(await activeOldTool(page,'gradient'),'Gradient Fill did not activate engine');
   });
 
+  await step('Pattern: bucket fill makes an editable transparent-region vector and round-trips exports',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(30000);await attachErrors(view,'bucket-vector');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#transparent').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('input',{bubbles:true}))});
+    const worldToClient=async(x,y)=>view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{
+      const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+      return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};
+    },{x,y});
+    const dragWorld=async(a,b)=>{
+      const p1=await worldToClient(a[0],a[1]),p2=await worldToClient(b[0],b[1]);
+      await view.mouse.move(p1.x,p1.y);await view.mouse.down();await view.mouse.move(p2.x,p2.y,{steps:12});await view.mouse.up();await view.waitForTimeout(80);
+    };
+    await view.locator('[data-ux2-tool="rect"]').click();await view.locator('#ux2Rect').click();
+    if(await view.locator('#ux2ShapeFill').isChecked())await view.locator('#ux2ShapeFill').uncheck();
+    await view.locator('#ux2ShapeWidth').evaluate(el=>{el.value='28';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([250,250],[650,650]);
+
+    await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();
+    assert(await activeOldTool(view,'bucket'),'Bucket did not activate the real engine tool');
+    if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();
+    await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='4';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ink').evaluate(el=>{el.value='#dd2244';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    const canvas=view.locator('#editorCanvas'),before=await canvas.evaluate(el=>el.toDataURL()),inside=await worldToClient(450,450);
+    await view.mouse.click(inside.x,inside.y);
+    await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+    const after=await canvas.evaluate(el=>el.toDataURL());assert(after!==before,'Bucket fill produced no visible canvas change');
+
+    const pixels=await view.evaluate(async()=>{
+      const data=window.PatternForgeProductPreview().dataUrl,img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=data});
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);
+      const sample=(wx,wy)=>Array.from(x.getImageData(Math.round(wx/900*c.width),Math.round(wy/900*c.height),1,1).data);
+      return {inside:sample(450,450),outside:sample(150,150)};
+    });
+    assert(pixels.inside[3]>0&&pixels.inside[0]>pixels.inside[2],'Bucket did not colour the transparent enclosed region');
+    assert(pixels.outside[3]===0,'Bucket leaked outside the enclosed transparent region');
+
+    await view.locator('#ux2Export').click();
+    const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Bucket project save failed');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),bucket=data.marks.filter(mark=>mark.type==='bucket').at(-1);
+    assert(bucket?.paths?.length>=1&&bucket.points.length>=3,'Bucket did not persist editable contour geometry');
+    assert(bucket.bucketTolerance===4&&bucket.bucketSampleVisible===false,'Bucket settings were not captured on the fill mark');
+
+    await view.locator('#ux2PaletteClose').click();await view.locator('#ux2Undo').click();await view.waitForTimeout(120);
+    assert(await canvas.evaluate(el=>el.toDataURL())===before,'Undo did not remove bucket fill');
+    await view.locator('#ux2Redo').click();await view.waitForTimeout(120);
+    assert(await canvas.evaluate(el=>el.toDataURL())===after,'Redo did not restore bucket fill');
+
+    await view.locator('#ux2Export').click();
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Bucket SVG export failed');
+    const svgText=fs.readFileSync(svgPath,'utf8');assert(svgText.includes('fill-rule="evenodd"'),'Bucket SVG lost even-odd vector contours');
+    const pngP=view.waitForEvent('download');await view.locator('[data-export-old="exportPng"]').click();const png=await pngP;const pngPath=await png.path();assert(pngPath&&fs.statSync(pngPath).size>1000,'Bucket PNG export failed');
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#projectFile').setInputFiles({name:'bucket-roundtrip.json',mimeType:'application/json',buffer:fs.readFileSync(jsonPath)});
+    await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(150);
+    await view.locator('#ux2Export').click();const reopenP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const reopened=await reopenP;const reopenedPath=await reopened.path();
+    const reopenedData=JSON.parse(fs.readFileSync(reopenedPath,'utf8')),reopenedBucket=reopenedData.marks.filter(mark=>mark.type==='bucket').at(-1);
+    assert(reopenedBucket?.paths?.length===bucket.paths.length&&reopenedBucket.points.length===bucket.points.length,'Bucket contour geometry changed after reopen');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'bucket-vector');await context.close();
+  });
+
+  await step('Pattern: bucket tolerance changes matching colour extent',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(30000);await attachErrors(view,'bucket-tolerance');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#ux2Export').click();const baseP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const baseD=await baseP;const basePath=await baseD.path();let data=JSON.parse(fs.readFileSync(basePath,'utf8'));await view.locator('#ux2PaletteClose').click();
+    const layer=data.layers.find(layer=>layer.id==='layer-drawing')||data.layers.at(-1),id1=data.nextId++,id2=data.nextId++;
+    data.transparent=true;data.marks.push(
+      {id:id1,layerId:layer.id,type:'rect',color:'#808080',width:1,fill:true,opacity:1,points:[{x:0,y:0},{x:450,y:900}]},
+      {id:id2,layerId:layer.id,type:'rect',color:'#888888',width:1,fill:true,opacity:1,points:[{x:450,y:0},{x:900,y:900}]}
+    );
+    await view.locator('#projectFile').setInputFiles({name:'bucket-tolerance-base.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+    await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(120);
+    const worldToClient=async(x,y)=>view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};},{x,y});
+    const tap=await worldToClient(200,450);
+    await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();
+    await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+    await view.locator('#ux2Export').click();let p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();let d=await p;let file=await d.path();let zero=JSON.parse(fs.readFileSync(file,'utf8')).marks.filter(mark=>mark.type==='bucket').at(-1);await view.locator('#ux2PaletteClose').click();
+    const zeroBounds={min:Math.min(...zero.points.map(p=>p.x)),max:Math.max(...zero.points.map(p=>p.x))};assert(zeroBounds.max<=451,'Zero-tolerance bucket crossed into the second colour');
+
+    await view.locator('#ux2Undo').click();await view.waitForTimeout(100);await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();
+    await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+    await view.locator('#ux2Export').click();p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();d=await p;file=await d.path();const five=JSON.parse(fs.readFileSync(file,'utf8')).marks.filter(mark=>mark.type==='bucket').at(-1);await view.locator('#ux2PaletteClose').click();
+    const fiveBounds={min:Math.min(...five.points.map(p=>p.x)),max:Math.max(...five.points.map(p=>p.x))};assert(fiveBounds.min<=1&&fiveBounds.max>=899,'Higher bucket tolerance did not include the neighbouring colour');
+    await context.close();
+  });
+
+  await step('Pattern: bucket fill crosses straight, half-drop and brick repeat seams correctly',async()=>{
+    const cases=[
+      {repeat:'straight',points:[{x:820,y:300},{x:980,y:600}],tap:[850,450],axis:'x'},
+      {repeat:'half-drop',points:[{x:200,y:820},{x:400,y:980}],tap:[300,850],axis:'y'},
+      {repeat:'brick',points:[{x:820,y:200},{x:980,y:400}],tap:[850,300],axis:'x'}
+    ];
+    for(const testCase of cases){
+      const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true}),view=await context.newPage();view.setDefaultTimeout(30000);await attachErrors(view,'bucket-seam-'+testCase.repeat);
+      await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="'+testCase.repeat+'"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+      await view.locator('#ux2Export').click();const baseP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const baseD=await baseP,basePath=await baseD.path();let data=JSON.parse(fs.readFileSync(basePath,'utf8'));await view.locator('#ux2PaletteClose').click();
+      const layer=data.layers.find(layer=>layer.id==='layer-drawing')||data.layers.at(-1);data.transparent=true;data.marks.push({id:data.nextId++,layerId:layer.id,type:'rect',color:'#111111',width:18,fill:false,opacity:1,points:testCase.points});
+      await view.locator('#projectFile').setInputFiles({name:'bucket-seam-'+testCase.repeat+'.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(120);
+      const client=await view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};},{x:testCase.tap[0],y:testCase.tap[1]});
+      await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}))});
+      await view.mouse.click(client.x,client.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+      await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p,file=await d.path(),filled=JSON.parse(fs.readFileSync(file,'utf8')).marks.filter(mark=>mark.type==='bucket').at(-1);assert(filled,'Seam bucket missing for '+testCase.repeat);
+      const coords=filled.points.map(point=>point[testCase.axis]),min=Math.min(...coords),max=Math.max(...coords);assert(min<=1&&max>=899,'Bucket did not connect across '+testCase.repeat+' '+testCase.axis+' seam');
+      await view.locator('#ux2PaletteClose').click();await context.close();
+    }
+  });
+
   await step('Pattern: Canvas zoom buttons work and Fit fits the tile',async()=>{
     await page.locator('[data-ux2-tool="pan"]').click();
     assert(await activeOldTool(page,'pan'),'Pan did not activate engine');
