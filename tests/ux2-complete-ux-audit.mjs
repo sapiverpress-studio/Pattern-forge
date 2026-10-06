@@ -723,7 +723,8 @@ try{
     await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
     await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     await view.locator('#transparent').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('input',{bubbles:true}))});
-    await view.locator('#symmetry').selectOption('off');await view.locator('#symmetryGuides').uncheck();
+    await view.locator('#symmetry').evaluate(el=>{el.value='off';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))});
+    await view.locator('#symmetryGuides').evaluate(el=>{el.checked=false;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))});
 
     const worldToClient=async(x,y)=>view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{
       const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
