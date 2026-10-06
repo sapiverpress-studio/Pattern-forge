@@ -280,29 +280,47 @@
   const productScaleProfiles={
     fabric:{label:'Fabric · 1 metre square',w:100,h:100},
     wallpaper:{label:'Wallpaper · 1 × 2.4 m panel',w:100,h:240},
+    paper:{label:'Paper print · A2 · 42 × 59.4 cm',w:42,h:59.4},
     cushion:{label:'Cushion · 45 × 45 cm',w:45,h:45},
     tote:{label:'Tote · 38 × 42 cm',w:38,h:42},
     notebook:{label:'A5 notebook · 14.8 × 21 cm',w:14.8,h:21},
     phone:{label:'Phone case · 7.5 × 15 cm',w:7.5,h:15}
   };
+  let productScaleType='cushion',productScaleWindow='product';
   function productScalePanel(){
     const size=$('focusPrintSize')?.value||30,unit=$('focusPrintUnit')?.value||'cm';
-    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Product-scale preview</div><label class="ux2-field-label">Reference product<select id="ux2ProductScaleType">${Object.entries(productScaleProfiles).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}</select></label><div class="ux2-segment"><label class="ux2-field-label">Printed base-tile width<input id="ux2ProductTileWidth" type="number" min="1" max="300" step="any" value="${size}"></label><label class="ux2-field-label">Units<select id="ux2ProductTileUnit"><option value="cm" ${unit==='cm'?'selected':''}>cm</option><option value="in" ${unit==='in'?'selected':''}>in</option></select></label></div><div id="ux2ProductScaleStage" style="display:grid;place-items:center;min-height:170px;padding:10px;background:#e5e9ed;border-radius:12px;overflow:hidden"><div id="ux2ProductScaleObject" style="border:1px solid #aeb8c3;background:#fff center/contain repeat;box-shadow:0 5px 16px rgba(31,42,57,.14)"></div></div><p class="ux2-info" id="ux2ProductScaleReadout"></p><p class="ux2-info">Scale guide only; this is not a photorealistic product mockup.</p></div>`;
+    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Product-scale preview</div><label class="ux2-field-label">Reference product<select id="ux2ProductScaleType">${Object.entries(productScaleProfiles).map(([id,p])=>`<option value="${id}" ${productScaleType===id?'selected':''}>${p.label}</option>`).join('')}</select></label><label class="ux2-field-label">View window<select id="ux2ProductScaleWindow"><option value="product" ${productScaleWindow==='product'?'selected':''}>Reference product</option><option value="25" ${productScaleWindow==='25'?'selected':''}>25 × 25 cm</option><option value="50" ${productScaleWindow==='50'?'selected':''}>50 × 50 cm</option><option value="100" ${productScaleWindow==='100'?'selected':''}>100 × 100 cm</option></select></label><div class="ux2-segment"><label class="ux2-field-label">Printed base-tile width<input id="ux2ProductTileWidth" type="number" min="1" max="300" step="any" value="${size}"></label><label class="ux2-field-label">Units<select id="ux2ProductTileUnit"><option value="cm" ${unit==='cm'?'selected':''}>cm</option><option value="in" ${unit==='in'?'selected':''}>in</option></select></label></div><div id="ux2ProductScaleStage" style="display:grid;place-items:center;min-height:205px;padding:10px;background:#e5e9ed;border-radius:12px;overflow:hidden"><div style="max-width:100%;display:grid;gap:5px"><div id="ux2ProductScaleObject" style="position:relative;overflow:hidden;border:1px solid #7f8b98;background:#fff 0 0/contain repeat;box-shadow:0 5px 16px rgba(31,42,57,.14)"><div id="ux2ProductScaleGrid" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none"></div></div><div id="ux2ProductScaleRuler" aria-label="Physical scale ruler" style="position:relative;height:27px;border-top:1px solid #55616d"></div></div></div><p class="ux2-info" id="ux2ProductScaleReadout"></p><p class="ux2-info"><strong>Boundary lines mark the complete exported repeat cell.</strong> Scale guide only; this is not a photorealistic product mockup.</p></div>`;
+  }
+  function renderProductScaleRuler(widthCm,unit){
+    const ruler=$('ux2ProductScaleRuler');if(!ruler)return;ruler.innerHTML='';
+    const displayTotal=unit==='in'?widthCm/2.54:widthCm,labelUnit=unit==='in'?'in':'cm';
+    for(let i=0;i<=4;i++){
+      const tick=document.createElement('span');tick.style.cssText=`position:absolute;left:${i*25}%;top:-1px;height:9px;border-left:1px solid #55616d`;
+      const label=document.createElement('small');label.style.cssText='position:absolute;top:9px;transform:translateX(-50%);white-space:nowrap;font-size:9px;color:#566270';label.textContent=(displayTotal*i/4).toFixed(displayTotal<20?1:0)+' '+labelUnit;
+      tick.appendChild(label);ruler.appendChild(tick);
+    }
   }
   function renderProductScalePreview(){
-    const stage=$('ux2ProductScaleStage'),object=$('ux2ProductScaleObject'),readout=$('ux2ProductScaleReadout'),type=$('ux2ProductScaleType')?.value||'cushion',profile=productScaleProfiles[type];
-    const preview=window.PatternForgeProductPreview?.();if(!stage||!object||!readout||!profile||!preview)return;
+    const stage=$('ux2ProductScaleStage'),object=$('ux2ProductScaleObject'),grid=$('ux2ProductScaleGrid'),readout=$('ux2ProductScaleReadout'),type=$('ux2ProductScaleType')?.value||productScaleType,profile=productScaleProfiles[type];
+    const preview=window.PatternForgeProductPreview?.();if(!stage||!object||!grid||!readout||!profile||!preview)return;
+    productScaleType=type;productScaleWindow=$('ux2ProductScaleWindow')?.value||productScaleWindow;
     const raw=Number($('ux2ProductTileWidth')?.value||$('focusPrintSize')?.value||30),unit=$('ux2ProductTileUnit')?.value||$('focusPrintUnit')?.value||'cm',tileCm=unit==='in'?raw*2.54:raw;
-    let width=250,height=width*profile.h/profile.w;if(height>290){height=290;width=height*profile.w/profile.h;}
-    object.style.width=Math.max(55,width)+'px';object.style.height=Math.max(55,height)+'px';object.style.backgroundImage=`url("${preview.dataUrl}")`;
-    const pxPerCm=width/profile.w,bgW=Math.max(1,tileCm*preview.repeatWidthUnits*pxPerCm),bgH=Math.max(1,tileCm*preview.repeatHeightUnits*pxPerCm);
-    object.style.backgroundSize=bgW+'px '+bgH+'px';object.style.borderRadius=type==='phone'?'22px':type==='cushion'?'10px':'4px';
-    const across=profile.w/tileCm,down=profile.h/tileCm;
-    readout.textContent=`${profile.label}: a ${tileCm.toFixed(1)} cm base tile gives about ${across.toFixed(1)} base repeats across × ${down.toFixed(1)} down.`;
+    const fixed=productScaleWindow==='product'?null:Number(productScaleWindow),viewW=fixed||profile.w,viewH=fixed||profile.h,viewLabel=fixed?`${fixed} × ${fixed} cm viewing area`:profile.label;
+    let width=250,height=width*viewH/viewW;if(height>290){height=290;width=height*viewW/viewH;}
+    width=Math.max(55,width);height=Math.max(55,height);
+    object.style.width=width+'px';object.style.height=height+'px';object.style.backgroundImage=`url("${preview.dataUrl}")`;object.style.backgroundPosition='0 0';
+    const pxPerCm=width/viewW,bgW=Math.max(1,tileCm*preview.repeatWidthUnits*pxPerCm),bgH=Math.max(1,tileCm*preview.repeatHeightUnits*pxPerCm);
+    object.style.backgroundSize=bgW+'px '+bgH+'px';object.style.borderRadius=productScaleWindow==='product'&&type==='phone'?'22px':productScaleWindow==='product'&&type==='cushion'?'10px':'4px';
+    grid.style.backgroundImage='linear-gradient(to right,rgba(23,61,54,.62) 1px,transparent 1px),linear-gradient(to bottom,rgba(23,61,54,.62) 1px,transparent 1px)';
+    grid.style.backgroundSize=bgW+'px '+bgH+'px';grid.style.backgroundPosition='0 0';
+    renderProductScaleRuler(viewW,unit);
+    const across=viewW/tileCm,down=viewH/tileCm,displayTile=unit==='in'?(tileCm/2.54).toFixed(2)+' in':tileCm.toFixed(1)+' cm';
+    readout.textContent=`${viewLabel}: a ${displayTile} base tile gives about ${across.toFixed(1)} base repeats across × ${down.toFixed(1)} down. Export repeat cell: ${(tileCm*preview.repeatWidthUnits).toFixed(1)} × ${(tileCm*preview.repeatHeightUnits).toFixed(1)} cm.`;
   }
   function wireProductScalePreview(){
     const render=()=>renderProductScalePreview();
-    $('ux2ProductScaleType')?.addEventListener('change',render);
+    $('ux2ProductScaleType')?.addEventListener('change',e=>{productScaleType=e.target.value;render()});
+    $('ux2ProductScaleWindow')?.addEventListener('change',e=>{productScaleWindow=e.target.value;render()});
     $('ux2ProductTileWidth')?.addEventListener('input',e=>{dispatchValue('focusPrintSize',e.target.value);render()});
     $('ux2ProductTileUnit')?.addEventListener('change',e=>{dispatchValue('focusPrintUnit',e.target.value,'change');render()});
     render();
