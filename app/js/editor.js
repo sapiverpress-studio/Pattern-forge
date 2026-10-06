@@ -915,29 +915,46 @@
     }
     c.restore();
   }
-  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
-    const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
-    c.save();c.scale(sx,sy);
-    for(const m of state.marks){
-      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
-      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
-      const effectiveOpacity=layerId?layerOpacity:layer.opacity;
-      for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
-        if(!markHasTransform(m)){
-          const transformedPaths=m.type==="bucket"?markPointSets(m).map(path=>path.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))):null;
-          const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle)),...(transformedPaths?{paths:transformedPaths}:{})};
-          const bounds=markGeometryBounds(transformed),pad=Math.max(0,Number(m.width)||0);
-          const copies=artworkCopiesForBounds(bounds.minX-pad,bounds.maxX+pad,bounds.minY-pad,bounds.maxY+pad,clipW,clipH,basis);
-          for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
-        }else{
-          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
-          for(const copy of copies){
-            c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
-          }
+  function drawOneMarkWrappedLogical(c,m,clipW,clipH,basis,effectiveOpacity=1){
+    for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
+      if(!markHasTransform(m)){
+        const transformedPaths=m.type==="bucket"?markPointSets(m).map(path=>path.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))):null;
+        const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle)),...(transformedPaths?{paths:transformedPaths}:{})};
+        const bounds=markGeometryBounds(transformed),pad=Math.max(0,Number(m.width)||0);
+        const copies=artworkCopiesForBounds(bounds.minX-pad,bounds.maxX+pad,bounds.minY-pad,bounds.maxY+pad,clipW,clipH,basis);
+        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
+      }else{
+        const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
+        for(const copy of copies){
+          c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
         }
       }
     }
-    c.restore();
+  }
+  function drawSingleMarkWrapped(c,W,H,baseW,baseH,style,m,effectiveOpacity=1){
+    const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
+    c.save();c.scale(sx,sy);drawOneMarkWrappedLogical(c,m,clipW,clipH,basis,effectiveOpacity);c.restore();
+  }
+  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
+    for(const m of state.marks){
+      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
+      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
+      drawSingleMarkWrapped(c,W,H,baseW,baseH,style,m,layerId?layerOpacity:layer.opacity);
+    }
+  }
+  function renderLayerSurface(W,H,baseW,baseH,style,layer,mappedItems,basis,forExport=false){
+    const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
+    for(const item of mappedItems)if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);
+    for(const mark of state.marks){
+      if(layerForArtwork(mark,BASE_LAYER_IDS.drawing)?.id!==layer.id||!mark.points?.length)continue;
+      if(mark.alphaLocked&&mark.type!=="eraser"){
+        const paint=document.createElement("canvas");paint.width=W;paint.height=H;const pc=paint.getContext("2d");
+        drawSingleMarkWrapped(pc,W,H,baseW,baseH,style,mark,1);
+        lc.save();lc.globalCompositeOperation="source-atop";lc.drawImage(paint,0,0);lc.restore();
+        paint.width=1;paint.height=1;
+      }else drawSingleMarkWrapped(lc,W,H,baseW,baseH,style,mark,1);
+    }
+    return surface;
   }
 
   function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
@@ -956,17 +973,16 @@
       const layer=state.layers[layerIndex],renderable=layerIsRenderable(layer,forExport);
       if(!renderable){if(!layer.clipToBelow)clipBaseSurface=null;continue;}
       const hasEraser=state.marks.some(m=>m.type==="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
+      const hasAlphaLocked=state.marks.some(m=>m.alphaLocked&&m.type!=="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
       const nextLayer=state.layers[layerIndex+1],needsClipBase=!!nextLayer?.clipToBelow;
-      const needsSurface=hasEraser||layer.clipToBelow||needsClipBase;
+      const needsSurface=hasEraser||hasAlphaLocked||layer.clipToBelow||needsClipBase;
       if(!needsSurface){
         for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);}
         drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,forExport);
         clipBaseSurface=null;
         continue;
       }
-      const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
-      for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);}
-      drawMarksWrapped(lc,W,H,baseW,baseH,style,layer.id,1,forExport);
+      const surface=renderLayerSurface(W,H,baseW,baseH,style,layer,mapped,basis,forExport),lc=surface.getContext("2d");
       if(layer.clipToBelow){
         if(!clipBaseSurface)continue;
         lc.save();lc.globalCompositeOperation="destination-in";lc.drawImage(clipBaseSurface,0,0);lc.restore();
@@ -981,12 +997,10 @@
   let bucketBusy=false;
   function makeBucketSampleCanvas(size,layerId,sampleVisible){
     if(sampleVisible)return makeTileCanvas(size,size,size,size,projectRepeatStyle(),false);
-    const out=document.createElement("canvas");out.width=size;out.height=size;const c=out.getContext("2d");
-    const scale=size/TILE,basis=repeatBasis(size,size,projectRepeatStyle());
+    const scale=size/TILE,basis=repeatBasis(size,size,projectRepeatStyle()),layer=layerById(layerId);
     const mapped=state.items.map(item=>({...item,x:item.x*scale,y:item.y*scale,scale:item.scale*scale}));
-    for(const item of mapped)if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layerId)drawWrapped(c,item,size,size,false,basis,1);
-    drawMarksWrapped(c,size,size,size,size,projectRepeatStyle(),layerId,1,false);
-    return out;
+    if(!layer){const out=document.createElement("canvas");out.width=size;out.height=size;return out;}
+    return renderLayerSurface(size,size,size,size,projectRepeatStyle(),layer,mapped,basis,false);
   }
   function bucketPixelDistance(data,index,target){
     const a=data[index+3],ta=target[3],af=a/255,taf=ta/255;
