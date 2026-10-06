@@ -284,3 +284,8 @@ body.ux2-fullscreen.doodle-project .ux2-tools #ux2QuickPalette{
   grid-template-columns:32px!important;
   justify-content:center
 }
+
+.ux2-chip{min-width:32px;min-height:32px;box-sizing:border-box}
+body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
+  width:32px!important;height:32px!important;max-width:32px!important;justify-self:center
+}
