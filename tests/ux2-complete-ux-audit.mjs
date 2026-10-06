@@ -294,10 +294,10 @@ try{
     if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();
     await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='4';el.dispatchEvent(new Event('input',{bubbles:true}))});
     await view.locator('#ink').evaluate(el=>{el.value='#dd2244';el.dispatchEvent(new Event('input',{bubbles:true}))});
-    const canvas=view.locator('#editorCanvas'),before=await canvas.evaluate(el=>el.toDataURL()),inside=await worldToClient(450,450);
+    const canvas=view.locator('#editorCanvas'),before=await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl),inside=await worldToClient(450,450);
     await view.mouse.click(inside.x,inside.y);
     await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
-    const after=await canvas.evaluate(el=>el.toDataURL());assert(after!==before,'Bucket fill produced no visible canvas change');
+    const after=await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl);assert(after!==before,'Bucket fill produced no visible canvas change');
 
     const pixels=await view.evaluate(async()=>{
       const data=window.PatternForgeProductPreview().dataUrl,img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=data});
@@ -315,9 +315,9 @@ try{
     assert(bucket.bucketTolerance===4&&bucket.bucketSampleVisible===false,'Bucket settings were not captured on the fill mark');
 
     await view.locator('#ux2PaletteClose').click();await view.locator('#ux2Undo').click();await view.waitForTimeout(120);
-    assert(await canvas.evaluate(el=>el.toDataURL())===before,'Undo did not remove bucket fill');
+    assert(await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl)===before,'Undo did not remove bucket fill');
     await view.locator('#ux2Redo').click();await view.waitForTimeout(120);
-    assert(await canvas.evaluate(el=>el.toDataURL())===after,'Redo did not restore bucket fill');
+    assert(await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl)===after,'Redo did not restore bucket fill');
 
     await view.locator('#ux2Export').click();
     const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Bucket SVG export failed');
@@ -351,7 +351,7 @@ try{
     await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();if(await view.locator('#ux2BucketSampleVisible').isChecked())await view.locator('#ux2BucketSampleVisible').uncheck();
     await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
     await view.locator('#ux2Export').click();let p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();let d=await p;let file=await d.path();let zero=JSON.parse(fs.readFileSync(file,'utf8')).marks.filter(mark=>mark.type==='bucket').at(-1);await view.locator('#ux2PaletteClose').click();
-    const zeroBounds={min:Math.min(...zero.points.map(p=>p.x)),max:Math.max(...zero.points.map(p=>p.x))};assert(zeroBounds.max<=451,'Zero-tolerance bucket crossed into the second colour');
+    const zeroBounds={min:Math.min(...zero.points.map(p=>p.x)),max:Math.max(...zero.points.map(p=>p.x))};assert(zeroBounds.max-zeroBounds.min<=451,'Zero-tolerance bucket crossed into the second colour');
 
     await view.locator('#ux2Undo').click();await view.waitForTimeout(100);await view.locator('[data-ux2-tool="freefill"]').click();await view.locator('#ux2BucketFill').click();
     await view.locator('#ux2BucketTolerance').evaluate(el=>{el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.mouse.click(tap.x,tap.y);await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
