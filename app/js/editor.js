@@ -834,14 +834,23 @@
     return {minX:b.minX+dx,maxX:b.maxX+dx,minY:b.minY+dy,maxY:b.maxY+dy,cx:b.cx+dx,cy:b.cy+dy};
   }
 
-  function pointerPressure(e){
+  function pointerPressure(e,fallback=.5){
     if(e?.pointerType!=="pen")return 1;
-    const pressure=Number(e.pressure);return Number.isFinite(pressure)&&pressure>0?clamp(pressure,.05,1):.5;
+    const pressure=Number(e.pressure);return Number.isFinite(pressure)&&pressure>0?clamp(pressure,.01,1):clamp(Number(fallback)||.5,.01,1);
   }
-  function pressureScale(value){return .18+.82*clamp(Number.isFinite(Number(value))?Number(value):1,.05,1);}
+  function pressureScale(m,value){
+    const min=clamp(Number(m?.pressureMin??18)/100,.05,.8),sensitivity=clamp(Number(m?.pressureSensitivity??100)/100,0,1),pressure=clamp(Number.isFinite(Number(value))?Number(value):1,.01,1);
+    const response=1-(1-pressure)*sensitivity;
+    return min+(1-min)*response;
+  }
   function brushWidthAtPressure(m,style,pressure){
     const styleFactor=style==="pencil"?.72:style==="marker"?1.8:1;
-    return m.width*styleFactor*(m.pressureWidth?pressureScale(pressure):1);
+    return m.width*styleFactor*(m.pressureWidth?pressureScale(m,pressure):1);
+  }
+  function stabilisePressure(previous,raw){
+    const factor={off:1,light:.82,medium:.64,strong:.48}[$("strokeStabilisation")?.value||"off"]||1;
+    const prior=clamp(Number(previous)||Number(raw)||.5,.01,1),next=clamp(Number(raw)||prior,.01,1);
+    return prior+(next-prior)*factor;
   }
   function strokeStabilisationBase(){
     return {off:1,light:.76,medium:.56,strong:.38}[$("strokeStabilisation")?.value||"off"]||1;
@@ -1608,7 +1617,7 @@
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y),pressureEnabled=state.tool==="brush"&&$("pressureWidth").checked;
     if(pressureEnabled)markStart.p=pointerPressure(e);
-    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,alphaLocked:state.tool!=="eraser"&&!!drawLayer.alphaLock,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,alphaLocked:state.tool!=="eraser"&&!!drawLayer.alphaLock,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,pressureMin:Number($("pressureMin").value)||18,pressureSensitivity:Number($("pressureSensitivity").value)||100,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
     state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
     renderAll(false,false);
   });
@@ -1670,7 +1679,7 @@
       const m=state.activeMark;
       if(m.type==="brush"||m.type==="eraser"||m.type==="freefill"||m.type==="gradient"){
         const last=m.points[m.points.length-1],raw=nearestLatticePoint(w.x,w.y,last.x,last.y),next=m.type==="brush"?stabiliseStrokePoint(last,raw):raw;
-        if(m.pressureWidth&&m.type==="brush")next.p=pointerPressure(e);
+        if(m.pressureWidth&&m.type==="brush"){const rawPressure=pointerPressure(e,last.p??.5);next.p=stabilisePressure(last.p??rawPressure,rawPressure);}
         if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
       }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
       renderAll(false,false);return;
@@ -1686,7 +1695,7 @@
   function endDrag(e){
     if(state.activeMark?.type==="brush"&&strokeStabilisationBase()<.999&&state.activeMark.points.length){
       const last=state.activeMark.points[state.activeMark.points.length-1],w=worldPoint(pointerPos(e)),end=nearestLatticePoint(w.x,w.y,last.x,last.y);
-      if(state.activeMark.pressureWidth)end.p=pointerPressure(e);
+      if(state.activeMark.pressureWidth){const rawPressure=pointerPressure(e,last.p??.5);end.p=stabilisePressure(last.p??rawPressure,rawPressure);}
       if(Math.hypot(end.x-last.x,end.y-last.y)>.5)state.activeMark.points.push(end);
     }
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
@@ -2038,7 +2047,7 @@
       project:state.project?{...state.project}:null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
@@ -2225,7 +2234,7 @@
     if(data.marks.some(mark=>{
       const badPoint=point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||(point.p!==undefined&&(!Number.isFinite(Number(point.p))||Number(point.p)<0||Number(point.p)>1));
       const badBucket=mark?.type==="bucket"&&(!Array.isArray(mark.paths)||mark.paths.length>512||mark.paths.some(path=>!Array.isArray(path)||path.length<3||path.some(badPoint))||mark.paths.reduce((sum,path)=>sum+path.length,0)>25000);
-      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean")||(mark.alphaLocked!==undefined&&typeof mark.alphaLocked!=="boolean");
+      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean")||(mark.pressureMin!==undefined&&(!Number.isFinite(Number(mark.pressureMin))||Number(mark.pressureMin)<5||Number(mark.pressureMin)>80))||(mark.pressureSensitivity!==undefined&&(!Number.isFinite(Number(mark.pressureSensitivity))||Number(mark.pressureSensitivity)<0||Number(mark.pressureSensitivity)>100))||(mark.alphaLocked!==undefined&&typeof mark.alphaLocked!=="boolean");
     }))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
@@ -2249,10 +2258,10 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.variations=Array.isArray(data.variations)?data.variations.slice(0,30):[];state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
-    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
+    $("brushSizeLabel").textContent=$("brushSize").value;$("pressureMinLabel").textContent=$("pressureMin").value+"%";$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
   function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
@@ -2342,6 +2351,8 @@
   $("bucketTolerance").addEventListener("input",()=>{$("bucketToleranceLabel").textContent=$("bucketTolerance").value+"%";scheduleAutosave();});
   $("bucketSampleVisible").addEventListener("change",scheduleAutosave);
   $("strokeStabilisation").addEventListener("change",scheduleAutosave);
+  $("pressureMin").addEventListener("input",()=>{$("pressureMinLabel").textContent=$("pressureMin").value+"%";scheduleAutosave();});
+  $("pressureSensitivity").addEventListener("input",()=>{$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";scheduleAutosave();});
   $("pressureWidth").addEventListener("change",scheduleAutosave);
   ["scatterSpacing","scatterOverlap","scatterPreserveManual"].forEach(id=>$(id).addEventListener("change",scheduleAutosave));
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
