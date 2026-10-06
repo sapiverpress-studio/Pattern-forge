@@ -717,6 +717,90 @@ try{
     await page.locator('#ux2PaletteClose').click();
   });
 
+  await step('Pattern: Alpha Lock preserves layer alpha through paint, recolour, eraser and reopen',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(20000);await attachErrors(view,'alpha-lock');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#transparent').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#symmetry').selectOption('off');await view.locator('#symmetryGuides').uncheck();
+
+    const worldToClient=async(x,y)=>view.locator('#editorCanvas').evaluate((canvas,{x,y})=>{
+      const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+      return {x:rect.x+(ox+x*scale)*rect.width/canvas.width,y:rect.y+(oy+y*scale)*rect.height/canvas.height};
+    },{x,y});
+    const dragWorld=async(a,b)=>{
+      const p1=await worldToClient(a[0],a[1]),p2=await worldToClient(b[0],b[1]);
+      await view.mouse.move(p1.x,p1.y);await view.mouse.down();await view.mouse.move(p2.x,p2.y,{steps:14});await view.mouse.up();await view.waitForTimeout(90);
+    };
+    const previewPixels=()=>view.evaluate(async()=>{
+      const data=window.PatternForgeProductPreview().dataUrl,img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=data});
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);
+      const sample=(wx,wy)=>Array.from(x.getImageData(Math.round(wx/900*c.width),Math.round(wy/900*c.height),1,1).data);
+      return {inside:sample(450,450),insideSafe:sample(450,360),outside:sample(220,450)};
+    });
+
+    await view.locator('[data-ux2-tool="rect"]').click();await view.locator('#ux2Rect').click();
+    if(!(await view.locator('#ux2ShapeFill').isChecked()))await view.locator('#ux2ShapeFill').check();
+    await view.locator('#ux2ShapeWidth').evaluate(el=>{el.value='12';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#inkOpacity').evaluate(el=>{el.value='50';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ink').evaluate(el=>{el.value='#2244aa';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([300,300],[600,600]);
+    const basePixels=await previewPixels();assert(basePixels.inside[3]>=120&&basePixels.inside[3]<=135,'Base semi-transparent alpha was not ~50%');
+
+    await view.locator('[data-ux2-panel="layers"]').click();
+    assert(await visible(view,'#ux2LayerAlphaLock'),'Alpha Lock control missing from Layers');
+    await view.locator('#ux2LayerAlphaLock').check();await view.waitForTimeout(80);await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="brush"]').click();
+    await view.locator('#ux2Size').evaluate(el=>{el.value='180';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ux2Opacity').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ink').evaluate(el=>{el.value='#dd2244';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([180,450],[720,450]);
+    let painted=await previewPixels();
+    assert(painted.outside[3]===0,'Alpha-Locked brush leaked outside existing layer alpha');
+    assert(painted.inside[3]>=120&&painted.inside[3]<=135,'Alpha-Locked brush changed destination alpha');
+    assert(painted.inside[0]>painted.inside[2],'Alpha-Locked red paint was not visible inside existing alpha');
+
+    await view.locator('[data-ux2-tool="select"]').click();
+    const inside=await worldToClient(450,450);await view.mouse.click(inside.x,inside.y);await view.waitForTimeout(80);
+    await view.locator('[data-ux2-panel="colour"]').click();
+    assert(await visible(view,'#ux2SelectionColour'),'Selected Alpha-Locked mark did not expose recolour');
+    await view.locator('#ux2SelectionColour').evaluate(el=>{el.value='#22aa44';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ux2RecolourSelection').click();await view.waitForTimeout(90);
+    painted=await previewPixels();
+    assert(painted.outside[3]===0,'Recolour caused Alpha-Locked artwork to leak outside base alpha');
+    assert(painted.inside[3]>=120&&painted.inside[3]<=135,'Recolour changed Alpha-Locked destination alpha');
+    assert(painted.inside[1]>painted.inside[0]&&painted.inside[1]>painted.inside[2],'Alpha-Locked recolour was not visible');
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="eraser"]').click();
+    await view.locator('#ux2Size').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await dragWorld([400,450],[500,450]);
+    const erased=await previewPixels();assert(erased.inside[3]===0,'Eraser did not remain subtractive under Alpha Lock');assert(erased.insideSafe[3]>=120,'Eraser removed unrelated Alpha-Locked artwork');
+
+    await view.locator('#ux2Export').click();
+    const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Alpha Lock project save failed');
+    const saved=JSON.parse(fs.readFileSync(jsonPath,'utf8')),drawing=saved.layers.find(layer=>layer.id==='layer-drawing'),lockedBrush=saved.marks.find(mark=>mark.type==='brush'&&mark.alphaLocked===true),eraser=saved.marks.find(mark=>mark.type==='eraser');
+    assert(drawing?.alphaLock===true,'Layer Alpha Lock state was not persisted');
+    assert(lockedBrush,'Alpha-Locked brush flag was not persisted');
+    assert(eraser&&eraser.alphaLocked!==true,'Eraser was incorrectly Alpha-Locked');
+
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP,svgPath=await svg.path();assert(svgPath,'Alpha Lock SVG export failed');
+    const svgText=fs.readFileSync(svgPath,'utf8');assert(svgText.includes('pf-alpha-lock-')&&svgText.includes('mask-type:alpha'),'SVG did not preserve Alpha Lock boundary masking');
+    const pngP=view.waitForEvent('download');await view.locator('[data-export-old="exportPng"]').click();const png=await pngP,pngPath=await png.path();assert(pngPath&&fs.statSync(pngPath).size>1000,'Alpha Lock PNG export failed');
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#projectFile').setInputFiles({name:'alpha-lock-roundtrip.json',mimeType:'application/json',buffer:fs.readFileSync(jsonPath)});
+    await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(160);
+    const reopened=await previewPixels();
+    assert(reopened.outside[3]===0&&reopened.inside[3]===0&&reopened.insideSafe[3]>=120,'Alpha Lock visual result changed after reopen');
+    await view.locator('#ux2Export').click();const reopenP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const reopenedDownload=await reopenP,reopenedPath=await reopenedDownload.path();const reopenedData=JSON.parse(fs.readFileSync(reopenedPath,'utf8'));
+    assert(reopenedData.layers.find(layer=>layer.id==='layer-drawing')?.alphaLock===true,'Alpha Lock layer state changed after reopen');
+    assert(reopenedData.marks.some(mark=>mark.type==='brush'&&mark.alphaLocked===true),'Alpha-Locked mark state changed after reopen');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'alpha-lock');await context.close();
+  });
+
   await step('Pattern: clipping mask constrains artwork in PNG preview and SVG export',async()=>{
     const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'clipping-mask');
