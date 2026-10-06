@@ -2049,7 +2049,7 @@
   function renameVariation(id,name){
     const variation=state.variations.find(v=>v.id===id),title=String(name||"").trim().slice(0,80);
     if(!variation||!title){setStatus(!variation?"That variation is unavailable.":"Give the variation a name.");return false;}
-    variation.name=title;variation.updatedAt=new Date().toISOString();if(state.project?.variation===variation.name)state.project.variation=title;scheduleAutosave();setStatus("Renamed variation to “"+title+"”.");return true;
+    const previous=variation.name;variation.name=title;variation.updatedAt=new Date().toISOString();if(state.project?.variation===previous)state.project.variation=title;scheduleAutosave();setStatus("Renamed variation to “"+title+"”.");return true;
   }
   function duplicateVariation(id,name){
     const source=state.variations.find(v=>v.id===id);if(!source?.snapshot){setStatus("That variation is unavailable.");return null;}
@@ -2082,7 +2082,7 @@
   }
   async function exportVariationSet(){
     if(!state.variations.length){setStatus("Save at least one named variation before exporting a colourway set.");return false;}
-    const working=variationSnapshot(),projectVariation=state.project?.variation||"",base=safeName(),files=[];
+    const working=variationSnapshot(),projectVariation=state.project?.variation||"",base=safeName(),editableProject=projectBlob(),files=[];
     try{
       for(let i=0;i<state.variations.length;i++){
         const variation=state.variations[i];setStatus("Rendering colourway "+(i+1)+" of "+state.variations.length+": "+variation.name+"…");
@@ -2091,7 +2091,7 @@
         const stem=variationFilename(variation.name,i);
         files.push({name:`${base}-${stem}-${png.spec.dpi}dpi.png`,blob:png.blob},{name:`${base}-${stem}.svg`,blob:renderSVGBlob()});
       }
-      files.push({name:`${base}-editable-project.json`,blob:projectBlob()});
+      files.push({name:`${base}-editable-project.json`,blob:editableProject});
       setStatus("Packaging "+state.variations.length+" saved colourways…");
       const zip=await makeZip(files);downloadBlob(zip,`${base}-colourways.zip`);setStatus("Colourway ZIP downloaded with "+state.variations.length+" saved variation"+(state.variations.length===1?"":"s")+", each as PNG and SVG.");return true;
     }catch(err){setStatus("Colourway export failed: "+err.message);return false;}
