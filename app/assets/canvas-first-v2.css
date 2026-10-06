@@ -264,3 +264,11 @@ body.ux2-fullscreen.doodle-project .ux2-slider{
   width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap
 }
 body.ux2-fullscreen.doodle-project .ux2-slider input{width:72px}
+
+/* Hardening: keep primary mobile tap targets usable without expanding the rails. */
+.ux2-zoom-step{min-width:32px;min-height:32px}
+.ux2-zoom-controls .ux2-btn,.ux2-topbar .ux2-btn,.ux2-tool-menu-trigger{min-height:32px}
+@media(orientation:landscape) and (max-height:600px){
+  .ux2-zoom-step{width:32px;height:32px}
+  .ux2-top-actions .ux2-icon-btn{min-width:32px;min-height:32px}
+}
