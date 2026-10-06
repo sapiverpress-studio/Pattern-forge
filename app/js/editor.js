@@ -777,10 +777,15 @@
     c.stroke();c.restore();
   }
 
+  function markPointSets(m){
+    if(m?.type==="bucket"&&Array.isArray(m.paths))return m.paths.filter(path=>Array.isArray(path)&&path.length);
+    return [Array.isArray(m?.points)?m.points:[]];
+  }
+  function markAllPoints(m){return markPointSets(m).flat();}
   function markGeometryBounds(m){
-    if(!m?.points?.length)return {minX:0,maxX:0,minY:0,maxY:0,cx:0,cy:0};
+    const points=markAllPoints(m);if(!points.length)return {minX:0,maxX:0,minY:0,maxY:0,cx:0,cy:0};
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-    for(const p of m.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+    for(const p of points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
     return {minX,maxX,minY,maxY,cx:(minX+maxX)/2,cy:(minY+maxY)/2};
   }
   function markTransformValues(m){
@@ -855,6 +860,13 @@
       c.globalCompositeOperation="destination-out";c.globalAlpha=1;c.lineWidth=m.width;
       c.beginPath();c.moveTo(pts[0].x,pts[0].y);if(pts.length===1)c.lineTo(pts[0].x+.01,pts[0].y+.01);else for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.stroke();c.restore();return;
     }
+    if(m.type==="bucket"){
+      c.beginPath();
+      for(const path of markPointSets(m)){
+        if(path.length<3)continue;c.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)c.lineTo(path[i].x,path[i].y);c.closePath();
+      }
+      c.fill("evenodd");c.restore();return;
+    }
     if(m.type==="rect"||m.type==="ellipse"){
       const a=pts[0],b=pts[pts.length-1];
       c.beginPath();
@@ -912,11 +924,10 @@
       const effectiveOpacity=layerId?layerOpacity:layer.opacity;
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         if(!markHasTransform(m)){
-          const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
-          let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-          for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-          const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
-          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
+          const transformedPaths=m.type==="bucket"?markPointSets(m).map(path=>path.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))):null;
+          const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle)),...(transformedPaths?{paths:transformedPaths}:{})};
+          const bounds=markGeometryBounds(transformed),pad=Math.max(0,Number(m.width)||0);
+          const copies=artworkCopiesForBounds(bounds.minX-pad,bounds.maxX+pad,bounds.minY-pad,bounds.maxY+pad,clipW,clipH,basis);
           for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
         }else{
           const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
@@ -1066,7 +1077,7 @@
     }
     if(mark){
       const t=markTransformValues(mark),pct=Math.round(t.scale*100),rawDeg=t.rotation*180/Math.PI,deg=Math.round(((rawDeg+180)%360+360)%360-180),layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
-      const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
+      const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",bucket:"Bucket fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
       panel.innerHTML=`
         <div class="field">
           <label>Artwork</label>
@@ -1322,6 +1333,7 @@
     if(m.type==="ellipse"){
       const cx=(first.x+last.x)/2,cy=(first.y+last.y)/2,rx=Math.max(.1,Math.abs(last.x-first.x)/2),ry=Math.max(.1,Math.abs(last.y-first.y)/2),q=Math.sqrt(((p.x-cx)/rx)**2+((p.y-cy)/ry)**2);if(m.fill)return q<=1;return Math.abs(q-1)*Math.min(rx,ry)<=strokeRadius;
     }
+    if(m.type==="bucket"){let inside=false;for(const path of markPointSets(m))if(path.length>=3&&pointInPolygon(p,path))inside=!inside;return inside;}
     if(m.type==="freefill"||m.type==="gradient")return pts.length>=3&&pointInPolygon(p,pts);
     if(pts.length===1)return Math.hypot(p.x-first.x,p.y-first.y)<=strokeRadius;
     for(let i=1;i<pts.length;i++)if(pointSegmentDistance(p,pts[i-1],pts[i])<=strokeRadius)return true;return false;
@@ -1652,6 +1664,7 @@
       let shape="";
       if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
       else if(m.type==="ellipse")shape=`<ellipse cx="${(first.x+last.x)/2}" cy="${(first.y+last.y)/2}" rx="${Math.max(.1,Math.abs(last.x-first.x)/2)}" ry="${Math.max(.1,Math.abs(last.y-first.y)/2)}"/>`;
+      else if(m.type==="bucket")shape=`<path d="${markPointSets(m).map(path=>path.length?`M ${path.map(p=>`${p.x} ${p.y}`).join(" L ")} Z`:"").join(" ")}"/>`;
       else shape=`<path d="M ${m.points.map(p=>`${p.x} ${p.y}`).join(" L ")}${m.points.length===1?` L ${first.x+.01} ${first.y+.01}`:""}${m.type==="freefill"?" Z":""}"/>`;
       if(m.type==="brush"&&(m.brushStyle||"ink")==="stamp"){
         const spacing=Math.max(4,m.width*1.65),r=Math.max(1,m.width*.46),parts=[];let carry=spacing;
@@ -1685,10 +1698,10 @@
         shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${(m.opacity??1)*layer.opacity}"`;
       }else{
         const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
-        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
+        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||m.type==="bucket"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
         style=m.type==="brush"&&m.pressureWidth&&brush!=="stamp"
           ?`stroke="${svgEscape(m.color)}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${opacity}"`
-          :`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
+          :`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}"${m.type==="bucket"?' fill-rule="evenodd"':''} opacity="${opacity}"`;
       }
       let eraserNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
