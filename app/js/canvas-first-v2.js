@@ -308,7 +308,7 @@
     render();
   }
   function variationPanel(){
-    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Variations & colourways</div><label class="ux2-field-label">Name<input id="ux2VariationName" type="text" maxlength="80" placeholder="e.g. Blue & Cream"></label><button class="ux2-btn primary" id="ux2SaveVariation" style="width:100%">Save current design state</button><p class="ux2-info">Stores current colours, background, motif transforms and scatter settings without duplicating imported image assets.</p><div id="ux2VariationList" style="margin-top:8px"></div></div>';
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Variations & colourways</div><label class="ux2-field-label">Name<input id="ux2VariationName" type="text" maxlength="80" placeholder="e.g. Blue & Cream"></label><button class="ux2-btn primary" id="ux2SaveVariation" style="width:100%">Save current design state</button><p class="ux2-info">Stores current colours, background, motif transforms and scatter settings without duplicating imported image assets.</p><div id="ux2VariationList" style="margin-top:8px"></div><button class="ux2-btn" id="ux2ExportVariations" style="width:100%;margin-top:9px">Export saved colourways ZIP</button><p class="ux2-info">Exports every saved variation as a named PNG and SVG, plus one editable project containing the full variation library. Save the current design as a variation first if you want it included.</p></div>';
   }
   function refreshVariationList(){
     const list=$('ux2VariationList'),api=window.PatternForgeVariations;if(!list||!api)return;
@@ -318,11 +318,13 @@
       const row=document.createElement('div');row.className='ux2-layer-row';row.dataset.variationId=variation.id;
       const thumb=document.createElement('span');thumb.className='ux2-layer-thumb';
       const meta=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');
-      strong.textContent=variation.name;small.textContent='Saved design state';meta.append(strong,small);
+      strong.textContent=variation.name;small.textContent=variation.comparison?.summary||'Saved design state';meta.append(strong,small);
       const actions=document.createElement('span');actions.className='ux2-motif-actions';
       const apply=document.createElement('button');apply.className='ux2-btn';apply.type='button';apply.textContent='Apply';apply.addEventListener('click',()=>{api.apply(variation.id);openPanel('pattern')});
+      const duplicate=document.createElement('button');duplicate.className='ux2-btn';duplicate.type='button';duplicate.textContent='Duplicate';duplicate.addEventListener('click',()=>{api.duplicate(variation.id);refreshVariationList()});
+      const rename=document.createElement('button');rename.className='ux2-btn';rename.type='button';rename.textContent='Rename';rename.addEventListener('click',()=>{const next=window.prompt('Rename variation',variation.name);if(next!==null&&api.rename(variation.id,next))refreshVariationList()});
       const remove=document.createElement('button');remove.className='ux2-btn';remove.type='button';remove.textContent='Delete';remove.addEventListener('click',()=>{api.remove(variation.id);refreshVariationList()});
-      actions.append(apply,remove);row.append(thumb,meta,actions);list.append(row);
+      actions.append(apply,duplicate,rename,remove);row.append(thumb,meta,actions);list.append(row);
     });
   }
   function wireVariationPanel(){
@@ -330,6 +332,7 @@
       const api=window.PatternForgeVariations,name=$('ux2VariationName')?.value||'',saved=api?.save(name);
       if(saved){if($('ux2VariationName'))$('ux2VariationName').value='';refreshVariationList();}
     });
+    $('ux2ExportVariations')?.addEventListener('click',async e=>{const api=window.PatternForgeVariations,button=e.currentTarget;button.disabled=true;try{await api?.exportSet()}finally{button.disabled=false}});
     refreshVariationList();
   }
   function patternPanel(){
