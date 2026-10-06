@@ -813,7 +813,7 @@ try{
       await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
     }
 
-    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(160);
+    await view.locator('#files').setInputFiles(fixture);await view.waitForTimeout(160);
     await view.locator('[data-ux2-panel="motifs"]').click();
     const motifRow=view.locator('[data-motif-id]').filter({hasText:'Pressure pair'});await motifRow.waitFor({state:'visible'});await motifRow.getByRole('button',{name:'Insert',exact:true}).click();
     await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
