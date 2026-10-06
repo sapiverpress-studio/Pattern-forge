@@ -1093,18 +1093,20 @@
     bucketBusy=true;state.dragStart=null;setStatus("Detecting bucket fill region…");
     await new Promise(resolve=>requestAnimationFrame(resolve));
     try{
-      const size=BUCKET_SAMPLE_SIZE,sampleVisible=$("bucketSampleVisible").checked,tolerance=Number($("bucketTolerance").value)||0;
+      const size=BUCKET_SAMPLE_SIZE,sampleVisible=$("bucketSampleVisible").checked,tolerance=Number($("bucketTolerance").value)||0,started=performance.now();
       const source=makeBucketSampleCanvas(size,drawLayer.id,sampleVisible),sample=source.getContext("2d",{willReadFrequently:true}).getImageData(0,0,size,size);
+      source.width=1;source.height=1;
       const point=isDoodleProject()?{x:clamp(world.x,0,TILE-.0001),y:clamp(world.y,0,TILE-.0001)}:canonicalPoint(world.x,world.y);
       const seedX=clamp(Math.floor(point.x/TILE*size),0,size-1),seedY=clamp(Math.floor(point.y/TILE*size),0,size-1);
-      const started=performance.now(),result=floodBucketMask(sample,seedX,seedY,tolerance,!isDoodleProject(),projectRepeatStyle());
+      const result=floodBucketMask(sample,seedX,seedY,tolerance,!isDoodleProject(),projectRepeatStyle());
       const paths=bucketContours(result.mask,size,size),totalPoints=paths.reduce((sum,path)=>sum+path.length,0);
       if(!paths.length)throw new Error("No fillable region was found at that point.");
       if(totalPoints>25000)throw new Error("That region boundary is too complex to keep editable. Increase tolerance slightly or simplify the source artwork.");
       saveHistory();
       const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
       state.marks.push(mark);setSelection([mark.id],mark.id);renderAll();
-      const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started);
+      const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started),estimatedWorkingBytes=size*size*10;
+      window.PatternForgeBucketMetrics={sampleSize:size,estimatedWorkingBytes,elapsedMs:elapsed,filledPixels:result.count,contours:paths.length,points:totalPoints};
       setStatus(`Bucket filled ${pct}% of the tile as editable vector contours in ${elapsed} ms.`);
     }catch(err){setStatus(err?.message||"Bucket fill could not analyse that region.");}
     finally{bucketBusy=false;}
