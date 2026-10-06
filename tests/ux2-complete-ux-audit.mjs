@@ -831,9 +831,42 @@ try{
     const phone=await object.boundingBox();assert(phone&&phone.height/phone.width>1.8,'Phone preview did not adopt tall product proportions');
     assert((await page.locator('#ux2ProductScaleReadout').textContent()).includes('15.0 cm'),'Scale preview readout did not reflect physical tile width');
 
+    await page.locator('#ux2ProductScaleType').selectOption('paper');await page.locator('#ux2ProductScaleWindow').selectOption('product');await page.waitForTimeout(50);
+    const paper=await object.boundingBox();assert(paper&&paper.height/paper.width>1.38&&paper.height/paper.width<1.45,'A2 paper preset did not use A-series proportions');
+
+    for(const windowSize of ['25','50','100']){
+      await page.locator('#ux2ProductScaleWindow').selectOption(windowSize);await page.waitForTimeout(40);
+      const box=await object.boundingBox();assert(box&&Math.abs(box.width-box.height)<3,windowSize+' cm view window is not square');
+      assert((await page.locator('#ux2ProductScaleReadout').textContent()).includes(windowSize+' × '+windowSize+' cm viewing area'),windowSize+' cm view window readout missing');
+    }
+    await page.locator('#ux2ProductScaleWindow').selectOption('50');await page.waitForTimeout(40);
+    const rulerCm=await page.locator('#ux2ProductScaleRuler').textContent();assert(rulerCm.includes('0 cm')&&rulerCm.includes('50 cm'),'Physical ruler did not show the 50 cm window');
+    const objectBg=await object.evaluate(el=>el.style.backgroundSize),gridBg=await page.locator('#ux2ProductScaleGrid').evaluate(el=>el.style.backgroundSize);
+    assert(objectBg===gridBg,'Repeat-cell boundary grid is not aligned to the repeated artwork');
+
+    await page.locator('#ux2ProductTileUnit').selectOption('in');await page.waitForTimeout(50);
+    const visibleIn=Number(await page.locator('#ux2ProductTileWidth').inputValue()),hiddenIn=Number(await page.locator('#focusPrintSize').inputValue());
+    assert(Math.abs(visibleIn-hiddenIn)<.002&&Math.abs(visibleIn-15/2.54)<.01,'cm-to-inch switch did not keep visible and engine tile widths in sync');
+    const rulerIn=await page.locator('#ux2ProductScaleRuler').textContent();assert(rulerIn.includes('19.7 in'),'Physical ruler did not convert the 50 cm window to inches');
+    await page.locator('#ux2ProductTileUnit').selectOption('cm');await page.waitForTimeout(40);
+    assert(Math.abs(Number(await page.locator('#ux2ProductTileWidth').inputValue())-15)<.02,'inch-to-cm switch did not restore physical tile width');
+
     await page.locator('#ux2Export').click();const p=page.waitForEvent('download');await page.locator('[data-export-old="saveProject"]').click();const d=await p;const file=await d.path();assert(file,'Scale preview project download unavailable');
-    const data=JSON.parse(fs.readFileSync(file,'utf8'));assert(data.settings.focusPrintSize==='15'&&data.settings.focusPrintUnit==='cm','Physical tile scale did not persist in project JSON');
+    const data=JSON.parse(fs.readFileSync(file,'utf8'));assert(Math.abs(Number(data.settings.focusPrintSize)-15)<.02&&data.settings.focusPrintUnit==='cm','Physical tile scale did not persist in project JSON');
     await page.locator('#ux2PaletteClose').click();
+  });
+
+  await step('Pattern: scale preview marks half-drop and brick export repeat-cell dimensions',async()=>{
+    for(const testCase of [{repeat:'half-drop',ratio:2,text:'Export repeat cell: 25.0 × 50.0 cm'},{repeat:'brick',ratio:.5,text:'Export repeat cell: 50.0 × 25.0 cm'}]){
+      const context=await browser.newContext({viewport:{width:1100,height:760}}),view=await context.newPage();view.setDefaultTimeout(15000);await attachErrors(view,'scale-'+testCase.repeat);
+      await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="'+testCase.repeat+'"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+      await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2ProductScaleWindow').selectOption('100');await view.locator('#ux2ProductTileWidth').fill('25');await view.locator('#ux2ProductTileWidth').dispatchEvent('input');await view.waitForTimeout(70);
+      const size=(await view.locator('#ux2ProductScaleGrid').evaluate(el=>el.style.backgroundSize)).split(' ').map(value=>parseFloat(value));
+      assert(size.length>=2&&size[0]>0&&size[1]>0,testCase.repeat+' repeat-cell grid size missing');
+      assert(Math.abs(size[1]/size[0]-testCase.ratio)<.08,testCase.repeat+' repeat-cell boundary ratio is wrong');
+      assert((await view.locator('#ux2ProductScaleReadout').textContent()).includes(testCase.text),testCase.repeat+' physical repeat-cell readout is wrong');
+      await view.locator('#ux2PaletteClose').click();await context.close();
+    }
   });
 
   await step('Pattern: Alpha Lock preserves layer alpha through paint, recolour, eraser and reopen',async()=>{
