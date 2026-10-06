@@ -243,14 +243,16 @@ try{
 
     await view.locator('#ux2Export').click();
     const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Pressure project download unavailable');
-    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),brush=data.marks.filter(mark=>mark.type==='brush').at(-1);
-    assert(brush?.pressureWidth===true,'Pressure-enabled brush flag was not saved');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),brushes=data.marks.filter(mark=>mark.type==='brush');
+    const brush=brushes.find(mark=>mark.pressureWidth===true&&(mark.points||[]).some(point=>Number(point.p)<.9));
+    assert(brush?.pressureWidth===true,'Pressure-enabled stylus brush flag was not saved');
     const pressures=(brush.points||[]).map(point=>Number(point.p)).filter(Number.isFinite);
     assert(pressures.length>=4&&Math.min(...pressures)<=.08&&Math.max(...pressures)>=.95,'Pen pressure values were not captured across the stroke');
     assert(brush.pressureMin===24&&brush.pressureSensitivity===70,'Pressure curve settings were not captured on the stroke');
     assert(data.settings.pressureWidth===true&&data.settings.pressureMin==='24'&&data.settings.pressureSensitivity==='70','Pressure refinement settings were not persisted');
-    const mouseBrush=data.marks.filter(mark=>mark.type==='brush').at(-1);assert(mouseBrush&&mouseBrush!==brush,'Mouse fallback stroke missing');
-    assert(mouseBrush.pressureWidth===false||mouseBrush.points.every(point=>point.p===undefined),'Mouse input incorrectly stored stylus pressure data');
+    const mouseBrush=brushes.find(mark=>mark!==brush&&(mark.points||[]).length>=2&&(mark.points||[]).every(point=>point.p===undefined||Number(point.p)>=.99));
+    assert(mouseBrush,'Mouse fallback stroke missing');
+    assert((mouseBrush.points||[]).every(point=>point.p===undefined||Math.abs(Number(point.p)-1)<.001),'Mouse input did not fall back to full-width pressure');
 
     const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Pressure SVG download unavailable');
     const svgText=fs.readFileSync(svgPath,'utf8'),widths=[...svgText.matchAll(/stroke-width="([0-9.]+)"/g)].map(match=>Number(match[1])).filter(Number.isFinite);
@@ -259,6 +261,43 @@ try{
     const baseWidth=Number(brush.width),lightExpected=baseWidth*(.24+(1-.24)*(1-(1-.05)*.70));
     assert(widths.some(width=>Math.abs(width-lightExpected)<Math.max(.25,baseWidth*.08)),'SVG did not respect the configured minimum-width/response curve');
     await view.locator('#ux2PaletteClose').click();await shot(view,'pressure-width');await context.close();
+  });
+
+  await step('Pattern: pressure width remains compatible with Ink, Pencil and Marker',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(15000);await attachErrors(view,'pressure-style-compat');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});
+    await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('[data-ux2-tool="brush"]').click();await view.locator('#ux2PressureWidth').check();await view.locator('#ux2Stabilisation').selectOption('off');
+
+    const styles=[['ink','#cc2244',340],['pencil','#228844',450],['marker','#2244cc',560]];
+    for(let index=0;index<styles.length;index++){
+      const [style,colour,y]=styles[index];await view.locator('#ux2BrushStyle').selectOption(style);await view.locator('#ink').evaluate((el,value)=>{el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}))},colour);
+      await view.evaluate(async({index,y})=>{
+        const canvas=document.querySelector('#editorCanvas');canvas.setPointerCapture=()=>{};
+        const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
+        const client=(x,yy)=>({clientX:rect.x+(ox+x*scale)*rect.width/canvas.width,clientY:rect.y+(oy+yy*scale)*rect.height/canvas.height});
+        const fire=(type,x,yy,pressure,buttons)=>{const p=client(x,yy);canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:300+index,pointerType:'pen',pressure,buttons,button:0,...p}))};
+        fire('pointerdown',220,y,.2,1);fire('pointermove',420,y,.55,1);fire('pointermove',650,y,1,1);fire('pointerup',650,y,1,0);
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      },{index,y});
+    }
+
+    await view.locator('#ux2Export').click();const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP;const jsonPath=await json.path();assert(jsonPath,'Pressure style project download unavailable');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),recent=data.marks.filter(mark=>mark.type==='brush').slice(-3);
+    assert(recent.map(mark=>mark.brushStyle).join(',')==='ink,pencil,marker','Pressure style strokes were not retained as Ink/Pencil/Marker');
+    for(const mark of recent)assert(mark.pressureWidth===true&&(mark.points||[]).some(point=>Number(point.p)<.5)&&(mark.points||[]).some(point=>Number(point.p)>=.99),mark.brushStyle+' lost pressure data');
+
+    const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Pressure style SVG unavailable');
+    const svgText=fs.readFileSync(svgPath,'utf8');
+    for(const colour of ['#cc2244','#228844','#2244cc']){
+      const matches=[...svgText.matchAll(new RegExp('stroke="'+colour+'"[^>]*stroke-width="([0-9.]+)"','g'))].map(match=>Number(match[1]));
+      assert(new Set(matches.map(width=>width.toFixed(4))).size>=2,'Pressure SVG width variation missing for '+colour);
+    }
+    const widthsByColour=Object.fromEntries(['#cc2244','#228844','#2244cc'].map(colour=>[colour,[...svgText.matchAll(new RegExp('stroke="'+colour+'"[^>]*stroke-width="([0-9.]+)"','g'))].map(match=>Number(match[1]))]));
+    assert(Math.max(...widthsByColour['#228844'])<Math.max(...widthsByColour['#cc2244']),'Pencil pressure width did not remain narrower than Ink');
+    assert(Math.max(...widthsByColour['#2244cc'])>Math.max(...widthsByColour['#cc2244']),'Marker pressure width did not remain broader than Ink');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'pressure-style-compat');await context.close();
   });
 
   await step('Pattern: Eraser exposes size and opacity and activates real eraser',async()=>{
