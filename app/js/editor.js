@@ -1106,7 +1106,7 @@
       const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
       state.marks.push(mark);setSelection([mark.id],mark.id);renderAll();
       const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started),estimatedWorkingBytes=size*size*10;
-      window.PatternForgeBucketMetrics={sampleSize:size,estimatedWorkingBytes,elapsedMs:elapsed,filledPixels:result.count,contours:paths.length,points:totalPoints};
+      window.PatternForgeBucketMetrics={sampleSize:size,estimatedWorkingBytes,elapsedMs:elapsed,filledPixels:result.count,fillRatio:result.count/(size*size),targetRgba:[...result.target],contours:paths.length,points:totalPoints};
       setStatus(`Bucket filled ${pct}% of the tile as editable vector contours in ${elapsed} ms.`);
     }catch(err){setStatus(err?.message||"Bucket fill could not analyse that region.");}
     finally{bucketBusy=false;}
