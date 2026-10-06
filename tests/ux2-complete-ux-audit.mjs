@@ -1285,7 +1285,7 @@ try{
     assert(await view.locator('#layerOpacity').inputValue()==='55','Undo-depth setup did not record 45 edits');
     await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#undo').click();});
     assert(await view.locator('#layerOpacity').inputValue()==='95','Forty undos did not stop at the oldest retained history state');
-    await view.locator('#undo').click();assert(await view.locator('#layerOpacity').inputValue()==='95','Undo exceeded the 40-state history cap');
+    await view.evaluate(()=>document.querySelector('#undo').click());assert(await view.locator('#layerOpacity').inputValue()==='95','Undo exceeded the 40-state history cap');
     await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#redo').click();});
     assert(await view.locator('#layerOpacity').inputValue()==='55','Forty redos did not restore the latest state');
     await context.close();
