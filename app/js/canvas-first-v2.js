@@ -132,7 +132,7 @@
   const clickOld = id => { const el=$(id); if(el) el.click(); };
   const currentTool = () => [...oldLayout.querySelectorAll('[data-tool]')].find(b=>b.classList.contains('active'))?.dataset.tool || 'select';
 
-  const hints={select:'Select artwork to move, scale or rotate',brush:'Draw on the active layer',eraser:'Erase from the active layer',freefill:'Trace a closed area to fill',gradient:'Trace a closed area for gradient fill',pan:'Move around the canvas',line:'Draw a straight line',rect:'Draw a rectangle',ellipse:'Draw an ellipse'};
+  const hints={select:'Select artwork to move, scale or rotate',brush:'Draw on the active layer',eraser:'Erase from the active layer',freefill:'Trace a closed area to fill',bucket:'Tap a region to bucket fill',gradient:'Trace a closed area for gradient fill',pan:'Move around the canvas',line:'Draw a straight line',rect:'Draw a rectangle',ellipse:'Draw an ellipse'};
   function renderContext(tool=currentTool()){
     const context=$('ux2Context');
     context.classList.remove('ux2-context--empty-selection');
@@ -153,10 +153,15 @@
       $('ux2Line').addEventListener('click',()=>setTool('line'));$('ux2Rect').addEventListener('click',()=>setTool('rect'));$('ux2Ellipse').addEventListener('click',()=>setTool('ellipse'));
       $('ux2ShapeWidth').addEventListener('input',e=>{dispatchValue('brushSize',e.target.value);renderContext(tool)});
       if($('ux2ShapeFill'))$('ux2ShapeFill').addEventListener('change',e=>dispatchChecked('shapeFill',e.target.checked));$('ux2ShapeColour').addEventListener('click',()=>openPanel('colour'));
-    } else if(tool==='freefill'){
-      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Fill</span><button class="ux2-chip active">Freehand area</button><button class="ux2-chip" id="ux2GradientFill">Gradient fill</button></div><div class="ux2-context-group"><button class="ux2-chip" id="ux2ColourShortcut">Choose colour</button></div>`;
+    } else if(['freefill','bucket','gradient'].includes(tool)){
+      const tolerance=$('bucketTolerance')?.value||8,sampleVisible=!!$('bucketSampleVisible')?.checked;
+      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Fill</span><button class="ux2-chip ${tool==='freefill'?'active':''}" id="ux2FreehandFill">Freehand area</button><button class="ux2-chip ${tool==='bucket'?'active':''}" id="ux2BucketFill">Bucket</button><button class="ux2-chip ${tool==='gradient'?'active':''}" id="ux2GradientFill">Gradient</button></div><div class="ux2-context-group">${tool==='bucket'?`<label class="ux2-slider">Tolerance <input id="ux2BucketTolerance" type="range" min="0" max="100" value="${tolerance}"><b id="ux2BucketToleranceOut">${tolerance}%</b></label><label style="display:flex;align-items:center;gap:5px;font-size:10px"><input id="ux2BucketSampleVisible" type="checkbox" ${sampleVisible?'checked':''}> Sample visible canvas</label>`:''}<button class="ux2-chip" id="ux2ColourShortcut">Choose colour</button></div>`;
+      $('ux2FreehandFill').addEventListener('click',()=>setTool('freefill'));
+      $('ux2BucketFill').addEventListener('click',()=>setTool('bucket'));
       $('ux2GradientFill').addEventListener('click',()=>setTool('gradient'));
       $('ux2ColourShortcut').addEventListener('click',()=>openPanel('colour'));
+      if($('ux2BucketTolerance'))$('ux2BucketTolerance').addEventListener('input',e=>{dispatchValue('bucketTolerance',e.target.value);$('ux2BucketToleranceOut').textContent=e.target.value+'%'});
+      if($('ux2BucketSampleVisible'))$('ux2BucketSampleVisible').addEventListener('change',e=>dispatchChecked('bucketSampleVisible',e.target.checked));
     } else if(tool==='pan'){
       context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Canvas</span><span style="font-size:11px;color:#6d7885">Use the zoom controls above, pinch, or mouse wheel to change the view.</span></div>`;
     } else {
@@ -201,7 +206,7 @@
 
   function setTool(tool){
     const old=hiddenTool(tool); if(old) old.click();
-    const railTool=['line','rect','ellipse'].includes(tool)?'rect':tool;
+    const railTool=['line','rect','ellipse'].includes(tool)?'rect':['freefill','bucket','gradient'].includes(tool)?'freefill':tool;
     document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.classList.toggle('active',b.dataset.ux2Tool===railTool));
     renderContext(tool);
   }
