@@ -86,6 +86,7 @@
         <button class="btn" data-tool="rect">Rectangle</button>
         <button class="btn" data-tool="ellipse">Ellipse</button>
         <button class="btn" data-tool="freefill">Freehand fill</button>
+        <button class="btn" data-tool="bucket">Bucket fill</button>
         <button class="btn" data-tool="gradient">Gradient fill</button>
         <button class="btn" data-tool="eyedropper">Eyedropper</button>
       </div>
@@ -114,11 +115,15 @@
         <div class="field"><label for="gradientDirection">Linear direction</label><select id="gradientDirection"><option value="diagonal">Diagonal</option><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></div>
         <div class="field"><label for="gradientEnd">Fade to</label><input id="gradientEnd" type="color" value="#e8bc52" aria-label="Gradient end colour"></div>
       </div>
+      <div class="row bucketControls">
+        <div class="field"><label for="bucketTolerance">Bucket tolerance <span id="bucketToleranceLabel">8%</span></label><input id="bucketTolerance" type="range" min="0" max="100" value="8"></div>
+        <label class="check"><input id="bucketSampleVisible" type="checkbox" checked> Bucket samples visible canvas</label>
+      </div>
       <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
       <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
       <button id="startAgain" class="btn danger" type="button" style="width:100%;margin-top:8px">Start again</button>
       <p class="help">Start again clears placed images and drawing marks, but keeps this project’s setup, imported image library, layers and settings.</p>
-      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
+      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
 
       <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
       <summary id="tileSettingsSummary">Tile and placement settings</summary>
