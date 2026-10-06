@@ -1205,6 +1205,92 @@ try{
     await view.locator('#ux2PaletteClose').click();await shot(view,'integration-pressure-motif-clip');await context.close();
   });
 
+  await step('Hardening: motif group survives flip, recolour, clipping, variation and export chain',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(20000);await attachErrors(view,'hardening-motif-chain');
+
+    await view.goto(BASE+'/app/doodle/',{waitUntil:'networkidle'});await view.waitForTimeout(250);
+    await view.locator('[data-ux2-tool="brush"]').click();
+    const canvas=view.locator('#editorCanvas'),box=await canvas.boundingBox();assert(box,'Hardening Doodle canvas unavailable');
+    for(const offset of [0,.13]){
+      await view.mouse.move(box.x+box.width*.30,box.y+box.height*(.38+offset));await view.mouse.down();
+      await view.mouse.move(box.x+box.width*.66,box.y+box.height*(.48+offset),{steps:10});await view.mouse.up();
+    }
+    await view.locator('#ux2ToolMenuTrigger').click();await view.locator('#ux2ToolMenu').getByRole('button',{name:'Select',exact:true}).click();
+    await view.locator('#ux2SelectAll').click();await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    await view.locator('[data-ux2-panel="motifs"]').click();await view.locator('#ux2MotifName').fill('Hardening Motif');await view.locator('#ux2SaveMotif').click();await view.getByText('Hardening Motif',{exact:true}).waitFor();
+
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.waitForTimeout(300);
+    if(await view.locator('#resumePrompt').isVisible())await view.locator('#startNewFromResume').click();
+    if(await view.locator('#newProjectSetup').isVisible()){await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});}
+    await view.locator('#files').setInputFiles(fixture);await view.waitForTimeout(140);
+    await view.locator('[data-ux2-panel="motifs"]').click();const motifRow=view.locator('[data-motif-id]').filter({hasText:'Hardening Motif'});await motifRow.waitFor({state:'visible'});await motifRow.getByRole('button',{name:'Insert',exact:true}).click();
+    await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=2);
+    assert(await view.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Hardening motif did not insert as one group');
+    await view.locator('#ux2FlipH').click();await view.locator('#ux2FlipV').click();
+
+    await view.locator('[data-ux2-panel="colour"]').click();assert(await visible(view,'#ux2SelectionColour'),'Hardening motif did not expose selected-mark recolour');
+    await view.locator('#ux2SelectionColour').evaluate(el=>{el.value='#7a3bb2';el.dispatchEvent(new Event('input',{bubbles:true}))});await view.locator('#ux2RecolourSelection').click();
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-panel="layers"]').click();const drawingRow=view.locator('[data-layer-index]').filter({hasText:'Drawing'}).first();await drawingRow.click();
+    if(!(await view.locator('#ux2LayerClipToBelow').isChecked()))await view.locator('#ux2LayerClipToBelow').check();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2VariationName').fill('Hardening Colourway');await view.locator('#ux2SaveVariation').click();await view.getByText('Hardening Colourway',{exact:true}).waitFor();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#ux2Export').click();const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP,svgPath=await svg.path();assert(svgPath,'Hardening chain SVG missing');
+    const svgText=fs.readFileSync(svgPath,'utf8');assert(svgText.includes('#7a3bb2')&&svgText.includes('pf-clip-'),'Hardening chain SVG lost recolour or clipping');
+    const jsonP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const json=await jsonP,jsonPath=await json.path();assert(jsonPath,'Hardening chain project missing');
+    const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),marks=data.marks.filter(mark=>String(mark.color).toLowerCase()==='#7a3bb2');
+    assert(marks.length>=2,'Hardening chain lost recoloured motif marks');
+    assert(new Set(marks.map(mark=>mark.groupId).filter(Boolean)).size===1,'Hardening chain lost motif group identity');
+    assert(marks.every(mark=>mark.transformFlipX===true&&mark.transformFlipY===true),'Hardening chain lost group flip state');
+    assert(data.layers.some(layer=>layer.id==='layer-drawing'&&layer.clipToBelow===true),'Hardening chain lost layer clipping');
+    assert(data.variations.some(variation=>variation.name==='Hardening Colourway'),'Hardening chain lost saved variation');
+    await view.locator('#ux2PaletteClose').click();await context.close();
+  });
+
+  await step('Hardening: frozen scatter group and variation survive save-reopen',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(20000);await attachErrors(view,'hardening-scatter-chain');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('#files').setInputFiles(fixture);await view.waitForTimeout(140);
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2ScatterCount').fill('4');await view.locator('#ux2ScatterMinScale').fill('8');await view.locator('#ux2ScatterMaxScale').fill('12');
+    if(!(await view.locator('#ux2ScatterPreserve').isChecked()))await view.locator('#ux2ScatterPreserve').check();
+    await view.locator('#ux2ScatterGenerate').click();await view.waitForTimeout(100);await view.locator('#ux2ScatterFreeze').click();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('[data-ux2-tool="select"]').click();await view.locator('#ux2SelectAll').click();await view.waitForFunction(()=>Number(document.querySelector('#selectedPanel')?.dataset.selectionCount||0)>=5);
+    await view.locator('#ux2Group').click();await view.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='true');
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2VariationName').fill('Frozen Scatter Group');await view.locator('#ux2SaveVariation').click();await view.getByText('Frozen Scatter Group',{exact:true}).waitFor();await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#ux2Export').click();const saveP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const saved=await saveP,savedPath=await saved.path();assert(savedPath,'Frozen scatter project save missing');
+    const before=JSON.parse(fs.readFileSync(savedPath,'utf8'));assert(before.items.length>=5,'Frozen scatter chain has too few items');assert(before.items.every(item=>!item.scatterGenerated),'Frozen scatter chain retained generated flags');
+    const groups=new Set(before.items.map(item=>item.groupId).filter(Boolean));assert(groups.size===1,'Frozen scatter chain was not one group');assert(before.variations.some(v=>v.name==='Frozen Scatter Group'),'Frozen scatter variation missing before reopen');
+    await view.locator('#ux2PaletteClose').click();
+
+    await view.locator('#projectFile').setInputFiles({name:'hardening-scatter.json',mimeType:'application/json',buffer:fs.readFileSync(savedPath)});await view.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);await view.waitForTimeout(140);
+    await view.locator('#ux2Export').click();const reopenP=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const reopened=await reopenP,reopenedPath=await reopened.path();assert(reopenedPath,'Frozen scatter reopened save missing');
+    const after=JSON.parse(fs.readFileSync(reopenedPath,'utf8'));assert(after.items.every(item=>!item.scatterGenerated),'Frozen scatter flags returned after reopen');assert(new Set(after.items.map(item=>item.groupId).filter(Boolean)).size===1,'Frozen scatter group changed after reopen');assert(after.variations.some(v=>v.name==='Frozen Scatter Group'),'Frozen scatter variation changed after reopen');
+    await view.locator('#ux2PaletteClose').click();await context.close();
+  });
+
+  await step('Hardening: 40-state undo cap remains stable after 45 edits',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760}});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'undo-depth');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.evaluate(()=>{
+      const slider=document.querySelector('#layerOpacity');
+      for(let i=1;i<=45;i++){slider.value=String(100-i);slider.dispatchEvent(new Event('change',{bubbles:true}));}
+    });
+    assert(await view.locator('#layerOpacity').inputValue()==='55','Undo-depth setup did not record 45 edits');
+    await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#undo').click();});
+    assert(await view.locator('#layerOpacity').inputValue()==='95','Forty undos did not stop at the oldest retained history state');
+    await view.locator('#undo').click();assert(await view.locator('#layerOpacity').inputValue()==='95','Undo exceeded the 40-state history cap');
+    await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#redo').click();});
+    assert(await view.locator('#layerOpacity').inputValue()==='55','Forty redos did not restore the latest state');
+    await context.close();
+  });
+
   await step('Pattern: a new tile opens centred with its grid in portrait and landscape',async()=>{
     for(const size of [{width:390,height:844,label:'portrait'},{width:844,height:390,label:'landscape'}]){
       const context=await browser.newContext({viewport:{width:size.width,height:size.height}});
