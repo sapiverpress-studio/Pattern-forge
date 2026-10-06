@@ -2026,21 +2026,83 @@
     const now=new Date().toISOString(),variation={id:"variation-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),name:title,createdAt:now,updatedAt:now,snapshot:variationSnapshot()};
     state.variations.unshift(variation);if(state.variations.length>30)state.variations.length=30;scheduleAutosave();setStatus("Saved variation “"+title+"”.");return variation;
   }
-  function applyVariation(id){
-    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot){setStatus("That variation is unavailable.");return false;}
-    saveHistory();const snap=variation.snapshot,itemMap=new Map((snap.items||[]).map(item=>[String(item.id),item])),markMap=new Map((snap.marks||[]).map(mark=>[String(mark.id),mark]));
+  function applyVariationSnapshot(snap,options={}){
+    if(!snap||typeof snap!=="object")return false;
+    if(options.history!==false)saveHistory();
+    const itemMap=new Map((snap.items||[]).map(item=>[String(item.id),item])),markMap=new Map((snap.marks||[]).map(mark=>[String(mark.id),mark]));
     for(const item of state.items){const saved=itemMap.get(String(item.id));if(!saved)continue;for(const key of ["x","y","scale","rotation","opacity"])if(saved[key]!==undefined)item[key]=saved[key];if(saved.scatterGenerated)item.scatterGenerated=true;else delete item.scatterGenerated;}
     for(const mark of state.marks){const saved=markMap.get(String(mark.id));if(!saved)continue;for(const key of ["color","endColor","opacity","transformX","transformY","transformScale","transformRotation"])if(saved[key]!==undefined)mark[key]=saved[key];}
     if(typeof snap.background==="string")$("bg").value=snap.background;$("transparent").checked=isDoodleProject()?true:!!snap.transparent;
-    if(Array.isArray(snap.palette))state.colorPalette=[...snap.palette];if(typeof snap.ink==="string")setInkColour(snap.ink);
+    if(Array.isArray(snap.palette))state.colorPalette=[...snap.palette];if(typeof snap.ink==="string"){$("ink").value=$("inkMobile").value=snap.ink;}
     const s=snap.settings||{};for(const key of ["neighborOpacity","count","minScale","maxScale","rotationAmount","scatterSpacing"])if(s[key]!==undefined)$(key).value=s[key];
     for(const key of ["scatterOverlap","scatterPreserveManual"])if(s[key]!==undefined)$(key).checked=!!s[key];
-    if(state.project)state.project.variation=variation.name;rebuildPaletteUI();updateSettingReadouts();renderAll();setStatus("Applied variation “"+variation.name+"”.");return true;
+    rebuildPaletteUI();updateSettingReadouts();
+    if(options.render!==false)renderAll();
+    return true;
+  }
+  function applyVariation(id){
+    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot){setStatus("That variation is unavailable.");return false;}
+    applyVariationSnapshot(variation.snapshot,{history:true,render:true});
+    if(state.project)state.project.variation=variation.name;
+    setStatus("Applied variation “"+variation.name+"”.");return true;
+  }
+  function renameVariation(id,name){
+    const variation=state.variations.find(v=>v.id===id),title=String(name||"").trim().slice(0,80);
+    if(!variation||!title){setStatus(!variation?"That variation is unavailable.":"Give the variation a name.");return false;}
+    variation.name=title;variation.updatedAt=new Date().toISOString();if(state.project?.variation===variation.name)state.project.variation=title;scheduleAutosave();setStatus("Renamed variation to “"+title+"”.");return true;
+  }
+  function duplicateVariation(id,name){
+    const source=state.variations.find(v=>v.id===id);if(!source?.snapshot){setStatus("That variation is unavailable.");return null;}
+    const title=String(name||("Copy of "+source.name)).trim().slice(0,80)||("Copy of "+source.name).slice(0,80),now=new Date().toISOString();
+    const copy={id:"variation-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),name:title,createdAt:now,updatedAt:now,snapshot:JSON.parse(JSON.stringify(source.snapshot))};
+    state.variations.unshift(copy);if(state.variations.length>30)state.variations.length=30;scheduleAutosave();setStatus("Duplicated variation as “"+title+"”.");return copy;
+  }
+  function compareVariation(id){
+    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot)return {changes:-1,summary:"Variation unavailable"};
+    const current=variationSnapshot(),snap=variation.snapshot;let changes=0,sections=[];
+    const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    if(current.background!==snap.background||current.transparent!==snap.transparent){changes++;sections.push("background");}
+    if(!same(current.palette,snap.palette)||current.ink!==snap.ink){changes++;sections.push("palette");}
+    const itemMap=new Map((current.items||[]).map(item=>[String(item.id),item]));let itemChanges=0;
+    for(const saved of snap.items||[]){const now=itemMap.get(String(saved.id));if(!now||!same(now,saved))itemChanges++;}
+    if(itemChanges){changes+=itemChanges;sections.push(itemChanges+" motif transform"+(itemChanges===1?"":"s"));}
+    const markMap=new Map((current.marks||[]).map(mark=>[String(mark.id),mark]));let markChanges=0;
+    for(const saved of snap.marks||[]){const now=markMap.get(String(saved.id));if(!now||!same(now,saved))markChanges++;}
+    if(markChanges){changes+=markChanges;sections.push(markChanges+" drawn mark"+(markChanges===1?"":"s"));}
+    const settingKeys=new Set([...Object.keys(current.settings||{}),...Object.keys(snap.settings||{})]),settingChanges=[...settingKeys].filter(key=>!same(current.settings?.[key],snap.settings?.[key])).length;
+    if(settingChanges){changes+=settingChanges;sections.push(settingChanges+" setting"+(settingChanges===1?"":"s"));}
+    return {changes,summary:changes?sections.join(" · "):"Matches current design"};
   }
   function deleteVariation(id){
     const before=state.variations.length;state.variations=state.variations.filter(v=>v.id!==id);if(state.variations.length===before)return false;scheduleAutosave();setStatus("Variation deleted.");return true;
   }
-  window.PatternForgeVariations={list:()=>state.variations.map(v=>({id:v.id,name:v.name,createdAt:v.createdAt,updatedAt:v.updatedAt})),save:saveVariation,apply:applyVariation,remove:deleteVariation};
+  function variationFilename(name,index){
+    const stem=String(name||("Variation-"+(index+1))).replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||("Variation-"+(index+1));
+    return String(index+1).padStart(2,"0")+"-"+stem;
+  }
+  async function exportVariationSet(){
+    if(!state.variations.length){setStatus("Save at least one named variation before exporting a colourway set.");return false;}
+    const working=variationSnapshot(),projectVariation=state.project?.variation||"",base=safeName(),files=[];
+    try{
+      for(let i=0;i<state.variations.length;i++){
+        const variation=state.variations[i];setStatus("Rendering colourway "+(i+1)+" of "+state.variations.length+": "+variation.name+"…");
+        applyVariationSnapshot(variation.snapshot,{history:false,render:false});if(state.project)state.project.variation=variation.name;
+        const png=await renderPNGBlob();if(!png)throw new Error("Colourway PNG export was cancelled.");
+        const stem=variationFilename(variation.name,i);
+        files.push({name:`${base}-${stem}-${png.spec.dpi}dpi.png`,blob:png.blob},{name:`${base}-${stem}.svg`,blob:renderSVGBlob()});
+      }
+      files.push({name:`${base}-editable-project.json`,blob:projectBlob()});
+      setStatus("Packaging "+state.variations.length+" saved colourways…");
+      const zip=await makeZip(files);downloadBlob(zip,`${base}-colourways.zip`);setStatus("Colourway ZIP downloaded with "+state.variations.length+" saved variation"+(state.variations.length===1?"":"s")+", each as PNG and SVG.");return true;
+    }catch(err){setStatus("Colourway export failed: "+err.message);return false;}
+    finally{
+      applyVariationSnapshot(working,{history:false,render:true});if(state.project)state.project.variation=projectVariation;rebuildPaletteUI();updateSettingReadouts();scheduleAutosave();
+    }
+  }
+  window.PatternForgeVariations={
+    list:()=>state.variations.map(v=>({id:v.id,name:v.name,createdAt:v.createdAt,updatedAt:v.updatedAt,comparison:compareVariation(v.id)})),
+    save:saveVariation,apply:applyVariation,rename:renameVariation,duplicate:duplicateVariation,compare:compareVariation,remove:deleteVariation,exportSet:exportVariationSet
+  };
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
     return {format:"pattern-forge-v4",tile:4000,dpi:300,
