@@ -297,6 +297,10 @@ try{
     const canvas=view.locator('#editorCanvas'),before=await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl),inside=await worldToClient(450,450);
     await view.mouse.click(inside.x,inside.y);
     await view.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('Bucket filled'),null,{timeout:30000});
+    const metrics=await view.evaluate(()=>window.PatternForgeBucketMetrics);
+    assert(metrics?.sampleSize===1800,'Bucket diagnostic sample size changed unexpectedly');
+    assert(metrics.estimatedWorkingBytes<=35*1024*1024,'Bucket transient working-buffer estimate exceeded 35 MiB');
+    assert(metrics.elapsedMs<6000,'Bucket fill exceeded the 6-second CI performance budget: '+metrics.elapsedMs+' ms');
     const after=await view.evaluate(()=>window.PatternForgeProductPreview().dataUrl);assert(after!==before,'Bucket fill produced no visible canvas change');
 
     const pixels=await view.evaluate(async()=>{
