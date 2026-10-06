@@ -222,16 +222,22 @@ try{
     assert(await visible(view,'#ux2PressureWidth'),'Pressure-width control missing');
     await view.locator('#ux2Stabilisation').selectOption('off');
     await view.locator('#ux2PressureWidth').check();
+    await view.locator('#ux2BrushLibrary').click();
+    await view.locator('#ux2PressureMin').evaluate(el=>{el.value='24';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ux2PressureResponse').evaluate(el=>{el.value='70';el.dispatchEvent(new Event('input',{bubbles:true}))});
+    await view.locator('#ux2PaletteClose').click();
 
     await view.evaluate(async()=>{
       const canvas=document.querySelector('#editorCanvas');canvas.setPointerCapture=()=>{};
       const rect=canvas.getBoundingClientRect(),zoom=Number(document.querySelector('#zoom').value)/100,scale=.38*zoom,ox=(canvas.width-900*scale)/2,oy=(canvas.height-900*scale)/2;
       const client=(x,y)=>({clientX:rect.x+(ox+x*scale)*rect.width/canvas.width,clientY:rect.y+(oy+y*scale)*rect.height/canvas.height});
-      const points=[[220,450,.1],[320,430,.25],[420,470,.5],[520,435,.75],[660,450,1]];
-      const fire=(type,x,y,pressure,buttons)=>{const p=client(x,y);canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:91,pointerType:'pen',pressure,buttons,button:0,...p}))};
+      const points=[[220,450,.05],[320,430,.25],[420,470,.5],[520,435,.75],[660,450,1]];
+      const fire=(type,x,y,pressure,buttons,pointerType='pen',pointerId=91)=>{const p=client(x,y);canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId,pointerType,pressure,buttons,button:0,...p}))};
       fire('pointerdown',...points[0],1);
       for(const point of points.slice(1))fire('pointermove',...point,1);
       fire('pointerup',660,450,1,0);
+      const mouse=[[220,560,0],[420,560,.1],[660,560,1]];
+      fire('pointerdown',...mouse[0],1,'mouse',92);for(const point of mouse.slice(1))fire('pointermove',...point,1,'mouse',92);fire('pointerup',660,560,1,0,'mouse',92);
       await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     });
 
@@ -240,13 +246,18 @@ try{
     const data=JSON.parse(fs.readFileSync(jsonPath,'utf8')),brush=data.marks.filter(mark=>mark.type==='brush').at(-1);
     assert(brush?.pressureWidth===true,'Pressure-enabled brush flag was not saved');
     const pressures=(brush.points||[]).map(point=>Number(point.p)).filter(Number.isFinite);
-    assert(pressures.length>=4&&Math.min(...pressures)<=.15&&Math.max(...pressures)>=.95,'Pen pressure values were not captured across the stroke');
-    assert(data.settings.pressureWidth===true,'Pressure-width preference was not persisted');
+    assert(pressures.length>=4&&Math.min(...pressures)<=.08&&Math.max(...pressures)>=.95,'Pen pressure values were not captured across the stroke');
+    assert(brush.pressureMin===24&&brush.pressureSensitivity===70,'Pressure curve settings were not captured on the stroke');
+    assert(data.settings.pressureWidth===true&&data.settings.pressureMin==='24'&&data.settings.pressureSensitivity==='70','Pressure refinement settings were not persisted');
+    const mouseBrush=data.marks.filter(mark=>mark.type==='brush').at(-1);assert(mouseBrush&&mouseBrush!==brush,'Mouse fallback stroke missing');
+    assert(mouseBrush.pressureWidth===false||mouseBrush.points.every(point=>point.p===undefined),'Mouse input incorrectly stored stylus pressure data');
 
     const svgP=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const svg=await svgP;const svgPath=await svg.path();assert(svgPath,'Pressure SVG download unavailable');
     const svgText=fs.readFileSync(svgPath,'utf8'),widths=[...svgText.matchAll(/stroke-width="([0-9.]+)"/g)].map(match=>Number(match[1])).filter(Number.isFinite);
     const unique=[...new Set(widths.map(width=>width.toFixed(4)))];
     assert(unique.length>=2,'Pressure SVG did not contain multiple vector stroke widths');
+    const baseWidth=Number(brush.width),lightExpected=baseWidth*(.24+(1-.24)*(1-(1-.05)*.70));
+    assert(widths.some(width=>Math.abs(width-lightExpected)<Math.max(.25,baseWidth*.08)),'SVG did not respect the configured minimum-width/response curve');
     await view.locator('#ux2PaletteClose').click();await shot(view,'pressure-width');await context.close();
   });
 
