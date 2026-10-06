@@ -120,8 +120,8 @@
   const BASE_LAYER_IDS = Object.freeze({motifs:"layer-motifs",drawing:"layer-drawing"});
   function defaultLayers(){
     return [
-      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true,clipToBelow:false},
-      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true,clipToBelow:false}
+      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false},
+      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false}
     ];
   }
   function normaliseLayers(rawLayers){
@@ -130,7 +130,7 @@
     for(const raw of rawLayers){
       if(!raw||typeof raw!=="object")continue;
       const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
-      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false,clipToBelow:!!raw.clipToBelow});
+      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,alphaLock:!!raw.alphaLock,export:raw.export!==false,clipToBelow:!!raw.clipToBelow});
     }
     if(layers.length)layers[0].clipToBelow=false;
     return layers.length?layers:defaultLayers();
@@ -182,18 +182,18 @@
     [...state.layers].reverse().forEach(layer=>{
       const button=document.createElement("button");button.type="button";button.className="layerRow"+(layer.id===state.activeLayerId?" active":"");
       const name=document.createElement("span");name.className="layerRowName";name.textContent=layer.name;
-      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");if(layer.clipToBelow)flags.push("clipped");
+      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.alphaLock)flags.push("alpha locked");if(layer.export===false)flags.push("no export");if(layer.clipToBelow)flags.push("clipped");
       const meta=document.createElement("span");meta.className="layerRowMeta";meta.textContent=`${layerArtworkCount(layer.id)} item${layerArtworkCount(layer.id)===1?"":"s"}${flags.length?" · "+flags.join(" · "):""}`;
       button.append(name,meta);
       button.addEventListener("click",()=>{state.activeLayerId=layer.id;rebuildLayerUI();scheduleAutosave();setStatus(`“${layer.name}” is the active layer.`);});
       list.appendChild(button);
     });
     const layer=activeLayer(),index=layer?state.layers.indexOf(layer):-1;
-    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerClipToBelow","layerDuplicate","layerDelete","layerUp","layerDown"];
+    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerAlphaLock","layerExport","layerClipToBelow","layerDuplicate","layerDelete","layerUp","layerDown"];
     controls.forEach(id=>$(id).disabled=!layer);
     if(!layer)return;
     $("layerName").value=layer.name;$("layerOpacity").value=Math.round(layer.opacity*100);$("layerOpacityValue").textContent=Math.round(layer.opacity*100)+"%";
-    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;$("layerClipToBelow").checked=!!layer.clipToBelow;$("layerClipToBelow").disabled=index<=0;
+    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerAlphaLock").checked=!!layer.alphaLock;$("layerExport").checked=layer.export!==false;$("layerClipToBelow").checked=!!layer.clipToBelow;$("layerClipToBelow").disabled=index<=0;
     $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
     $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
   }
@@ -206,7 +206,7 @@
     return `Layer ${Math.max(state.layers.length,maxNumber)+1}`;
   }
   function addLayer(){
-    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true,clipToBelow:false};
+    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false};
     state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
   }
   function duplicateActiveLayer(){
@@ -1103,7 +1103,7 @@
       if(!paths.length)throw new Error("No fillable region was found at that point.");
       if(totalPoints>25000)throw new Error("That region boundary is too complex to keep editable. Increase tolerance slightly or simplify the source artwork.");
       saveHistory();
-      const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
+      const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",alphaLocked:!!drawLayer.alphaLock,color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
       state.marks.push(mark);setSelection([mark.id],mark.id);renderAll();
       const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started),estimatedWorkingBytes=size*size*10;
       window.PatternForgeBucketMetrics={sampleSize:size,estimatedWorkingBytes,elapsedMs:elapsed,filledPixels:result.count,fillRatio:result.count/(size*size),targetRgba:[...result.target],contours:paths.length,points:totalPoints};
@@ -1594,7 +1594,7 @@
     saveHistory();
     const markStart=canonicalPoint(w.x,w.y),pressureEnabled=state.tool==="brush"&&$("pressureWidth").checked;
     if(pressureEnabled)markStart.p=pointerPressure(e);
-    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,alphaLocked:state.tool!=="eraser"&&!!drawLayer.alphaLock,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
     state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
     renderAll(false,false);
   });
@@ -2181,7 +2181,7 @@
       const layerIds=new Set();
       for(const layer of data.layers){
         const id=String(layer?.id||"").trim(),opacity=Number(layer?.opacity);
-        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error("invalid-layers");
+        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1||(layer.alphaLock!==undefined&&typeof layer.alphaLock!=="boolean"))throw new Error("invalid-layers");
         layerIds.add(id);
       }
       if(data.activeLayerId!==undefined&&!layerIds.has(String(data.activeLayerId)))throw new Error("invalid-layers");
@@ -2201,7 +2201,7 @@
     if(data.marks.some(mark=>{
       const badPoint=point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||(point.p!==undefined&&(!Number.isFinite(Number(point.p))||Number(point.p)<0||Number(point.p)>1));
       const badBucket=mark?.type==="bucket"&&(!Array.isArray(mark.paths)||mark.paths.length>512||mark.paths.some(path=>!Array.isArray(path)||path.length<3||path.some(badPoint))||mark.paths.reduce((sum,path)=>sum+path.length,0)>25000);
-      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean");
+      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean")||(mark.alphaLocked!==undefined&&typeof mark.alphaLocked!=="boolean");
     }))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
@@ -2370,6 +2370,7 @@
   $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
   $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(!layer.visible&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
   $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(layer.locked&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
+  $("layerAlphaLock").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.alphaLock=$("layerAlphaLock").checked;renderAll();setStatus(layer.alphaLock?`Alpha Lock enabled on “${layer.name}”. New paint stays inside existing layer transparency.`:`Alpha Lock disabled on “${layer.name}”.`);});
   $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
   $("layerClipToBelow").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const index=state.layers.indexOf(layer);if(index<=0){$("layerClipToBelow").checked=false;setStatus("The bottom layer cannot be clipped because there is no layer below it.");return;}saveHistory();layer.clipToBelow=$("layerClipToBelow").checked;renderAll();setStatus(layer.clipToBelow?"Layer clipped to the transparency of the layer below.":"Layer clipping removed.");});
   rebuildLayerUI();
