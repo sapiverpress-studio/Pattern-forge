@@ -201,27 +201,27 @@ try{
       if(type==='doodle'&&width<height){assert(await page.getByRole('heading',{name:'Rotate to landscape'}).isVisible());await page.setViewportSize({width:height,height:width});}
       if(type==='pattern')await page.locator('#createProject').click();
       const problems=[];
-      async function accessible(selector,label){
+      async function accessible(selector,label,minimumTap=0){
         const el=page.locator(selector);await el.scrollIntoViewIfNeeded();const data=await el.evaluate(e=>{const b=e.getBoundingClientRect(),t=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {x:b.x,y:b.y,w:b.width,h:b.height,right:b.right,bottom:b.bottom,view:[innerWidth,innerHeight],hit:!!t&&(t===e||e.contains(t))};});
-        if(data.x<0||data.y<0||data.right>data.view[0]+1||data.bottom>data.view[1]+1||!data.hit)problems.push({label,...data});
+        if(data.x<0||data.y<0||data.right>data.view[0]+1||data.bottom>data.view[1]+1||!data.hit||(minimumTap&&Math.min(data.w,data.h)<minimumTap))problems.push({label,minimumTap,...data});
       }
       for(const full of [false,true]){
         if(full)await page.locator('#ux2Fullscreen').click();
-        for(const selector of ['#ux2Fullscreen','#ux2Export','[data-ux2-panel="colour"]','[data-ux2-panel="layers"]','[data-ux2-panel="pattern"]'])await accessible(selector,`${full?'full':'normal'} ${selector}`);
+        for(const selector of ['#ux2Fullscreen','#ux2Export','[data-ux2-panel="colour"]','[data-ux2-panel="layers"]','[data-ux2-panel="pattern"]'])await accessible(selector,`${full?'full':'normal'} ${selector}`,32);
         if(type==='doodle'){
           await page.locator('#ux2ToolMenuTrigger').click();
           for(const checkbox of await page.locator('#ux2ToolMenu input').all())await checkbox.check();
           await page.locator('#ux2ToolMenuTrigger').click();
         }
-        for(const el of await page.locator('.ux2-tools .ux2-tool:visible').all()){const id=await el.getAttribute('aria-label');await accessible(`[aria-label="${id}"].ux2-tool`,`${full?'full':'normal'} tool ${id}`);}
+        for(const el of await page.locator('.ux2-tools .ux2-tool:visible').all()){const id=await el.getAttribute('aria-label');await accessible(`[aria-label="${id}"].ux2-tool`,`${full?'full':'normal'} tool ${id}`,32);}
         if(type==='doodle'){
-          for(let i=1;i<=4;i++)await accessible(`#ux2QuickPalette button:nth-child(${i})`,`${full?'full':'normal'} quick colour ${i}`);
+          for(let i=1;i<=4;i++)await accessible(`#ux2QuickPalette button:nth-child(${i})`,`${full?'full':'normal'} quick colour ${i}`,32);
           const rail=await page.locator('.ux2-tools').evaluate(el=>({overflow:getComputedStyle(el).overflowY,height:el.clientHeight,content:el.scrollHeight}));
           if(rail.content>rail.height+1&&!['auto','scroll'].includes(rail.overflow))problems.push({label:'quick tools cannot be scrolled by the user',...rail});
         }
         await page.locator('[data-ux2-tool="brush"]').click();
-        await accessible('#ux2BrushLibrary',`${full?'full':'normal'} brush library`);
-        await page.locator('[data-ux2-panel="pattern"]').click();await accessible('#ux2Symmetry',`${full?'full':'normal'} mirror`);await page.locator('#ux2PaletteClose').click();
+        await accessible('#ux2BrushLibrary',`${full?'full':'normal'} brush library`,32);
+        await page.locator('[data-ux2-panel="pattern"]').click();await accessible('#ux2Symmetry',`${full?'full':'normal'} mirror`,32);await page.locator('#ux2PaletteClose').click();
         if(full&&type==='doodle'){
           const stage=await page.locator('#stageWrap').boundingBox();
           for(const selector of ['.ux2-tools','.ux2-context','.ux2-zoom-controls']){
