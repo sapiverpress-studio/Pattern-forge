@@ -101,7 +101,7 @@ try{
       const legacy=structuredClone(sample);
       legacy.format='pattern-forge-v4';
       delete legacy.variations;
-      for(const key of ['pressureWidth','pressureMin','pressureSensitivity','strokeStabilisation','scatterSpacing','scatterOverlap','scatterPreserveManual','productScaleCm'])delete legacy.settings?.[key];
+      for(const key of ['pressureWidth','pressureMin','pressureSensitivity','strokeStabilisation','bucketTolerance','bucketSampleVisible','scatterSpacing','scatterOverlap','scatterPreserveManual','productScaleCm'])delete legacy.settings?.[key];
       for(const layer of legacy.layers||[])delete layer.clipToBelow;
       for(const item of legacy.items||[]){delete item.groupId;delete item.flipX;delete item.flipY;delete item.scatterGenerated;}
       for(const mark of legacy.marks||[]){
