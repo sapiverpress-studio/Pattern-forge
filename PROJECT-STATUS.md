@@ -191,6 +191,11 @@ Netlify deploy `6ac629080bd4ba0008708530` is **ready** on the account-owned `sap
 
 https://deploy-preview-3--sapiver-pattern-forge.netlify.app/
 
+Drawer-free fixed deploy permalink for device testing:
+https://6ac62939b24e3c00087db755--sapiver-pattern-forge.netlify.app/
+
+Use the fixed deploy permalink for normal app testing because Netlify injects its collaboration Drawer into the `deploy-preview-3` alias.
+
 Netlify records:
 - context: `deploy-preview`
 - source branch: `feature/advanced-editing-v1`
