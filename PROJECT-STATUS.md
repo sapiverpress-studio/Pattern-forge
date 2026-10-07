@@ -217,9 +217,17 @@ Tools sheet, and adds concise feature hints to Select/Brush/Fill/etc. Regression
 checks were added for Pattern and Doodle fullscreen overlap and workspace
 shortcuts. The first CI run exposed two regressions in the initial layout change:
 Doodle's widened feature dock moved its context strip over the canvas, and richer
-tool-menu copy changed the exact accessible name of tool buttons. The follow-up
-keeps Pattern's labelled feature dock, restores Doodle's compact dock/side-space
-geometry, and gives tool-menu buttons explicit accessible names. Rerun pending.
+tool-menu copy changed the exact accessible name of tool buttons. Follow-up commit
+`2290087d798b4cbcd1f304fd3b2d1f2df2126bc3` keeps Pattern's labelled feature
+dock, restores Doodle's compact dock/side-space geometry, and gives tool-menu
+buttons explicit accessible names.
+
+Verification on that exact commit is green: package workflow passed; complete UX
+audit **48/48 passed, 0 failed** (4 existing advisory warnings); extended
+readiness **31/31 passed**, including all Pattern/Doodle viewport checks and the
+new rule that the fullscreen Tools sheet must not cover the feature dock. Netlify
+Deploy Preview also succeeded for the same commit, deploy
+`6ac62cd93329d30008383b6e`.
 
 ## Remaining work, in order
 
