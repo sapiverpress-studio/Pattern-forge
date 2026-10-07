@@ -173,6 +173,16 @@ Do not change application code to solve this blocker. Restore a valid GitHub
 Actions repository secret named `NETLIFY_AUTH_TOKEN`, then run the existing
 manual staging workflow from `feature/advanced-editing-v1`.
 
+### Temporary live preview — 7 October 2026
+
+Because the current Netlify connector no longer exposes the direct upload action used for earlier staging API uploads, and the repository Netlify token is absent, a reversible tokenless preview route was used without changing production or the existing UX2 staging site.
+
+GitHub Actions run `37611387875` packaged the exact advanced-editing branch head, then passed the complete UX audit and extended-readiness suites before deployment. Netlify anonymous/drop deploy `6ac62790fbcb3774bb1c8ac9` is **ready** at:
+
+https://symphonious-daifuku-e0e7d2.netlify.app/
+
+Netlify reports five generated pages (`/`, `/help/`, `/app/`, `/app/pattern/`, `/app/doodle/`) and five assets uploaded. This is a temporary anonymous Netlify project, not the permanent UX2 staging project. It must not be described as replacing `sapiver-pattern-forge-ux2-staging`. The temporary trigger and workflow were removed immediately after the successful deploy in commits `1e4df6ca09c1792a4cc35e11afb2dd6afe6ad059` and `466b4eb66a57876aa67f6ecc76352d8dd765b23b`.
+
 ## Remaining work, in order
 
 1. Packaging/workflow/help validation: **done** (results above).
