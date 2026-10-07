@@ -54,12 +54,21 @@
   $('ux2CanvasSlot').appendChild(stage);
   document.body.classList.add('ux2-active');
   if(document.body.classList.contains('doodle-project')){
-    const quickPalette=$('ux2QuickPalette'),toolRail=shell.querySelector('.ux2-tools');
+    const quickPalette=$('ux2QuickPalette'),toolRail=shell.querySelector('.ux2-tools'),setupDock=shell.querySelector('[data-ux2-panel="pattern"]');
     if(quickPalette&&toolRail)toolRail.appendChild(quickPalette);
+    if(setupDock){setupDock.setAttribute('aria-label','Canvas setup');const label=setupDock.querySelector('b');if(label)label.textContent='Canvas setup';}
   }
 
   const hiddenTool = tool => oldLayout.querySelector(`[data-tool="${tool}"]`);
-  const favouriteTools=[{id:'select',label:'Select',icon:'select'},{id:'brush',label:'Brush',icon:'brush'},{id:'eraser',label:'Erase',icon:'eraser'},{id:'freefill',label:'Fill',icon:'fill'},{id:'pan',label:'Pan',icon:'pan'},{id:'image',label:'Image',icon:'image'},{id:'rect',label:'Shape',icon:'shape'}];
+  const favouriteTools=[
+    {id:'select',label:'Select',icon:'select',detail:'Group, flip & transform'},
+    {id:'brush',label:'Brush',icon:'brush',detail:'Stabilise, pressure & brush library'},
+    {id:'eraser',label:'Erase',icon:'eraser',detail:'Size & opacity'},
+    {id:'freefill',label:'Fill',icon:'fill',detail:'Bucket, gradient & tolerance'},
+    {id:'pan',label:'Pan',icon:'pan',detail:'Move around the canvas'},
+    {id:'image',label:'Image',icon:'image',detail:'Import artwork'},
+    {id:'rect',label:'Shape',icon:'shape',detail:'Line, rectangle & ellipse'}
+  ];
   const favouriteStorageKey='patternForgeUx2FavouriteTools';
   const isDoodle=document.body.classList.contains('doodle-project');
   let favouriteIds=[];
@@ -94,18 +103,39 @@
   }
   function renderToolMenu(){
     const menu=$('ux2ToolMenu');if(!menu)return;
-    menu.innerHTML='<div class="ux2-tool-menu-head"><strong>Tools</strong><span>Choose quick tools</span></div>';
+    const setupLabel=isDoodle?'Canvas setup':'Design setup';
+    menu.innerHTML='<div class="ux2-tool-menu-head"><strong>Tools</strong><span>Tool + Quick rail</span></div>';
+    const workspace=document.createElement('div');workspace.className='ux2-tool-menu-workspace';
+    const workspaceTitle=document.createElement('div');workspaceTitle.className='ux2-tool-menu-section-title';workspaceTitle.textContent='Workspace';
+    const workspaceGrid=document.createElement('div');workspaceGrid.className='ux2-tool-menu-workspace-grid';
+    [
+      {panel:'colour',label:'Colour',icon:'colour',detail:'Palettes & recolour'},
+      {panel:'layers',label:'Layers',icon:'layers',detail:'Alpha Lock & clipping'},
+      {panel:'motifs',label:'Motifs',icon:'image',detail:'Save & reuse artwork'},
+      {panel:'pattern',label:setupLabel,icon:'repeat',detail:isDoodle?'Grid, mirror & guides':'Scatter, colourways & scale'}
+    ].forEach(item=>{
+      const button=document.createElement('button');button.type='button';button.className='ux2-tool-menu-workspace-button';
+      button.setAttribute('aria-label',`Open ${item.label}`);
+      button.innerHTML=`${icon(item.icon)}<span><strong>${item.label}</strong><small>${item.detail}</small></span>`;
+      button.addEventListener('click',()=>{menu.hidden=true;$('ux2ToolMenuTrigger').setAttribute('aria-expanded','false');openPanel(item.panel)});
+      workspaceGrid.append(button);
+    });
+    workspace.append(workspaceTitle,workspaceGrid);
+    const toolsTitle=document.createElement('div');toolsTitle.className='ux2-tool-menu-section-title';toolsTitle.textContent='Drawing tools';
     const grid=document.createElement('div');grid.className='ux2-tool-menu-grid';
     favouriteTools.forEach(tool=>{
       const row=document.createElement('div');row.className='ux2-tool-menu-row';
-      const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';use.innerHTML=`${icon(tool.icon)}<span>${tool.label}</span>`;use.addEventListener('click',()=>selectToolFromMenu(tool.id));
+      const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';
+      use.innerHTML=`${icon(tool.icon)}<span class="ux2-tool-menu-copy"><strong>${tool.label}</strong><small>${tool.detail||''}</small></span>`;
+      use.addEventListener('click',()=>selectToolFromMenu(tool.id));
       const favourite=document.createElement('label');favourite.className='ux2-tool-menu-favourite';
       const check=document.createElement('input');check.type='checkbox';check.checked=favouriteIds.includes(tool.id);check.setAttribute('aria-label',`Show ${tool.label} in quick tools`);
       check.addEventListener('change',()=>{favouriteIds=check.checked?[...new Set([...favouriteIds,tool.id])]:favouriteIds.filter(savedId=>savedId!==tool.id);saveFavouriteTools();renderFavouriteRail();renderToolMenu()});
       favourite.append(check,document.createTextNode(' Quick'));
       row.append(use,favourite);grid.append(row);
     });
-    menu.append(grid);
+    const hint=document.createElement('p');hint.className='ux2-tool-menu-hint';hint.textContent='Tool-specific controls appear in the context strip after you choose a tool or select artwork.';
+    menu.append(workspace,toolsTitle,grid,hint);
   }
   function initFavouriteControls(){
     document.querySelectorAll('.ux2-tools>.ux2-tool').forEach(toolButton=>{

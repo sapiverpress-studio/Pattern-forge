@@ -17,6 +17,12 @@ body.doodle-project #projectSetupOverlay,body.doodle-project #resumePrompt{displ
 .ux2-top-left,.ux2-top-actions{display:flex;align-items:center;gap:8px;min-width:0}.ux2-project{min-width:0;display:flex;align-items:center;gap:9px}.ux2-title{font-weight:800;font-size:14px;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ux2-mode{border:1px solid #c7d0da;background:#edf2f6;color:#536a84;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
 .ux2-btn,.ux2-icon-btn,.ux2-tool,.ux2-dock{border:0;background:transparent;color:#526173}.ux2-btn{border:1px solid var(--ux2-line);background:#fff;border-radius:10px;padding:8px 11px;font-weight:750;font-size:12px}.ux2-btn.primary{background:linear-gradient(180deg,#7891af,#657f9f);border-color:#657f9f;color:white}.ux2-icon-btn{display:grid;place-items:center;width:38px;height:38px;border-radius:10px}.ux2-icon-btn:hover,.ux2-tool:hover,.ux2-dock:hover{background:#e6ebf0}.ux2-icon-btn svg,.ux2-tool svg,.ux2-dock svg{width:22px;height:22px;display:block}.ux2-gallery{display:flex;align-items:center;gap:4px;width:auto;padding:0 8px;font-weight:750;font-size:12px}.doodle-project .ux2-gallery{display:none}
 .ux2-tool-menu-trigger{display:inline-flex}.ux2-tool-menu{display:block;position:absolute;top:52px;left:8px;width:min(320px,calc(100vw - 16px));max-height:calc(100dvh - 68px);overflow:auto;z-index:55;padding:12px;border:1px solid #c8d2dc;border-radius:14px;background:#f8fafb;box-shadow:0 12px 30px rgba(31,42,57,.2)}.ux2-tool-menu[hidden]{display:none}.ux2-tool-menu-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}.ux2-tool-menu-head strong{font-size:14px}.ux2-tool-menu-head span{font-size:10px;color:#687483}.ux2-tool-menu-grid{display:grid;gap:6px}.ux2-tool-menu-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px;border:1px solid #d5dde5;border-radius:10px;background:#fff}.ux2-tool-menu-use{display:flex;align-items:center;gap:8px;min-height:34px;border:0;background:transparent;color:#263442;font:inherit;font-size:12px;font-weight:750;text-align:left}.ux2-tool-menu-use svg{width:18px;height:18px}.ux2-tool-menu-favourite{display:flex;align-items:center;gap:4px;font-size:10px;color:#526173;white-space:nowrap}.ux2-tool-menu-favourite input{width:16px;height:16px;accent-color:#526d8f}
+.ux2-tool-menu-section-title{margin:9px 2px 6px;font-size:9px;font-weight:850;color:#788492;text-transform:uppercase;letter-spacing:.1em}
+.ux2-tool-menu-workspace{padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #d5dde5}
+.ux2-tool-menu-workspace-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.ux2-tool-menu-workspace-button{display:flex;align-items:center;gap:7px;min-height:48px;padding:7px 8px;border:1px solid #ccd6e0;border-radius:10px;background:#edf3f8;color:#32465c;text-align:left}
+.ux2-tool-menu-workspace-button svg{width:18px;height:18px;flex:0 0 18px}.ux2-tool-menu-workspace-button span,.ux2-tool-menu-copy{display:grid;min-width:0}.ux2-tool-menu-workspace-button strong,.ux2-tool-menu-copy strong{font-size:11px;line-height:1.15}.ux2-tool-menu-workspace-button small,.ux2-tool-menu-copy small{margin-top:2px;color:#6c7885;font-size:8px;line-height:1.2;font-weight:650}
+.ux2-tool-menu-copy{flex:1}.ux2-tool-menu-hint{margin:8px 2px 0;color:#667483;font-size:9px;line-height:1.35}
 .ux2-work{display:grid;grid-template-columns:var(--ux2-rail) minmax(0,1fr) 70px;min-height:0;min-width:0;width:100%;max-width:100%;box-sizing:border-box;position:relative;overflow:hidden}.ux2-tools,.ux2-dockbar{background:linear-gradient(180deg,#f8fafb,#eef2f5);padding:8px 6px;display:flex;flex-direction:column;gap:5px;z-index:10}.ux2-tools{border-right:1px solid #cbd3dc}.ux2-dockbar{border-left:1px solid #cbd3dc}.ux2-tool,.ux2-dock{min-height:57px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:750;position:relative}.ux2-tool.active,.ux2-dock.active{background:linear-gradient(180deg,#dde7f1,#d4e0ec);color:#3f5875;box-shadow:inset 0 0 0 1px #c1cfdd}.ux2-tool.active:before,.ux2-dock.active:before{content:"";position:absolute;left:-6px;width:3px;height:28px;border-radius:0 4px 4px 0;background:var(--ux2-blue)}
 .ux2-canvas-area{min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--ux2-canvas)}.ux2-canvas-head{height:36px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid #cbd2da;background:#eef1f4;color:#657280;font-size:12px}.ux2-canvas-head .spacer{flex:1}.ux2-canvas-slot{flex:1;min-height:0;min-width:0;width:100%;position:relative;overflow:hidden;display:grid;place-items:center;background-color:#dfe4e9;background-image:linear-gradient(45deg,#d8dee4 25%,transparent 25%),linear-gradient(-45deg,#d8dee4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d8dee4 75%),linear-gradient(-45deg,transparent 75%,#d8dee4 75%);background-size:26px 26px;background-position:0 0,0 13px,13px -13px,-13px 0}
 .ux2-canvas-slot #stageWrap{box-sizing:border-box;width:min(82dvh,900px,100%);max-width:calc(100% - 24px);min-width:0;aspect-ratio:1;height:auto;margin:0;border-radius:4px;border:1px solid #b9c2cc;background:#fff;box-shadow:0 18px 45px rgba(31,42,57,.17);overflow:hidden}.ux2-canvas-slot #stageWrap>.stageBar,.ux2-canvas-slot #stageWrap>.focusRecents,.ux2-canvas-slot #stageWrap>.focusInfoPanel,.ux2-canvas-slot #stageWrap>.mobileTools,.ux2-canvas-slot #stageWrap>.focusRail,.ux2-canvas-slot #stageWrap>.stageControls,.ux2-canvas-slot #stageWrap>.stageHint{display:none!important}.ux2-canvas-slot #editorCanvas{display:block;width:100%!important;height:100%!important;background:#fff;cursor:crosshair}
@@ -56,7 +62,7 @@ body.ux2-fullscreen .ux2-top-left{display:flex!important}
 body.ux2-fullscreen .ux2-gallery,
 body.ux2-fullscreen .ux2-project{display:none!important}
 body.ux2-fullscreen .ux2-tool-menu-trigger{display:inline-flex!important}
-body.ux2-fullscreen .ux2-tool-menu{left:auto;right:6px;top:52px}
+body.ux2-fullscreen .ux2-tool-menu{left:auto;right:84px;top:52px;width:min(340px,calc(100vw - 176px));max-height:calc(100dvh - 60px)}
 body.ux2-fullscreen .ux2-top-actions{gap:2px}
 body.ux2-fullscreen #ux2Export{display:inline-flex!important;align-items:center;min-height:34px;padding:6px 9px;font-size:11px}
 body.ux2-fullscreen .ux2-top-actions .ux2-icon-btn{width:34px;height:34px}
@@ -67,26 +73,30 @@ body.ux2-fullscreen .ux2-canvas-head{display:none!important}
    floating overlay in the otherwise-unused landscape side space. */
 body.ux2-fullscreen .ux2-tools,
 body.ux2-fullscreen .ux2-dockbar{
-  position:absolute;top:50%;transform:translateY(-50%);width:46px;
+  position:absolute;top:50%;transform:translateY(-50%);
   max-height:calc(100dvh - 20px);padding:4px;gap:3px;
   border:1px solid rgba(185,194,204,.9);border-radius:13px;
   background:rgba(248,250,251,.92);box-shadow:0 4px 16px rgba(31,42,57,.16);
   backdrop-filter:blur(8px);z-index:44;overflow-y:auto
 }
+body.ux2-fullscreen .ux2-tools{width:46px}
+body.ux2-fullscreen .ux2-dockbar{width:72px;z-index:56}
 body.ux2-fullscreen .ux2-tools{
   left:max(88px,calc(env(safe-area-inset-left) + 36px));
   border-right:1px solid rgba(185,194,204,.9)
 }
 body.ux2-fullscreen .ux2-dockbar{right:6px;border-left:1px solid rgba(185,194,204,.9)}
-body.ux2-fullscreen .ux2-tool,
-body.ux2-fullscreen .ux2-dock{
+body.ux2-fullscreen .ux2-tool{
   width:36px;min-height:36px;padding:0;border-radius:9px;flex:0 0 36px
 }
+body.ux2-fullscreen .ux2-dock{
+  width:62px;min-height:44px;padding:3px 2px;border-radius:9px;flex:0 0 44px;gap:2px
+}
 body.ux2-fullscreen .ux2-tool-item{flex:0 0 36px}
-body.ux2-fullscreen .ux2-tool b,
-body.ux2-fullscreen .ux2-dock b{display:none!important}
-body.ux2-fullscreen .ux2-tool svg,
-body.ux2-fullscreen .ux2-dock svg{width:20px;height:20px}
+body.ux2-fullscreen .ux2-tool b{display:none!important}
+body.ux2-fullscreen .ux2-dock b{display:block!important;max-width:58px;font-size:8px;line-height:1.05;text-align:center;white-space:normal}
+body.ux2-fullscreen .ux2-tool svg{width:20px;height:20px}
+body.ux2-fullscreen .ux2-dock svg{width:18px;height:18px}
 body.ux2-fullscreen .ux2-tool.active:before,
 body.ux2-fullscreen .ux2-dock.active:before{left:-4px;height:22px}
 
@@ -117,7 +127,7 @@ body.ux2-fullscreen .ux2-canvas-area{position:absolute;inset:0;display:block}
 body.ux2-fullscreen .ux2-canvas-slot{
   position:absolute;inset:0;display:grid;place-items:center;padding:2px
 }
-body.ux2-fullscreen .ux2-palette{right:0;top:0;height:100%;z-index:50}
+body.ux2-fullscreen .ux2-palette{right:84px;top:0;height:100%;z-index:50}
 body.ux2-fullscreen .ux2-canvas-slot #stageWrap{
   width:min(calc(100dvh - 4px),calc(100vw - 4px));
   height:min(calc(100dvh - 4px),calc(100vw - 4px));
@@ -247,7 +257,7 @@ body.ux2-fullscreen.doodle-project .ux2-context.ux2-context--empty-selection{
 }
 /* Doodle contextual controls stay in side space, clear of the drawing tile. */
 body.ux2-fullscreen.doodle-project .ux2-context:not(.ux2-context--empty-selection){
-  left:auto;right:58px;top:50%;bottom:auto;transform:translateY(-50%);
+  left:auto;right:84px;top:50%;bottom:auto;transform:translateY(-50%);
   box-sizing:border-box;
   width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));
   max-width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));

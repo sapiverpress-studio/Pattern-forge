@@ -137,6 +137,10 @@ try{
     assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
     assert(await page.locator('#ux2ToolMenuTrigger').isVisible(),'Pattern Tools chooser is missing');
     await page.locator('#ux2ToolMenuTrigger').click();
+    for(const label of ['Colour','Layers','Motifs','Design setup'])assert(await page.getByRole('button',{name:'Open '+label,exact:true}).isVisible(),'Tools menu workspace shortcut missing: '+label);
+    assert(await page.getByText('Group, flip & transform',{exact:true}).isVisible(),'Select advanced-feature hint missing');
+    assert(await page.getByText('Stabilise, pressure & brush library',{exact:true}).isVisible(),'Brush advanced-feature hint missing');
+    assert(await page.getByText('Bucket, gradient & tolerance',{exact:true}).isVisible(),'Fill advanced-feature hint missing');
     assert(await page.getByRole('checkbox',{name:'Show Brush in quick tools',exact:true}).isChecked(),'Pattern quick-tool state is not exposed in Tools');
     await page.getByRole('checkbox',{name:'Show Erase in quick tools',exact:true}).uncheck();
     assert(await page.locator('.ux2-tools [data-ux2-tool="eraser"]').isHidden(),'Pattern quick rail did not follow Tools favourites');
@@ -1038,6 +1042,13 @@ try{
     const stage=await page.locator('#stageWrap').boundingBox();assert(stage&&stage.height>700,'Fullscreen canvas lost its large size after reserving the context-control gutter');
     assert(await page.locator('.ux2-tools').isVisible(),'Fullscreen tool rail hidden');
     assert(await page.locator('.ux2-dockbar').isVisible(),'Fullscreen palette dock hidden');
+    await page.locator('#ux2ToolMenuTrigger').click();
+    const menuBox=await page.locator('#ux2ToolMenu').boundingBox(),dockBox=await page.locator('.ux2-dockbar').boundingBox();
+    assert(menuBox&&dockBox&&menuBox.x+menuBox.width<=dockBox.x+1,'Fullscreen Tools menu covers the feature dock');
+    for(const label of ['Colour','Layers','Motifs','Design setup'])assert(await page.getByRole('button',{name:'Open '+label,exact:true}).isVisible(),'Fullscreen workspace shortcut missing: '+label);
+    await page.getByRole('button',{name:'Open Design setup',exact:true}).click();
+    assert((await page.locator('#ux2PaletteTitle').textContent())==='Design setup','Tools workspace shortcut did not open Design setup');
+    await page.locator('#ux2PaletteClose').click();
     for(const [selector,label] of [
       ['#ux2Undo','Undo'],['#ux2Redo','Redo'],['#ux2Fullscreen','Exit full screen'],
       ['[data-ux2-tool="select"]','Select'],['[data-ux2-tool="brush"]','Brush'],['[data-ux2-tool="eraser"]','Erase'],
@@ -1361,6 +1372,13 @@ try{
     await m.locator('#ux2Fullscreen').click();await m.waitForTimeout(100);
     const tools=await m.locator('.ux2-tools').boundingBox();
     assert(tools&&tools.x>=88,'Fullscreen tool rail is still in the camera/cutout zone');
+    await m.locator('#ux2ToolMenuTrigger').click();
+    assert(await m.getByRole('button',{name:'Open Canvas setup',exact:true}).isVisible(),'Doodle Tools menu does not expose Canvas setup');
+    const doodleMenu=await m.locator('#ux2ToolMenu').boundingBox(),doodleDock=await m.locator('.ux2-dockbar').boundingBox();
+    assert(doodleMenu&&doodleDock&&doodleMenu.x+doodleMenu.width<=doodleDock.x+1,'Doodle fullscreen Tools menu covers the feature dock');
+    await m.getByRole('button',{name:'Open Canvas setup',exact:true}).click();
+    assert((await m.locator('#ux2PaletteTitle').textContent())==='Canvas setup','Doodle workspace shortcut did not open Canvas setup');
+    await m.locator('#ux2PaletteClose').click();
     const stage=await m.locator('#stageWrap').boundingBox();
     assert(stage&&stage.height>330,'Doodle fullscreen canvas is too small');
     await m.locator('[data-ux2-tool="brush"]').click();

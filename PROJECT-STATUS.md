@@ -206,6 +206,17 @@ Netlify records:
 
 This is account-owned and persistent under the real Netlify project, unlike the earlier one-hour anonymous preview. It does **not** change `main`, the production URL, or the separate `sapiver-pattern-forge-ux2-staging` site. Use this deploy preview as the current live advanced-editing verification target until a separate production/staging publication decision is made.
 
+### Mobile feature discoverability fix — implementation staged
+
+Jim's physical-phone screenshot showed the fullscreen Tools sheet obscuring the
+right-side Colour/Layers/Motifs/Setup dock, making the advanced feature work look
+absent even though it existed in source. The implementation now keeps that dock
+visible and labelled in fullscreen, moves the Tools sheet clear of it, exposes
+Colour/Layers/Motifs/Design setup (Canvas setup in Doodle) directly inside the
+Tools sheet, and adds concise feature hints to Select/Brush/Fill/etc. Regression
+checks were added for Pattern and Doodle fullscreen overlap and workspace
+shortcuts. Automated test results are pending for this commit.
+
 ## Remaining work, in order
 
 1. Packaging/workflow/help validation: **done** (results above).
