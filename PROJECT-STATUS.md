@@ -10,11 +10,11 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: verified staging package and source are saved to GitHub. A
-staging publication attempt on 7 October passed both packaged-site test suites
-but could not publish because the GitHub Actions secret `NETLIFY_AUTH_TOKEN`
-was empty. Netlify still serves the 4 October staging deploy. Physical Android
-release approval remains open.**
+**Current stage: advanced-editing source is pushed and a proper account-owned
+Netlify Deploy Preview is live from the exact development branch. The separate
+UX2 staging URL still serves its 4 October upload because its direct-upload
+connector action is no longer exposed. Production/main remains unchanged.
+Physical Android release approval remains open.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -182,6 +182,24 @@ GitHub Actions run `37611387875` packaged the exact advanced-editing branch head
 https://symphonious-daifuku-e0e7d2.netlify.app/
 
 Netlify reports five generated pages (`/`, `/help/`, `/app/`, `/app/pattern/`, `/app/doodle/`) and five assets uploaded. This is a temporary anonymous Netlify project, not the permanent UX2 staging project. It must not be described as replacing `sapiver-pattern-forge-ux2-staging`. The temporary trigger and workflow were removed immediately after the successful deploy in commits `1e4df6ca09c1792a4cc35e11afb2dd6afe6ad059` and `466b4eb66a57876aa67f6ecc76352d8dd765b23b`.
+
+### Account-owned Netlify deploy preview — 7 October 2026
+
+To obtain a proper persistent Netlify deployment without the missing GitHub `NETLIFY_AUTH_TOKEN`, draft PR #3 was opened from `feature/advanced-editing-v1` to `main` **only to trigger Netlify's Git-connected Deploy Preview**. The PR must not be merged without Jim's separate production-release approval.
+
+Netlify deploy `6ac629080bd4ba0008708530` is **ready** on the account-owned `sapiver-pattern-forge` project:
+
+https://deploy-preview-3--sapiver-pattern-forge.netlify.app/
+
+Netlify records:
+- context: `deploy-preview`
+- source branch: `feature/advanced-editing-v1`
+- source commit: `c7c014e22fbc3120aeaa9555264c67e27da81b3c`
+- review: GitHub PR #3
+- 22 changed files uploaded, including the root app and help entry pages
+- GitHub commit status `netlify/sapiver-pattern-forge/deploy-preview`: **success**
+
+This is account-owned and persistent under the real Netlify project, unlike the earlier one-hour anonymous preview. It does **not** change `main`, the production URL, or the separate `sapiver-pattern-forge-ux2-staging` site. Use this deploy preview as the current live advanced-editing verification target until a separate production/staging publication decision is made.
 
 ## Remaining work, in order
 
