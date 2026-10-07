@@ -1284,10 +1284,24 @@ try{
     });
     assert(await view.locator('#layerOpacity').inputValue()==='55','Undo-depth setup did not record 45 edits');
     await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#undo').click();});
+    // History updates synchronously; layer controls refresh on the next animation
+    // frame. Wait for the expected value, not a fixed delay or an immediate read.
+    await view.waitForFunction(()=>document.querySelector('#layerOpacity').value==='95');
     assert(await view.locator('#layerOpacity').inputValue()==='95','Forty undos did not stop at the oldest retained history state');
     await view.evaluate(()=>document.querySelector('#undo').click());assert(await view.locator('#layerOpacity').inputValue()==='95','Undo exceeded the 40-state history cap');
     await view.evaluate(()=>{for(let i=0;i<40;i++)document.querySelector('#redo').click();});
+    await view.waitForFunction(()=>document.querySelector('#layerOpacity').value==='55');
     assert(await view.locator('#layerOpacity').inputValue()==='55','Forty redos did not restore the latest state');
+    await view.locator('#ux2Undo').click();
+    await view.waitForFunction(()=>document.querySelector('#layerOpacity').value==='56');
+    await view.locator('#ux2Redo').click();
+    await view.waitForFunction(()=>document.querySelector('#layerOpacity').value==='55');
+    const downloadPromise=view.waitForEvent('download');
+    await view.locator('#saveProject').evaluate(el=>el.click());
+    const download=await downloadPromise,savedPath=await download.path();
+    assert(savedPath,'Undo-depth project download missing');
+    const restored=JSON.parse(fs.readFileSync(savedPath,'utf8'));
+    assert(restored.layers.find(layer=>layer.id===restored.activeLayerId)?.opacity===.55,'Redo result was not preserved in the editable project');
     await context.close();
   });
 

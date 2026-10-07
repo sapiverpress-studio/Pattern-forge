@@ -2,7 +2,7 @@ name: Package UX2 staging site
 
 on:
   push:
-    branches: [feature/canvas-first-ux-v2]
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
     paths:
       - index.html
       - _headers
@@ -10,6 +10,7 @@ on:
       - assets/**
       - app/**
       - help/**
+      - dev/package-ux2-staging.py
       - .github/workflows/package-ux2-staging.yml
   workflow_dispatch:
 
@@ -19,12 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/canvas-first-ux-v2
+          ref: ${{ github.sha }}
       - name: Assemble static staging site
-        run: |
-          mkdir -p ux2-staging-site
-          cp index.html _headers manifest.webmanifest ux2-staging-site/
-          cp -R assets app help ux2-staging-site/
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: python3 dev/package-ux2-staging.py ux2-staging-site --commit "$SOURCE_COMMIT"
       - name: Upload staging site
         uses: actions/upload-artifact@v4
         with:
