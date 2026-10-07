@@ -215,7 +215,11 @@ visible and labelled in fullscreen, moves the Tools sheet clear of it, exposes
 Colour/Layers/Motifs/Design setup (Canvas setup in Doodle) directly inside the
 Tools sheet, and adds concise feature hints to Select/Brush/Fill/etc. Regression
 checks were added for Pattern and Doodle fullscreen overlap and workspace
-shortcuts. Automated test results are pending for this commit.
+shortcuts. The first CI run exposed two regressions in the initial layout change:
+Doodle's widened feature dock moved its context strip over the canvas, and richer
+tool-menu copy changed the exact accessible name of tool buttons. The follow-up
+keeps Pattern's labelled feature dock, restores Doodle's compact dock/side-space
+geometry, and gives tool-menu buttons explicit accessible names. Rerun pending.
 
 ## Remaining work, in order
 

@@ -125,7 +125,7 @@
     const grid=document.createElement('div');grid.className='ux2-tool-menu-grid';
     favouriteTools.forEach(tool=>{
       const row=document.createElement('div');row.className='ux2-tool-menu-row';
-      const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';
+      const use=document.createElement('button');use.type='button';use.className='ux2-tool-menu-use';use.setAttribute('aria-label',tool.label);
       use.innerHTML=`${icon(tool.icon)}<span class="ux2-tool-menu-copy"><strong>${tool.label}</strong><small>${tool.detail||''}</small></span>`;
       use.addEventListener('click',()=>selectToolFromMenu(tool.id));
       const favourite=document.createElement('label');favourite.className='ux2-tool-menu-favourite';

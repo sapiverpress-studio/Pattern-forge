@@ -244,6 +244,12 @@ body.doodle-project .ux2-tools #ux2QuickPalette{
 body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
   width:24px;height:24px;max-width:100%;flex:0 0 auto;box-sizing:border-box
 }
+body.ux2-fullscreen.doodle-project .ux2-dockbar{width:46px}
+body.ux2-fullscreen.doodle-project .ux2-dock{width:36px;min-height:36px;padding:0;flex:0 0 36px}
+body.ux2-fullscreen.doodle-project .ux2-dock b{display:none!important}
+body.ux2-fullscreen.doodle-project .ux2-dock svg{width:20px;height:20px}
+body.ux2-fullscreen.doodle-project .ux2-palette{right:58px}
+body.ux2-fullscreen.doodle-project .ux2-tool-menu{right:58px}
 body.ux2-fullscreen.doodle-project .ux2-tools{width:62px;gap:2px}
 body.ux2-fullscreen.doodle-project .ux2-tools .ux2-tool-item{flex:0 0 34px}
 body.ux2-fullscreen.doodle-project .ux2-tools .ux2-tool{width:34px;min-height:34px;flex:0 0 34px}
@@ -257,7 +263,7 @@ body.ux2-fullscreen.doodle-project .ux2-context.ux2-context--empty-selection{
 }
 /* Doodle contextual controls stay in side space, clear of the drawing tile. */
 body.ux2-fullscreen.doodle-project .ux2-context:not(.ux2-context--empty-selection){
-  left:auto;right:84px;top:50%;bottom:auto;transform:translateY(-50%);
+  left:auto;right:58px;top:50%;bottom:auto;transform:translateY(-50%);
   box-sizing:border-box;
   width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));
   max-width:min(220px,max(116px,calc((100vw - 100dvh)/2 - 70px)));
