@@ -10,9 +10,11 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: verified staging package ready; source and handover saved to
-GitHub. Staging publication awaits an authorised deployment route. Physical
-Android release approval remains open.**
+**Current stage: verified staging package and source are saved to GitHub. A
+staging publication attempt on 7 October passed both packaged-site test suites
+but could not publish because the GitHub Actions secret `NETLIFY_AUTH_TOKEN`
+was empty. Netlify still serves the 4 October staging deploy. Physical Android
+release approval remains open.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -24,7 +26,8 @@ staging interface is the latest implementation.
 | --- | --- |
 | Repository | `sapiverpress-studio/Pattern-forge` |
 | Active working branch | `feature/advanced-editing-v1` |
-| Latest saved implementation | `7030c64501d2f0689babab7ea44feef439a64951`; subsequent status-only commits may advance HEAD |
+| Latest saved implementation | `7030c64501d2f0689babab7ea44feef439a64951`; subsequent deployment/status-only commits may advance HEAD |
+| Current branch head before this status update | `3ef9b3f51233682430ffb6bdfe635e6a82937bf9`; application files remain those of `7030c645` |
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
 | Development vs UX2 at takeover | 113 commits ahead, 0 behind; not merged |
@@ -46,9 +49,10 @@ be checked, not assumed.
 ## What has been implemented, and where to find it
 
 The following are implemented in the **development interface**, with browser
-regression evidence below. At takeover, they are **not published on the current
-staging or production sites**. Update that statement after publication and live
-verification. Availability is different from physical Android validation.
+regression evidence below. As of the failed 7 October publication attempt, they
+are **still not published on the current staging or production sites**. The
+staging failure was authentication-only after both packaged-site suites passed.
+Availability is different from physical Android validation.
 
 | Feature | Where the user finds it | Source / browser status |
 | --- | --- | --- |
@@ -89,7 +93,7 @@ The Line shape exists, but **line-connect is deferred**, not completed.
 
 | Test | Result and exact evidence |
 | --- | --- |
-| Complete UX audit | **48/48 pass**, 4 advisory layout warnings, at `b3c357b5`: https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37514528103 |
+| Complete UX audit | **48/48 pass**, 4 advisory layout warnings. Latest GitHub pass at implementation commit `7030c645`: https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37580461473 |
 | Extended readiness | **31/31 pass** at parent `7b1bae2f`: https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37514518558 |
 | Difference from parent | `b3c357b5` changes only the undo-cap test interaction; application code is identical to the passing readiness run |
 | Layout qualification | Four warnings refer to off-screen controls within scrollable rails. Separate checks scroll to and hit-test tools/colours across five viewport sizes; they pass. These are not physical touch/cutout checks. |
@@ -142,21 +146,45 @@ performed the successful commit. Staging publication is still pending.
 
 GitHub packaging succeeded on this source:
 https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37580461656
-The new GitHub UX audit is running:
+The fresh GitHub UX audit also passed:
 https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37580461473
-The exposed Netlify tools report deploy state but provide no deploy/upload action;
-the GitHub tools provide no workflow-dispatch action. A signed-in browser fallback
-requires user approval under this session's browser tool rules.
+
+### Staging publication attempt — 7 October, 07:28–07:31 BST
+
+Jim explicitly authorised staging publication. Because the connected GitHub tool
+does not expose workflow_dispatch and the connected Netlify tool does not expose
+deploy/upload, a temporary path-limited one-shot push trigger was added only to
+the staging workflow. Trigger commit `41481566981329178bbf49125c128b4516d8c32d`
+ran deployment workflow
+https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37581692684.
+
+The exact packaged site passed the complete UX audit (**48/48**) and extended
+readiness (**31/31**) before publication was attempted. The Netlify step then
+failed immediately because `NETLIFY_AUTH_TOKEN` was empty in GitHub Actions.
+No Netlify upload occurred. The staging site's current deploy remains
+`6ac226566d5c6842cea2c5c8` from 4 October.
+
+The temporary push trigger was removed. The deployment workflow was restored to
+manual-only in commit `cca9835fa2df4c77e3cc97c875f03535580db9f9`, and the
+one-shot trigger file was removed in
+`3ef9b3f51233682430ffb6bdfe635e6a82937bf9`. Production/main was not changed.
+
+Do not change application code to solve this blocker. Restore a valid GitHub
+Actions repository secret named `NETLIFY_AUTH_TOKEN`, then run the existing
+manual staging workflow from `feature/advanced-editing-v1`.
 
 ## Remaining work, in order
 
 1. Packaging/workflow/help validation: **done** (results above).
 2. Fresh complete UX and extended-readiness tests: **done**, 48/48 and 31/31.
 3. Source commit and remote-file verification: **done**, `7030c645`; packaging CI also passed.
-4. With an authorised deployment route, publish to the existing staging site,
-   verify ready state and compare deployed
-   `build.json` plus asset hashes with the package. Check live Pattern/Doodle
-   entry, visible new controls, drawing, project save/reopen and export.
+4. Restore a valid GitHub Actions repository secret named
+   `NETLIFY_AUTH_TOKEN`, then run the existing **manual** staging workflow from
+   `feature/advanced-editing-v1`. The pre-deploy test gate is already proven,
+   but must run again for the exact dispatch commit. After publication, verify
+   Netlify ready state and compare deployed `build.json` plus asset hashes with
+   the package. Check live Pattern/Doodle entry, visible new controls, drawing,
+   project save/reopen and export.
 5. Perform the physical Android gate below. If this environment cannot reach the
    phone, say so and provide a precise device checklist; do not claim it passed.
 6. Record a readiness decision. Production merge/deploy or APK release requires
