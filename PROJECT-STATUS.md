@@ -10,8 +10,9 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: prepare and verify an identifiable staging build of the completed
-advanced-editing work. Physical Android release approval remains open.**
+**Current stage: verified staging package ready; source and handover saved to
+GitHub. Staging publication awaits an authorised deployment route. Physical
+Android release approval remains open.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -23,6 +24,7 @@ staging interface is the latest implementation.
 | --- | --- |
 | Repository | `sapiverpress-studio/Pattern-forge` |
 | Active working branch | `feature/advanced-editing-v1` |
+| Latest saved implementation | `7030c64501d2f0689babab7ea44feef439a64951`; subsequent status-only commits may advance HEAD |
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
 | Development vs UX2 at takeover | 113 commits ahead, 0 behind; not merged |
@@ -130,9 +132,18 @@ for the exact expected UI value and additionally verifies visible Undo/Redo plus
 55% opacity in an exported editable project. The full rerun passed 48/48; readiness remains 31/31 on identical
 application files. No drawing/history-engine change was required.
 
-The code is ready for a source commit through the connected GitHub tool. The
-standalone git client has no GitHub credentials; do not request a token or assume
-its failed push changed the remote branch. Staging publication is still pending.
+The changes are saved to `feature/advanced-editing-v1` in remote commit
+`7030c64501d2f0689babab7ea44feef439a64951`. All 12 changed files were fetched back
+and matched byte for byte. The package made from that remote commit matches the
+locally tested package except for its new build identity. The local candidate
+commits were not pushed; use the remote branch as the authoritative continuation
+point. The standalone git client has no credentials; the connected GitHub tool
+performed the successful commit. Staging publication is still pending.
+
+GitHub packaging succeeded on this source:
+https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37580461656
+The new GitHub UX audit is running:
+https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/37580461473
 The exposed Netlify tools report deploy state but provide no deploy/upload action;
 the GitHub tools provide no workflow-dispatch action. A signed-in browser fallback
 requires user approval under this session's browser tool rules.
@@ -141,7 +152,7 @@ requires user approval under this session's browser tool rules.
 
 1. Packaging/workflow/help validation: **done** (results above).
 2. Fresh complete UX and extended-readiness tests: **done**, 48/48 and 31/31.
-3. Commit/push through the connected GitHub tool and verify the remote files.
+3. Source commit and remote-file verification: **done**, `7030c645`; packaging CI also passed.
 4. With an authorised deployment route, publish to the existing staging site,
    verify ready state and compare deployed
    `build.json` plus asset hashes with the package. Check live Pattern/Doodle
