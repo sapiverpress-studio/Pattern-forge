@@ -1,11 +1,6 @@
 name: Deploy UX2 staging (manual)
 
 on:
-  push:
-    branches:
-      - feature/advanced-editing-v1
-    paths:
-      - '.github/one-shot-ux2-staging-deploy'
   workflow_dispatch:
     inputs:
       confirm:
@@ -23,7 +18,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: (github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-ux2-staging' && (github.ref == 'refs/heads/feature/advanced-editing-v1' || github.ref == 'refs/heads/feature/canvas-first-ux-v2')) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/advanced-editing-v1')
+    if: inputs.confirm == 'deploy-ux2-staging' && (github.ref == 'refs/heads/feature/advanced-editing-v1' || github.ref == 'refs/heads/feature/canvas-first-ux-v2')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
