@@ -10,12 +10,15 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: advanced-editing source now includes the verified live-interaction
-performance pass and count-driven Template Engine v1. Both are pushed and live on
-the account-owned Netlify Deploy Preview. The separate UX2 staging URL still
-serves its 4 October upload because its direct-upload connector action is no
-longer exposed. Production/main remains unchanged. Physical Android release
-approval remains open.**
+**Current stage: the verified advanced Pattern Forge build is now promoted to
+`main` and live on the permanent production URL. Production merge commit:
+`a2416897233be865e861982aa4618c9e4bbde3af`. Netlify production deploy:
+`6ac8d68fb27b4900091fd3f3`, state **ready**, alias
+https://sapiver-pattern-forge.netlify.app/. The web app includes the fluidity
+optimisation, count-driven layout templates, global adaptable-master design model
+and manual-review Etsy digital-product exporter. Android source exists and targets
+the production URL by default; a fresh APK physical-device validation remains the
+next release gate.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -32,16 +35,18 @@ staging interface is the latest implementation.
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
 | Development vs UX2 at takeover | 113 commits ahead, 0 behind; not merged |
-| Production/main | `3ea35cee5d5d528eef30c4a038afebdabb1b9d44` |
+| Production/main | `a2416897233be865e861982aa4618c9e4bbde3af` — verified advanced build merged 9 Oct 2026 |
 | Production URL | https://sapiver-pattern-forge.netlify.app/ |
-| Production deploy | `6abe8d9e2cf67500089091ba`, published 1 October, 17:43 BST; ready |
+| Production deploy | `6ac8d68fb27b4900091fd3f3`, published 9 Oct 2026; ready |
 | Staging URL | https://sapiver-pattern-forge-ux2-staging.netlify.app/ |
 | Staging site ID | `b27b1208-9ab0-4166-ad28-661aff39e579` |
 | Staging deploy at takeover | `6ac226566d5c6842cea2c5c8`, published 4 October, 11:11 BST; ready |
 | Staging source provenance at takeover | Uploaded build; Netlify records no source SHA. Historical handover identifies tested app source `3fb82dc` with later test/documentation commits. |
 
 Jim authorised continuing the work and the proposed staging update on 7 October.
-This is not authority to publish production, merge into main or release an APK.
+On 9 October Jim explicitly authorised promotion of the verified build to production;
+PR #3 was merged into main and Netlify published the permanent production site.
+This production approval does not by itself authorise an APK/AAB store release.
 Keep advanced editing on its current branch; do not merge into UX2 merely to
 publish a staging package. The Android `preview-ux2` profile points to staging;
 the default wrapper points to production. An installed APK's effective URL must
@@ -381,6 +386,31 @@ Verified state:
 - Netlify Deploy Preview `6ac8d2eecfef520007a1236a`: **ready**.
 - Drawer-free permalink:
   https://6ac8d2eecfef520007a1236a--sapiver-pattern-forge.netlify.app/
+
+### Production promotion — 9 October 2026
+
+Jim explicitly approved moving the verified build to the permanent Pattern Forge
+URL. PR #3 was marked ready, reconciled with the two existing main-history cleanup
+commits using a content-neutral merge commit, and merged into `main`.
+
+- Main merge: `a2416897233be865e861982aa4618c9e4bbde3af`
+- Netlify production deploy: `6ac8d68fb27b4900091fd3f3`
+- Netlify state: **ready**
+- Permanent URL: https://sapiver-pattern-forge.netlify.app/
+- The production deploy points at the exact main merge commit.
+- The tested application tree is unchanged by the history reconciliation.
+
+Android state after promotion:
+- package: `uk.co.sapiverpress.patternforge`
+- Expo project ID: `53addbf0-0314-4e3e-9120-08fa61a0ee4a`
+- source version: `1.0.0`, Android `versionCode: 1`
+- default mobile wrapper URL: https://sapiver-pattern-forge.netlify.app/
+- EAS `preview` produces an internal APK using the default production URL.
+- EAS `production` produces an Android App Bundle (AAB).
+- EAS `preview-ux2` still points to the old isolated staging URL and should not
+  be used for the next physical-device acceptance build.
+- A fresh APK build and real-device checks remain required before calling the
+  Android release production-ready.
 
 ## Remaining work, in order
 
