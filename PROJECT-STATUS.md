@@ -10,15 +10,16 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: the verified advanced Pattern Forge build is now promoted to
-`main` and live on the permanent production URL. Production merge commit:
-`a2416897233be865e861982aa4618c9e4bbde3af`. Netlify production deploy:
-`6ac8d68fb27b4900091fd3f3`, state **ready**, alias
+**Current stage: the verified advanced Pattern Forge build is live on the
+permanent production URL, including the corrected adaptable-master SVG exporter.
+Production SVG-fix merge commit:
+`65966b5eefe25fe54a9626ccd94f273aa8ca837e`. Netlify production deploy:
+`6ac90639c3af3500088ae314`, state **ready**, alias
 https://sapiver-pattern-forge.netlify.app/. The web app includes the fluidity
-optimisation, count-driven layout templates, global adaptable-master design model
-and manual-review Etsy digital-product exporter. Android source exists and targets
-the production URL by default; a fresh APK physical-device validation remains the
-next release gate.**
+optimisation, count-driven layout templates, global adaptable-master design model,
+manual-review Etsy digital-product exporter and valid scalable SVG dimensions.
+Android source targets the production URL by default; a fresh APK physical-device
+validation remains the next release gate.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -35,9 +36,9 @@ staging interface is the latest implementation.
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
 | Development vs UX2 at takeover | 113 commits ahead, 0 behind; not merged |
-| Production/main | `a2416897233be865e861982aa4618c9e4bbde3af` — verified advanced build merged 9 Oct 2026 |
+| Production/main | `65966b5eefe25fe54a9626ccd94f273aa8ca837e` — verified SVG fix merged 9 Oct 2026 |
 | Production URL | https://sapiver-pattern-forge.netlify.app/ |
-| Production deploy | `6ac8d68fb27b4900091fd3f3`, published 9 Oct 2026; ready |
+| Production deploy | `6ac90639c3af3500088ae314`, published 9 Oct 2026; ready |
 | Staging URL | https://sapiver-pattern-forge-ux2-staging.netlify.app/ |
 | Staging site ID | `b27b1208-9ab0-4166-ad28-661aff39e579` |
 | Staging deploy at takeover | `6ac226566d5c6842cea2c5c8`, published 4 October, 11:11 BST; ready |
@@ -442,6 +443,21 @@ Verified on exact implementation commit
 - Half-drop and brick root dimensions/viewBoxes are also explicitly covered.
 - Production remains unchanged; deployment still requires Jim's separate
   explicit approval.
+
+### SVG fix production promotion — 9 October 2026
+
+Jim explicitly approved production deployment of the verified SVG fix. PR #4
+merged the development branch into `main`.
+
+- SVG implementation commit: `b913c812492571ff9b108a5591e7ecc8441e1c8a`
+- Verified development status commit: `b380e46a819cd1a7d002ce4657649f7402915f42`
+- Production merge: `65966b5eefe25fe54a9626ccd94f273aa8ca837e`
+- Netlify production deploy: `6ac90639c3af3500088ae314`
+- Netlify state: **ready**
+- Permanent URL: https://sapiver-pattern-forge.netlify.app/
+- Netlify `commit_ref` exactly matches the production merge.
+- The corrected production SVG root uses unitless intrinsic dimensions and a
+  matching viewBox; the former `undefinedin` defect is removed.
 
 ## Remaining work, in order
 
