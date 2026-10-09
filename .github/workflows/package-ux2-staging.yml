@@ -1,0 +1,34 @@
+name: Package UX2 staging site
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
+    paths:
+      - index.html
+      - _headers
+      - manifest.webmanifest
+      - assets/**
+      - app/**
+      - help/**
+      - dev/package-ux2-staging.py
+      - .github/workflows/package-ux2-staging.yml
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Assemble static staging site
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: python3 dev/package-ux2-staging.py ux2-staging-site --commit "$SOURCE_COMMIT"
+      - name: Upload staging site
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux2-staging-site
+          path: ux2-staging-site/**
+          if-no-files-found: error
+          retention-days: 2

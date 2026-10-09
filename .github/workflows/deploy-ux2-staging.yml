@@ -1,0 +1,77 @@
+name: Deploy UX2 staging (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type deploy-ux2-staging to confirm the isolated staging deploy.
+        required: true
+        default: deploy-ux2-staging
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ux2-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: inputs.confirm == 'deploy-ux2-staging' && (github.ref == 'refs/heads/feature/advanced-editing-v1' || github.ref == 'refs/heads/feature/canvas-first-ux-v2')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NETLIFY_SITE_ID: b27b1208-9ab0-4166-ad28-661aff39e579
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check out the audited UX2 commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_COMMIT }}
+
+      - name: Verify the exact source commit
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+
+      - name: Assemble the static staging site
+        run: python3 dev/package-ux2-staging.py ux2-staging-site --commit "$EXPECTED_COMMIT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Test the exact packaged site before publication
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory ux2-staging-site >/tmp/pf-staging-test.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do curl -fsS http://127.0.0.1:4173/build.json >/dev/null && break; sleep 1; done
+          node tests/ux2-complete-ux-audit.mjs
+          node tests/ux2-extended-readiness.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux2-staging-verification
+          path: |
+            ux2-audit/
+            ux2-extended-results/
+            ux2-staging-site/build.json
+          retention-days: 7
+
+      - name: Deploy only to the separate UX2 staging site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN"
+          # --prod updates the primary URL of this *staging* site ID only.
+          npx --yes netlify-cli@latest deploy \
+            --dir ux2-staging-site \
+            --site "$NETLIFY_SITE_ID" \
+            --auth "$NETLIFY_AUTH_TOKEN" \
+            --prod

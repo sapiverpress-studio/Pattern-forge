@@ -120,8 +120,8 @@
   const BASE_LAYER_IDS = Object.freeze({motifs:"layer-motifs",drawing:"layer-drawing"});
   function defaultLayers(){
     return [
-      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,export:true},
-      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,export:true}
+      {id:BASE_LAYER_IDS.motifs,name:"Motifs",visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false},
+      {id:BASE_LAYER_IDS.drawing,name:"Drawing",visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false}
     ];
   }
   function normaliseLayers(rawLayers){
@@ -130,8 +130,9 @@
     for(const raw of rawLayers){
       if(!raw||typeof raw!=="object")continue;
       const id=String(raw.id||"").trim();if(!id||seen.has(id))continue;seen.add(id);
-      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,export:raw.export!==false});
+      layers.push({id,name:String(raw.name||"Layer").slice(0,80),visible:raw.visible!==false,opacity:clamp(Number.isFinite(Number(raw.opacity))?Number(raw.opacity):1,0,1),locked:!!raw.locked,alphaLock:!!raw.alphaLock,export:raw.export!==false,clipToBelow:!!raw.clipToBelow});
     }
+    if(layers.length)layers[0].clipToBelow=false;
     return layers.length?layers:defaultLayers();
   }
   function layerById(id){return state.layers.find(layer=>layer.id===id)||null;}
@@ -147,6 +148,8 @@
     layers: defaultLayers(),
     activeLayerId: BASE_LAYER_IDS.drawing,
     selectedId: null,
+    selectedIds: [],
+    selectionAddMode: false,
     nextId: 1,
     dragging: false,
     resizeState: null,
@@ -154,6 +157,9 @@
     dragOffset: {x:0,y:0},
     snapGuides: {x:null,y:null},
     renderQueued: false,
+    interactionActive: false,
+    interactionKind: null,
+    interactionTile: null,
     tool: "select",
     previousTool: "select",
     zoom: 1,
@@ -164,9 +170,23 @@
     dragStart: null,
     past: [], future: [],
     recentAssetIds:[], colorPalette:["#2c5f54","#d66a4d","#e8bc52","#20242b"],
-    savedPalettes:[],focusMode:false,focusRepeatPreview:false,
+    savedPalettes:[],variations:[],focusMode:false,focusRepeatPreview:false,
+    templateGuide:null,
     pendingPreview: false, pendingSelected: false
   };
+
+  function normaliseTemplateGuide(raw){
+    if(!raw||typeof raw!=="object")return null;
+    const count=Number(raw.count),round=Number(raw.round),choice=Number(raw.choice);
+    if(!Number.isInteger(count)||count<1||count>30||!Number.isInteger(round)||round<0||round>9999||!Number.isInteger(choice)||choice<0||choice>2||!Array.isArray(raw.slots)||raw.slots.length!==count)return null;
+    const slots=[];
+    for(let i=0;i<raw.slots.length;i++){
+      const slot=raw.slots[i],x=Number(slot?.x),y=Number(slot?.y),scale=Number(slot?.scale),rotation=Number(slot?.rotation||0);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>TILE||y<0||y>TILE||!Number.isFinite(scale)||scale<.04||scale>.45||!Number.isFinite(rotation)||Math.abs(rotation)>Math.PI*2)return null;
+      slots.push({id:i+1,x,y,scale,rotation,role:slot?.role==="hero"?"hero":"filler"});
+    }
+    return {version:1,count,round,choice,key:String(raw.key||["balanced","flowing","feature"][choice]||"balanced").slice(0,30),name:String(raw.name||"Layout").slice(0,60),visible:raw.visible!==false,slots};
+  }
 
   function newLayerId(){return "layer-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
   function activeLayer(){return layerById(state.activeLayerId)||state.layers[state.layers.length-1]||null;}
@@ -179,18 +199,18 @@
     [...state.layers].reverse().forEach(layer=>{
       const button=document.createElement("button");button.type="button";button.className="layerRow"+(layer.id===state.activeLayerId?" active":"");
       const name=document.createElement("span");name.className="layerRowName";name.textContent=layer.name;
-      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.export===false)flags.push("no export");
+      const flags=[];if(layer.visible===false)flags.push("hidden");if(layer.locked)flags.push("locked");if(layer.alphaLock)flags.push("alpha locked");if(layer.export===false)flags.push("no export");if(layer.clipToBelow)flags.push("clipped");
       const meta=document.createElement("span");meta.className="layerRowMeta";meta.textContent=`${layerArtworkCount(layer.id)} item${layerArtworkCount(layer.id)===1?"":"s"}${flags.length?" · "+flags.join(" · "):""}`;
       button.append(name,meta);
       button.addEventListener("click",()=>{state.activeLayerId=layer.id;rebuildLayerUI();scheduleAutosave();setStatus(`“${layer.name}” is the active layer.`);});
       list.appendChild(button);
     });
     const layer=activeLayer(),index=layer?state.layers.indexOf(layer):-1;
-    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerExport","layerDuplicate","layerDelete","layerUp","layerDown"];
+    const controls=["layerName","layerOpacity","layerVisible","layerLocked","layerAlphaLock","layerExport","layerClipToBelow","layerDuplicate","layerDelete","layerUp","layerDown"];
     controls.forEach(id=>$(id).disabled=!layer);
     if(!layer)return;
     $("layerName").value=layer.name;$("layerOpacity").value=Math.round(layer.opacity*100);$("layerOpacityValue").textContent=Math.round(layer.opacity*100)+"%";
-    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerExport").checked=layer.export!==false;
+    $("layerVisible").checked=layer.visible!==false;$("layerLocked").checked=!!layer.locked;$("layerAlphaLock").checked=!!layer.alphaLock;$("layerExport").checked=layer.export!==false;$("layerClipToBelow").checked=!!layer.clipToBelow;$("layerClipToBelow").disabled=index<=0;
     $("layerDelete").disabled=state.layers.length<=1;$("layerUp").disabled=index>=state.layers.length-1;$("layerDown").disabled=index<=0;
     $("layerSummary").textContent=`${layerArtworkCount(layer.id)} artwork item${layerArtworkCount(layer.id)===1?"":"s"}. Layers at the top are rendered in front.`;
   }
@@ -203,7 +223,7 @@
     return `Layer ${Math.max(state.layers.length,maxNumber)+1}`;
   }
   function addLayer(){
-    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,export:true};
+    saveHistory();const layer={id:newLayerId(),name:nextLayerName(),visible:true,opacity:1,locked:false,alphaLock:false,export:true,clipToBelow:false};
     state.layers.push(layer);state.activeLayerId=layer.id;renderAll();setStatus(`Added “${layer.name}”.`);
   }
   function duplicateActiveLayer(){
@@ -249,7 +269,7 @@
     document.querySelectorAll("[data-tool]").forEach(t=>t.classList.toggle("active",t.dataset.tool===returnTool));
     updateToolHighlight();
     canvas.style.cursor=returnTool==="pan"?"grab":returnTool==="select"?"default":"crosshair";
-    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[returnTool]||"Previous";
+    const toolName={select:"Select",brush:"Brush",pan:"Pan",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",bucket:"Bucket fill",gradient:"Gradient fill"}[returnTool]||"Previous";
     setStatus(`Eyedropper picked ${hex}. ${toolName} tool restored.`);
   }
   function hashString(str){
@@ -265,9 +285,121 @@
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
+  function templateBaseScale(count){return clamp(.43/Math.sqrt(Math.max(1,count)),.075,.22);}
+  function templateBalancedSlots(count,rand){
+    const cols=Math.ceil(Math.sqrt(count)),rows=Math.ceil(count/cols),base=templateBaseScale(count),slots=[];
+    for(let i=0;i<count;i++){
+      const row=Math.floor(i/cols),remaining=count-row*cols,rowCount=Math.min(cols,remaining),col=i%cols;
+      const x=((col+.5)/rowCount+(rand()-.5)*.13/Math.max(1,rowCount))*TILE;
+      const y=((row+.5)/rows+(rand()-.5)*.13/Math.max(1,rows))*TILE;
+      slots.push({id:i+1,x:clamp(x,0,TILE),y:clamp(y,0,TILE),scale:base*(.9+rand()*.2),rotation:(rand()-.5)*.28,role:"filler"});
+    }
+    return slots;
+  }
+  function templateFlowingSlots(count,rand){
+    const base=templateBaseScale(count),phase=rand()*Math.PI*2,slots=[];
+    for(let i=0;i<count;i++){
+      const t=(i+.5)/count;
+      const x=((.04+t*.92+(rand()-.5)*.035)%1+1)%1;
+      const y=((.10+t*.76+Math.sin(t*Math.PI*2*1.35+phase)*.13+(rand()-.5)*.045)%1+1)%1;
+      slots.push({id:i+1,x:x*TILE,y:y*TILE,scale:base*(.86+rand()*.24),rotation:-.42+rand()*.84,role:"filler"});
+    }
+    return slots;
+  }
+  function templateFeatureSlots(count,rand){
+    const base=templateBaseScale(count),heroCount=Math.min(count,Math.max(1,Math.min(4,Math.round(count*.25)))),slots=[];
+    const shiftX=(rand()-.5)*.12,shiftY=(rand()-.5)*.12,heroes=[[.26,.28],[.73,.34],[.38,.74],[.78,.76]];
+    for(let i=0;i<heroCount;i++){
+      const p=heroes[i],x=((p[0]+shiftX)%1+1)%1,y=((p[1]+shiftY)%1+1)%1;
+      slots.push({id:slots.length+1,x:x*TILE,y:y*TILE,scale:Math.min(.34,base*1.55),rotation:(rand()-.5)*.34,role:"hero"});
+    }
+    const fillers=count-heroCount,golden=.61803398875,phase=rand();
+    for(let i=0;i<fillers;i++){
+      const x=((i+.5)/Math.max(1,fillers)+phase*.23)%1,y=((i+1)*golden+phase)%1;
+      slots.push({id:slots.length+1,x:x*TILE,y:y*TILE,scale:base*.78,rotation:(rand()-.5)*.72,role:"filler"});
+    }
+    return slots;
+  }
+  function templateOptions(count,round=0){
+    count=clamp(Math.round(Number(count)||6),1,30);round=Math.max(0,Math.floor(Number(round)||0));
+    const seed=String($("seed")?.value||"pattern-01"),makeRand=kind=>mulberry32(hashString(seed+"|template|"+count+"|"+round+"|"+kind));
+    return [
+      {key:"balanced",name:"Balanced",description:"Even all-over spacing",slots:templateBalancedSlots(count,makeRand("balanced"))},
+      {key:"flowing",name:"Flowing",description:"Diagonal organic movement",slots:templateFlowingSlots(count,makeRand("flowing"))},
+      {key:"feature",name:"Feature + fill",description:"Larger focal positions with fillers",slots:templateFeatureSlots(count,makeRand("feature"))}
+    ].map((option,choice)=>({...option,count,round,choice}));
+  }
+  function chooseTemplateLayout(count,round,choice){
+    if(isDoodleProject()){setStatus("Layout templates are available in Pattern Projects.");return null;}
+    const options=templateOptions(count,round),option=options[clamp(Math.floor(Number(choice)||0),0,2)];
+    state.templateGuide=normaliseTemplateGuide({...option,visible:true});
+    renderAll(false,false);scheduleAutosave();setStatus("Template selected: "+option.name+" · "+option.count+" element"+(option.count===1?"":"s")+".");return JSON.parse(JSON.stringify(state.templateGuide));
+  }
+  function clearTemplateGuide(){state.templateGuide=null;renderAll(false,false);scheduleAutosave();setStatus("Layout template guide cleared.");}
+  function setTemplateGuideVisible(visible){if(!state.templateGuide)return false;state.templateGuide.visible=!!visible;renderAll(false,false);scheduleAutosave();return state.templateGuide.visible;}
+  function templateTopLevelElements(){
+    const selected=new Set(selectionIds()),limitToSelection=selected.size>0,groups=new Map();
+    const records=[...state.items.map(artwork=>({kind:"item",artwork})),...state.marks.filter(mark=>mark.type!=="eraser").map(artwork=>({kind:"mark",artwork}))];
+    for(const record of records){
+      const layer=layerForArtwork(record.artwork,record.kind==="item"?BASE_LAYER_IDS.motifs:BASE_LAYER_IDS.drawing);
+      if(!layerIsRenderable(layer,false)||layer.locked)continue;
+      const key=record.artwork.groupId?"group:"+record.artwork.groupId:record.kind+":"+record.artwork.id;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(record);
+    }
+    let elements=[...groups.values()];
+    if(limitToSelection)elements=elements.filter(records=>records.some(record=>selected.has(record.artwork.id)));
+    return elements;
+  }
+  function templateElementCenter(records){
+    const anchor=artworkCenter(records[0]),points=records.map(record=>{
+      const centre=artworkCenter(record),delta=nearestLatticeDelta(centre.x,centre.y,anchor.x,anchor.y);return {x:anchor.x+delta.x,y:anchor.y+delta.y};
+    });
+    return {x:points.reduce((sum,p)=>sum+p.x,0)/points.length,y:points.reduce((sum,p)=>sum+p.y,0)/points.length};
+  }
+  function moveTemplateElement(records,slot){
+    const centre=templateElementCenter(records),dx=slot.x-centre.x,dy=slot.y-centre.y;
+    for(const record of records){
+      if(record.kind==="item"){
+        const item=record.artwork,pos=canonicalPoint(Number(item.x||0)+dx,Number(item.y||0)+dy);item.x=pos.x;item.y=pos.y;delete item.scatterGenerated;
+      }else{
+        const mark=record.artwork,t=markTransformValues(mark);mark.transformX=t.x+dx;mark.transformY=t.y+dy;normaliseMarkTranslation(mark);
+      }
+    }
+  }
+  function distributeTemplateArtwork(){
+    const guide=state.templateGuide;if(!guide){setStatus("Choose a layout template first.");return {placed:0,available:0};}
+    const elements=templateTopLevelElements();if(!elements.length){setStatus("Add or select artwork before placing it into the template.");return {placed:0,available:0};}
+    saveHistory();const placed=Math.min(elements.length,guide.slots.length);
+    for(let i=0;i<placed;i++)moveTemplateElement(elements[i],guide.slots[i]);
+    clearSelection();renderAll();setStatus("Placed "+placed+" element"+(placed===1?"":"s")+" into the "+guide.name+" template."+(elements.length>placed?" Extra artwork was left where it was.":""));return {placed,available:elements.length};
+  }
+  function drawTemplateGuides(c,sc){
+    const guide=state.templateGuide;if(isDoodleProject()||!guide?.visible||!Array.isArray(guide.slots))return;
+    c.save();c.lineWidth=1.5/sc;c.font=Math.max(9,12/sc)+"px system-ui,sans-serif";c.textAlign="center";c.textBaseline="middle";
+    for(const slot of guide.slots){
+      const r=clamp(slot.scale*TILE*.55,28,125),copies=latticeCopiesForBounds(slot.x-r,slot.x+r,slot.y-r,slot.y+r,TILE,TILE,repeatBasis());
+      for(const copy of copies){
+        const x=slot.x+copy.x,y=slot.y+copy.y;c.beginPath();c.setLineDash([7/sc,6/sc]);c.strokeStyle=slot.role==="hero"?"rgba(204,82,62,.72)":"rgba(44,95,84,.64)";c.arc(x,y,r,0,Math.PI*2);c.stroke();c.setLineDash([]);
+        if(copy.k===0&&copy.n===0){c.fillStyle="rgba(248,250,251,.82)";c.beginPath();c.arc(x,y,11/sc,0,Math.PI*2);c.fill();c.fillStyle="#243343";c.fillText(String(slot.id),x,y);}
+      }
+    }
+    c.restore();
+  }
+  window.PatternForgeTemplates={
+    options:(count,round)=>templateOptions(count,round).map(option=>JSON.parse(JSON.stringify(option))),
+    get active(){return state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null;},
+    choose:chooseTemplateLayout,
+    clear:clearTemplateGuide,
+    setVisible:setTemplateGuideVisible,
+    distribute:distributeTemplateArtwork,
+    countElements:()=>templateTopLevelElements().length
+  };
   function getExportSpec(){
     const mult=exportMultipliers();
-    return {dpi:300,wIn:4000*mult.x/300,hIn:4000*mult.y/300,wPx:4000*mult.x,hPx:4000*mult.y};
+    // Pixel dimensions define raster detail. DPI metadata is compatibility data only;
+    // Pattern Forge designs do not have a physical size.
+    return {dpi:300,wPx:4000*mult.x,hPx:4000*mult.y};
   }
   function updatePixelReadout(){
     const s=getExportSpec();
@@ -385,6 +517,167 @@
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
+  function artworkRecord(id){
+    const item=state.items.find(i=>i.id===id);if(item)return {kind:"item",artwork:item,layer:layerForArtwork(item,BASE_LAYER_IDS.motifs)};
+    const mark=state.marks.find(m=>m.id===id);if(mark)return {kind:"mark",artwork:mark,layer:layerForArtwork(mark,BASE_LAYER_IDS.drawing)};
+    return null;
+  }
+  function selectableArtworkRecord(id){
+    const record=artworkRecord(id);if(!record||(record.kind==="mark"&&record.artwork.type==="eraser"))return null;
+    if(!layerIsRenderable(record.layer,false)||record.layer.locked)return null;
+    return record;
+  }
+  function selectionIds(){
+    if(state.selectedId===null||state.selectedId===undefined)return [];
+    const raw=Array.isArray(state.selectedIds)&&state.selectedIds.includes(state.selectedId)?state.selectedIds:[state.selectedId],seen=new Set(),ids=[];
+    for(const id of raw){if(seen.has(id)||!selectableArtworkRecord(id))continue;seen.add(id);ids.push(id);}
+    if(!ids.includes(state.selectedId))state.selectedId=ids[0]??null;
+    state.selectedIds=ids;
+    return ids;
+  }
+  function selectedArtwork(){return selectionIds().map(artworkRecord).filter(Boolean);}
+  function isSelected(id){return selectionIds().includes(id);}
+  function setSelection(ids,primaryId=null){
+    const unique=[],seen=new Set();
+    for(const id of ids||[]){if(seen.has(id)||!selectableArtworkRecord(id))continue;seen.add(id);unique.push(id);}
+    state.selectedIds=unique;
+    state.selectedId=unique.includes(primaryId)?primaryId:(unique.at(-1)??null);
+  }
+  function clearSelection(){state.selectedId=null;state.selectedIds=[];}
+  function newGroupId(){return "group-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
+  function groupMembers(groupId){
+    if(!groupId)return [];
+    return [...state.items,...state.marks].filter(artwork=>artwork.groupId===groupId).map(artwork=>selectableArtworkRecord(artwork.id)).filter(Boolean);
+  }
+  function expandedArtworkIds(artwork){
+    if(!artwork)return [];
+    const grouped=groupMembers(artwork.groupId);return grouped.length?grouped.map(record=>record.artwork.id):[artwork.id];
+  }
+  function selectAllArtwork(){
+    setSelection([...state.items,...state.marks].map(artwork=>artwork.id));
+    renderAll();setStatus(selectionIds().length?"Selected "+selectionIds().length+" artwork items.":"There is no selectable artwork on visible unlocked layers.");
+  }
+  function groupSelectedArtwork(){
+    const records=selectedArtwork();if(records.length<2){setStatus("Select two or more artwork items to make a group.");return;}
+    saveHistory();const groupId=newGroupId();for(const record of records)record.artwork.groupId=groupId;
+    setSelection(records.map(record=>record.artwork.id),state.selectedId);renderAll();setStatus("Grouped "+records.length+" artwork items.");
+  }
+  function ungroupSelectedArtwork(){
+    const records=selectedArtwork(),groups=new Set(records.map(record=>record.artwork.groupId).filter(Boolean));if(!groups.size){setStatus("The current selection is not grouped.");return;}
+    saveHistory();for(const artwork of [...state.items,...state.marks])if(groups.has(artwork.groupId))delete artwork.groupId;
+    setSelection(records.map(record=>record.artwork.id),state.selectedId);renderAll();setStatus(groups.size===1?"Group released.":"Groups released.");
+  }
+  function duplicateSelectedArtwork(){
+    const records=selectedArtwork();if(!records.length)return;saveHistory();
+    const copiedIds=[],groupMap=new Map();
+    for(const record of records){
+      const original=record.artwork,copy=JSON.parse(JSON.stringify(original));copy.id=state.nextId++;delete copy.scatterGenerated;
+      if(original.groupId){if(!groupMap.has(original.groupId))groupMap.set(original.groupId,newGroupId());copy.groupId=groupMap.get(original.groupId);}
+      if(record.kind==="item"){
+        const pos=canonicalPoint(Number(original.x)+40,Number(original.y)+40);copy.x=pos.x;copy.y=pos.y;state.items.push(copy);
+      }else{
+        const base=markTransformValues(original);copy.transformX=base.x+40;copy.transformY=base.y+40;copy.transformScale=base.scale;copy.transformRotation=base.rotation;state.marks.push(copy);
+      }
+      copiedIds.push(copy.id);
+    }
+    setSelection(copiedIds,copiedIds.at(-1));renderAll();setStatus("Duplicated "+records.length+" artwork item"+(records.length===1?"":"s")+".");
+  }
+  function deleteSelectedArtwork(){
+    const ids=new Set(selectionIds());if(!ids.size)return;saveHistory();
+    state.items=state.items.filter(item=>!ids.has(item.id));state.marks=state.marks.filter(mark=>!ids.has(mark.id));clearSelection();renderAll();setStatus("Deleted "+ids.size+" artwork item"+(ids.size===1?"":"s")+".");
+  }
+  function normaliseHexColour(value){
+    const raw=String(value||"").trim();return /^#[0-9a-f]{6}$/i.test(raw)?raw.toLowerCase():null;
+  }
+  function colourDistance(a,b){
+    const ca=normaliseHexColour(a),cb=normaliseHexColour(b);if(!ca||!cb)return Infinity;
+    const nums=hex=>[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
+    const [ar,ag,ab]=nums(ca),[br,bg,bb]=nums(cb);return Math.hypot(ar-br,ag-bg,ab-bb);
+  }
+  function selectedRecolourableMarks(){return selectedArtwork().filter(record=>record.kind==="mark"&&record.artwork.type!=="eraser").map(record=>record.artwork);}
+  function recolourSelectedMarks(colour){
+    const next=normaliseHexColour(colour),marks=selectedRecolourableMarks();if(!next||!marks.length)return 0;
+    saveHistory();for(const mark of marks)mark.color=next;const panel=$("selectedPanel");if(panel)panel.dataset.selectionColour=next;renderAll();setStatus("Recoloured "+marks.length+" editable mark"+(marks.length===1?"":"s")+".");return marks.length;
+  }
+  function replaceMatchingMarkColour(fromColour,toColour,tolerance=0){
+    const from=normaliseHexColour(fromColour),to=normaliseHexColour(toColour),limit=clamp(Number(tolerance)||0,0,100)*4.42;
+    if(!from||!to)return 0;
+    const matches=state.marks.filter(mark=>mark.type!=="eraser"&&normaliseHexColour(mark.color)&&colourDistance(mark.color,from)<=limit);
+    if(!matches.length){setStatus("No editable marks matched that colour.");return 0;}
+    saveHistory();for(const mark of matches)mark.color=to;renderAll();setStatus("Recoloured "+matches.length+" matching mark"+(matches.length===1?"":"s")+" across this project.");return matches.length;
+  }
+  function artworkCenter(record){
+    if(record.kind==="item")return {x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};
+    const b=markPrimaryBounds(record.artwork);return {x:b.cx,y:b.cy};
+  }
+  function selectionTransformGeometry(){
+    const records=selectedArtwork();if(records.length<2)return null;
+    const primary=records.find(record=>record.artwork.id===state.selectedId)||records[0],anchor=artworkCenter(primary),members=[];
+    for(const record of records){
+      const centre=artworkCenter(record),delta=nearestLatticeDelta(centre.x,centre.y,anchor.x,anchor.y),unwrapped={x:anchor.x+delta.x,y:anchor.y+delta.y};
+      members.push({record,centre,unwrapped});
+    }
+    const center=members.reduce((sum,member)=>({x:sum.x+member.unwrapped.x,y:sum.y+member.unwrapped.y}),{x:0,y:0});
+    center.x/=members.length;center.y/=members.length;
+    return {members,center};
+  }
+  function scaleSelectedArtwork(factor){
+    factor=Number(factor);if(!Number.isFinite(factor)||factor<=0)return;
+    const geometry=selectionTransformGeometry();if(!geometry)return;
+    for(const member of geometry.members){
+      const target={x:geometry.center.x+(member.unwrapped.x-geometry.center.x)*factor,y:geometry.center.y+(member.unwrapped.y-geometry.center.y)*factor};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.scale=clamp(item.scale*factor,.01,60);
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformScale=clamp(t.scale*factor,.01,60);
+      }
+    }
+    renderAll(false,false);
+  }
+  function rotateSelectedArtwork(deltaRadians){
+    deltaRadians=Number(deltaRadians);if(!Number.isFinite(deltaRadians)||Math.abs(deltaRadians)<1e-12)return;
+    const geometry=selectionTransformGeometry();if(!geometry)return;const cos=Math.cos(deltaRadians),sin=Math.sin(deltaRadians);
+    for(const member of geometry.members){
+      const dx=member.unwrapped.x-geometry.center.x,dy=member.unwrapped.y-geometry.center.y,target={x:geometry.center.x+dx*cos-dy*sin,y:geometry.center.y+dx*sin+dy*cos};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.rotation+=deltaRadians;
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformRotation=t.rotation+deltaRadians;
+      }
+    }
+    renderAll(false,false);
+  }
+  function flipSelectedArtwork(axis){
+    const records=selectedArtwork();if(!records.length)return 0;saveHistory();
+    const geometry=records.length>1?selectionTransformGeometry():{members:records.map(record=>({record,unwrapped:artworkCenter(record)})),center:artworkCenter(records[0])};
+    for(const member of geometry.members){
+      const target=axis==="horizontal"?{x:2*geometry.center.x-member.unwrapped.x,y:member.unwrapped.y}:{x:member.unwrapped.x,y:2*geometry.center.y-member.unwrapped.y};
+      if(member.record.kind==="item"){
+        const item=member.record.artwork,pos=isDoodleProject()?target:canonicalPoint(target.x,target.y);item.x=pos.x;item.y=pos.y;item.rotation=-Number(item.rotation||0);if(axis==="horizontal")item.flipX=!item.flipX;else item.flipY=!item.flipY;delete item.scatterGenerated;
+      }else{
+        const mark=member.record.artwork,t=markTransformValues(mark);mark.transformX=t.x+(target.x-member.unwrapped.x);mark.transformY=t.y+(target.y-member.unwrapped.y);mark.transformRotation=-t.rotation;if(axis==="horizontal")mark.transformFlipX=!t.flipX;else mark.transformFlipY=!t.flipY;
+      }
+    }
+    renderAll();setStatus("Flipped "+records.length+" selected artwork item"+(records.length===1?"":"s")+" "+(axis==="horizontal"?"horizontally.":"vertically."));return records.length;
+  }
+  window.PatternForgeSelection={
+    get count(){return selectionIds().length;},
+    get addMode(){return !!state.selectionAddMode;},
+    toggleAddMode(){state.selectionAddMode=!state.selectionAddMode;renderAll();setStatus(state.selectionAddMode?"Add-to-selection mode on. Tap artwork to add or remove it.":"Add-to-selection mode off.");return state.selectionAddMode;},
+    selectAll:selectAllArtwork,
+    clear(){clearSelection();renderAll();setStatus("Selection cleared.");},
+    group:groupSelectedArtwork,
+    ungroup:ungroupSelectedArtwork,
+    duplicate:duplicateSelectedArtwork,
+    delete:deleteSelectedArtwork,
+    beginTransform(){if(selectionIds().length>1)saveHistory();},
+    scaleBy:scaleSelectedArtwork,
+    rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);},
+    flipHorizontal(){return flipSelectedArtwork("horizontal");},
+    flipVertical(){return flipSelectedArtwork("vertical");},
+    recolour:recolourSelectedMarks,
+    replaceMatching:replaceMatchingMarkColour
+  };
   function latticeCoordinates(x,y,basis){
     const [a,b]=basis,det=a.x*b.y-a.y*b.x;
     return {k:(x*b.y-y*b.x)/det,n:(a.x*y-a.y*x)/det};
@@ -448,6 +741,7 @@
         targetCtx.save();
         targetCtx.translate(px,py);
         targetCtx.rotate(item.rotation);
+        targetCtx.scale(item.flipX?-1:1,item.flipY?-1:1);
         targetCtx.drawImage(a.img,-iw/2,-ih/2,iw,ih);
         if(showSelection && item.id===state.selectedId){
           targetCtx.globalAlpha=1;
@@ -478,10 +772,35 @@
     $("zoomLabel").textContent=Math.round(state.zoom*100)+"%";
     renderAll(false,false);
   }
+  function fitCanvasView(){
+    const availableWidth=canvas.width,availableHeight=canvas.height;
+    const fitScale=Math.min(availableWidth,availableHeight)*.92/(TILE*.38);
+    state.panX=state.panY=0;setZoom(fitScale);
+  }
+  const LIVE_TILE_SIZE=540;
+  window.PatternForgeInteractionMetrics={interactiveFrames:0,fullFrames:0,deferredWorkFrames:0,lastInteractiveTileSize:null,coalescedSamples:0,active:false,kind:null};
+  function beginInteraction(kind){
+    state.interactionActive=true;state.interactionKind=kind;
+    if(kind==="view"&&!state.interactionTile)state.interactionTile=makeTileCanvas(TILE,TILE,TILE,TILE);
+    const metrics=window.PatternForgeInteractionMetrics;metrics.active=true;metrics.kind=kind;
+  }
+  function finishInteraction(){
+    state.interactionActive=false;state.interactionKind=null;state.interactionTile=null;
+    const metrics=window.PatternForgeInteractionMetrics;metrics.active=false;metrics.kind=null;
+  }
   function drawEditor(){
     const W=canvas.width,H=canvas.height;
     ctx.fillStyle="#e9e4da";ctx.fillRect(0,0,W,H);
-    const tile=makeTileCanvas(TILE,TILE,TILE,TILE);
+    let tile,tileSize=TILE;
+    if(state.interactionActive&&state.interactionKind==="view"&&state.interactionTile){
+      tile=state.interactionTile;
+    }else{
+      tileSize=state.interactionActive?LIVE_TILE_SIZE:TILE;
+      tile=makeTileCanvas(tileSize,tileSize,tileSize,tileSize);
+    }
+    const metrics=window.PatternForgeInteractionMetrics;
+    if(state.interactionActive){metrics.interactiveFrames++;metrics.lastInteractiveTileSize=tileSize;}
+    else metrics.fullFrames++;
     const o=viewOrigin(),sc=viewScale();
     ctx.save();ctx.translate(o.x,o.y);ctx.scale(sc,sc);
     const repeatReach=isDoodleProject()?0:(state.focusMode&&!state.focusRepeatPreview?0:2);
@@ -504,29 +823,31 @@
     drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
     drawSnapGuides(ctx,sc);
-    const item=selectedItem();
-    if(item){
-      const a=assetOf(item),iw=a.w*item.scale,ih=a.h*item.scale;
-      ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rotation);
-      ctx.setLineDash([7/sc,5/sc]);ctx.strokeStyle="#cc523e";ctx.lineWidth=2/sc;
-      ctx.strokeRect(-iw/2,-ih/2,iw,ih);ctx.setLineDash([]);
-      for(const [x,y] of [[-iw/2,-ih/2],[iw/2,-ih/2],[iw/2,ih/2],[-iw/2,ih/2]]){
-        ctx.beginPath();ctx.arc(x,y,8/sc,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
-        ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.stroke();
+    drawTemplateGuides(ctx,sc);
+    const selection=selectedArtwork(),showHandles=selection.length===1;
+    for(const record of selection){
+      if(record.kind==="item"){
+        const item=record.artwork,a=assetOf(item);if(!a)continue;const iw=a.w*item.scale,ih=a.h*item.scale;
+        ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rotation);
+        ctx.setLineDash([7/sc,5/sc]);ctx.strokeStyle="#cc523e";ctx.lineWidth=2/sc;
+        ctx.strokeRect(-iw/2,-ih/2,iw,ih);ctx.setLineDash([]);
+        if(showHandles){
+          for(const [x,y] of [[-iw/2,-ih/2],[iw/2,-ih/2],[iw/2,ih/2],[-iw/2,ih/2]]){
+            ctx.beginPath();ctx.arc(x,y,8/sc,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+            ctx.strokeStyle="#173d36";ctx.lineWidth=2/sc;ctx.stroke();
+          }
+          drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
+          drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
+        }
+        ctx.restore();
+      }else if(record.kind==="mark"){
+        if(layerIsRenderable(record.layer,false)&&!record.layer.locked)drawSelectedMarkOverlay(ctx,record.artwork,sc,showHandles);
       }
-      drawImageTransformHandle(ctx,0,-ih/2-22/sc,"rotate",sc);
-      drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
-      ctx.restore();
-    }
-    const mark=selectedMark();
-    if(mark){
-      const layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
-      if(layerIsRenderable(layer,false)&&!layer.locked)drawSelectedMarkOverlay(ctx,mark,sc);
     }
     ctx.restore();
   }
 
-  function drawImageTransformHandle(c,x,y,mode,sc){
+    function drawImageTransformHandle(c,x,y,mode,sc){
     const r=13/sc;
     c.save();c.translate(x,y);c.setLineDash([]);c.lineWidth=2/sc;
     c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fillStyle="#fff";c.fill();
@@ -544,13 +865,16 @@
     c.restore();
   }
 
-  function drawSelectedMarkOverlay(c,m,sc){
+  function drawSelectedMarkOverlay(c,m,sc,showHandles=true){
     const b=markPrimaryBounds(m),w=Math.max(1,b.maxX-b.minX),h=Math.max(1,b.maxY-b.minY);
     c.save();c.setLineDash([7/sc,5/sc]);c.strokeStyle="#cc523e";c.lineWidth=2/sc;c.strokeRect(b.minX,b.minY,w,h);c.setLineDash([]);
-    for(const [x,y] of [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]]){
-      c.beginPath();c.arc(x,y,8/sc,0,Math.PI*2);c.fillStyle="#fff";c.fill();c.strokeStyle="#173d36";c.lineWidth=2/sc;c.stroke();
+    if(showHandles){
+      for(const [x,y] of [[b.minX,b.minY],[b.maxX,b.minY],[b.maxX,b.maxY],[b.minX,b.maxY]]){
+        c.beginPath();c.arc(x,y,8/sc,0,Math.PI*2);c.fillStyle="#fff";c.fill();c.strokeStyle="#173d36";c.lineWidth=2/sc;c.stroke();
+      }
+      drawImageTransformHandle(c,b.cx,b.minY-22/sc,"rotate",sc);drawImageTransformHandle(c,b.cx,b.maxY+22/sc,"move",sc);
     }
-    drawImageTransformHandle(c,b.cx,b.minY-22/sc,"rotate",sc);drawImageTransformHandle(c,b.cx,b.maxY+22/sc,"move",sc);c.restore();
+    c.restore();
   }
   function markHandleAt(m,x,y){
     const b=markPrimaryBounds(m),limit=20/viewScale();
@@ -575,7 +899,7 @@
     let x=p.x-TILE/2,y=p.y-TILE/2;
     if(mirrorX)x=-x;if(mirrorY)y=-y;
     const c=Math.cos(angle),s=Math.sin(angle);
-    return {x:TILE/2+x*c-y*s,y:TILE/2+x*s+y*c};
+    return {...p,x:TILE/2+x*c-y*s,y:TILE/2+x*s+y*c};
   }
   function drawConstructionGuides(c,sc){
     const mode=$("constructionGuide")?.value||"off";if(mode==="off")return;
@@ -603,19 +927,24 @@
     c.stroke();c.restore();
   }
 
+  function markPointSets(m){
+    if(m?.type==="bucket"&&Array.isArray(m.paths))return m.paths.filter(path=>Array.isArray(path)&&path.length);
+    return [Array.isArray(m?.points)?m.points:[]];
+  }
+  function markAllPoints(m){return markPointSets(m).flat();}
   function markGeometryBounds(m){
-    if(!m?.points?.length)return {minX:0,maxX:0,minY:0,maxY:0,cx:0,cy:0};
+    const points=markAllPoints(m);if(!points.length)return {minX:0,maxX:0,minY:0,maxY:0,cx:0,cy:0};
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-    for(const p of m.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+    for(const p of points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
     return {minX,maxX,minY,maxY,cx:(minX+maxX)/2,cy:(minY+maxY)/2};
   }
   function markTransformValues(m){
     const rawScale=Number(m?.transformScale),rawRotation=Number(m?.transformRotation),rawX=Number(m?.transformX),rawY=Number(m?.transformY);
-    return {x:Number.isFinite(rawX)?rawX:0,y:Number.isFinite(rawY)?rawY:0,scale:Number.isFinite(rawScale)?clamp(rawScale,.01,60):1,rotation:Number.isFinite(rawRotation)?rawRotation:0};
+    return {x:Number.isFinite(rawX)?rawX:0,y:Number.isFinite(rawY)?rawY:0,scale:Number.isFinite(rawScale)?clamp(rawScale,.01,60):1,rotation:Number.isFinite(rawRotation)?rawRotation:0,flipX:!!m?.transformFlipX,flipY:!!m?.transformFlipY};
   }
-  function markHasTransform(m){const t=markTransformValues(m);return Math.abs(t.x)>1e-9||Math.abs(t.y)>1e-9||Math.abs(t.scale-1)>1e-9||Math.abs(t.rotation)>1e-9;}
+  function markHasTransform(m){const t=markTransformValues(m);return Math.abs(t.x)>1e-9||Math.abs(t.y)>1e-9||Math.abs(t.scale-1)>1e-9||Math.abs(t.rotation)>1e-9||t.flipX||t.flipY;}
   function markTransformPoint(p,m){
-    const b=markGeometryBounds(m),t=markTransformValues(m),dx=(p.x-b.cx)*t.scale,dy=(p.y-b.cy)*t.scale,c=Math.cos(t.rotation),s=Math.sin(t.rotation);
+    const b=markGeometryBounds(m),t=markTransformValues(m),dx=(p.x-b.cx)*t.scale*(t.flipX?-1:1),dy=(p.y-b.cy)*t.scale*(t.flipY?-1:1),c=Math.cos(t.rotation),s=Math.sin(t.rotation);
     return {x:b.cx+t.x+dx*c-dy*s,y:b.cy+t.y+dx*s+dy*c};
   }
   function markTransformedBounds(m,mirrorX=false,mirrorY=false,angle=0){
@@ -628,18 +957,18 @@
   }
   function applyMarkTransformContext(c,m){
     const b=markGeometryBounds(m),t=markTransformValues(m);if(!markHasTransform(m))return;
-    c.translate(b.cx+t.x,b.cy+t.y);c.rotate(t.rotation);c.scale(t.scale,t.scale);c.translate(-b.cx,-b.cy);
+    c.translate(b.cx+t.x,b.cy+t.y);c.rotate(t.rotation);c.scale(t.scale*(t.flipX?-1:1),t.scale*(t.flipY?-1:1));c.translate(-b.cx,-b.cy);
   }
   function applySymmetryContext(c,mirrorX,mirrorY,angle){
     c.translate(TILE/2,TILE/2);c.rotate(angle);c.scale(mirrorX?-1:1,mirrorY?-1:1);c.translate(-TILE/2,-TILE/2);
   }
   function markSvgTransform(m){
     const b=markGeometryBounds(m),t=markTransformValues(m),deg=t.rotation*180/Math.PI;
-    return `translate(${b.cx+t.x} ${b.cy+t.y}) rotate(${deg}) scale(${t.scale}) translate(${-b.cx} ${-b.cy})`;
+    return `translate(${b.cx+t.x} ${b.cy+t.y}) rotate(${deg}) scale(${t.scale*(t.flipX?-1:1)} ${t.scale*(t.flipY?-1:1)}) translate(${-b.cx} ${-b.cy})`;
   }
   function inverseMarkTransformPoint(p,m){
     const b=markGeometryBounds(m),t=markTransformValues(m),dx=p.x-(b.cx+t.x),dy=p.y-(b.cy+t.y),c=Math.cos(-t.rotation),s=Math.sin(-t.rotation);
-    return {x:b.cx+(dx*c-dy*s)/t.scale,y:b.cy+(dx*s+dy*c)/t.scale};
+    return {x:b.cx+(dx*c-dy*s)/(t.scale*(t.flipX?-1:1)),y:b.cy+(dx*s+dy*c)/(t.scale*(t.flipY?-1:1))};
   }
   function unreflectPoint(p,mirrorX,mirrorY,angle){
     let x=p.x-TILE/2,y=p.y-TILE/2;const c=Math.cos(-angle),s=Math.sin(-angle),rx=x*c-y*s,ry=x*s+y*c;x=mirrorX?-rx:rx;y=mirrorY?-ry:ry;
@@ -655,6 +984,32 @@
     return {minX:b.minX+dx,maxX:b.maxX+dx,minY:b.minY+dy,maxY:b.maxY+dy,cx:b.cx+dx,cy:b.cy+dy};
   }
 
+  function pointerPressure(e,fallback=.5){
+    if(e?.pointerType!=="pen")return 1;
+    const pressure=Number(e.pressure);return Number.isFinite(pressure)&&pressure>0?clamp(pressure,.01,1):clamp(Number(fallback)||.5,.01,1);
+  }
+  function pressureScale(m,value){
+    const min=clamp(Number(m?.pressureMin??18)/100,.05,.8),sensitivity=clamp(Number(m?.pressureSensitivity??100)/100,0,1),pressure=clamp(Number.isFinite(Number(value))?Number(value):1,.01,1);
+    const response=1-(1-pressure)*sensitivity;
+    return min+(1-min)*response;
+  }
+  function brushWidthAtPressure(m,style,pressure){
+    const styleFactor=style==="pencil"?.72:style==="marker"?1.8:1;
+    return m.width*styleFactor*(m.pressureWidth?pressureScale(m,pressure):1);
+  }
+  function stabilisePressure(previous,raw){
+    const factor={off:1,light:.82,medium:.64,strong:.48}[$("strokeStabilisation")?.value||"off"]||1;
+    const prior=clamp(Number(previous)||Number(raw)||.5,.01,1),next=clamp(Number(raw)||prior,.01,1);
+    return prior+(next-prior)*factor;
+  }
+  function strokeStabilisationBase(){
+    return {off:1,light:.76,medium:.56,strong:.38}[$("strokeStabilisation")?.value||"off"]||1;
+  }
+  function stabiliseStrokePoint(last,raw){
+    const base=strokeStabilisationBase();if(base>=.999)return raw;
+    const distance=Math.hypot(raw.x-last.x,raw.y-last.y),factor=clamp(base+Math.min(.34,distance/95),base,.9);
+    return {x:last.x+(raw.x-last.x)*factor,y:last.y+(raw.y-last.y)*factor};
+  }
   function drawMark(c,m,alphaMultiplier=1){
     const pts=m.points;if(!pts.length)return;
     const opacity=clamp(Number(m.opacity??1),.05,1)*clamp(Number(alphaMultiplier??1),0,1),style=m.brushStyle||"ink";
@@ -663,6 +1018,13 @@
     if(m.type==="eraser"){
       c.globalCompositeOperation="destination-out";c.globalAlpha=1;c.lineWidth=m.width;
       c.beginPath();c.moveTo(pts[0].x,pts[0].y);if(pts.length===1)c.lineTo(pts[0].x+.01,pts[0].y+.01);else for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.stroke();c.restore();return;
+    }
+    if(m.type==="bucket"){
+      c.beginPath();
+      for(const path of markPointSets(m)){
+        if(path.length<3)continue;c.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)c.lineTo(path[i].x,path[i].y);c.closePath();
+      }
+      c.fill("evenodd");c.restore();return;
     }
     if(m.type==="rect"||m.type==="ellipse"){
       const a=pts[0],b=pts[pts.length-1];
@@ -693,40 +1055,65 @@
         c.lineWidth=style==="pencil"?m.width*.72:style==="marker"?m.width*1.8:m.width;
         if(style==="pencil")c.globalAlpha=opacity*.68;
         if(style==="marker"){c.globalAlpha=opacity*.36;c.globalCompositeOperation="multiply";}
-        path();c.stroke();
+        if(m.pressureWidth&&m.type==="brush"){
+          if(pts.length===1){
+            c.beginPath();c.arc(pts[0].x,pts[0].y,brushWidthAtPressure(m,style,pts[0].p)/2,0,Math.PI*2);c.fill();
+          }else{
+            for(let i=1;i<pts.length;i++){
+              const a=pts[i-1],b=pts[i],pressure=((Number(a.p)||1)+(Number(b.p)||1))/2;
+              c.lineWidth=brushWidthAtPressure(m,style,pressure);c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+            }
+          }
+        }else{path();c.stroke();}
         if(style==="texture"&&Number(m.texture||0)>0){
           const amount=clamp(Number(m.texture)||0,0,1),rng=mulberry32(hashString(String(m.id)+"texture")),step=Math.max(4,m.width*(1.4-amount));
           c.globalCompositeOperation="source-over";c.globalAlpha=opacity*(.3+amount*.55);c.fillStyle=m.color;
-          for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],len=Math.hypot(b.x-a.x,b.y-a.y),count=Math.min(80,Math.ceil(len/step));for(let j=0;j<count;j++){const t=(j+rng())/Math.max(1,count),x=a.x+(b.x-a.x)*t+(rng()-.5)*m.width*.6,y=a.y+(b.y-a.y)*t+(rng()-.5)*m.width*.6,r=Math.max(.45,m.width*(.035+amount*.07)*rng());c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();}}
+          for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],len=Math.hypot(b.x-a.x,b.y-a.y),count=Math.min(80,Math.ceil(len/step));for(let j=0;j<count;j++){const t=(j+rng())/Math.max(1,count),x=a.x+(b.x-a.x)*t+(rng()-.5)*m.width*.6,y=a.y+(b.y-a.y)*t+(rng()-.5)*m.width*.6,pressure=(Number(a.p)||1)*(1-t)+(Number(b.p)||1)*t,r=Math.max(.45,m.width*(m.pressureWidth?pressureScale(pressure):1)*(.035+amount*.07)*rng());c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();}}
         }
       }
     }
     c.restore();
   }
-  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
-    const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
-    c.save();c.scale(sx,sy);
-    for(const m of state.marks){
-      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
-      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
-      const effectiveOpacity=layerId?layerOpacity:layer.opacity;
-      for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
-        if(!markHasTransform(m)){
-          const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))};
-          let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-          for(const p of transformed.points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-          const pad=m.width;minX-=pad;maxX+=pad;minY-=pad;maxY+=pad;
-          const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,basis);
-          for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
-        }else{
-          const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
-          for(const copy of copies){
-            c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
-          }
+  function drawOneMarkWrappedLogical(c,m,clipW,clipH,basis,effectiveOpacity=1){
+    for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
+      if(!markHasTransform(m)){
+        const transformedPaths=m.type==="bucket"?markPointSets(m).map(path=>path.map(p=>reflectPoint(p,mirrorX,mirrorY,angle))):null;
+        const transformed={...m,points:m.points.map(p=>reflectPoint(p,mirrorX,mirrorY,angle)),...(transformedPaths?{paths:transformedPaths}:{})};
+        const bounds=markGeometryBounds(transformed),pad=Math.max(0,Number(m.width)||0);
+        const copies=artworkCopiesForBounds(bounds.minX-pad,bounds.maxX+pad,bounds.minY-pad,bounds.maxY+pad,clipW,clipH,basis);
+        for(const copy of copies){c.save();c.translate(copy.x,copy.y);drawMark(c,transformed,effectiveOpacity);c.restore();}
+      }else{
+        const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,basis);
+        for(const copy of copies){
+          c.save();c.translate(copy.x,copy.y);applySymmetryContext(c,mirrorX,mirrorY,angle);applyMarkTransformContext(c,m);drawMark(c,m,effectiveOpacity);c.restore();
         }
       }
     }
-    c.restore();
+  }
+  function drawSingleMarkWrapped(c,W,H,baseW,baseH,style,m,effectiveOpacity=1){
+    const sx=baseW/TILE,sy=baseH/TILE,clipW=W/sx,clipH=H/sy,basis=repeatBasis(TILE,TILE,style);
+    c.save();c.scale(sx,sy);drawOneMarkWrappedLogical(c,m,clipW,clipH,basis,effectiveOpacity);c.restore();
+  }
+  function drawMarksWrapped(c,W,H,baseW=TILE,baseH=TILE,style=projectRepeatStyle(),layerId=null,layerOpacity=1,forExport=false){
+    for(const m of state.marks){
+      const layer=layerForArtwork(m,BASE_LAYER_IDS.drawing);
+      if((layerId&&layer?.id!==layerId)||!layerIsRenderable(layer,forExport)||!m.points.length)continue;
+      drawSingleMarkWrapped(c,W,H,baseW,baseH,style,m,layerId?layerOpacity:layer.opacity);
+    }
+  }
+  function renderLayerSurface(W,H,baseW,baseH,style,layer,mappedItems,basis,forExport=false){
+    const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
+    for(const item of mappedItems)if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);
+    for(const mark of state.marks){
+      if(layerForArtwork(mark,BASE_LAYER_IDS.drawing)?.id!==layer.id||!mark.points?.length)continue;
+      if(mark.alphaLocked&&mark.type!=="eraser"){
+        const paint=document.createElement("canvas");paint.width=W;paint.height=H;const pc=paint.getContext("2d");
+        drawSingleMarkWrapped(pc,W,H,baseW,baseH,style,mark,1);
+        lc.save();lc.globalCompositeOperation="source-atop";lc.drawImage(paint,0,0);lc.restore();
+        paint.width=1;paint.height=1;
+      }else drawSingleMarkWrapped(lc,W,H,baseW,baseH,style,mark,1);
+    }
+    return surface;
   }
 
   function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
@@ -740,22 +1127,170 @@
     const uniform=Math.sqrt(sx*sy);
     const mapped=state.items.map(it=>({...it,x:it.x*sx,y:it.y*sy,scale:it.scale*uniform}));
     const basis=repeatBasis(baseW,baseH,style);
-    for(const layer of state.layers){
-      if(!layerIsRenderable(layer,forExport))continue;
+    let clipBaseSurface=null;
+    for(let layerIndex=0;layerIndex<state.layers.length;layerIndex++){
+      const layer=state.layers[layerIndex],renderable=layerIsRenderable(layer,forExport);
+      if(!renderable){if(!layer.clipToBelow)clipBaseSurface=null;continue;}
       const hasEraser=state.marks.some(m=>m.type==="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
-      if(!hasEraser){
+      const hasAlphaLocked=state.marks.some(m=>m.alphaLocked&&m.type!=="eraser"&&layerForArtwork(m,BASE_LAYER_IDS.drawing)?.id===layer.id&&m.points?.length);
+      const nextLayer=state.layers[layerIndex+1],needsClipBase=!!nextLayer?.clipToBelow;
+      const needsSurface=hasEraser||hasAlphaLocked||layer.clipToBelow||needsClipBase;
+      if(!needsSurface){
         for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(c,item,W,H,false,basis,layer.opacity);}
         drawMarksWrapped(c,W,H,baseW,baseH,style,layer.id,layer.opacity,forExport);
+        clipBaseSurface=null;
         continue;
       }
-      const surface=document.createElement("canvas");surface.width=W;surface.height=H;const lc=surface.getContext("2d");
-      for(const item of mapped){if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id)drawWrapped(lc,item,W,H,false,basis,1);}
-      drawMarksWrapped(lc,W,H,baseW,baseH,style,layer.id,1,forExport);
+      const surface=renderLayerSurface(W,H,baseW,baseH,style,layer,mapped,basis,forExport),lc=surface.getContext("2d");
+      if(layer.clipToBelow){
+        if(!clipBaseSurface)continue;
+        lc.save();lc.globalCompositeOperation="destination-in";lc.drawImage(clipBaseSurface,0,0);lc.restore();
+      }
       c.save();c.globalAlpha=layer.opacity;c.drawImage(surface,0,0);c.restore();
+      if(!layer.clipToBelow)clipBaseSurface=surface;
     }
     return out;
   }
 
+  const BUCKET_SAMPLE_SIZE=1800;
+  let bucketBusy=false;
+  function makeBucketSampleCanvas(size,layerId,sampleVisible){
+    if(sampleVisible)return makeTileCanvas(size,size,size,size,projectRepeatStyle(),false);
+    const scale=size/TILE,basis=repeatBasis(size,size,projectRepeatStyle()),layer=layerById(layerId);
+    const mapped=state.items.map(item=>({...item,x:item.x*scale,y:item.y*scale,scale:item.scale*scale}));
+    if(!layer){const out=document.createElement("canvas");out.width=size;out.height=size;return out;}
+    return renderLayerSurface(size,size,size,size,projectRepeatStyle(),layer,mapped,basis,false);
+  }
+  function bucketPixelDistance(data,index,target){
+    const a=data[index+3],ta=target[3],af=a/255,taf=ta/255;
+    const dr=data[index]*af-target[0]*taf,dg=data[index+1]*af-target[1]*taf,db=data[index+2]*af-target[2]*taf,da=(a-ta)*1.5;
+    return Math.hypot(dr,dg,db,da)/(255*Math.sqrt(5.25))*100;
+  }
+  function bucketNeighbourIndex(x,y,dx,dy,w,h,wrap,style){
+    let nx=x+dx,ny=y+dy;
+    if(!wrap){
+      if(nx<0||nx>=w||ny<0||ny>=h)return -1;
+      return ny*w+nx;
+    }
+    if(style==="half-drop"){
+      if(nx<0)nx+=w;else if(nx>=w)nx-=w;
+      if(ny<0){ny+=h;nx=(nx+w/2)%w;}
+      else if(ny>=h){ny-=h;nx=(nx-w/2+w)%w;}
+    }else if(style==="brick"){
+      if(ny<0)ny+=h;else if(ny>=h)ny-=h;
+      if(nx<0){nx+=w;ny=(ny+h/2)%h;}
+      else if(nx>=w){nx-=w;ny=(ny-h/2+h)%h;}
+    }else{
+      nx=(nx+w)%w;ny=(ny+h)%h;
+    }
+    return ny*w+nx;
+  }
+  function floodBucketMask(imageData,seedX,seedY,tolerance,wrap,style){
+    const w=imageData.width,h=imageData.height,data=imageData.data,n=w*h,states=new Uint8Array(n),queue=new Uint32Array(n);
+    const seed=seedY*w+seedX,target=[data[seed*4],data[seed*4+1],data[seed*4+2],data[seed*4+3]],limit=clamp(Number(tolerance)||0,0,100);
+    let head=0,tail=0;states[seed]=1;queue[tail++]=seed;
+    while(head<tail){
+      const index=queue[head++],x=index%w,y=Math.floor(index/w);
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const next=bucketNeighbourIndex(x,y,dx,dy,w,h,wrap,style);if(next<0||states[next])continue;
+        const matches=bucketPixelDistance(data,next*4,target)<=limit;states[next]=matches?1:2;if(matches)queue[tail++]=next;
+      }
+    }
+    return {mask:states,count:tail,target};
+  }
+  function bucketBoundarySide(mask,w,h,x,y,side){
+    const index=y*w+x;if(mask[index]!==1)return false;
+    if(side===0)return y===0||mask[(y-1)*w+x]!==1;
+    if(side===1)return x===w-1||mask[y*w+x+1]!==1;
+    if(side===2)return y===h-1||mask[(y+1)*w+x]!==1;
+    return x===0||mask[y*w+x-1]!==1;
+  }
+  function bucketEdgeStart(x,y,side){
+    if(side===0)return {x,y};if(side===1)return {x:x+1,y};if(side===2)return {x:x+1,y:y+1};return {x,y:y+1};
+  }
+  function bucketEdgeEnd(x,y,side){
+    if(side===0)return {x:x+1,y};if(side===1)return {x:x+1,y:y+1};if(side===2)return {x,y:y+1};return {x,y};
+  }
+  function bucketOutgoingEdges(mask,visited,w,h,vx,vy){
+    const candidates=[[vx,vy,0],[vx-1,vy,1],[vx-1,vy-1,2],[vx,vy-1,3]],out=[];
+    for(const [x,y,side] of candidates){
+      if(x<0||x>=w||y<0||y>=h)continue;const index=y*w+x,bit=1<<side;
+      if(bucketBoundarySide(mask,w,h,x,y,side)&&!(visited[index]&bit))out.push({x,y,side,dir:side});
+    }
+    return out;
+  }
+  function bucketRdp(points,epsilon){
+    if(points.length<=2)return points.slice();const keep=new Uint8Array(points.length);keep[0]=keep[points.length-1]=1;const stack=[[0,points.length-1]];
+    while(stack.length){
+      const [start,end]=stack.pop(),a=points[start],b=points[end],dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;let best=-1,bestDist=-1;
+      for(let i=start+1;i<end;i++){const p=points[i],t=len2?clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/len2,0,1):0,qx=a.x+t*dx,qy=a.y+t*dy,d=Math.hypot(p.x-qx,p.y-qy);if(d>bestDist){bestDist=d;best=i;}}
+      if(best>start&&best<end&&bestDist>epsilon){keep[best]=1;stack.push([start,best],[best,end]);}
+    }
+    return points.filter((_,i)=>keep[i]);
+  }
+  function bucketSimplifyClosed(points,epsilon){
+    if(points.length>1&&points[0].x===points.at(-1).x&&points[0].y===points.at(-1).y)points=points.slice(0,-1);
+    if(points.length<=4)return points;
+    let far=1,farDist=0;for(let i=1;i<points.length;i++){const d=(points[i].x-points[0].x)**2+(points[i].y-points[0].y)**2;if(d>farDist){farDist=d;far=i;}}
+    const a=bucketRdp(points.slice(0,far+1),epsilon),b=bucketRdp(points.slice(far).concat([points[0]]),epsilon);
+    return a.slice(0,-1).concat(b.slice(0,-1));
+  }
+  function bucketPolygonArea(points){
+    let area=0;for(let i=0,j=points.length-1;i<points.length;j=i++)area+=points[j].x*points[i].y-points[i].x*points[j].y;return area/2;
+  }
+  function bucketContours(mask,w,h){
+    const visited=new Uint8Array(w*h),paths=[],scaleX=TILE/w,scaleY=TILE/h,epsilon=Math.max(.75,Math.max(scaleX,scaleY)*1.8);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const index=y*w+x;if(mask[index]!==1)continue;
+      for(let side=0;side<4;side++){
+        const bit=1<<side;if((visited[index]&bit)||!bucketBoundarySide(mask,w,h,x,y,side))continue;
+        let edge={x,y,side,dir:side},start=bucketEdgeStart(x,y,side),loop=[],closed=false,safety=0;
+        while(edge&&safety++<w*h*2){
+          const edgeIndex=edge.y*w+edge.x,edgeBit=1<<edge.side;if(visited[edgeIndex]&edgeBit)break;visited[edgeIndex]|=edgeBit;
+          if(!loop.length)loop.push(bucketEdgeStart(edge.x,edge.y,edge.side));
+          const end=bucketEdgeEnd(edge.x,edge.y,edge.side);loop.push(end);
+          if(end.x===start.x&&end.y===start.y){closed=true;break;}
+          const choices=bucketOutgoingEdges(mask,visited,w,h,end.x,end.y);if(!choices.length)break;
+          const priority=delta=>delta===1?0:delta===0?1:delta===3?2:3;
+          choices.sort((a,b)=>priority((a.dir-edge.dir+4)%4)-priority((b.dir-edge.dir+4)%4));edge=choices[0];
+        }
+        if(!closed||loop.length<4)continue;
+        const logical=loop.map(p=>({x:p.x*scaleX,y:p.y*scaleY})),simplified=bucketSimplifyClosed(logical,epsilon);
+        if(simplified.length>=3&&Math.abs(bucketPolygonArea(simplified))>.08)paths.push(simplified);
+      }
+    }
+    return paths;
+  }
+  async function bucketFillAt(world,drawLayer){
+    if(bucketBusy){setStatus("Bucket fill is already analysing a region.");return;}
+    bucketBusy=true;state.dragStart=null;setStatus("Detecting bucket fill region…");
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    try{
+      const size=BUCKET_SAMPLE_SIZE,sampleVisible=$("bucketSampleVisible").checked,tolerance=Number($("bucketTolerance").value)||0,started=performance.now();
+      const source=makeBucketSampleCanvas(size,drawLayer.id,sampleVisible),sample=source.getContext("2d",{willReadFrequently:true}).getImageData(0,0,size,size);
+      source.width=1;source.height=1;
+      const point=isDoodleProject()?{x:clamp(world.x,0,TILE-.0001),y:clamp(world.y,0,TILE-.0001)}:canonicalPoint(world.x,world.y);
+      const seedX=clamp(Math.floor(point.x/TILE*size),0,size-1),seedY=clamp(Math.floor(point.y/TILE*size),0,size-1);
+      const result=floodBucketMask(sample,seedX,seedY,tolerance,!isDoodleProject(),projectRepeatStyle());
+      const paths=bucketContours(result.mask,size,size),totalPoints=paths.reduce((sum,path)=>sum+path.length,0);
+      if(!paths.length)throw new Error("No fillable region was found at that point.");
+      if(totalPoints>25000)throw new Error("That region boundary is too complex to keep editable. Increase tolerance slightly or simplify the source artwork.");
+      saveHistory();
+      const points=paths.flat().map(p=>({...p})),mark={id:state.nextId++,layerId:drawLayer.id,type:"bucket",alphaLocked:!!drawLayer.alphaLock,color:$("ink").value,width:0,fill:true,opacity:(parseInt($("inkOpacity").value,10)||100)/100,points,paths,bucketTolerance:tolerance,bucketSampleVisible:sampleVisible};
+      state.marks.push(mark);setSelection([mark.id],mark.id);renderAll();
+      const pct=Math.round(result.count/(size*size)*1000)/10,elapsed=Math.round(performance.now()-started),estimatedWorkingBytes=size*size*10;
+      window.PatternForgeBucketMetrics={sampleSize:size,estimatedWorkingBytes,elapsedMs:elapsed,filledPixels:result.count,fillRatio:result.count/(size*size),targetRgba:[...result.target],contours:paths.length,points:totalPoints};
+      setStatus(`Bucket filled ${pct}% of the tile as editable vector contours in ${elapsed} ms.`);
+    }catch(err){setStatus(err?.message||"Bucket fill could not analyse that region.");}
+    finally{bucketBusy=false;}
+  }
+
+  const masterPreviewData=()=>{
+    const mult=exportMultipliers(),base=360,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
+    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle(),wPx:4000*mult.x,hPx:4000*mult.y};
+  };
+  window.PatternForgeMasterPreview=masterPreviewData;
+  window.PatternForgeProductPreview=masterPreviewData; // compatibility alias
   function renderPreview(){
     const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     const data=thumb.toDataURL("image/png");
@@ -770,73 +1305,63 @@
     const box=$("quality");
     if(state.items.length===0){
       box.className="warning ok";
-      box.textContent=state.marks.length?"Drawn lines and shapes render at the full 4000 px export size.":"Add artwork to calculate effective raster resolution.";
+      box.textContent=state.marks.length?"Drawn lines and shapes render directly at the master raster resolution.":"Add artwork to check raster-source enlargement.";
       return;
     }
-    const spec=getExportSpec();
-    const sx=spec.wPx/TILE, sy=spec.hPx/TILE;
-    const uniform=Math.sqrt(sx*sy);
-    let worst=Infinity, rasterCount=0, vectorCount=0;
+    const spec=getExportSpec(),sx=spec.wPx/TILE,sy=spec.hPx/TILE,uniform=Math.sqrt(sx*sy);
+    let maxUpscale=1,rasterCount=0,vectorCount=0;
     for(const item of state.items){
-      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,true)) continue;
-      if(a.vector){ vectorCount++; continue; }
+      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item);if(!a||!layerIsRenderable(layer,true))continue;
+      if(a.vector){vectorCount++;continue;}
       rasterCount++;
-      const drawW=a.w*item.scale*uniform;
-      const drawH=a.h*item.scale*uniform;
-      const physicalW=drawW/spec.dpi;
-      const physicalH=drawH/spec.dpi;
-      const effX=a.w/Math.max(.0001,physicalW);
-      const effY=a.h/Math.max(.0001,physicalH);
-      worst=Math.min(worst,effX,effY);
+      const renderedW=a.w*item.scale*uniform,renderedH=a.h*item.scale*uniform;
+      maxUpscale=Math.max(maxUpscale,renderedW/Math.max(1,a.w),renderedH/Math.max(1,a.h));
     }
     if(rasterCount===0){
       box.className="warning ok";
-      box.innerHTML=`All ${vectorCount} placed motifs are SVG sources. Export scaling is not limited by raster DPI.`;
+      box.textContent="All "+vectorCount+" placed motif"+(vectorCount===1?" is":"s are")+" vector source"+(vectorCount===1?"":"s")+". SVG output is resolution-independent.";
       return;
     }
-    const rounded=Math.round(worst);
-    if(worst>=300){
+    if(maxUpscale<=1.05){
       box.className="warning ok";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Good for a 300-DPI export.${vectorCount?` ${vectorCount} SVG motif(s) are resolution-independent.`:""}`;
-    }else if(worst>=220){
+      box.textContent="Raster sources are used at native size or reduced in the master raster."+(vectorCount?" "+vectorCount+" SVG motif"+(vectorCount===1?" is":"s are")+" resolution-independent.":"");
+    }else if(maxUpscale<=2){
       box.className="warning";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Usually usable, but below a true 300-DPI source standard. Reduce motif scale or use a higher-resolution original.`;
+      box.innerHTML="Largest raster-source enlargement: <strong>"+maxUpscale.toFixed(1)+"×</strong>. Inspect sharpness in the master raster before distributing the design.";
     }else{
       box.className="warning";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Likely soft in print. The PNG can be tagged 300 DPI, but the source artwork does not contain enough pixels at its current scale.`;
+      box.innerHTML="Largest raster-source enlargement: <strong>"+maxUpscale.toFixed(1)+"×</strong>. The design remains adaptable, but the raster master may soften at this enlargement; replace that source or use vector artwork if available.";
     }
   }
 
   function updatePrintEligibility(){
-    const size=Number($("focusPrintSize").value);
-    const unit=$("focusPrintUnit").value;
-    const inches=unit==="cm"?size/2.54:size;
-    const readout=$("focusPrintReadout"),list=$("platformChecks");
-    if(!Number.isFinite(inches)||inches<=0){readout.textContent="Enter a valid tile width.";list.innerHTML="";return;}
-    const dpi=Math.floor(4000/inches);
-    const cm=inches*2.54;
-    const spec=getExportSpec();
-    readout.textContent=`Base tile: 4000 px at ${inches.toFixed(2)} in (${cm.toFixed(1)} cm) = ${dpi} DPI. Export swatch: ${spec.wPx} × ${spec.hPx} px.`;
-    const profiles=[
-      {name:"Print Shrimp · posters",minimum:150,target:300,low:"Below 150 DPI guidance.",mid:"150 DPI is often fine; below the 300-DPI recommendation.",high:"Meets the 300-DPI recommendation."},
-      {name:"Spoonflower · fabric",minimum:150,target:150,low:"Below Spoonflower’s 150-DPI sizing guidance.",mid:"Matches Spoonflower’s 150-DPI workflow.",high:"Above Spoonflower’s 150-DPI print workflow."},
-      {name:"Printful · paper",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets general minimum; paper prints recommend 300 DPI.",high:"Meets the 300-DPI paper recommendation."},
-      {name:"Printful · apparel",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets the general minimum; finer details may benefit from 300 DPI.",high:"Meets the 300-DPI detailed-artwork target."},
-      {name:"Printify · standard products",minimum:0,target:300,low:"Below the common 300-DPI recommendation; product tools may accept less.",mid:"Below the common 300-DPI recommendation; check the product template.",high:"Meets the common 300-DPI recommendation."},
-      {name:"Printify · large textiles",minimum:120,target:150,low:"Below the 120–150-DPI range cited for some large textiles.",mid:"Within the 120–150-DPI range for some large textiles.",high:"Meets the 150-DPI large-textile target."}
-    ];
-    list.innerHTML=profiles.map(p=>{
-      const status=dpi<p.minimum?p.low:dpi<p.target?p.mid:p.high;
-      const cls=dpi<p.minimum?"low":dpi<p.target?"warn":"good";
-      return `<div class="platformCheck ${cls}"><strong>${p.name}</strong>${status}</div>`;
-    }).join("");
+    // Legacy function name retained for project/backward compatibility.
+    const readout=$("focusPrintReadout"),list=$("platformChecks"),spec=getExportSpec(),doodle=isDoodleProject();
+    if(readout)readout.textContent=(doodle?"Master raster canvas: ":"Complete master repeat cell: ")+spec.wPx.toLocaleString()+" × "+spec.hPx.toLocaleString()+" px.";
+    if(list)list.innerHTML='<div class="platformCheck good"><strong>Adaptable master design</strong> No physical size is assigned here. Choose scale later in the software, printer or production workflow where the design is used.</div>';
   }
 
   function rebuildSelectedPanel(){
-    const panel=$("selectedPanel"), item=selectedItem(), mark=selectedMark();
+    const panel=$("selectedPanel"),selected=selectedArtwork(),item=selectedItem(),mark=selectedMark();
+    panel.dataset.selectionCount=String(selected.length);
+    panel.dataset.selectionAddMode=state.selectionAddMode?"true":"false";
+    const groupIds=new Set(selected.map(record=>record.artwork.groupId).filter(Boolean));
+    const grouped=selected.length>1&&groupIds.size===1&&selected.every(record=>record.artwork.groupId);
+    panel.dataset.selectionGrouped=grouped?"true":"false";
+    const recolourable=selected.filter(record=>record.kind==="mark"&&record.artwork.type!=="eraser").map(record=>record.artwork);
+    panel.dataset.recolourableCount=String(recolourable.length);
+    panel.dataset.selectionColour=recolourable[0]?.color||"";
+    if(selected.length>1){
+      panel.innerHTML='<div class="field"><label>Selection</label><div class="mini"><strong>'+selected.length+' artwork items</strong>'+(grouped?' · grouped':'')+'</div><p class="help">Drag any selected artwork to move the selection together. Use Add selection in the UX2 toolbar to add or remove artwork.</p></div><div class="btns"><button id="duplicateSel" class="btn">Duplicate selection</button><button id="deleteSel" class="btn danger">Delete selection</button>'+(grouped?'<button id="ungroupSel" class="btn">Ungroup</button>':'<button id="groupSel" class="btn">Group</button>')+'</div>';
+      $("duplicateSel").onclick=duplicateSelectedArtwork;
+      $("deleteSel").onclick=deleteSelectedArtwork;
+      if($("groupSel"))$("groupSel").onclick=groupSelectedArtwork;
+      if($("ungroupSel"))$("ungroupSel").onclick=ungroupSelectedArtwork;
+      return;
+    }
     if(mark){
       const t=markTransformValues(mark),pct=Math.round(t.scale*100),rawDeg=t.rotation*180/Math.PI,deg=Math.round(((rawDeg+180)%360+360)%360-180),layer=layerForArtwork(mark,BASE_LAYER_IDS.drawing);
-      const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
+      const typeName={brush:"Brush stroke",line:"Line",rect:"Rectangle",ellipse:"Ellipse",freefill:"Freehand fill",bucket:"Bucket fill",gradient:"Gradient fill"}[mark.type]||"Drawn mark";
       panel.innerHTML=`
         <div class="field">
           <label>Artwork</label>
@@ -898,7 +1423,7 @@
     });
     $("duplicateSel").onclick=()=>{
       saveHistory();
-      const copy={...item,id:state.nextId++,x:(item.x+40)%TILE,y:(item.y+40)%TILE};
+      const copy={...item,id:state.nextId++,x:(item.x+40)%TILE,y:(item.y+40)%TILE};delete copy.scatterGenerated;
       state.items.push(copy);state.selectedId=copy.id;renderAll();
     };
     $("deleteSel").onclick=()=>{
@@ -917,12 +1442,16 @@
   function renderAll(rebuildSelected=true,refreshPreview=true){
     state.pendingPreview ||= refreshPreview;
     state.pendingSelected ||= rebuildSelected;
-    scheduleAutosave();
+    if(!state.interactionActive)scheduleAutosave();
     if(state.renderQueued) return;
     state.renderQueued=true;
     requestAnimationFrame(()=>{
       state.renderQueued=false;
       drawEditor();
+      if(state.interactionActive){
+        window.PatternForgeInteractionMetrics.deferredWorkFrames++;
+        return;
+      }
       if(state.pendingPreview)renderPreview();
       updateQuality();
       if(state.pendingSelected){rebuildSelectedPanel();rebuildLayerUI();}
@@ -930,6 +1459,22 @@
     });
   }
 
+  function scatterRadius(item){
+    const asset=assetOf(item);if(!asset)return 0;
+    return Math.hypot(asset.w*item.scale,asset.h*item.scale)/2;
+  }
+  function scatterCandidateFits(candidate,existing,minSpacing,allowOverlap){
+    for(const other of existing){
+      const delta=nearestLatticeDelta(candidate.x,candidate.y,other.x,other.y),distance=Math.sqrt(delta.distance);
+      const required=minSpacing+(allowOverlap?0:scatterRadius(candidate)+scatterRadius(other));
+      if(distance<required)return false;
+    }
+    return true;
+  }
+  function freezeScatter(){
+    const generated=state.items.filter(item=>item.scatterGenerated);if(!generated.length){setStatus("There are no generated scatter items to freeze.");return;}
+    saveHistory();for(const item of generated)delete item.scatterGenerated;renderAll();setStatus("Frozen "+generated.length+" scatter item"+(generated.length===1?"":"s")+" as ordinary editable artwork.");
+  }
   function generate(){
     if(isDoodleProject()){setStatus("Image scatter is available in Pattern Projects. Doodle Projects keep one standalone canvas.");return;}
     if(state.assets.length===0){ setStatus("Add at least one drawing first."); return; }
@@ -938,20 +1483,28 @@
     let hi=Math.max(1,parseFloat($("maxScale").value)||42)/100;
     if(hi<lo)[lo,hi]=[hi,lo];
     const rot=clamp(parseFloat($("rotationAmount").value)||0,0,180)*Math.PI/180;
+    const minSpacing=TILE*clamp(parseFloat($("scatterSpacing").value)||0,0,50)/100;
+    const allowOverlap=$("scatterOverlap").checked,preserveManual=$("scatterPreserveManual").checked;
     const rand=mulberry32(hashString($("seed").value||"pattern"));
-    saveHistory();state.items=[];
+    saveHistory();
+    state.items=preserveManual?state.items.filter(item=>!item.scatterGenerated):[];
+    const protectedCount=state.items.length;
+    let placed=0;
     for(let i=0;i<n;i++){
       const a=state.assets[Math.floor(rand()*state.assets.length)];
-      const base=TILE/Math.max(a.w,a.h);
-      const normalized=base*(lo+(hi-lo)*rand());
-      state.items.push({
-        id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),
-        x:rand()*TILE,y:rand()*TILE,
-        scale:normalized,rotation:(rand()*2-1)*rot,opacity:1
-      });
+      const base=TILE/Math.max(a.w,a.h),normalized=base*(lo+(hi-lo)*rand());
+      let accepted=null;
+      for(let attempt=0;attempt<140;attempt++){
+        const candidate={id:state.nextId++,assetId:a.id,layerId:motifTargetLayerId(),x:rand()*TILE,y:rand()*TILE,scale:normalized,rotation:(rand()*2-1)*rot,opacity:1,scatterGenerated:true};
+        if(scatterCandidateFits(candidate,state.items,minSpacing,allowOverlap)){accepted=candidate;break;}
+      }
+      if(!accepted)continue;
+      state.items.push(accepted);placed++;
     }
-    state.selectedId=null;
-    setStatus(`Generated ${n} wrapped motif copies. The tile edges are mathematically periodic.`);
+    clearSelection();
+    const constrained=placed<n?(" Placed "+placed+" of "+n+" because the spacing/overlap limits are tight."):"";
+    const protectedNote=preserveManual&&protectedCount?(" Preserved "+protectedCount+" hand-positioned item"+(protectedCount===1?"":"s")+"."):"";
+    setStatus("Generated "+placed+" wrapped motif cop"+(placed===1?"y":"ies")+"."+protectedNote+constrained);
     renderAll();
   }
 
@@ -961,17 +1514,35 @@
     const r=canvas.getBoundingClientRect();
     return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
   }
+  function historySnapshot(){
+    return {
+      items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId,
+      appearance:{background:$("bg").value,transparent:$("transparent").checked,palette:[...state.colorPalette],ink:$("ink").value,
+        settings:{neighborOpacity:$("neighborOpacity").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value}}
+    };
+  }
   function saveHistory(){
-    state.past.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
+    state.past.push(JSON.stringify(historySnapshot()));
     if(state.past.length>40)state.past.shift();
     state.future=[];
   }
+  function applyHistoryAppearance(appearance){
+    if(!appearance)return;
+    if(typeof appearance.background==="string")$("bg").value=appearance.background;
+    if(appearance.transparent!==undefined)$("transparent").checked=isDoodleProject()?true:!!appearance.transparent;
+    if(Array.isArray(appearance.palette))state.colorPalette=[...appearance.palette];
+    if(typeof appearance.ink==="string")setInkColour(appearance.ink);
+    const s=appearance.settings||{};
+    for(const id of ["neighborOpacity","count","minScale","maxScale","rotationAmount","scatterSpacing"])if(s[id]!==undefined)$(id).value=s[id];
+    for(const id of ["scatterOverlap","scatterPreserveManual"])if(s[id]!==undefined)$(id).checked=!!s[id];
+    rebuildPaletteUI();updateSettingReadouts();
+  }
   function restoreHistory(from,to){
     if(!from.length)return;
-    to.push(JSON.stringify({items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId}));
+    to.push(JSON.stringify(historySnapshot()));
     const s=JSON.parse(from.pop());
     state.items=s.items;state.marks=s.marks;state.layers=normaliseLayers(s.layers);state.activeLayerId=layerById(s.activeLayerId)?.id||layerById(BASE_LAYER_IDS.drawing)?.id||state.layers[state.layers.length-1]?.id||state.layers[0]?.id||"";state.nextId=s.nextId;
-    state.selectedId=null;state.activeMark=null;renderAll();
+    applyHistoryAppearance(s.appearance);clearSelection();state.activeMark=null;renderAll();
   }
   function startAgain(){
     const itemCount=state.items.length;
@@ -1050,6 +1621,7 @@
     if(m.type==="ellipse"){
       const cx=(first.x+last.x)/2,cy=(first.y+last.y)/2,rx=Math.max(.1,Math.abs(last.x-first.x)/2),ry=Math.max(.1,Math.abs(last.y-first.y)/2),q=Math.sqrt(((p.x-cx)/rx)**2+((p.y-cy)/ry)**2);if(m.fill)return q<=1;return Math.abs(q-1)*Math.min(rx,ry)<=strokeRadius;
     }
+    if(m.type==="bucket"){let inside=false;for(const path of markPointSets(m))if(path.length>=3&&pointInPolygon(p,path))inside=!inside;return inside;}
     if(m.type==="freefill"||m.type==="gradient")return pts.length>=3&&pointInPolygon(p,pts);
     if(pts.length===1)return Math.hypot(p.x-first.x,p.y-first.y)<=strokeRadius;
     for(let i=1;i<pts.length;i++)if(pointSegmentDistance(p,pts[i-1],pts[i])<=strokeRadius)return true;return false;
@@ -1098,57 +1670,86 @@
     const [a,b]=[...state.pointers.values()];
     return {distance:Math.hypot(a.x-b.x,a.y-b.y),mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
   }
+  function startSelectionMove(ids,w){
+    const members=(ids||[]).map(id=>{
+      const record=selectableArtworkRecord(id);if(!record)return null;
+      if(record.kind==="item"){delete record.artwork.scatterGenerated;return {kind:"item",id,x:Number(record.artwork.x)||0,y:Number(record.artwork.y)||0};}
+      const t=markTransformValues(record.artwork);return {kind:"mark",id,x:t.x,y:t.y};
+    }).filter(Boolean);
+    state.transformState={kind:"selection",mode:"move",startPointer:{x:w.x,y:w.y},members};
+    state.dragging=false;state.resizeState=null;
+  }
   canvas.addEventListener("pointerdown",e=>{
     e.preventDefault();canvas.setPointerCapture(e.pointerId);
     const p=pointerPos(e);state.pointers.set(e.pointerId,p);
     if(state.pointers.size===2){
-      state.activeMark=null;state.dragging=false;state.dragStart=null;
+      state.activeMark=null;state.dragging=false;state.dragStart=null;beginInteraction("view");
       const g=gestureInfo();state.gesture={...g,zoom:state.zoom};renderAll();return;
     }
     if(state.pointers.size>2)return;
     state.dragStart=p;
-    if(state.tool==="pan" || e.button===1)return;
+    if(state.tool==="pan" || e.button===1){beginInteraction("view");return;}
     const w=worldPoint(p);
     if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
     if(state.tool==="select"){
-      let current=selectedItem(),currentMark=selectedMark();
+      const currentIds=selectionIds(),singleSelection=currentIds.length===1;
+      let current=singleSelection?selectedItem():null,currentMark=singleSelection?selectedMark():null;
       const currentLayer=current?layerForArtwork(current,BASE_LAYER_IDS.motifs):currentMark?layerForArtwork(currentMark,BASE_LAYER_IDS.drawing):null;
-      if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){state.selectedId=null;current=null;currentMark=null;}
+      if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){clearSelection();current=null;currentMark=null;}
       const markHandle=currentMark&&markHandleAt(currentMark,w.x,w.y);
       if(markHandle){
         saveHistory();const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);
         if(markHandle==="rotate")state.transformState={kind:"mark",mode:"rotate",id:currentMark.id,startRotation:t.rotation,startAngle:Math.atan2(w.y-bounds.cy,w.x-bounds.cx),center:{x:bounds.cx,y:bounds.cy}};
         else state.transformState={kind:"mark",mode:"move",id:currentMark.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:markGeometryBounds(currentMark).cx+t.x,y:markGeometryBounds(currentMark).cy+t.y}};
-        state.dragging=false;state.resizeState=null;renderAll();return;
+        state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
       }
       if(currentMark&&markResizeHandleHit(currentMark,w.x,w.y)){
-        const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);saveHistory();state.resizeState={kind:"mark",id:currentMark.id,scale:t.scale,startDistance:Math.max(1,Math.hypot(w.x-bounds.cx,w.y-bounds.cy)),center:{x:bounds.cx,y:bounds.cy}};state.dragging=false;renderAll();return;
+        const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);saveHistory();state.resizeState={kind:"mark",id:currentMark.id,scale:t.scale,startDistance:Math.max(1,Math.hypot(w.x-bounds.cx,w.y-bounds.cy)),center:{x:bounds.cx,y:bounds.cy}};state.dragging=false;beginInteraction("edit");renderAll();return;
       }
       const handle=current&&imageHandleAt(current,w.x,w.y);
       if(handle){
         saveHistory();
         if(handle==="rotate"){
-          const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
+          delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
           state.transformState={kind:"item",mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
         }else state.transformState={kind:"item",mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
-        state.dragging=false;state.resizeState=null;renderAll();return;
+        state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
       }
       if(current&&resizeHandleHit(current,w.x,w.y)){
-        const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
+        delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;beginInteraction("edit");renderAll();return;
       }
-      const hit=hitTestArtwork(w.x,w.y);state.selectedId=hit?.artwork?.id??null;state.dragging=hit?.kind==="item";
-      if(hit?.kind==="item"){saveHistory();state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
+      const hit=hitTestArtwork(w.x,w.y),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
+      if(additive){
+        if(hit){
+          const hitIds=expandedArtworkIds(hit.artwork),next=new Set(currentIds),allSelected=hitIds.every(id=>next.has(id));
+          if(allSelected)for(const id of hitIds)next.delete(id);else for(const id of hitIds)next.add(id);
+          setSelection([...next],allSelected?([...next].at(-1)??null):hit.artwork.id);
+        }
+        renderAll();return;
+      }
+      if(hit&&currentIds.length>1&&currentIds.includes(hit.artwork.id)){
+        saveHistory();startSelectionMove(currentIds,w);beginInteraction("edit");renderAll();return;
+      }
+      const hitIds=hit?expandedArtworkIds(hit.artwork):[];
+      if(hitIds.length>1){
+        setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);beginInteraction("edit");renderAll();return;
+      }
+      setSelection(hit?[hit.artwork.id]:[],hit?.artwork?.id??null);state.dragging=hit?.kind==="item";
+      if(hit?.kind==="item"){saveHistory();delete hit.artwork.scatterGenerated;state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
       else if(hit?.kind==="mark"){
         saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
       }
+      if(hit)beginInteraction("edit");
       renderAll();return;
     }
     const drawLayer=activeLayer();
     if(!drawLayer||drawLayer.visible===false||drawLayer.locked){setStatus(!drawLayer?"Choose an active layer before drawing.":drawLayer.locked?`“${drawLayer.name}” is locked. Unlock it to draw.`:`“${drawLayer.name}” is hidden. Make it visible to draw.`);state.dragStart=null;return;}
+    if(state.tool==="bucket"){void bucketFillAt(w,drawLayer);return;}
     saveHistory();
-    const markStart=canonicalPoint(w.x,w.y);
-    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
-    state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
+    const markStart=canonicalPoint(w.x,w.y),pressureEnabled=state.tool==="brush"&&$("pressureWidth").checked;
+    if(pressureEnabled)markStart.p=pointerPressure(e);
+    const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,alphaLocked:state.tool!=="eraser"&&!!drawLayer.alphaLock,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,pressureMin:Number($("pressureMin").value)||18,pressureSensitivity:Number($("pressureSensitivity").value)||100,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
+    state.marks.push(mark);state.activeMark=mark;state.selectedId=null;beginInteraction("draw");
     renderAll(false,false);
   });
   canvas.addEventListener("pointermove",e=>{
@@ -1171,7 +1772,17 @@
     }
     const w=worldPoint(p);
     if(state.transformState){
-      if(state.transformState.kind==="mark"){
+      if(state.transformState.kind==="selection"){
+        const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y;
+        for(const member of state.transformState.members){
+          const record=artworkRecord(member.id);if(!record)continue;
+          if(member.kind==="item"){
+            const next={x:member.x+dx,y:member.y+dy},pos=isDoodleProject()?next:canonicalPoint(next.x,next.y);record.artwork.x=pos.x;record.artwork.y=pos.y;
+          }else{
+            record.artwork.transformX=member.x+dx;record.artwork.transformY=member.y+dy;
+          }
+        }
+      }else if(state.transformState.kind==="mark"){
         const mark=state.marks.find(m=>m.id===state.transformState.id);if(!mark)return;
         if(state.transformState.mode==="move"){
           const dx=w.x-state.transformState.startPointer.x,dy=w.y-state.transformState.startPointer.y,bounds=markPrimaryBounds(mark),snapped=smartSnapPosition(state.transformState.baseCenter.x+dx,state.transformState.baseCenter.y+dy,(bounds.maxX-bounds.minX)/2,(bounds.maxY-bounds.minY)/2);
@@ -1198,8 +1809,14 @@
     if(state.activeMark){
       const m=state.activeMark;
       if(m.type==="brush"||m.type==="eraser"||m.type==="freefill"||m.type==="gradient"){
-        const last=m.points[m.points.length-1],next=nearestLatticePoint(w.x,w.y,last.x,last.y);
-        if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
+        const coalesced=typeof e.getCoalescedEvents==="function"?e.getCoalescedEvents():[],samples=[...coalesced];
+        if(!samples.length||samples.at(-1).clientX!==e.clientX||samples.at(-1).clientY!==e.clientY)samples.push(e);
+        if(coalesced.length)window.PatternForgeInteractionMetrics.coalescedSamples+=coalesced.length;
+        for(const sample of samples){
+          const sampleWorld=worldPoint(pointerPos(sample)),last=m.points[m.points.length-1],raw=nearestLatticePoint(sampleWorld.x,sampleWorld.y,last.x,last.y),next=m.type==="brush"?stabiliseStrokePoint(last,raw):raw;
+          if(m.pressureWidth&&m.type==="brush"){const rawPressure=pointerPressure(sample,last.p??.5);next.p=stabilisePressure(last.p??rawPressure,rawPressure);}
+          if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
+        }
       }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
       renderAll(false,false);return;
     }
@@ -1212,9 +1829,18 @@
     }
   });
   function endDrag(e){
+    if(state.activeMark?.type==="brush"&&strokeStabilisationBase()<.999&&state.activeMark.points.length){
+      const last=state.activeMark.points[state.activeMark.points.length-1],w=worldPoint(pointerPos(e)),end=nearestLatticePoint(w.x,w.y,last.x,last.y);
+      if(state.activeMark.pressureWidth){const rawPressure=pointerPressure(e,last.p??.5);end.p=stabilisePressure(last.p??rawPressure,rawPressure);}
+      if(Math.hypot(end.x-last.x,end.y-last.y)>.5)state.activeMark.points.push(end);
+    }
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
-    const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
-    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();renderAll();
+    if(state.transformState?.kind==="selection"){
+      for(const member of state.transformState.members||[]){if(member.kind==="mark"){const mark=state.marks.find(m=>m.id===member.id);if(mark)normaliseMarkTranslation(mark);}}
+    }else{
+      const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
+    }
+    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();finishInteraction();renderAll();
   }
   canvas.addEventListener("pointerup",endDrag);
   canvas.addEventListener("pointercancel",endDrag);
@@ -1288,8 +1914,8 @@
   async function exportPNG(){
     const result=await renderPNGBlob();if(!result)return;
     const {blob,spec}=result;
-    downloadBlob(blob,`${safeName()}-${exportFileStem()}-${spec.dpi}dpi.png`);
-    setStatus(isDoodleProject()?`Standalone PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency and ${spec.dpi}-DPI metadata.`:`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}-master.png`);
+    setStatus(isDoodleProject()?`Standalone master PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency. No physical size is assigned.`:`Seamless master PNG exported at ${spec.wPx} × ${spec.hPx}px. No physical size is assigned.`);
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -1302,8 +1928,9 @@
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     let gradientId=0;
     let maskIndex=0;
+    let clipBaseSvg="";
     for(const layer of state.layers){
-      if(!layerIsRenderable(layer,true))continue;
+      if(!layerIsRenderable(layer,true)){if(!layer.clipToBelow)clipBaseSvg="";continue;}
       let layerBody="";
       for(const srcItem of state.items){
       if(layerForArtwork(srcItem,BASE_LAYER_IDS.motifs)?.id!==layer.id)continue;
@@ -1323,7 +1950,7 @@
       const copies=artworkCopiesForBounds(item.x-halfW,item.x+halfW,item.y-halfH,item.y+halfH,W,H,itemBasis);
       for(const copy of copies){
         const x=item.x+copy.x,y=item.y+copy.y;
-        layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg})"/>`;
+        layerBody+=`<use href="#${assetRef}" xlink:href="#${assetRef}" x="${-iw/2}" y="${-ih/2}" width="${iw}" height="${ih}" opacity="${item.opacity*layer.opacity}" transform="translate(${x} ${y}) rotate(${deg}) scale(${item.flipX?-1:1} ${item.flipY?-1:1})"/>`;
       }
       }
       for(const m of state.marks){
@@ -1332,12 +1959,25 @@
       let shape="";
       if(m.type==="rect")shape=`<rect x="${Math.min(first.x,last.x)}" y="${Math.min(first.y,last.y)}" width="${Math.abs(last.x-first.x)}" height="${Math.abs(last.y-first.y)}"/>`;
       else if(m.type==="ellipse")shape=`<ellipse cx="${(first.x+last.x)/2}" cy="${(first.y+last.y)/2}" rx="${Math.max(.1,Math.abs(last.x-first.x)/2)}" ry="${Math.max(.1,Math.abs(last.y-first.y)/2)}"/>`;
+      else if(m.type==="bucket")shape=`<path d="${markPointSets(m).map(path=>path.length?`M ${path.map(p=>`${p.x} ${p.y}`).join(" L ")} Z`:"").join(" ")}"/>`;
       else shape=`<path d="M ${m.points.map(p=>`${p.x} ${p.y}`).join(" L ")}${m.points.length===1?` L ${first.x+.01} ${first.y+.01}`:""}${m.type==="freefill"?" Z":""}"/>`;
       if(m.type==="brush"&&(m.brushStyle||"ink")==="stamp"){
         const spacing=Math.max(4,m.width*1.65),r=Math.max(1,m.width*.46),parts=[];let carry=spacing;
         const stamp=(x,y,angle)=>{if((m.stampShape||"leaf")==="dot")parts.push(`<circle cx="${x}" cy="${y}" r="${r}"/>`);else if(m.stampShape==="star"){let d="";for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;d+=`${i?"L":"M"}${x+Math.cos(a)*rr} ${y+Math.sin(a)*rr} `;}parts.push(`<path d="${d}Z"/>`);}else parts.push(`<ellipse cx="${x}" cy="${y}" rx="${r*.52}" ry="${r}" transform="rotate(${angle*180/Math.PI} ${x} ${y})"/>`);};
         stamp(first.x,first.y,0);for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);for(let d=carry;d<=len;d+=spacing){const t=d/len;stamp(a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx));}carry=((carry-len)%spacing+spacing)%spacing||spacing;}
         shape=parts.join("");
+      }
+      if(m.type==="brush"&&m.pressureWidth&&(m.brushStyle||"ink")!=="stamp"){
+        const pressureStyle=m.brushStyle||"ink",segments=[];
+        if(m.points.length===1){
+          const width=brushWidthAtPressure(m,pressureStyle,m.points[0].p);segments.push(`<circle cx="${m.points[0].x}" cy="${m.points[0].y}" r="${width/2}" fill="${svgEscape(m.color)}" stroke="none"/>`);
+        }else{
+          for(let i=1;i<m.points.length;i++){
+            const a=m.points[i-1],b=m.points[i],pressure=((Number(a.p)||1)+(Number(b.p)||1))/2,width=brushWidthAtPressure(m,pressureStyle,pressure);
+            segments.push(`<path d="M ${a.x} ${a.y} L ${b.x} ${b.y}" stroke-width="${width}" fill="none"/>`);
+          }
+        }
+        shape=segments.join("");
       }
       if(m.type==="brush"&&(m.brushStyle||"")==="texture"&&Number(m.texture||0)>0){
         const amount=clamp(Number(m.texture)||0,0,1),rng=mulberry32(hashString(String(m.id)+"texture")),step=Math.max(4,m.width*(1.4-amount)),dots=[];
@@ -1353,10 +1993,12 @@
         shape=shape.replace(/"\/>$/,' Z"/>');style=`fill="url(#${id})" stroke="none" opacity="${(m.opacity??1)*layer.opacity}"`;
       }else{
         const brush=m.brushStyle||"ink",width=m.type==="brush"?(brush==="marker"?m.width*1.8:brush==="pencil"?m.width*.72:m.width):m.width;
-        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
-        style=`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}" opacity="${opacity}"`;
+        const opacity=(m.opacity??1)*layer.opacity*(brush==="marker"?.36:brush==="pencil"?.68:1),fill=m.type==="freefill"||m.type==="bucket"||(m.fill&&(m.type==="rect"||m.type==="ellipse"))||brush==="stamp"?svgEscape(m.color):"none";
+        style=m.type==="brush"&&m.pressureWidth&&brush!=="stamp"
+          ?`stroke="${svgEscape(m.color)}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${opacity}"`
+          :`stroke="${svgEscape(m.color)}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}"${m.type==="bucket"?' fill-rule="evenodd"':''} opacity="${opacity}"`;
       }
-      let eraserNodes="";
+      let eraserNodes="",markNodes="";
       for(const [mirrorX,mirrorY,angle] of symmetryTransforms()){
         const transform=`translate(${TILE/2} ${TILE/2}) rotate(${angle*180/Math.PI}) scale(${mirrorX?-1:1} ${mirrorY?-1:1}) translate(${-TILE/2} ${-TILE/2})`;
         if(!markHasTransform(m)){
@@ -1365,15 +2007,33 @@
           for(const p of transformedPoints){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
           minX-=m.width;maxX+=m.width;minY-=m.width;maxY+=m.width;
           const copies=artworkCopiesForBounds(minX,maxX,minY,maxY,clipW,clipH,markBasis);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}" ${style}>${shape}</g></g>`;if(m.type==="eraser")eraserNodes+=node;else markNodes+=node;}
         }else{
           const bounds=markTransformedBounds(m,mirrorX,mirrorY,angle),copies=artworkCopiesForBounds(bounds.minX,bounds.maxX,bounds.minY,bounds.maxY,clipW,clipH,markBasis),markTransform=markSvgTransform(m);
-          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else layerBody+=node;}
+          for(const copy of copies){const node=`<g transform="scale(${sx} ${sy}) translate(${copy.x} ${copy.y})"><g transform="${transform}"><g transform="${markTransform}" ${style}>${shape}</g></g></g>`;if(m.type==="eraser")eraserNodes+=node;else markNodes+=node;}
         }
       }
-      if(m.type==="eraser"&&eraserNodes){const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;}
+      if(m.type==="eraser"&&eraserNodes){
+        const maskId=`pf-erase-${++maskIndex}`;gradientDefs+=`<mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:luminance"><rect width="${W}" height="${H}" fill="#fff"/>${eraserNodes}</mask>`;layerBody=`<g mask="url(#${maskId})">${layerBody}</g>`;
+      }else if(markNodes){
+        if(m.alphaLocked){
+          if(layerBody){
+            const alphaMaskId=`pf-alpha-lock-${++maskIndex}`;
+            gradientDefs+=`<mask id="${alphaMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">${layerBody}</mask>`;
+            layerBody+=`<g mask="url(#${alphaMaskId})">${markNodes}</g>`;
+          }
+        }else layerBody+=markNodes;
       }
-      body+=layerBody;
+      }
+      if(layer.clipToBelow){
+        if(!clipBaseSvg)continue;
+        const clipMaskId=`pf-clip-${++maskIndex}`;
+        gradientDefs+=`<mask id="${clipMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">${clipBaseSvg}</mask>`;
+        body+=`<g mask="url(#${clipMaskId})">${layerBody}</g>`;
+      }else{
+        body+=layerBody;
+        clipBaseSvg=layerBody;
+      }
     }
     const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${spec.wIn}in" height="${spec.hIn}in" viewBox="0 0 ${W} ${H}"><defs><clipPath id="tile"><rect width="${W}" height="${H}"/></clipPath>${assetDefs}${gradientDefs}</defs><g clip-path="url(#tile)">${body}</g></svg>`;
     return new Blob([svg],{type:"image/svg+xml"});
@@ -1391,8 +2051,8 @@
   function setProjectBadge(){
     const p=state.project;
     const styles={straight:"Straight", "half-drop":"Half-drop",brick:"Brick"},doodle=p?.projectType==="doodle";
-    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?`${p.title} · ${doodle?"Doodle":styles[p.repeatStyle]||"Straight"}`:"Tile editor";
-    $("projectNameDisplay").title=p?[p.title,p.customer,p.theme,p.variation,doodle?"Doodle Project":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
+    $("projectNameDisplay").textContent=p?.isPractice?"Practice mode":p?(doodle?"Doodle":`${p.title} · ${styles[p.repeatStyle]||"Straight"}`):"Tile editor";
+    $("projectNameDisplay").title=p?[doodle?"Doodle":p.title,p.customer,p.theme,p.variation,doodle?"Standalone canvas":styles[p.repeatStyle]||"Straight repeat"].filter(Boolean).join(" · "):"";
   }
   function updateSetupProjectType(){
     const doodle=$("projectTypeInput").value==="doodle";
@@ -1407,26 +2067,29 @@
     $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
     $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;$("backgroundSettingsRow").hidden=doodle;
     $("stageDescription").textContent=doodle?"4000 px standalone artwork canvas · transparent":"4000 px master tile · seamless repeat preview";
-    $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
+    $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
     $("tileSettingsSummary").textContent=doodle?"Canvas and placement settings":"Tile and placement settings";
     $("snapHelp").textContent=doodle?"Smart snapping uses the grid plus canvas centre lines and canvas edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.":"Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.";
     $("assetPlacementHelp").textContent=doodle?"The first selected image is placed on the canvas automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.":"The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.";
     $("focusRecentEmpty").textContent=doodle?"Choose Add image. The first image will be placed on the canvas; tap a thumbnail here to add another copy.":"Choose Add image. The first image will be placed on the tile; tap a thumbnail here to add another copy.";
-    $("focusPrintHeading").textContent=doodle?"Artwork size & DPI":"Tile size & DPI";
-    $("focusPrintSizeLabel").textContent=doodle?"Printed artwork width":"Printed base-tile width";
-    $("focusInfoPrintNote").textContent=doodle?"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px artwork canvas; original raster quality is checked above.":"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.";
+    $("focusPrintHeading").textContent="Master output";
+    $("focusPrintSizeLabel").textContent="Legacy physical scale (ignored)";
+    $("focusInfoPrintNote").textContent=doodle?"The pixel dimensions describe the reusable raster master only. Pattern Forge does not assign a physical size to the artwork.":"The repeat-cell pixel dimensions describe the reusable raster master only. Pattern Forge does not assign a physical size to the design.";
     $("tileBorderLabelText").textContent=doodle?"Show canvas edge":"Show centre tile edge";
     $("stageHelpHint").textContent=doodle?"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the standalone artwork without guides.":"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.";
     canvas.setAttribute("aria-label",doodle?"Doodle artwork canvas":"Pattern tile editor");
     $("exportFilesTitle").textContent=doodle?"Artwork files":"Pattern files";
     $("exportPng").textContent=doodle?"Export artwork as PNG":"Export pattern as PNG";
     $("exportSvg").textContent=doodle?"Export artwork as SVG":"Export pattern as SVG";
-    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px canvas. PNG carries 300-DPI metadata. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
+    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px raster master. That pixel size does not assign a physical size. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG use the complete repeat-cell dimensions shown at left. Straight uses a 4000 × 4000 px raster master; half-drop and brick use the required rectangular repeat cell. Pixel dimensions describe raster detail, not a physical product size. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
+    pendingAutosaveData=null;
+    $("resumePrompt").hidden=true;
+    $("newProjectSetup").hidden=false;
     const overlay=$("projectSetupOverlay");overlay.hidden=false;
-    $("cancelProjectSetup").hidden=!state.project;
-    $("cancelProjectSetup").textContent=state.project?.isPractice?"Back to practice":"Back to current project";
+    $("cancelProjectSetup").hidden=false;
+    $("cancelProjectSetup").textContent="Cancel";
     $("projectSetupIntro").textContent=state.project?.isPractice?"Turn your current practice artwork into a named Pattern Project. Your drawing is kept and its straight repeat stays in place.":"Create a new Pattern Project or Doodle Project, or open another saved project from this device.";
     $("localProjectsSection").hidden=false;
     $("projectTitleInput").value="";$("projectCustomerInput").value="";$("projectThemeInput").value="";$("projectVariationInput").value="";
@@ -1464,10 +2127,16 @@
     const begin=()=>{
       const now=new Date().toISOString(),promotePractice=!!state.project?.isPractice,requestedType=promotePractice?"pattern":($("projectTypeInput").value==="doodle"?"doodle":"pattern");
       state.project={id:newProjectId(),title,customer:$("projectCustomerInput").value.trim(),theme:$("projectThemeInput").value.trim(),variation:$("projectVariationInput").value.trim(),projectType:requestedType,repeatStyle:requestedType==="doodle"?"straight":(promotePractice?"straight":$("projectRepeatStyle").value),createdAt:promotePractice?(state.project.createdAt||now):now,updatedAt:now};
-      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      if(!promotePractice&&requestedType==="pattern"){
+        // New pattern projects begin with a visible construction grid. More detailed
+        // grid, mirror, snapping and palette choices live in the editor's Design setup.
+        $("gridOn").checked=true;
+        updateSettingReadouts();
+      }
+      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
-      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle Project “${title}” saved. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
     };
     if(state.project)saveAutosave().then(begin);else begin();
   }
@@ -1475,21 +2144,112 @@
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
     state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",projectType:"pattern",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
-    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
     $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
-    setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
+    setStatus("Practice mode started. Your practice work autosaves on this device; save it as a named Pattern Project when you’re ready.");
   }
+  function variationSnapshot(){
+    return {
+      background:$("bg").value,transparent:$("transparent").checked,palette:[...state.colorPalette],ink:$("ink").value,
+      items:state.items.map(item=>({id:item.id,x:item.x,y:item.y,scale:item.scale,rotation:item.rotation,opacity:item.opacity,scatterGenerated:!!item.scatterGenerated})),
+      marks:state.marks.map(mark=>({id:mark.id,color:mark.color,endColor:mark.endColor,opacity:mark.opacity,transformX:mark.transformX,transformY:mark.transformY,transformScale:mark.transformScale,transformRotation:mark.transformRotation})),
+      settings:{neighborOpacity:$("neighborOpacity").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked}
+    };
+  }
+  function saveVariation(name){
+    const title=String(name||"").trim().slice(0,80);if(!title){setStatus("Give the variation a name.");return null;}
+    const now=new Date().toISOString(),variation={id:"variation-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),name:title,createdAt:now,updatedAt:now,snapshot:variationSnapshot()};
+    state.variations.unshift(variation);if(state.variations.length>30)state.variations.length=30;scheduleAutosave();setStatus("Saved variation “"+title+"”.");return variation;
+  }
+  function applyVariationSnapshot(snap,options={}){
+    if(!snap||typeof snap!=="object")return false;
+    if(options.history!==false)saveHistory();
+    const itemMap=new Map((snap.items||[]).map(item=>[String(item.id),item])),markMap=new Map((snap.marks||[]).map(mark=>[String(mark.id),mark]));
+    for(const item of state.items){const saved=itemMap.get(String(item.id));if(!saved)continue;for(const key of ["x","y","scale","rotation","opacity"])if(saved[key]!==undefined)item[key]=saved[key];if(saved.scatterGenerated)item.scatterGenerated=true;else delete item.scatterGenerated;}
+    for(const mark of state.marks){const saved=markMap.get(String(mark.id));if(!saved)continue;for(const key of ["color","endColor","opacity","transformX","transformY","transformScale","transformRotation"])if(saved[key]!==undefined)mark[key]=saved[key];}
+    if(typeof snap.background==="string")$("bg").value=snap.background;$("transparent").checked=isDoodleProject()?true:!!snap.transparent;
+    if(Array.isArray(snap.palette))state.colorPalette=[...snap.palette];if(typeof snap.ink==="string"){$("ink").value=$("inkMobile").value=snap.ink;}
+    const s=snap.settings||{};for(const key of ["neighborOpacity","count","minScale","maxScale","rotationAmount","scatterSpacing"])if(s[key]!==undefined)$(key).value=s[key];
+    for(const key of ["scatterOverlap","scatterPreserveManual"])if(s[key]!==undefined)$(key).checked=!!s[key];
+    rebuildPaletteUI();updateSettingReadouts();
+    if(options.render!==false)renderAll();
+    return true;
+  }
+  function applyVariation(id){
+    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot){setStatus("That variation is unavailable.");return false;}
+    applyVariationSnapshot(variation.snapshot,{history:true,render:true});
+    if(state.project)state.project.variation=variation.name;
+    setStatus("Applied variation “"+variation.name+"”.");return true;
+  }
+  function renameVariation(id,name){
+    const variation=state.variations.find(v=>v.id===id),title=String(name||"").trim().slice(0,80);
+    if(!variation||!title){setStatus(!variation?"That variation is unavailable.":"Give the variation a name.");return false;}
+    const previous=variation.name;variation.name=title;variation.updatedAt=new Date().toISOString();if(state.project?.variation===previous)state.project.variation=title;scheduleAutosave();setStatus("Renamed variation to “"+title+"”.");return true;
+  }
+  function duplicateVariation(id,name){
+    const source=state.variations.find(v=>v.id===id);if(!source?.snapshot){setStatus("That variation is unavailable.");return null;}
+    const title=String(name||("Copy of "+source.name)).trim().slice(0,80)||("Copy of "+source.name).slice(0,80),now=new Date().toISOString();
+    const copy={id:"variation-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),name:title,createdAt:now,updatedAt:now,snapshot:JSON.parse(JSON.stringify(source.snapshot))};
+    state.variations.unshift(copy);if(state.variations.length>30)state.variations.length=30;scheduleAutosave();setStatus("Duplicated variation as “"+title+"”.");return copy;
+  }
+  function compareVariation(id){
+    const variation=state.variations.find(v=>v.id===id);if(!variation?.snapshot)return {changes:-1,summary:"Variation unavailable"};
+    const current=variationSnapshot(),snap=variation.snapshot;let changes=0,sections=[];
+    const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    if(current.background!==snap.background||current.transparent!==snap.transparent){changes++;sections.push("background");}
+    if(!same(current.palette,snap.palette)||current.ink!==snap.ink){changes++;sections.push("palette");}
+    const itemMap=new Map((current.items||[]).map(item=>[String(item.id),item]));let itemChanges=0;
+    for(const saved of snap.items||[]){const now=itemMap.get(String(saved.id));if(!now||!same(now,saved))itemChanges++;}
+    if(itemChanges){changes+=itemChanges;sections.push(itemChanges+" motif transform"+(itemChanges===1?"":"s"));}
+    const markMap=new Map((current.marks||[]).map(mark=>[String(mark.id),mark]));let markChanges=0;
+    for(const saved of snap.marks||[]){const now=markMap.get(String(saved.id));if(!now||!same(now,saved))markChanges++;}
+    if(markChanges){changes+=markChanges;sections.push(markChanges+" drawn mark"+(markChanges===1?"":"s"));}
+    const settingKeys=new Set([...Object.keys(current.settings||{}),...Object.keys(snap.settings||{})]),settingChanges=[...settingKeys].filter(key=>!same(current.settings?.[key],snap.settings?.[key])).length;
+    if(settingChanges){changes+=settingChanges;sections.push(settingChanges+" setting"+(settingChanges===1?"":"s"));}
+    return {changes,summary:changes?sections.join(" · "):"Matches current design"};
+  }
+  function deleteVariation(id){
+    const before=state.variations.length;state.variations=state.variations.filter(v=>v.id!==id);if(state.variations.length===before)return false;scheduleAutosave();setStatus("Variation deleted.");return true;
+  }
+  function variationFilename(name,index){
+    const stem=String(name||("Variation-"+(index+1))).replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||("Variation-"+(index+1));
+    return String(index+1).padStart(2,"0")+"-"+stem;
+  }
+  async function exportVariationSet(){
+    if(!state.variations.length){setStatus("Save at least one named variation before exporting a colourway set.");return false;}
+    const working=variationSnapshot(),projectVariation=state.project?.variation||"",base=safeName(),editableProject=projectBlob(),files=[];
+    try{
+      for(let i=0;i<state.variations.length;i++){
+        const variation=state.variations[i];setStatus("Rendering colourway "+(i+1)+" of "+state.variations.length+": "+variation.name+"…");
+        applyVariationSnapshot(variation.snapshot,{history:false,render:false});if(state.project)state.project.variation=variation.name;
+        const png=await renderPNGBlob();if(!png)throw new Error("Colourway PNG export was cancelled.");
+        const stem=variationFilename(variation.name,i);
+        files.push({name:`${base}-${stem}-master.png`,blob:png.blob},{name:`${base}-${stem}.svg`,blob:renderSVGBlob()});
+      }
+      files.push({name:`${base}-editable-project.json`,blob:editableProject});
+      setStatus("Packaging "+state.variations.length+" saved colourways…");
+      const zip=await makeZip(files);downloadBlob(zip,`${base}-colourways.zip`);setStatus("Colourway ZIP downloaded with "+state.variations.length+" saved variation"+(state.variations.length===1?"":"s")+", each as PNG and SVG.");return true;
+    }catch(err){setStatus("Colourway export failed: "+err.message);return false;}
+    finally{
+      applyVariationSnapshot(working,{history:false,render:true});if(state.project)state.project.variation=projectVariation;rebuildPaletteUI();updateSettingReadouts();scheduleAutosave();
+    }
+  }
+  window.PatternForgeVariations={
+    list:()=>state.variations.map(v=>({id:v.id,name:v.name,createdAt:v.createdAt,updatedAt:v.updatedAt,comparison:compareVariation(v.id)})),
+    save:saveVariation,apply:applyVariation,rename:renameVariation,duplicate:duplicateVariation,compare:compareVariation,remove:deleteVariation,exportSet:exportVariationSet
+  };
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
-    return {format:"pattern-forge-v4",tile:4000,dpi:300,
+    return {format:"pattern-forge-v4",tile:4000,dpi:300,scaleModel:"adaptable-master-v1",
       project:state.project?{...state.project}:null,
+      templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
-      items:state.items,marks:state.marks,nextId:state.nextId};
+      items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
   }
   function compactProjectData(){
     const data=projectData(),usedIds=new Set(data.items.map(item=>String(item.assetId))),assetBySource=new Map(),assetIdMap=new Map(),assets=[];
@@ -1508,11 +2268,72 @@
     if(autosaveDbPromise)return autosaveDbPromise;
     autosaveDbPromise=new Promise((resolve,reject)=>{
       if(typeof indexedDB==="undefined"){reject(new Error("Local project storage is not supported here."));return;}
-      const req=indexedDB.open("pattern-forge-local",1);
-      req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("projects"))req.result.createObjectStore("projects");};
+      const req=indexedDB.open("pattern-forge-local",2);
+      req.onupgradeneeded=()=>{
+        if(!req.result.objectStoreNames.contains("projects"))req.result.createObjectStore("projects");
+        if(!req.result.objectStoreNames.contains("motifs"))req.result.createObjectStore("motifs",{keyPath:"id"});
+      };
       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("Could not open local project storage."));
     });return autosaveDbPromise;
   }
+  function motifLibraryTransaction(mode="readonly"){
+    return openAutosaveDb().then(db=>{
+      if(!db.objectStoreNames.contains("motifs"))throw new Error("Motif library is unavailable.");
+      return db.transaction("motifs",mode);
+    });
+  }
+  async function listSavedMotifs(){
+    const tx=await motifLibraryTransaction("readonly");
+    return await new Promise((resolve,reject)=>{const req=tx.objectStore("motifs").getAll();req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0)));req.onerror=()=>reject(req.error);});
+  }
+  async function saveSelectionAsMotif(name){
+    const records=selectedArtwork();if(!records.length)throw new Error("Select artwork before saving a motif.");
+    const title=String(name||"").trim().slice(0,80);if(!title)throw new Error("Give the motif a name.");
+    const geometry=records.length>1?selectionTransformGeometry():null,origin=geometry?.center||artworkCenter(records[0]);
+    const assetIds=new Set(records.filter(record=>record.kind==="item").map(record=>String(record.artwork.assetId)));
+    const assets=state.assets.filter(asset=>assetIds.has(String(asset.id))).map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector}));
+    const ids=new Set(records.map(record=>record.artwork.id));
+    const now=new Date().toISOString(),motif={
+      id:"motif-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9),
+      name:title,createdAt:now,updatedAt:now,origin,
+      assets,
+      items:state.items.filter(item=>ids.has(item.id)).map(item=>JSON.parse(JSON.stringify(item))),
+      marks:state.marks.filter(mark=>ids.has(mark.id)).map(mark=>JSON.parse(JSON.stringify(mark)))
+    };
+    const tx=await motifLibraryTransaction("readwrite");
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Could not save motif."));tx.objectStore("motifs").put(motif);});
+    window.dispatchEvent(new CustomEvent("patternforge:motifs-changed"));
+    setStatus("Saved “"+title+"” to My Motifs.");return motif;
+  }
+  async function deleteSavedMotif(id){
+    const tx=await motifLibraryTransaction("readwrite");
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Could not delete motif."));tx.objectStore("motifs").delete(id);});
+    window.dispatchEvent(new CustomEvent("patternforge:motifs-changed"));setStatus("Motif removed from this device.");
+  }
+  async function decodeMotifAsset(asset){
+    const existing=state.assets.find(candidate=>candidate.src===asset.src);if(existing)return existing;
+    const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error("A saved motif image could not be decoded."));img.src=asset.src;});
+    const added={...asset,id:nextAssetId(),img,w:Number(asset.w)||img.naturalWidth||1000,h:Number(asset.h)||img.naturalHeight||1000};
+    state.assets.push(added);state.recentAssetIds.unshift(added.id);return added;
+  }
+  async function insertSavedMotif(id){
+    const tx=await motifLibraryTransaction("readonly");
+    const motif=await new Promise((resolve,reject)=>{const req=tx.objectStore("motifs").get(id);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+    if(!motif)throw new Error("That motif is no longer in the library.");
+    const assetMap=new Map();for(const asset of motif.assets||[])assetMap.set(String(asset.id),(await decodeMotifAsset(asset)).id);
+    saveHistory();
+    const target=worldPoint({x:canvas.width/2,y:canvas.height/2}),origin=motif.origin||{x:TILE/2,y:TILE/2},dx=target.x-origin.x,dy=target.y-origin.y,newIds=[],groupId=newGroupId();
+    for(const original of motif.items||[]){
+      const copy=JSON.parse(JSON.stringify(original)),pos=isDoodleProject()?{x:Number(original.x)+dx,y:Number(original.y)+dy}:canonicalPoint(Number(original.x)+dx,Number(original.y)+dy);
+      copy.id=state.nextId++;copy.assetId=assetMap.get(String(original.assetId))??original.assetId;copy.layerId=motifTargetLayerId();copy.groupId=groupId;copy.x=pos.x;copy.y=pos.y;state.items.push(copy);newIds.push(copy.id);
+    }
+    const markLayer=layerById(BASE_LAYER_IDS.drawing)?.id||activeLayer()?.id||state.layers[0]?.id;
+    for(const original of motif.marks||[]){
+      const copy=JSON.parse(JSON.stringify(original)),t=markTransformValues(copy);copy.id=state.nextId++;copy.layerId=markLayer;copy.groupId=groupId;copy.transformX=t.x+dx;copy.transformY=t.y+dy;state.marks.push(copy);newIds.push(copy.id);
+    }
+    rebuildAssetGrid();setSelection(newIds,newIds.at(-1));renderAll();setStatus("Inserted “"+String(motif.name||"motif")+"” as an editable group.");return newIds.length;
+  }
+  window.PatternForgeMotifs={list:listSavedMotifs,saveSelection:saveSelectionAsMotif,insert:insertSavedMotif,remove:deleteSavedMotif};
   function scheduleAutosave(){
     if(autosaveTimer)clearTimeout(autosaveTimer);
     if(!autosaveMaxTimer)autosaveMaxTimer=setTimeout(()=>{if(autosaveTimer)clearTimeout(autosaveTimer);autosaveTimer=null;autosaveMaxTimer=null;saveAutosave();},5000);
@@ -1522,29 +2343,78 @@
     autosaveTimer=null;
     if(!state.project)return;
     try{const db=await openAutosaveDb(),data=projectData(),json=JSON.stringify(data);
-      await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readwrite"),store=tx.objectStore("projects");store.put(json,data.project.id);store.put(data.project.id,"current");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Local autosave failed."));});
+      await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readwrite"),store=tx.objectStore("projects");tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Local autosave failed."));store.put(json,data.project.id);store.put(data.project.id,"current");});
+      try{localStorage.removeItem("patternForgeAutosave");}catch(_){}
       setStatus("Autosaved on this device.");
     }catch(err){try{const json=JSON.stringify(projectData());if(json.length>3_500_000)throw err;localStorage.setItem("patternForgeAutosave",json);setStatus("Autosaved on this device.");}catch(_){setStatus("Automatic device save is unavailable. Export a project ZIP to keep a portable copy.");}}
   }
+  let pendingAutosaveData=null;
+  function showNewProjectSetup(){
+    pendingAutosaveData=null;
+    $("resumePrompt").hidden=true;
+    $("newProjectSetup").hidden=false;
+    $("projectSetupOverlay").hidden=false;
+    updateSetupProjectType();
+  }
+  function showResumePrompt(data){
+    pendingAutosaveData=data;
+    const project=data?.project||{};
+    const type=project.projectType==="doodle"?"Doodle Project":"Pattern Project";
+    const title=String(project.title||"Untitled project");
+    $("resumePromptDetail").textContent=`${title} · ${type}. Choose whether to continue it or start a new project.`;
+    $("newProjectSetup").hidden=true;
+    $("resumePrompt").hidden=false;
+    $("projectSetupOverlay").hidden=false;
+  }
   async function loadAutosave(){
+    let available=false,projectType=null;
+    window.PatternForgeAutosaveState={status:"pending",available:false,projectType:null};
     try{let json;
       try{const db=await openAutosaveDb();json=await new Promise((resolve,reject)=>{const tx=db.transaction("projects","readonly"),store=tx.objectStore("projects"),req=store.get("current");req.onsuccess=async()=>{
         const current=req.result;if(typeof current==="string"&&current.startsWith("pf-project-")){const get=store.get(current);get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);}else resolve(current);
       };req.onerror=()=>reject(req.error);});}
-      catch(_){json=localStorage.getItem("patternForgeAutosave");}
-      if(!json)return;const data=typeof json==="string"?JSON.parse(json):json;
-      await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus("Your latest autosaved design was reopened from this device.");
+      catch(_){/* The fallback may contain a newer save after a failed transaction. */}
+      let fallback=null;try{fallback=localStorage.getItem("patternForgeAutosave");}catch(_){}
+      if(!json&&!fallback)return;
+      const candidates=[];
+      for(const raw of [json,fallback]){
+        if(!raw)continue;
+        try{const value=typeof raw==="string"?JSON.parse(raw):raw;validateProjectData(value);candidates.push(value);}catch(_){}
+      }
+      if(!candidates.length)throw new Error("No valid autosave could be reopened.");
+      candidates.sort((a,b)=>(Date.parse(b.project?.updatedAt)||0)-(Date.parse(a.project?.updatedAt)||0));
+      const data=candidates[0];
+      projectType=data.project?.projectType==="doodle"?"doodle":"pattern";
+      const directDoodle=location.pathname.includes("/app/doodle/");
+      if(directDoodle){
+        available=true;
+        if(projectType==="doodle"){
+          await restoreProject(data);
+          $("projectSetupOverlay").hidden=true;
+          setStatus("Doodle restored on this device.");
+        }
+        return;
+      }
+      showResumePrompt(data);
+      available=true;
+      setStatus("A saved project is available on this device.");
     }catch(_){setStatus("The previous autosave could not be reopened. Your other project files are unaffected.");}
+    finally{
+      window.PatternForgeAutosaveState={status:"complete",available,projectType};
+      window.dispatchEvent(new CustomEvent("patternforge:autosave-checked",{detail:{available,projectType}}));
+    }
   }
   function validateProjectData(data){
     if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
     if(data.assets.length>500||data.items.length>10000||data.marks.length>10000||(Array.isArray(data.layers)&&data.layers.length>100))throw new Error("too-large");
+    if(data.variations!==undefined&&(!Array.isArray(data.variations)||data.variations.length>30||data.variations.some(v=>!v||typeof v.id!=="string"||typeof v.name!=="string"||!v.snapshot||typeof v.snapshot!=="object")))throw new Error("wrong-format");
+    if(data.templateGuide!==undefined&&data.templateGuide!==null&&!normaliseTemplateGuide(data.templateGuide))throw new Error("invalid-template");
     if(data.format==="pattern-forge-v4"){
       if(!Array.isArray(data.layers)||!data.layers.length)throw new Error("invalid-layers");
       const layerIds=new Set();
       for(const layer of data.layers){
         const id=String(layer?.id||"").trim(),opacity=Number(layer?.opacity);
-        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error("invalid-layers");
+        if(!id||layerIds.has(id)||!Number.isFinite(opacity)||opacity<0||opacity>1||(layer.alphaLock!==undefined&&typeof layer.alphaLock!=="boolean"))throw new Error("invalid-layers");
         layerIds.add(id);
       }
       if(data.activeLayerId!==undefined&&!layerIds.has(String(data.activeLayerId)))throw new Error("invalid-layers");
@@ -1552,19 +2422,26 @@
     }
     const assetIds=new Set();
     for(const a of data.assets){
-      if(!a||a.id===undefined||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h)))throw new Error("invalid-assets");
+      if(!a||a.id===undefined||assetIds.has(String(a.id))||typeof a.src!=="string"||!a.src.startsWith("data:image/")||!Number.isFinite(Number(a.w))||!Number.isFinite(Number(a.h))||Number(a.w)<=0||Number(a.h)<=0)throw new Error("invalid-assets");
       assetIds.add(String(a.id));
     }
     for(const item of data.items){
       if(!item||item.id===undefined||!assetIds.has(String(item.assetId))||![item.x,item.y,item.scale].every(v=>Number.isFinite(Number(v)))||Number(item.scale)<=0)throw new Error("invalid-items");
+      if(item.groupId!==undefined&&item.groupId!==null&&(typeof item.groupId!=="string"||item.groupId.length>100))throw new Error("invalid-items");
+      if((item.flipX!==undefined&&typeof item.flipX!=="boolean")||(item.flipY!==undefined&&typeof item.flipY!=="boolean"))throw new Error("invalid-items");
     }
-    if(data.marks.some(mark=>!mark||typeof mark!=="object"||typeof mark.type!=="string"||!Array.isArray(mark.points)))throw new Error("invalid-marks");
+    const markTypes=new Set(["brush","eraser","line","rect","ellipse","freefill","bucket","gradient"]);
+    if(data.marks.some(mark=>{
+      const badPoint=point=>!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||(point.p!==undefined&&(!Number.isFinite(Number(point.p))||Number(point.p)<0||Number(point.p)>1));
+      const badBucket=mark?.type==="bucket"&&(!Array.isArray(mark.paths)||mark.paths.length>512||mark.paths.some(path=>!Array.isArray(path)||path.length<3||path.some(badPoint))||mark.paths.reduce((sum,path)=>sum+path.length,0)>25000);
+      return !mark||typeof mark!=="object"||!markTypes.has(mark.type)||!Array.isArray(mark.points)||mark.points.some(badPoint)||badBucket||(mark.groupId!==undefined&&mark.groupId!==null&&(typeof mark.groupId!=="string"||mark.groupId.length>100))||(mark.transformFlipX!==undefined&&typeof mark.transformFlipX!=="boolean")||(mark.transformFlipY!==undefined&&typeof mark.transformFlipY!=="boolean")||(mark.pressureWidth!==undefined&&typeof mark.pressureWidth!=="boolean")||(mark.pressureMin!==undefined&&(!Number.isFinite(Number(mark.pressureMin))||Number(mark.pressureMin)<5||Number(mark.pressureMin)>80))||(mark.pressureSensitivity!==undefined&&(!Number.isFinite(Number(mark.pressureSensitivity))||Number(mark.pressureSensitivity)<0||Number(mark.pressureSensitivity)>100))||(mark.alphaLocked!==undefined&&typeof mark.alphaLocked!=="boolean");
+    }))throw new Error("invalid-marks");
   }
   function projectOpenErrorMessage(err){
     const code=err?.message||"";
     if(code==="wrong-format")return "That file is not a Pattern Forge project. Choose a JSON project or ZIP exported by Pattern Forge. Your current work is unchanged.";
     if(code==="too-large")return "That project is larger than Pattern Forge can open. Your current work is unchanged.";
-    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
+    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="invalid-template"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
     if(err instanceof SyntaxError)return "This file is not valid project JSON. Choose a Pattern Forge JSON file or exported project ZIP. Your current work is unchanged.";
     return "Pattern Forge could not open that project. Check that the file is a complete JSON project or ZIP exported by the app. Your current work is unchanged.";
   }
@@ -1573,18 +2450,19 @@
     const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
     const incoming=data.project&&typeof data.project==="object"?data.project:{};
     state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),projectType:incoming.projectType==="doodle"?"doodle":"pattern",repeatStyle:incoming.projectType==="doodle"?"straight":(["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight"),isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.templateGuide=isDoodleProject()?null:normaliseTemplateGuide(data.templateGuide);
     state.layers=normaliseLayers(data.layers);
     const validLayerIds=new Set(state.layers.map(layer=>layer.id));
     const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;
     const drawingFallback=validLayerIds.has(BASE_LAYER_IDS.drawing)?BASE_LAYER_IDS.drawing:state.layers[state.layers.length-1].id;
     state.activeLayerId=validLayerIds.has(String(data.activeLayerId))?String(data.activeLayerId):drawingFallback;
-    state.assets=assets;state.items=data.items.map(item=>({...item,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
-    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.nextId=Math.max(1,Number(data.nextId)||1);state.selectedId=null;state.past=[];state.future=[];
+    state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
+    state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.variations=Array.isArray(data.variations)?data.variations.slice(0,30):[];state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
-    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"]])if(s[key]!==undefined)$(id).value=s[key];
-    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"]])if(s[key]!==undefined)$(id).checked=!!s[key];
+    for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
+    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
-    $("brushSizeLabel").textContent=$("brushSize").value;$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
+    $("brushSizeLabel").textContent=$("brushSize").value;$("pressureMinLabel").textContent=$("pressureMin").value+"%";$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
   function uint16LE(n){return new Uint8Array([n&255,(n>>>8)&255]);}
@@ -1645,7 +2523,7 @@
       const png=await renderPNGBlob();if(!png){setStatus("ZIP export cancelled.");return;}
       const base=safeName();
       const files=[
-        {name:`${base}-${exportFileStem()}-${png.spec.dpi}dpi.png`,blob:png.blob},
+        {name:`${base}-${exportFileStem()}-master.png`,blob:png.blob},
         {name:`${base}-${exportFileStem()}.svg`,blob:renderSVGBlob()},
         {name:`${base}-editable-project.json`,blob:projectBlob()}
       ];
@@ -1655,6 +2533,26 @@
     }catch(err){setStatus("ZIP export failed: "+err.message);}
   }
 
+
+  window.PatternForgeEtsyBridge=Object.freeze({
+    get state(){return state;},
+    getSpec:getExportSpec,
+    getRepeatStyle:projectRepeatStyle,
+    getMultipliers:exportMultipliers,
+    makeTileCanvas,
+    renderPNGBlob,
+    renderSVGBlob,
+    makeZip,
+    downloadBlob,
+    safeName,
+    setStatus,
+    isDoodle:isDoodleProject,
+    assetOf,
+    layerForArtwork,
+    layerIsRenderable,
+    baseLayerIds:BASE_LAYER_IDS
+  });
+
   $("drop").addEventListener("click",()=>$("files").click());
   $("files").addEventListener("click",e=>e.stopPropagation());
   $("files").addEventListener("change",e=>addFiles([...e.target.files]).catch(()=>setStatus("The selected image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
@@ -1663,6 +2561,7 @@
   $("drop").addEventListener("drop",e=>addFiles([...e.dataTransfer.files]).catch(()=>setStatus("The dropped image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
 
   $("generate").onclick=generate;
+  $("freezeScatter").onclick=freezeScatter;
   $("shuffle").onclick=()=>{$("seed").value="pattern-"+Math.random().toString(36).slice(2,8);generate();};
   $("clear").onclick=()=>{saveHistory();state.items=[];state.marks=[];state.selectedId=null;renderAll();setStatus("Artwork cleared. Uploaded images remain available.");};
   $("exportPng").onclick=()=>exportPNG().catch(err=>setStatus("PNG export failed: "+err.message));
@@ -1670,6 +2569,13 @@
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
   $("rotationAmount").addEventListener("input",()=>{$("rotationLabel").textContent=$("rotationAmount").value+"°";});
+  $("bucketTolerance").addEventListener("input",()=>{$("bucketToleranceLabel").textContent=$("bucketTolerance").value+"%";scheduleAutosave();});
+  $("bucketSampleVisible").addEventListener("change",scheduleAutosave);
+  $("strokeStabilisation").addEventListener("change",scheduleAutosave);
+  $("pressureMin").addEventListener("input",()=>{$("pressureMinLabel").textContent=$("pressureMin").value+"%";scheduleAutosave();});
+  $("pressureSensitivity").addEventListener("input",()=>{$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";scheduleAutosave();});
+  $("pressureWidth").addEventListener("change",scheduleAutosave);
+  ["scatterSpacing","scatterOverlap","scatterPreserveManual"].forEach(id=>$(id).addEventListener("change",scheduleAutosave));
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
   $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
@@ -1720,7 +2626,9 @@
   $("layerOpacity").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.opacity=clamp(Number($("layerOpacity").value)/100,0,1);renderAll();});
   $("layerVisible").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.visible=$("layerVisible").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(!layer.visible&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
   $("layerLocked").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.locked=$("layerLocked").checked;const selectedLayerId=selectedItem()?.layerId||selectedMark()?.layerId;if(layer.locked&&selectedLayerId===layer.id)state.selectedId=null;renderAll();});
+  $("layerAlphaLock").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.alphaLock=$("layerAlphaLock").checked;renderAll();setStatus(layer.alphaLock?`Alpha Lock enabled on “${layer.name}”. New paint stays inside existing layer transparency.`:`Alpha Lock disabled on “${layer.name}”.`);});
   $("layerExport").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;saveHistory();layer.export=$("layerExport").checked;renderAll();});
+  $("layerClipToBelow").addEventListener("change",()=>{const layer=activeLayer();if(!layer)return;const index=state.layers.indexOf(layer);if(index<=0){$("layerClipToBelow").checked=false;setStatus("The bottom layer cannot be clipped because there is no layer below it.");return;}saveHistory();layer.clipToBelow=$("layerClipToBelow").checked;renderAll();setStatus(layer.clipToBelow?"Layer clipped to the transparency of the layer below.":"Layer clipping removed.");});
   rebuildLayerUI();
   loadSavedPalettes();rebuildPaletteUI();
   $("savedPaletteSelect").addEventListener("change",e=>{
@@ -1753,8 +2661,8 @@
   $("neighborOpacity").addEventListener("input",()=>{$("neighborLabel").textContent=$("neighborOpacity").value+"%";renderAll(false,false);});
   $("zoomOut").onclick=()=>setZoom(state.zoom/1.25);
   $("zoomIn").onclick=()=>setZoom(state.zoom*1.25);
-  $("fit").onclick=()=>{state.panX=state.panY=0;setZoom(1);};
-  $("focusPrintSize").addEventListener("input",updatePrintEligibility);
+  $("fit").onclick=fitCanvasView;
+  $("focusPrintSize").addEventListener("input",()=>{updatePrintEligibility();scheduleAutosave();});
   $("repeatPreviewToggle").addEventListener("click",()=>{
     if(isDoodleProject()){setStatus("Doodle Projects use one standalone canvas and do not have a repeat preview.");return;}
     state.focusRepeatPreview=!state.focusRepeatPreview;
@@ -1768,7 +2676,7 @@
     if(Number.isFinite(value)&&value>0&&nextUnit!==lastPrintUnit){
       $("focusPrintSize").value=(nextUnit==="cm"?value*2.54:value/2.54).toFixed(3);
     }
-    lastPrintUnit=nextUnit;updatePrintEligibility();
+    lastPrintUnit=nextUnit;updatePrintEligibility();scheduleAutosave();
   });
   updatePrintEligibility();
   updateToolHighlight();
@@ -1785,10 +2693,19 @@
     setStatus("Editable project JSON downloaded. Use Download project bundle (ZIP) for the JSON, PNG and SVG together.");
   };
   $("projectMenu").addEventListener("click",showProjectSetup);
+  $("continuePrevious").addEventListener("click",async()=>{
+    if(!pendingAutosaveData)return showNewProjectSetup();
+    try{const data=pendingAutosaveData;pendingAutosaveData=null;await restoreProject(data);$("projectSetupOverlay").hidden=true;setStatus("Previous project continued from this device.");}
+    catch(_){showNewProjectSetup();setStatus("The previous autosave could not be reopened. Start a new project or open a project file instead.");}
+  });
+  $("startNewFromResume").addEventListener("click",showNewProjectSetup);
   $("startPractice").addEventListener("click",()=>startPracticeMode().catch(err=>setStatus("Could not start practice mode: "+err.message)));
   $("projectSetupForm").addEventListener("submit",createProjectFromSetup);
   $("projectTypeInput").addEventListener("change",updateSetupProjectType);
-  $("cancelProjectSetup").addEventListener("click",()=>{$("projectSetupOverlay").hidden=true;});
+  $("cancelProjectSetup").addEventListener("click",()=>{
+    if(state.project){$("projectSetupOverlay").hidden=true;return;}
+    window.location.assign("/");
+  });
   $("openProject").onclick=()=>$("projectFile").click();
   $("projectFile").addEventListener("change",async e=>{
     const file=e.target.files[0];if(!file)return;

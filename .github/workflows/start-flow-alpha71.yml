@@ -1,0 +1,61 @@
+name: Pattern Forge start-flow alpha.7.1
+
+on:
+  push:
+    branches: [feature/start-flow-alpha71]
+
+permissions:
+  contents: write
+
+jobs:
+  start-flow-and-regress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/start-flow-alpha71
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm committed start-flow patch
+        run: |
+          grep -q 'id="resumePrompt"' app/index.html
+          grep -q 'pendingAutosaveData' app/js/editor.js
+          grep -q '$("newProjectSetup").hidden=false' app/js/editor.js
+          grep -q "getElementById('projectSetupTitle')" app/js/workspace.js
+      - name: Syntax checks
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/workspace.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Prepare alpha.3 comparison source
+        run: |
+          git show b2c4744def6bd94816427738883bcf586ea4191d:index.html > /tmp/pf-alpha3.html
+          mkdir -p /tmp/pf-alpha3
+          cp /tmp/pf-alpha3.html /tmp/pf-alpha3/index.html
+      - name: Serve current and alpha.3
+        run: |
+          python3 -m http.server 4173 >/tmp/current.log 2>&1 &
+          (cd /tmp/pf-alpha3 && python3 -m http.server 4174 >/tmp/alpha3.log 2>&1 &)
+          sleep 2
+      - name: Start-flow mobile smoke
+        run: node tests/start-flow-smoke.mjs
+      - name: Doodle landscape regression
+        run: node tests/doodle-landscape-smoke.mjs
+      - name: Product workspace regression
+        run: node tests/product-workspaces-smoke.mjs
+      - name: Mobile density regression
+        run: node tests/mobile-density-smoke.mjs
+      - name: Doodle regression
+        run: node tests/doodle-mode-smoke.mjs
+      - name: Layer UI regression
+        run: node tests/layer-ui-smoke.mjs
+      - name: Start again regression
+        run: node tests/start-again-smoke.mjs
+
+# Final alpha.7.1 run uses explicit-resume expectations across all reload tests.

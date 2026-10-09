@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pattern Forge UX Prototype</title>
+  <link rel="stylesheet" href="./ux.css">
+  <link rel="stylesheet" href="./refine.css">
+</head>
+<body>
+  <div id="app" class="pf-app">
+    <section id="galleryView" class="gallery-view" aria-label="Pattern Forge project gallery">
+      <header class="gallery-header">
+        <div>
+          <div class="eyebrow">SAPIVER PRESS · PATTERN DESIGN STUDIO</div>
+          <h1>Sapiver Pattern Forge</h1>
+          <p>Patterns and reusable artwork, without the setup clutter.</p>
+        </div>
+        <button class="ghost-button">Quick guide</button>
+      </header>
+
+      <div class="start-actions">
+        <button class="launch-card primary" data-action="new-pattern">
+          <span class="launch-icon"><svg><use href="./icons.svg#i-pattern"/></svg></span>
+          <span><strong>New Pattern</strong><small>Straight, half-drop or brick</small></span>
+        </button>
+        <button class="launch-card" data-action="new-doodle">
+          <span class="launch-icon"><svg><use href="./icons.svg#i-doodle"/></svg></span>
+          <span><strong>New Doodle</strong><small>Transparent standalone artwork</small></span>
+        </button>
+        <button class="launch-card" data-action="open-project">
+          <span class="launch-icon"><svg><use href="./icons.svg#i-open"/></svg></span>
+          <span><strong>Open Project</strong><small>Continue an existing file</small></span>
+        </button>
+      </div>
+
+      <div class="gallery-section-heading">
+        <h2>Recent</h2>
+        <button class="text-button">Manage projects</button>
+      </div>
+      <div class="recent-grid">
+        <button class="project-card" data-open="pattern">
+          <div class="thumb neutral-thumb"><span class="thumb-badge">Pattern · Straight</span></div>
+          <div class="project-card-meta"><strong>Untitled Pattern</strong><small>Edited today</small></div>
+        </button>
+        <button class="project-card" data-open="doodle">
+          <div class="thumb neutral-thumb transparent-preview"><span class="thumb-badge">Doodle</span></div>
+          <div class="project-card-meta"><strong>Untitled Doodle</strong><small>Edited yesterday</small></div>
+        </button>
+        <button class="project-card" data-open="pattern">
+          <div class="thumb neutral-thumb"><span class="thumb-badge">Pattern · Half-drop</span></div>
+          <div class="project-card-meta"><strong>Client Pattern</strong><small>Edited 2 days ago</small></div>
+        </button>
+      </div>
+    </section>
+
+    <section id="editorView" class="editor-view" hidden>
+      <header class="editor-topbar">
+        <div class="topbar-left">
+          <button class="icon-button labelled" id="galleryButton" title="Gallery"><svg><use href="./icons.svg#i-gallery"/></svg><b>Gallery</b></button>
+          <div class="project-identity">
+            <strong id="projectName">Untitled Pattern</strong>
+            <button id="modePill" class="mode-pill">Pattern</button>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" title="Undo"><svg><use href="./icons.svg#i-undo"/></svg></button>
+          <button class="icon-button" title="Redo"><svg><use href="./icons.svg#i-redo"/></svg></button>
+          <button class="secondary-button" id="previewButton">Preview</button>
+          <button class="primary-button" id="exportButton">Export</button>
+        </div>
+      </header>
+
+      <div class="editor-shell">
+        <nav class="tool-rail" aria-label="Creative tools">
+          <button class="tool-button active" data-tool="select"><svg><use href="./icons.svg#i-select"/></svg><b>Select</b></button>
+          <button class="tool-button" data-tool="brush"><svg><use href="./icons.svg#i-brush"/></svg><b>Brush</b></button>
+          <button class="tool-button" data-tool="eraser"><svg><use href="./icons.svg#i-eraser"/></svg><b>Erase</b></button>
+          <button class="tool-button" data-tool="fill"><svg><use href="./icons.svg#i-fill"/></svg><b>Fill</b></button>
+          <button class="tool-button" data-tool="image"><svg><use href="./icons.svg#i-image"/></svg><b>Image</b></button>
+          <button class="tool-button" data-tool="shape"><svg><use href="./icons.svg#i-shape"/></svg><b>Shape</b></button>
+        </nav>
+
+        <main class="canvas-zone">
+          <div class="canvas-toolbar">
+            <span id="canvasHint">Select artwork to move, scale or rotate</span>
+            <button class="tiny-button">Fit</button>
+            <button class="tiny-button">100%</button>
+          </div>
+          <div class="workspace-field pattern-workspace" id="workspaceField">
+            <div class="repeat-copy c1"></div><div class="repeat-copy c2"></div><div class="repeat-copy c3"></div><div class="repeat-copy c4"></div>
+            <div class="artboard" id="artboard">
+              <div class="empty-canvas-state">
+                <svg><use href="./icons.svg#i-brush"/></svg>
+                <strong>Canvas ready</strong>
+                <small>Choose a tool to begin</small>
+              </div>
+              <div class="selection-box" id="selectionBox" hidden><i class="handle h1"></i><i class="handle h2"></i><i class="handle h3"></i><i class="handle h4"></i></div>
+            </div>
+          </div>
+        </main>
+
+        <aside class="quick-dock" aria-label="Quick palettes">
+          <button class="dock-button" data-panel="colour"><svg><use href="./icons.svg#i-colour"/></svg><b>Colour</b></button>
+          <button class="dock-button active" data-panel="layers"><svg><use href="./icons.svg#i-layers"/></svg><b>Layers</b></button>
+          <button class="dock-button pattern-only" data-panel="pattern"><svg><use href="./icons.svg#i-repeat"/></svg><b>Pattern</b></button>
+        </aside>
+
+        <aside class="side-panel" id="sidePanel">
+          <div class="panel-header"><strong id="panelTitle">Layers</strong><button class="close-panel" id="closePanel" title="Close"><svg><use href="./icons.svg#i-close"/></svg></button></div>
+          <div id="panelBody"></div>
+        </aside>
+      </div>
+
+      <footer class="context-bar" id="contextBar"></footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="newPatternModal" hidden>
+    <div class="modal-card compact-modal">
+      <div class="eyebrow">NEW PATTERN</div>
+      <h2>Choose a repeat</h2>
+      <p>You can start drawing immediately. Project details can be added later.</p>
+      <div class="repeat-choice-grid">
+        <button class="repeat-choice active" data-repeat="Straight"><strong>Straight</strong><small>Square grid</small></button>
+        <button class="repeat-choice" data-repeat="Half-drop"><strong>Half-drop</strong><small>Offset rows</small></button>
+        <button class="repeat-choice" data-repeat="Brick"><strong>Brick</strong><small>Offset columns</small></button>
+      </div>
+      <div class="modal-actions"><button class="secondary-button" data-close-modal>Cancel</button><button class="primary-button" id="createPatternButton">Create Pattern</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="exportModal" hidden>
+    <div class="modal-card export-modal">
+      <div class="panel-header"><div><div class="eyebrow">EXPORT</div><h2>Ready to use</h2></div><button class="close-panel" data-close-modal title="Close"><svg><use href="./icons.svg#i-close"/></svg></button></div>
+      <div class="export-grid">
+        <button><strong>PNG</strong><small>300 DPI print-ready image</small></button>
+        <button><strong>SVG</strong><small>Scalable vector artwork</small></button>
+        <button><strong>Project</strong><small>Editable Pattern Forge file</small></button>
+        <button><strong>ZIP pack</strong><small>All useful formats together</small></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./ux.js"></script>
+</body>
+</html>

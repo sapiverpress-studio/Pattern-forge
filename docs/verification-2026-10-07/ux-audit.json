@@ -1,0 +1,256 @@
+{
+  "summary": {
+    "checks": 48,
+    "pass": 48,
+    "fail": 0,
+    "warnings": 4
+  },
+  "results": [
+    {
+      "name": "Home: three workspace entry points are visible",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Home: Quick guide opens and returns to main menu",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern setup: Repeat is chosen before entry; Design setup is inside the editor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Select tool drives the real engine",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Brush controls, all brush styles and stamp choices work",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: stroke stabilisation changes new brush geometry and persists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Brush drawing, Undo and Redo change the real canvas",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: pen pressure stores per-point width data and exports variable-width SVG",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: pressure width remains compatible with Ink, Pencil and Marker",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Eraser exposes size and opacity and activates real eraser",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Fill and Gradient Fill switch the real engine tools",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: bucket fill makes an editable transparent-region vector and round-trips exports",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: bucket tolerance changes matching colour extent",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: bucket fill crosses straight, half-drop and brick repeat seams correctly",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Canvas zoom buttons work and Fit fits the tile",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Shape tool exposes Line, Rectangle, Ellipse, width and fill",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Image button opens the file picker and imports a test SVG",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: saved variation restores design state and Undo reverses the apply",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: colourway manager renames, duplicates, compares and exports without changing work",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Selection transform, duplicate, arrange, snap and delete controls work",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: multi-select groups, moves, persists, duplicates and ungroups",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: selected editable marks recolour and matching colours replace project-wide",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Colour panel updates ink, adds a swatch and exposes eyedropper",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Layers add, rename, opacity, flags, duplicate, reorder and delete work",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: specialist Pattern controls proxy to the repeat engine",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: product-scale preview responds to physical tile and product size",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: scale preview marks half-drop and brick export repeat-cell dimensions",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Alpha Lock preserves layer alpha through paint, recolour, eraser and reopen",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: clipping mask constrains artwork in PNG preview and SVG export",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Preview button toggles the repeat preview",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: every export/open action works",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Fullscreen keeps tools functional while preserving the large canvas",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: Projects button returns to project home",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Project setup: Cancel returns a fresh generic editor route to project home",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Project home: recent project entry appears after saved work",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Open Project: saved-project resume prompt exposes Continue and Start new",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Doodle desktop: preview shortcut is removed and transparent export is stated",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Motifs: editable Doodle artwork can be reused in Pattern",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Integration: pressure motif, grouping, clipping, save-reopen and exports stay compatible",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Hardening: motif group survives flip, recolour, clipping, variation and export chain",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Hardening: frozen scatter group and variation survive save-reopen",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Hardening: 40-state undo cap remains stable after 45 edits",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Pattern: a new tile opens centred with its grid in portrait and landscape",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Doodle landscape: opens directly and hides Pattern-only controls",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Doodle landscape: visible tools are usable",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Doodle fullscreen: camera-safe rail, tools, context and palettes remain usable",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Doodle portrait: rotate-to-landscape gate is shown",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "warnings": [
+    "doodle-fullscreen-landscape: clipped/overflowing control \"Select\" @ {\"tag\":\"button\",\"id\":\"\",\"text\":\"Select\",\"aria\":\"Select\",\"title\":\"\",\"x\":117,\"y\":-24,\"w\":34,\"h\":34,\"right\":151,\"bottom\":10}",
+    "doodle-landscape-after-fullscreen: clipped/overflowing control \"Use palette colour 2: #d66a4d\" @ {\"tag\":\"button\",\"id\":\"\",\"text\":\"\",\"aria\":\"Use palette colour 2: #d66a4d\",\"title\":\"Use #d66a4d\",\"x\":13,\"y\":396,\"w\":32,\"h\":32,\"right\":45,\"bottom\":428}",
+    "doodle-landscape-after-fullscreen: clipped/overflowing control \"Use palette colour 3: #e8bc52\" @ {\"tag\":\"button\",\"id\":\"\",\"text\":\"\",\"aria\":\"Use palette colour 3: #e8bc52\",\"title\":\"Use #e8bc52\",\"x\":13,\"y\":433,\"w\":32,\"h\":32,\"right\":45,\"bottom\":465}",
+    "doodle-landscape-after-fullscreen: clipped/overflowing control \"Use palette colour 4: #20242b\" @ {\"tag\":\"button\",\"id\":\"\",\"text\":\"\",\"aria\":\"Use palette colour 4: #20242b\",\"title\":\"Use #20242b\",\"x\":13,\"y\":470,\"w\":32,\"h\":32,\"right\":45,\"bottom\":502}"
+  ]
+}

@@ -71,7 +71,7 @@ page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
 
 try {
-  await page.goto('http://127.0.0.1:4173/app/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/app/?legacy=1', { waitUntil: 'networkidle' });
 
   await page.locator('#projectTypeInput').selectOption('doodle');
   assert(await page.locator('#projectRepeatSetup').isHidden(), 'repeat setup should hide for Doodle Project');
@@ -93,15 +93,17 @@ try {
   assert((await page.locator('#snapHelp').textContent()).includes('canvas centre lines'), 'Doodle smart-snap help still uses tile terminology');
   assert((await page.locator('#assetPlacementHelp').textContent()).includes('placed on the canvas'), 'Doodle image placement help still uses tile terminology');
   assert((await page.locator('#focusRecentEmpty').textContent()).includes('placed on the canvas'), 'Doodle recent-image help still uses tile terminology');
-  assert((await page.locator('#focusPrintHeading').textContent()).trim() === 'Artwork size & DPI', 'Doodle print panel heading still uses tile terminology');
-  assert((await page.locator('#focusPrintSizeLabel').textContent()).trim() === 'Printed artwork width', 'Doodle print size label still uses base-tile terminology');
-  assert((await page.locator('#focusInfoPrintNote').textContent()).includes('artwork canvas'), 'Doodle print note still uses base-tile terminology');
+  assert((await page.locator('#focusPrintHeading').textContent()).trim() === 'Master output', 'Doodle info panel does not use the adaptable-master model');
+  assert(await page.locator('#focusPrintSize').isHidden(), 'Legacy physical-size field is exposed in Doodle');
+  assert((await page.locator('#focusInfoPrintNote').textContent()).includes('does not assign a physical size'), 'Doodle master-output note still implies a fixed physical size');
   assert((await page.locator('#tileBorderLabelText').textContent()).trim() === 'Show canvas edge', 'Doodle border control still says centre tile edge');
   assert((await page.locator('#stageHelpHint').textContent()).includes('standalone artwork'), 'Doodle stage help still describes repeat swatch export');
   assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Doodle artwork canvas', 'Doodle canvas accessibility label still says pattern tile');
   assert((await page.locator('#exportPng').textContent()).includes('artwork'), 'PNG export label is not Doodle-specific');
   assert((await page.locator('#exportSvg').textContent()).includes('artwork'), 'SVG export label is not Doodle-specific');
 
+  // Edge wrapping and intentional mirroring are separate behaviours. Doodle
+  // clips its artwork to one canvas, while its selected mirror mode still works.
   await page.locator('#symmetry').selectOption('off');
   if (await page.locator('#gridOn').isChecked()) await page.locator('#gridOn').uncheck();
   if (await page.locator('#snapOn').isChecked()) await page.locator('#snapOn').uncheck();
@@ -126,6 +128,12 @@ try {
   assert(right.rgba[3] > 150, `right-edge authored stroke missing from Doodle PNG: ${right.rgba}`);
   assert(left.rgba[3] < 10, `Doodle artwork wrapped to left edge: ${left.rgba}`);
 
+  await page.locator('#symmetry').selectOption('vertical');
+  const mirroredPng = await download(page, '#exportPng');
+  const mirroredLeft = await samplePng(page, mirroredPng.path, 80, 2000);
+  assert(mirroredLeft.rgba[3] > 150, `Doodle vertical mirror missing from PNG: ${mirroredLeft.rgba}`);
+  await page.locator('#symmetry').selectOption('off');
+
   const svg = await download(page, '#exportSvg');
   assert(svg.filename.includes('-artwork.svg'), `unexpected Doodle SVG filename: ${svg.filename}`);
   const svgText = await fs.readFile(svg.path, 'utf8');
@@ -134,6 +142,9 @@ try {
 
   await page.waitForTimeout(1300);
   await page.reload({ waitUntil: 'networkidle' });
+  await page.locator('#resumePrompt').waitFor({ state: 'visible', timeout: 5000 });
+  assert((await page.locator('#resumePromptDetail').textContent()).includes('Doodle Edge Test'), 'autosave prompt did not identify saved Doodle project');
+  await page.locator('#continuePrevious').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
   const reopened = await downloadJson(page);
   assert(reopened.json.project?.projectType === 'doodle', 'autosave/reload lost Doodle projectType');
@@ -143,9 +154,9 @@ try {
   assert(await page.locator('#transparent').isDisabled(), 'restored Doodle project did not restore mode UI');
   assert((await page.locator('#tileSettingsSummary').textContent()).trim() === 'Canvas and placement settings', 'restored Doodle project lost canvas wording');
 
-  await page.locator('#projectMenu').click();
+  await page.goto('http://127.0.0.1:4173/app/?legacy=1', { waitUntil: 'networkidle' });
+  await page.locator('#startNewFromResume').click();
   await page.locator('#projectSetupOverlay').waitFor({ state: 'visible' });
-  assert((await page.locator('#projectSetupIntro').textContent()).includes('Create a new Pattern Project or Doodle Project'), 'Project menu still uses old print-project wording');
   await page.locator('#projectTypeInput').selectOption('pattern');
   await page.locator('#projectTitleInput').fill('Pattern Copy Check');
   await page.locator('#projectSetupForm').evaluate(form => form.requestSubmit());
@@ -156,8 +167,24 @@ try {
   assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Pattern tile editor', 'Pattern Project canvas label changed unexpectedly');
   assert(!(await page.locator('#backgroundSettingsRow').isHidden()), 'Pattern Project background controls were hidden');
 
+  // A direct Doodle route must create a fresh Doodle when the current project
+  // is a Pattern, then restore that standalone Doodle on reload without a dialog.
+  await page.waitForTimeout(1300);
+  await page.goto('http://127.0.0.1:4173/app/?workspace=doodle&legacy=1', { waitUntil: 'networkidle' });
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
+  assert((await page.locator('#projectNameDisplay').textContent()).includes('Doodle'), 'direct Doodle route did not create a Doodle project');
+  await page.locator('[data-tool="brush"]').first().click();
+  await drawWorld(page, { x: 680, y: 330 }, { x: 760, y: 390 }, 12);
+  await page.waitForTimeout(1300);
+  await page.goto('http://127.0.0.1:4173/app/?workspace=doodle&legacy=1', { waitUntil: 'networkidle' });
+  await page.locator('#projectSetupOverlay').waitFor({ state: 'hidden', timeout: 5000 });
+  assert(await page.locator('#resumePrompt').isHidden(), 'direct Doodle should reopen without a project decision');
+  const directReopened = await downloadJson(page);
+  assert(directReopened.json.project?.projectType === 'doodle', 'direct Doodle reload restored the wrong project type');
+  assert(directReopened.json.marks.some(m => m.type === 'brush'), 'direct Doodle reload lost the drawn brush mark');
+
   assert(errors.length === 0, `browser errors: ${errors.join(' | ')}`);
-  console.log('PASS Doodle Mode: standalone workflow terminology, transparent no-wrap export, autosave/reload and Pattern wording fallback');
+  console.log('PASS Doodle Mode: transparent no-wrap export, working mirror, direct standalone restore and Pattern wording fallback');
 } finally {
   await browser.close();
 }

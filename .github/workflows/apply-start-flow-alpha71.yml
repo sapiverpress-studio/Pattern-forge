@@ -1,0 +1,35 @@
+name: Apply Pattern Forge start-flow alpha.7.1
+
+on:
+  push:
+    branches: [feature/start-flow-alpha71]
+    paths:
+      - '.github/workflows/apply-start-flow-alpha71.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/start-flow-alpha71
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded patches
+        run: |
+          python dev/apply-start-flow-alpha71.py
+          python dev/refine-start-flow-alpha71.py
+          node --check app/js/editor.js
+          node --check app/js/workspace.js
+      - name: Commit app changes
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add app/index.html app/assets/editor.css app/js/editor.js app/js/workspace.js help/index.html
+          git commit -m "Fix saved-project start flow and main-menu navigation"
+          git push origin HEAD:feature/start-flow-alpha71

@@ -1,0 +1,28 @@
+name: Apply Pattern Forge resume regressions alpha.7.1
+
+on:
+  push:
+    branches: [feature/start-flow-alpha71]
+    paths:
+      - '.github/workflows/apply-resume-regressions-alpha71.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/start-flow-alpha71
+          fetch-depth: 0
+      - name: Update stale autosave regressions
+        run: python dev/update-resume-regressions-alpha71.py
+      - name: Commit test updates
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add tests/layer-ui-smoke.mjs tests/start-again-smoke.mjs
+          git commit -m "Update autosave regressions for explicit resume flow"
+          git push origin HEAD:feature/start-flow-alpha71

@@ -1,0 +1,45 @@
+name: UX2 extended readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
+    paths:
+      - app/js/editor.js
+      - app/js/canvas-first-v2.js
+      - app/assets/canvas-first-v2.css
+      - tests/ux2-extended-readiness.mjs
+      - .github/workflows/ux2-extended-readiness.yml
+
+permissions:
+  contents: read
+
+jobs:
+  extended-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Check syntax
+        run: |
+          node --check app/js/editor.js
+          node --check tests/ux2-extended-readiness.mjs
+      - name: Run export, recovery, favourites, layout and load checks
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-readiness-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/ux2-extended-readiness.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux2-extended-readiness-results
+          path: ux2-extended-results/
+          retention-days: 7

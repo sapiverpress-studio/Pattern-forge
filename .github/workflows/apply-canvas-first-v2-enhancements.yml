@@ -1,0 +1,31 @@
+name: Apply canvas-first v2 enhancements
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - dev/enhance-canvas-first-v2.py
+      - .github/workflows/apply-canvas-first-v2-enhancements.yml
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply feature exposure patch
+        run: python3 dev/enhance-canvas-first-v2.py
+      - name: Syntax check
+        run: node --check app/js/canvas-first-v2.js
+      - name: Commit tested patch
+        run: |
+          git config user.name "sapiverpress-studio"
+          git config user.email "sapiverpress@gmail.com"
+          git add app/js/canvas-first-v2.js app/assets/canvas-first-v2.css
+          git commit -m "Expose advanced tools in canvas-first editor"
+          git push origin HEAD:feature/canvas-first-ux-v2

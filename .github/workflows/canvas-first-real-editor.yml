@@ -1,0 +1,46 @@
+name: Canvas-first real editor
+
+on:
+  push:
+    branches: [feature/canvas-first-ux-v2]
+    paths:
+      - app/**
+      - tests/canvas-first-real-editor-smoke.mjs
+      - .github/workflows/canvas-first-real-editor.yml
+  workflow_dispatch:
+
+jobs:
+  real-editor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/canvas-first-ux-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/workspace.js
+          node --check app/js/canvas-first-v2.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Serve branch
+        run: |
+          python3 -m http.server 4173 >/tmp/pf-ux2.log 2>&1 &
+          sleep 2
+      - name: Run real editor smoke
+        run: node tests/canvas-first-real-editor-smoke.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvas-first-real-editor-screenshots
+          path: ux2-real-shots/*.png
+          if-no-files-found: ignore
+          retention-days: 7

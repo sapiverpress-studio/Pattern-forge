@@ -1,0 +1,248 @@
+[
+  {
+    "name": "roundtrip pattern straight",
+    "status": "PASS",
+    "ms": 4551,
+    "detail": {
+      "dimensions": [
+        4000,
+        4000
+      ],
+      "pngBytes": 416093,
+      "zipBytes": 420206,
+      "assetsAutosave": 4,
+      "assetsPortable": 2
+    }
+  },
+  {
+    "name": "roundtrip pattern half-drop",
+    "status": "PASS",
+    "ms": 4811,
+    "detail": {
+      "dimensions": [
+        4000,
+        8000
+      ],
+      "pngBytes": 831281,
+      "zipBytes": 835496,
+      "assetsAutosave": 4,
+      "assetsPortable": 2
+    }
+  },
+  {
+    "name": "roundtrip pattern brick",
+    "status": "PASS",
+    "ms": 4843,
+    "detail": {
+      "dimensions": [
+        8000,
+        4000
+      ],
+      "pngBytes": 813183,
+      "zipBytes": 817405,
+      "assetsAutosave": 4,
+      "assetsPortable": 2
+    }
+  },
+  {
+    "name": "roundtrip doodle straight",
+    "status": "PASS",
+    "ms": 4559,
+    "detail": {
+      "dimensions": [
+        4000,
+        4000
+      ],
+      "pngBytes": 415648,
+      "zipBytes": 419755,
+      "assetsAutosave": 4,
+      "assetsPortable": 2
+    }
+  },
+  {
+    "name": "legacy v4 project without advanced fields still opens and exports",
+    "status": "PASS",
+    "ms": 1416,
+    "detail": {
+      "items": 3,
+      "marks": 1,
+      "layers": 3,
+      "pngBytes": 416093,
+      "svgBytes": 3916
+    }
+  },
+  {
+    "name": "recovery rejects invalid JSON",
+    "status": "PASS",
+    "ms": 979
+  },
+  {
+    "name": "recovery rejects wrong format",
+    "status": "PASS",
+    "ms": 1034
+  },
+  {
+    "name": "recovery rejects invalid layer",
+    "status": "PASS",
+    "ms": 1017
+  },
+  {
+    "name": "recovery rejects missing image reference",
+    "status": "PASS",
+    "ms": 982
+  },
+  {
+    "name": "recovery rejects null stroke point",
+    "status": "PASS",
+    "ms": 1040
+  },
+  {
+    "name": "recovery rejects invalid stroke coordinate",
+    "status": "PASS",
+    "ms": 1039
+  },
+  {
+    "name": "recovery rejects duplicate image ID",
+    "status": "PASS",
+    "ms": 998
+  },
+  {
+    "name": "recovery rejects broken image",
+    "status": "PASS",
+    "ms": 1050
+  },
+  {
+    "name": "recovery rejects too many layers",
+    "status": "PASS",
+    "ms": 1035
+  },
+  {
+    "name": "recovery truncated ZIP and cancelled reset",
+    "status": "PASS",
+    "ms": 1710
+  },
+  {
+    "name": "recovery reload retains unplaced images",
+    "status": "PASS",
+    "ms": 2515
+  },
+  {
+    "name": "recovery cancelled ZIP share preserves artwork",
+    "status": "PASS",
+    "ms": 1237
+  },
+  {
+    "name": "recovery aborted autosave falls back and reopens latest work",
+    "status": "PASS",
+    "ms": 4062
+  },
+  {
+    "name": "recovery unavailable storage warns and allows manual export",
+    "status": "PASS",
+    "ms": 2938
+  },
+  {
+    "name": "favourites reload, workspace switch and empty selection",
+    "status": "PASS",
+    "ms": 3255
+  },
+  {
+    "name": "layout pattern 568x320",
+    "status": "PASS",
+    "ms": 1948,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout pattern 640x360",
+    "status": "PASS",
+    "ms": 1964,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout pattern 844x390",
+    "status": "PASS",
+    "ms": 1967,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout pattern 1024x768",
+    "status": "PASS",
+    "ms": 2030,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout pattern 360x800",
+    "status": "PASS",
+    "ms": 1948,
+    "detail": {
+      "orientationsChecked": 2
+    }
+  },
+  {
+    "name": "layout doodle 568x320",
+    "status": "PASS",
+    "ms": 2604,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout doodle 640x360",
+    "status": "PASS",
+    "ms": 2494,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout doodle 844x390",
+    "status": "PASS",
+    "ms": 2687,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout doodle 1024x768",
+    "status": "PASS",
+    "ms": 2569,
+    "detail": {
+      "orientationsChecked": 1
+    }
+  },
+  {
+    "name": "layout doodle 360x800",
+    "status": "PASS",
+    "ms": 2588,
+    "detail": {
+      "orientationsChecked": 2
+    }
+  },
+  {
+    "name": "load large design and rectangular PNG export",
+    "status": "PASS",
+    "ms": 2559,
+    "detail": {
+      "layers": 24,
+      "marks": 600,
+      "points": 24000,
+      "images": 8,
+      "placements": 80,
+      "imagePixelsEach": 4194304,
+      "importMs": 237,
+      "exportMs": 1157,
+      "controlMs": 34,
+      "pngBytes": 13182417,
+      "jsHeapMiB": 6,
+      "note": "Desktop Chromium measurement; JS heap excludes native canvas/image memory and does not establish Android limits."
+    }
+  }
+]
