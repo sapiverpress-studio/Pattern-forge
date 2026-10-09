@@ -518,6 +518,32 @@ try{
     assert(after.fullFrames>0,'Full-quality frame was not restored after interaction');
   });
 
+  await step('Pattern: element-count templates generate three choices, place artwork and persist',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'layout-templates');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    await view.locator('[data-ux2-panel="pattern"]').click();
+    const count=view.locator('#ux2TemplateCount');await count.fill('6');await count.dispatchEvent('change');
+    assert(await view.locator('.ux2-template-card').count()===3,'Template engine did not present exactly three layout choices');
+    assert(await view.locator('.ux2-template-preview svg').count()===3,'Template choices do not have visual previews');
+    const first=await view.evaluate(()=>window.PatternForgeTemplates.options(6,0).map(o=>o.slots.map(s=>[Math.round(s.x),Math.round(s.y)])));
+    await view.locator('#ux2TemplateNew').click();
+    const second=await view.evaluate(()=>window.PatternForgeTemplates.options(6,1).map(o=>o.slots.map(s=>[Math.round(s.x),Math.round(s.y)])));
+    assert(JSON.stringify(first)!==JSON.stringify(second),'Show me 3 different layouts did not generate different placement geometry');
+    await view.getByRole('button',{name:'Choose Flowing layout',exact:true}).click();
+    let active=await view.evaluate(()=>window.PatternForgeTemplates.active);
+    assert(active&&active.count===6&&active.choice===1&&active.slots.length===6,'Chosen template state is incomplete');
+    await view.locator('#ux2PaletteClose').click();
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(180);
+    await view.locator('[data-ux2-panel="pattern"]').click();await view.locator('#ux2TemplateDistribute').click();await view.waitForTimeout(80);
+    const result=await view.evaluate(()=>({active:window.PatternForgeTemplates.active,count:window.PatternForgeTemplates.countElements()}));
+    assert(result.count>=1,'Template distribution could not see imported artwork');
+    const exportOpen=view.locator('#ux2Export');await exportOpen.click();const p=view.waitForEvent('download');await view.locator('[data-export-old="saveProject"]').click();const d=await p;const path=await d.path();assert(path,'Template project download unavailable');const data=JSON.parse(fs.readFileSync(path,'utf8'));
+    assert(data.templateGuide&&data.templateGuide.count===6&&data.templateGuide.slots.length===6,'Template guide did not persist in editable project');
+    const placed=data.items[0],slot=data.templateGuide.slots[0];assert(placed&&Math.hypot(placed.x-slot.x,placed.y-slot.y)<2,'Template did not place the current element in its first slot');
+    await view.locator('#ux2PaletteClose').click();await shot(view,'template-six-elements');await context.close();
+  });
+
   await step('Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing',async()=>{
     const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'scatter-controls');

@@ -171,8 +171,22 @@
     past: [], future: [],
     recentAssetIds:[], colorPalette:["#2c5f54","#d66a4d","#e8bc52","#20242b"],
     savedPalettes:[],variations:[],focusMode:false,focusRepeatPreview:false,
+    templateGuide:null,
     pendingPreview: false, pendingSelected: false
   };
+
+  function normaliseTemplateGuide(raw){
+    if(!raw||typeof raw!=="object")return null;
+    const count=Number(raw.count),round=Number(raw.round),choice=Number(raw.choice);
+    if(!Number.isInteger(count)||count<1||count>30||!Number.isInteger(round)||round<0||round>9999||!Number.isInteger(choice)||choice<0||choice>2||!Array.isArray(raw.slots)||raw.slots.length!==count)return null;
+    const slots=[];
+    for(let i=0;i<raw.slots.length;i++){
+      const slot=raw.slots[i],x=Number(slot?.x),y=Number(slot?.y),scale=Number(slot?.scale),rotation=Number(slot?.rotation||0);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>TILE||y<0||y>TILE||!Number.isFinite(scale)||scale<.04||scale>.45||!Number.isFinite(rotation)||Math.abs(rotation)>Math.PI*2)return null;
+      slots.push({id:i+1,x,y,scale,rotation,role:slot?.role==="hero"?"hero":"filler"});
+    }
+    return {version:1,count,round,choice,key:String(raw.key||["balanced","flowing","feature"][choice]||"balanced").slice(0,30),name:String(raw.name||"Layout").slice(0,60),visible:raw.visible!==false,slots};
+  }
 
   function newLayerId(){return "layer-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
   function activeLayer(){return layerById(state.activeLayerId)||state.layers[state.layers.length-1]||null;}
@@ -271,6 +285,116 @@
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
+  function templateBaseScale(count){return clamp(.43/Math.sqrt(Math.max(1,count)),.075,.22);}
+  function templateBalancedSlots(count,rand){
+    const cols=Math.ceil(Math.sqrt(count)),rows=Math.ceil(count/cols),base=templateBaseScale(count),slots=[];
+    for(let i=0;i<count;i++){
+      const row=Math.floor(i/cols),remaining=count-row*cols,rowCount=Math.min(cols,remaining),col=i%cols;
+      const x=((col+.5)/rowCount+(rand()-.5)*.13/Math.max(1,rowCount))*TILE;
+      const y=((row+.5)/rows+(rand()-.5)*.13/Math.max(1,rows))*TILE;
+      slots.push({id:i+1,x:clamp(x,0,TILE),y:clamp(y,0,TILE),scale:base*(.9+rand()*.2),rotation:(rand()-.5)*.28,role:"filler"});
+    }
+    return slots;
+  }
+  function templateFlowingSlots(count,rand){
+    const base=templateBaseScale(count),phase=rand()*Math.PI*2,slots=[];
+    for(let i=0;i<count;i++){
+      const t=(i+.5)/count;
+      const x=((.04+t*.92+(rand()-.5)*.035)%1+1)%1;
+      const y=((.10+t*.76+Math.sin(t*Math.PI*2*1.35+phase)*.13+(rand()-.5)*.045)%1+1)%1;
+      slots.push({id:i+1,x:x*TILE,y:y*TILE,scale:base*(.86+rand()*.24),rotation:-.42+rand()*.84,role:"filler"});
+    }
+    return slots;
+  }
+  function templateFeatureSlots(count,rand){
+    const base=templateBaseScale(count),heroCount=Math.min(count,Math.max(1,Math.min(4,Math.round(count*.25)))),slots=[];
+    const shiftX=(rand()-.5)*.12,shiftY=(rand()-.5)*.12,heroes=[[.26,.28],[.73,.34],[.38,.74],[.78,.76]];
+    for(let i=0;i<heroCount;i++){
+      const p=heroes[i],x=((p[0]+shiftX)%1+1)%1,y=((p[1]+shiftY)%1+1)%1;
+      slots.push({id:slots.length+1,x:x*TILE,y:y*TILE,scale:Math.min(.34,base*1.55),rotation:(rand()-.5)*.34,role:"hero"});
+    }
+    const fillers=count-heroCount,golden=.61803398875,phase=rand();
+    for(let i=0;i<fillers;i++){
+      const x=((i+.5)/Math.max(1,fillers)+phase*.23)%1,y=((i+1)*golden+phase)%1;
+      slots.push({id:slots.length+1,x:x*TILE,y:y*TILE,scale:base*.78,rotation:(rand()-.5)*.72,role:"filler"});
+    }
+    return slots;
+  }
+  function templateOptions(count,round=0){
+    count=clamp(Math.round(Number(count)||6),1,30);round=Math.max(0,Math.floor(Number(round)||0));
+    const seed=String($("seed")?.value||"pattern-01"),makeRand=kind=>mulberry32(hashString(seed+"|template|"+count+"|"+round+"|"+kind));
+    return [
+      {key:"balanced",name:"Balanced",description:"Even all-over spacing",slots:templateBalancedSlots(count,makeRand("balanced"))},
+      {key:"flowing",name:"Flowing",description:"Diagonal organic movement",slots:templateFlowingSlots(count,makeRand("flowing"))},
+      {key:"feature",name:"Feature + fill",description:"Larger focal positions with fillers",slots:templateFeatureSlots(count,makeRand("feature"))}
+    ].map((option,choice)=>({...option,count,round,choice}));
+  }
+  function chooseTemplateLayout(count,round,choice){
+    if(isDoodleProject()){setStatus("Layout templates are available in Pattern Projects.");return null;}
+    const options=templateOptions(count,round),option=options[clamp(Math.floor(Number(choice)||0),0,2)];
+    state.templateGuide=normaliseTemplateGuide({...option,visible:true});
+    renderAll(false,false);scheduleAutosave();setStatus("Template selected: "+option.name+" · "+option.count+" element"+(option.count===1?"":"s")+".");return JSON.parse(JSON.stringify(state.templateGuide));
+  }
+  function clearTemplateGuide(){state.templateGuide=null;renderAll(false,false);scheduleAutosave();setStatus("Layout template guide cleared.");}
+  function setTemplateGuideVisible(visible){if(!state.templateGuide)return false;state.templateGuide.visible=!!visible;renderAll(false,false);scheduleAutosave();return state.templateGuide.visible;}
+  function templateTopLevelElements(){
+    const selected=new Set(selectionIds()),limitToSelection=selected.size>0,groups=new Map();
+    const records=[...state.items.map(artwork=>({kind:"item",artwork})),...state.marks.filter(mark=>mark.type!=="eraser").map(artwork=>({kind:"mark",artwork}))];
+    for(const record of records){
+      const layer=layerForArtwork(record.artwork,record.kind==="item"?BASE_LAYER_IDS.motifs:BASE_LAYER_IDS.drawing);
+      if(!layerIsRenderable(layer,false)||layer.locked)continue;
+      const key=record.artwork.groupId?"group:"+record.artwork.groupId:record.kind+":"+record.artwork.id;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(record);
+    }
+    let elements=[...groups.values()];
+    if(limitToSelection)elements=elements.filter(records=>records.some(record=>selected.has(record.artwork.id)));
+    return elements;
+  }
+  function templateElementCenter(records){
+    const anchor=artworkCenter(records[0]),points=records.map(record=>{
+      const centre=artworkCenter(record),delta=nearestLatticeDelta(centre.x,centre.y,anchor.x,anchor.y);return {x:anchor.x+delta.x,y:anchor.y+delta.y};
+    });
+    return {x:points.reduce((sum,p)=>sum+p.x,0)/points.length,y:points.reduce((sum,p)=>sum+p.y,0)/points.length};
+  }
+  function moveTemplateElement(records,slot){
+    const centre=templateElementCenter(records),dx=slot.x-centre.x,dy=slot.y-centre.y;
+    for(const record of records){
+      if(record.kind==="item"){
+        const item=record.artwork,pos=canonicalPoint(Number(item.x||0)+dx,Number(item.y||0)+dy);item.x=pos.x;item.y=pos.y;delete item.scatterGenerated;
+      }else{
+        const mark=record.artwork,t=markTransformValues(mark);mark.transformX=t.x+dx;mark.transformY=t.y+dy;normaliseMarkTranslation(mark);
+      }
+    }
+  }
+  function distributeTemplateArtwork(){
+    const guide=state.templateGuide;if(!guide){setStatus("Choose a layout template first.");return {placed:0,available:0};}
+    const elements=templateTopLevelElements();if(!elements.length){setStatus("Add or select artwork before placing it into the template.");return {placed:0,available:0};}
+    saveHistory();const placed=Math.min(elements.length,guide.slots.length);
+    for(let i=0;i<placed;i++)moveTemplateElement(elements[i],guide.slots[i]);
+    clearSelection();renderAll();setStatus("Placed "+placed+" element"+(placed===1?"":"s")+" into the "+guide.name+" template."+(elements.length>placed?" Extra artwork was left where it was.":""));return {placed,available:elements.length};
+  }
+  function drawTemplateGuides(c,sc){
+    const guide=state.templateGuide;if(isDoodleProject()||!guide?.visible||!Array.isArray(guide.slots))return;
+    c.save();c.lineWidth=1.5/sc;c.font=Math.max(9,12/sc)+"px system-ui,sans-serif";c.textAlign="center";c.textBaseline="middle";
+    for(const slot of guide.slots){
+      const r=clamp(slot.scale*TILE*.55,28,125),copies=latticeCopiesForBounds(slot.x-r,slot.x+r,slot.y-r,slot.y+r,TILE,TILE,repeatBasis());
+      for(const copy of copies){
+        const x=slot.x+copy.x,y=slot.y+copy.y;c.beginPath();c.setLineDash([7/sc,6/sc]);c.strokeStyle=slot.role==="hero"?"rgba(204,82,62,.72)":"rgba(44,95,84,.64)";c.arc(x,y,r,0,Math.PI*2);c.stroke();c.setLineDash([]);
+        if(copy.k===0&&copy.n===0){c.fillStyle="rgba(248,250,251,.82)";c.beginPath();c.arc(x,y,11/sc,0,Math.PI*2);c.fill();c.fillStyle="#243343";c.fillText(String(slot.id),x,y);}
+      }
+    }
+    c.restore();
+  }
+  window.PatternForgeTemplates={
+    options:(count,round)=>templateOptions(count,round).map(option=>JSON.parse(JSON.stringify(option))),
+    get active(){return state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null;},
+    choose:chooseTemplateLayout,
+    clear:clearTemplateGuide,
+    setVisible:setTemplateGuideVisible,
+    distribute:distributeTemplateArtwork,
+    countElements:()=>templateTopLevelElements().length
+  };
   function getExportSpec(){
     const mult=exportMultipliers();
     return {dpi:300,wIn:4000*mult.x/300,hIn:4000*mult.y/300,wPx:4000*mult.x,hPx:4000*mult.y};
@@ -697,6 +821,7 @@
     drawConstructionGuides(ctx,sc);
     drawSymmetryGuides(ctx,sc);
     drawSnapGuides(ctx,sc);
+    drawTemplateGuides(ctx,sc);
     const selection=selectedArtwork(),showHandles=selection.length===1;
     for(const record of selection){
       if(record.kind==="item"){
@@ -2030,7 +2155,7 @@
         $("gridOn").checked=true;
         updateSettingReadouts();
       }
-      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
       setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
@@ -2041,7 +2166,7 @@
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
     state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",projectType:"pattern",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
-    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
     $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
@@ -2140,6 +2265,7 @@
     if(state.project)state.project.updatedAt=new Date().toISOString();
     return {format:"pattern-forge-v4",tile:4000,dpi:300,
       project:state.project?{...state.project}:null,
+      templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
       seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
@@ -2304,6 +2430,7 @@
     if(!data||typeof data!=="object"||!["pattern-forge-v1","pattern-forge-v2","pattern-forge-v3","pattern-forge-v4"].includes(data.format)||!Array.isArray(data.assets)||!Array.isArray(data.items)||!Array.isArray(data.marks))throw new Error("wrong-format");
     if(data.assets.length>500||data.items.length>10000||data.marks.length>10000||(Array.isArray(data.layers)&&data.layers.length>100))throw new Error("too-large");
     if(data.variations!==undefined&&(!Array.isArray(data.variations)||data.variations.length>30||data.variations.some(v=>!v||typeof v.id!=="string"||typeof v.name!=="string"||!v.snapshot||typeof v.snapshot!=="object")))throw new Error("wrong-format");
+    if(data.templateGuide!==undefined&&data.templateGuide!==null&&!normaliseTemplateGuide(data.templateGuide))throw new Error("invalid-template");
     if(data.format==="pattern-forge-v4"){
       if(!Array.isArray(data.layers)||!data.layers.length)throw new Error("invalid-layers");
       const layerIds=new Set();
@@ -2336,7 +2463,7 @@
     const code=err?.message||"";
     if(code==="wrong-format")return "That file is not a Pattern Forge project. Choose a JSON project or ZIP exported by Pattern Forge. Your current work is unchanged.";
     if(code==="too-large")return "That project is larger than Pattern Forge can open. Your current work is unchanged.";
-    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
+    if(code==="invalid-assets"||code==="invalid-items"||code==="invalid-marks"||code==="invalid-layers"||code==="invalid-template"||code==="Invalid image in project")return "This Pattern Forge project appears incomplete or damaged. Your current work is unchanged.";
     if(err instanceof SyntaxError)return "This file is not valid project JSON. Choose a Pattern Forge JSON file or exported project ZIP. Your current work is unchanged.";
     return "Pattern Forge could not open that project. Check that the file is a complete JSON project or ZIP exported by the app. Your current work is unchanged.";
   }
@@ -2345,6 +2472,7 @@
     const assets=[];for(const a of data.assets){if(typeof a.src!=="string"||!a.src.startsWith("data:image/"))throw Error("Invalid image in project");const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=a.src;});assets.push({...a,img});}
     const incoming=data.project&&typeof data.project==="object"?data.project:{};
     state.project={id:options.asCopy?newProjectId():(typeof incoming.id==="string"&&incoming.id.startsWith("pf-project-")?incoming.id:newProjectId()),title:String(incoming.title||data.seed||"Untitled project").slice(0,80),customer:String(incoming.customer||"").slice(0,80),theme:String(incoming.theme||"").slice(0,60),variation:String(incoming.variation||"").slice(0,60),projectType:incoming.projectType==="doodle"?"doodle":"pattern",repeatStyle:incoming.projectType==="doodle"?"straight":(["straight","half-drop","brick"].includes(incoming.repeatStyle)?incoming.repeatStyle:"straight"),isPractice:options.asCopy?false:!!incoming.isPractice,createdAt:incoming.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.templateGuide=isDoodleProject()?null:normaliseTemplateGuide(data.templateGuide);
     state.layers=normaliseLayers(data.layers);
     const validLayerIds=new Set(state.layers.map(layer=>layer.id));
     const motifsFallback=validLayerIds.has(BASE_LAYER_IDS.motifs)?BASE_LAYER_IDS.motifs:state.layers[0].id;

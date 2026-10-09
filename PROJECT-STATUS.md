@@ -1,6 +1,6 @@
 # Pattern Forge — current work and handover
 
-Last updated: 7 October 2026 (UK). Read this first when continuing the project.
+Last updated: 9 October 2026 (UK). Read this first when continuing the project.
 Update this file after every completed stage and before ending each work session.
 
 ## Purpose and current stage
@@ -66,6 +66,7 @@ Availability is different from physical Android validation.
 | Clipping masks | Layers → Clip to layer below | Implemented; raster and SVG checks |
 | Stylus pressure width, minimum width and response | Brush → Pressure width; Brush library → Stylus pressure | Implemented; synthetic stylus and mouse/finger fallback checks; physical stylus unverified |
 | Controlled scatter, spacing/no-overlap, preserve manual placements, freeze | Pattern → Design setup → Image scatter | Implemented; repeat seams and frozen scatter persistence covered |
+| Count-driven seamless layout templates | Pattern → Design setup → Layout templates | V1 implemented: choose 1–30 placements, compare three generated layouts, regenerate alternatives, show non-exporting guides, place selected/all editable elements; grouped motif counts as one |
 | Saved variations and colourways, rename/duplicate/compare, batch export | Pattern → Design setup → Variations & colourways | Implemented; export preserves current work |
 | Physical-scale preview, units, rulers, view windows and repeat-cell boundaries | Pattern → Design setup → Product-scale preview | Implemented; scale/units/half-drop/brick checks; not a printer proof |
 
@@ -241,6 +242,21 @@ samples when the browser provides them. Export dimensions, saved project geometr
 and the 4000px production pipeline are unchanged. A browser regression now checks
 that interactive frames use the lightweight path and a full-quality frame returns
 after pointer release. Verification pending for the implementation commit.
+
+### Count-driven Template Engine v1 — implementation staged
+
+On 9 October the researched placement-template idea was converted into the simpler
+workflow Jim chose: **element count → three visual layout choices → choose one → place/refine**.
+Pattern Projects now support 1–30 element placements and generate three deterministic
+but refreshable composition families: Balanced, Flowing and Feature + fill. “Show me
+3 different layouts” advances the generation round while retaining the same element
+count. The chosen guide is drawn as numbered wrap-aware placement zones on the canvas,
+never enters PNG/SVG exports, and is saved in the editable project. “Place current
+elements” moves selected elements when a selection exists, otherwise all visible
+unlocked editable elements; a grouped motif counts as one element and remains editable.
+No template system is exposed in standalone Doodle. Browser regression coverage was
+added for exactly three choices, regeneration, selection, placement and project
+persistence. Verification pending for the implementation commit.
 
 ## Remaining work, in order
 
