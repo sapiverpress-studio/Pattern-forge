@@ -284,9 +284,10 @@ Visible Export-for-Etsy UI and regression commit:
 `543dfa8855e865a959d58b783dbd8ccd51fcd4c5`.
 
 The exporter produces one master seller kit containing Etsy-ready buyer ZIP(s),
-separate 2400 × 1800 listing images, seller checklist and quality evidence. Buyer
-ZIPs contain PNG, flattened JPG, 3×3 repeat preview, README/licence and an optional
-SVG only when all placed imported assets are SVG sources. If one buyer ZIP exceeds
+three design-only 2400 × 1800 listing images, seller checklist and quality evidence.
+Buyer ZIPs contain the same singular seamless design as PNG, flattened JPG, 3×3
+repeat preview, README/licence and an optional SVG only when all placed imported
+assets are SVG sources. If one buyer ZIP exceeds
 20 MB, the exporter splits payloads into up to five individually compliant ZIPs;
 an individual payload that still cannot fit blocks export. Etsy publishing is not
 automated.
@@ -297,13 +298,35 @@ Verification on the exact `543dfa88` implementation:
   four existing advisory layout warnings.
 - The Etsy regression deliberately moves an SVG motif across the tile boundary,
   requires seam continuity to pass, builds the kit, checks the five-file/20 MB
-  Etsy limits, verifies PNG/JPG/3×3 preview/vector SVG, verifies seven separate
-  2400 × 1800 listing images, and confirms the editable design is unchanged.
+  Etsy limits, verifies PNG/JPG/3×3 preview/vector SVG, verifies the design-only listing
+  output and confirms the editable design is unchanged.
 - Extended readiness `37911514200`: **31/31 passed**.
 - Netlify Deploy Preview `6ac8b3c9548d680008427d38`: **ready**, exact source
   commit `543dfa8855e865a959d58b783dbd8ccd51fcd4c5`.
 - Drawer-free permalink for this implementation:
   https://6ac8b3c9548d680008427d38--sapiver-pattern-forge.netlify.app/
+
+### Etsy product simplification — singular adaptable design
+
+Jim rejected the first generated lifestyle/product mockups. The intended Etsy
+product is **one adaptable seamless design**, not fabric/wallpaper/cushion/etc.
+The Etsy exporter has therefore been simplified:
+
+- no fabric, cushion, wallpaper, wrapping-paper or stationery mockups;
+- no physical-size positioning or product-specific claims;
+- buyer filenames are now `-seamless-master.png` / `-seamless-master.jpg`
+  rather than embedding 4000px/300-DPI language;
+- the README explicitly states that raster pixel dimensions describe the master
+  file only, not a fixed physical product size;
+- SVG remains included when the artwork is genuinely vector-capable, giving a
+  resolution-independent option;
+- raster-source quality can warn about heavy enlargement but no longer blocks
+  export based on a presumed physical DPI target;
+- listing output is reduced to three neutral design views only:
+  full pattern, exact seamless tile and pattern detail.
+
+Regression coverage now requires exactly those three design-only listing images
+and explicitly rejects product-mockup names. Verification pending for this commit.
 
 ## Remaining work, in order
 
@@ -312,9 +335,9 @@ Verification on the exact `543dfa88` implementation:
    Template Engine controls and the Export for Etsy panel at real mobile scale.
 2. **Real-product Etsy export check:** finish or open a representative pattern
    with edge-crossing motifs, run Export for Etsy, extract the master kit and
-   inspect every buyer file plus all seven listing images. Confirm the seam check
+   inspect every buyer file plus the three design-only listing images. Confirm the seam check
    agrees with visual inspection and the listing mockups are good enough to sell.
-3. Review the default Sapiver Prints README/licence wording and mockup styling
+3. Review the default Sapiver Prints README/licence wording and design-only listing styling
    against the actual shop offer. Change wording/style only where Jim wants it;
    do not weaken file/repeat validation.
 4. The old isolated UX2 staging site still needs a restored
@@ -338,7 +361,7 @@ Verification on the exact `543dfa88` implementation:
   phone; desktop JS heap measurements exclude native canvas/image memory.
 - Extract one generated Etsy master kit on-device. Open the buyer PNG/JPG/repeat
   preview, inspect any included SVG, confirm all upload ZIPs are visible and below
-  20 MB, and inspect the seven 2400 × 1800 seller listing images.
+  20 MB, and inspect the three 2400 × 1800 design-only seller listing images.
 - Check physical stylus response if pressure support will be advertised.
 - Do not promise offline cold start: the wrapper loads a hosted site and has no
   bundled offline editor/service worker in this configuration.

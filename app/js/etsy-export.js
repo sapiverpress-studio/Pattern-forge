@@ -40,17 +40,15 @@
   }
   function rasterQuality(){
     const s=bridge.state,spec=bridge.getSpec(),sx=spec.wPx/900,sy=spec.hPx/900,uniform=Math.sqrt(sx*sy);
-    let worst=Infinity,rasterCount=0,vectorCount=0;
+    let maxUpscale=1,rasterCount=0,vectorCount=0;
     for(const item of s.items){
       const layer=bridge.layerForArtwork(item,bridge.baseLayerIds.motifs),asset=bridge.assetOf(item);
       if(!asset||!bridge.layerIsRenderable(layer,true))continue;
       if(asset.vector){vectorCount++;continue;}
       rasterCount++;
-      const drawW=asset.w*item.scale*uniform,drawH=asset.h*item.scale*uniform;
-      const effX=asset.w/Math.max(.0001,drawW/spec.dpi),effY=asset.h/Math.max(.0001,drawH/spec.dpi);
-      worst=Math.min(worst,effX,effY);
+      maxUpscale=Math.max(maxUpscale,Math.max(.0001,item.scale*uniform));
     }
-    return {worst:rasterCount?worst:null,rasterCount,vectorCount};
+    return {maxUpscale:rasterCount?maxUpscale:null,rasterCount,vectorCount};
   }
   function pixelDiff(data,a,b){
     const aa=data[a+3]/255,ba=data[b+3]/255;
@@ -79,18 +77,18 @@
     if(bridge.isDoodle())checks.push({id:"project-type",state:"fail",label:"Pattern Project required",detail:"Export for Etsy is for seamless Pattern Projects, not standalone Doodle artwork."});
     else checks.push({id:"project-type",state:"pass",label:"Pattern Project",detail:"Seamless repeat packaging is available."});
     checks.push({id:"artwork",state:counts.total?"pass":"fail",label:"Artwork present",detail:counts.total?counts.total+" editable element"+(counts.total===1?"":"s")+" will be rendered.":"Add artwork before creating an Etsy product."});
-    checks.push({id:"dimensions",state:spec.wPx>=4000&&spec.hPx>=4000?"pass":"fail",label:"Export dimensions",detail:spec.wPx+" × "+spec.hPx+" px complete repeat cell at "+spec.dpi+" DPI metadata."});
+    checks.push({id:"dimensions",state:"pass",label:"Master raster file",detail:spec.wPx+" × "+spec.hPx+" px complete repeat cell. This is file resolution, not a fixed physical product size."});
     const q=rasterQuality();
-    if(!q.rasterCount)checks.push({id:"source-quality",state:"pass",label:"Source quality",detail:"Placed imported motifs are vector sources; drawn artwork renders at export resolution."});
-    else if(q.worst>=300)checks.push({id:"source-quality",state:"pass",label:"Source quality",detail:"Lowest effective raster resolution is "+Math.round(q.worst)+" DPI."});
-    else if(q.worst>=150)checks.push({id:"source-quality",state:"warn",label:"Source quality",detail:"Lowest effective raster resolution is "+Math.round(q.worst)+" DPI. Usable for many applications but below a 300-DPI source standard."});
-    else checks.push({id:"source-quality",state:"fail",label:"Source quality",detail:"Lowest effective raster resolution is "+Math.round(q.worst)+" DPI. Replace or reduce the low-resolution raster artwork before sale."});
+    if(!q.rasterCount)checks.push({id:"source-quality",state:"pass",label:"Source quality",detail:"Placed imported motifs are vector sources; drawn artwork renders at the master raster resolution."});
+    else if(q.maxUpscale<=1.25)checks.push({id:"source-quality",state:"pass",label:"Source quality",detail:"Raster motifs are not being substantially enlarged in the master raster."});
+    else if(q.maxUpscale<=2)checks.push({id:"source-quality",state:"warn",label:"Source quality",detail:"At least one raster motif is enlarged about "+q.maxUpscale.toFixed(1)+"× in the master raster. The design is still exportable, but extreme enlargement by the buyer may soften detail."});
+    else checks.push({id:"source-quality",state:"warn",label:"Source quality",detail:"At least one raster motif is enlarged about "+q.maxUpscale.toFixed(1)+"× in the master raster. Inspect sharpness before listing; the exporter does not impose a fixed physical-use size."});
     if(!bridge.isDoodle()&&counts.total){
       const seams=seamMetrics(),pass=seams.leftRight.pass&&seams.topBottom.pass;
       checks.push({id:"seams",state:pass?"pass":"fail",label:"Seam continuity",detail:pass?"Opposite-edge pixel continuity is within tolerance in both directions.":"A strong discontinuity was detected at "+(!seams.leftRight.pass&&!seams.topBottom.pass?"both tile seams":!seams.leftRight.pass?"the left/right seam":"the top/bottom seam")+". Inspect the repeat before sale.",metrics:seams});
     }
     const transparent=!!$("transparent")?.checked;
-    checks.push({id:"transparency",state:"pass",label:"Background handling",detail:transparent?"PNG retains transparency; JPG and listing mockups are flattened against the selected background colour.":"PNG and JPG use the selected background colour."});
+    checks.push({id:"transparency",state:"pass",label:"Background handling",detail:transparent?"PNG retains transparency; JPG and design-only listing images are flattened against the selected background colour.":"PNG, JPG and design-only listing images use the selected background colour."});
     checks.push({id:"vector",state:"info",label:"SVG eligibility",detail:vectorEligible()?"A vector SVG can be included inside the buyer ZIP.":"At least one placed asset is raster, so the Etsy package will omit SVG rather than label a raster-backed SVG as genuine vector."});
     checks.push({id:"etsy-rules",state:"info",label:"Etsy upload rules",detail:"Checked against Etsy rules verified "+RULES_VERIFIED+": up to "+ETSY_MAX_FILES+" digital files, maximum 20 MB each. Buyer packages are generated as ZIP files."});
     return checks;
@@ -110,44 +108,33 @@
     const blob=await blobFromCanvas(out,"image/jpeg",.9);cell.width=1;cell.height=1;out.width=1;out.height=1;
     return {blob,width:cw*3,height:ch*3};
   }
-  function roundRect(ctx,x,y,w,h,r){
-    r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
-  }
-  function makeMockupBase(){
-    const mult=bridge.getMultipliers(),base=360,raw=bridge.makeTileCanvas(base*mult.x,base*mult.y,base,base,bridge.getRepeatStyle(),true),tile=document.createElement("canvas");
+  function makeListingTile(base){
+    const mult=bridge.getMultipliers(),raw=bridge.makeTileCanvas(base*mult.x,base*mult.y,base,base,bridge.getRepeatStyle(),true),tile=document.createElement("canvas");
     tile.width=raw.width;tile.height=raw.height;const t=tile.getContext("2d");t.fillStyle=$("bg")?.value||"#ffffff";t.fillRect(0,0,tile.width,tile.height);t.drawImage(raw,0,0);raw.width=1;raw.height=1;return tile;
   }
-  function patternFill(ctx,tile){return ctx.createPattern(tile,"repeat");}
   function listingCanvas(kind,tile){
-    const c=document.createElement("canvas");c.width=LISTING_W;c.height=LISTING_H;const x=c.getContext("2d"),pat=patternFill(x,tile);
-    x.fillStyle="#eeeae3";x.fillRect(0,0,c.width,c.height);
-    if(kind==="repeat"){x.fillStyle=pat;x.fillRect(0,0,c.width,c.height);}
-    if(kind==="fabric"){
-      x.fillStyle="#dad6cf";x.fillRect(0,0,c.width,c.height);x.save();x.translate(1180,900);x.rotate(-.075);x.shadowColor="rgba(0,0,0,.25)";x.shadowBlur=55;x.shadowOffsetY=28;x.fillStyle=pat;x.fillRect(-920,-620,1840,1240);x.restore();
+    const c=document.createElement("canvas");c.width=LISTING_W;c.height=LISTING_H;const x=c.getContext("2d");
+    x.fillStyle=$("bg")?.value||"#ffffff";x.fillRect(0,0,c.width,c.height);
+    if(kind==="repeat"||kind==="detail"){
+      const pat=x.createPattern(tile,"repeat");x.fillStyle=pat;x.fillRect(0,0,c.width,c.height);return c;
     }
-    if(kind==="cushion"){
-      x.fillStyle="#dedbd4";x.fillRect(0,1180,c.width,620);x.save();x.shadowColor="rgba(0,0,0,.28)";x.shadowBlur=65;x.shadowOffsetY=32;roundRect(x,720,310,960,960,90);x.fillStyle=pat;x.fill();x.restore();x.strokeStyle="rgba(255,255,255,.65)";x.lineWidth=14;roundRect(x,750,340,900,900,70);x.stroke();
-    }
-    if(kind==="wallpaper"){
-      x.fillStyle=pat;x.fillRect(0,0,c.width,1280);x.fillStyle="#cfc8bd";x.fillRect(0,1280,c.width,520);x.fillStyle="#f7f4ef";x.shadowColor="rgba(0,0,0,.18)";x.shadowBlur=35;roundRect(x,410,1040,1580,430,75);x.fill();x.fillStyle="#b5aa9a";x.fillRect(350,1450,1700,42);
-    }
-    if(kind==="wrapping"){
-      x.fillStyle="#e6e1d9";x.fillRect(0,0,c.width,c.height);x.save();x.translate(1200,900);x.rotate(-.08);x.shadowColor="rgba(0,0,0,.25)";x.shadowBlur=50;x.fillStyle=pat;x.fillRect(-710,-520,1420,1040);x.fillStyle="#f4ead2";x.fillRect(-70,-520,140,1040);x.fillRect(-710,-70,1420,140);x.restore();
-    }
-    if(kind==="stationery"){
-      x.fillStyle="#e5e0d8";x.fillRect(0,0,c.width,c.height);x.save();x.translate(840,870);x.rotate(-.07);x.shadowColor="rgba(0,0,0,.22)";x.shadowBlur=42;x.fillStyle=pat;roundRect(x,-480,-640,960,1280,32);x.fill();x.fillStyle="#faf8f4";x.fillRect(-430,-570,780,1050);x.restore();x.save();x.translate(1660,900);x.rotate(.06);x.fillStyle=pat;roundRect(x,-340,-460,680,920,24);x.fill();x.restore();
-    }
-    if(kind==="swatch"){
-      x.fillStyle="#f4f1eb";x.fillRect(0,0,c.width,c.height);x.fillStyle=pat;x.fillRect(160,150,2080,1500);x.strokeStyle="#ffffff";x.lineWidth=18;x.strokeRect(160,150,2080,1500);
+    if(kind==="tile"){
+      x.fillStyle="#f4f1eb";x.fillRect(0,0,c.width,c.height);
+      const scale=Math.min((c.width*.82)/tile.width,(c.height*.82)/tile.height),w=tile.width*scale,h=tile.height*scale,left=(c.width-w)/2,top=(c.height-h)/2;
+      x.shadowColor="rgba(0,0,0,.16)";x.shadowBlur=36;x.shadowOffsetY=16;x.fillStyle="#ffffff";x.fillRect(left-18,top-18,w+36,h+36);x.shadowColor="transparent";x.drawImage(tile,left,top,w,h);return c;
     }
     return c;
   }
   async function listingImages(){
-    const tile=makeMockupBase(),kinds=["swatch","repeat","fabric","cushion","wallpaper","wrapping","stationery"],names=["01-swatch","02-repeat","03-fabric","04-cushion","05-wallpaper","06-wrapping-paper","07-stationery"],out=[];
-    for(let i=0;i<kinds.length;i++){
-      const canvas=listingCanvas(kinds[i],tile),blob=await blobFromCanvas(canvas,"image/jpeg",.88);out.push({name:names[i]+".jpg",blob,width:LISTING_W,height:LISTING_H});canvas.width=1;canvas.height=1;
+    const repeatTile=makeListingTile(360),tileTile=makeListingTile(720),detailTile=makeListingTile(640),spec=[
+      {kind:"repeat",name:"01-full-pattern.jpg",tile:repeatTile},
+      {kind:"tile",name:"02-seamless-tile.jpg",tile:tileTile},
+      {kind:"detail",name:"03-pattern-detail.jpg",tile:detailTile}
+    ],out=[];
+    for(const item of spec){
+      const canvas=listingCanvas(item.kind,item.tile),blob=await blobFromCanvas(canvas,"image/jpeg",.9);out.push({name:item.name,blob,width:LISTING_W,height:LISTING_H});canvas.width=1;canvas.height=1;
     }
-    tile.width=1;tile.height=1;return out;
+    repeatTile.width=1;repeatTile.height=1;tileTile.width=1;tileTile.height=1;detailTile.width=1;detailTile.height=1;return out;
   }
   function instructions(spec,hasSvg){
     const style=bridge.getRepeatStyle();
@@ -157,18 +144,22 @@
       "Thank you for purchasing this digital pattern.",
       "",
       "WHAT IS INCLUDED",
-      "- PNG seamless repeat cell: "+spec.wPx+" × "+spec.hPx+" px, 300 DPI metadata.",
-      "- JPG seamless repeat cell: "+spec.wPx+" × "+spec.hPx+" px with a flattened background.",
-      "- 3 × 3 repeat preview JPG for checking the repeat.",
-      hasSvg?"- SVG vector repeat file.":"- SVG is not included because this design contains raster artwork.",
+      "- PNG seamless master tile: "+spec.wPx+" × "+spec.hPx+" px.",
+      "- JPG seamless master tile: "+spec.wPx+" × "+spec.hPx+" px with a flattened background.",
+      "- 3 × 3 repeat preview JPG for checking the seamless repeat.",
+      hasSvg?"- SVG vector repeat file for resolution-independent scaling.":"- SVG is not included because this design contains raster artwork.",
       "- Licence terms.",
+      "",
+      "SIZE AND SCALING",
+      "This design is not tied to a physical product size. The pixel dimensions above describe the raster master file only.",
+      "You may scale the design to suit your project. Raster enlargement can reduce sharpness; use the SVG where supplied when you need resolution-independent scaling.",
       "",
       "REPEAT TYPE",
       style==="straight"?"Straight repeat.":style==="half-drop"?"Half-drop repeat; use the complete rectangular repeat cell supplied.":"Brick repeat; use the complete rectangular repeat cell supplied.",
       "",
       "HOW TO USE",
       "Place the seamless tile into software that supports repeating/tiled fills. Repeat the complete supplied tile edge-to-edge without cropping or stretching it non-proportionally.",
-      "For printing, choose a scale appropriate to the product and verify the printer's own resolution requirements.",
+      "Choose the scale that suits your intended use and check the requirements of the software, printer or production service you use.",
       "",
       "IMPORTANT",
       "This is a digital product. No physical item is included.",
@@ -215,7 +206,7 @@
       ...packages.map(p=>"- "+p.name+" — "+mb(p.blob.size)),
       "",
       "LISTING IMAGES",
-      listing.length+" images generated at "+LISTING_W+" × "+LISTING_H+" px."
+      listing.length+" design-only listing images generated at "+LISTING_W+" × "+LISTING_H+" px. They show the pattern itself only; no product mockups are included."
     ].join("\n");
   }
   async function buyerPackages(files,base){
@@ -245,8 +236,8 @@
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),buyerFiles=[
-        {name:stem+"-seamless-"+png.spec.wPx+"x"+png.spec.hPx+"-300dpi.png",blob:png.blob},
-        {name:stem+"-seamless-"+jpg.spec.wPx+"x"+jpg.spec.hPx+".jpg",blob:jpg.blob},
+        {name:stem+"-seamless-master.png",blob:png.blob},
+        {name:stem+"-seamless-master.jpg",blob:jpg.blob},
         {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
       ];
       if(hasSvg)buyerFiles.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
@@ -258,7 +249,7 @@
       const sizeOk=packages.length<=ETSY_MAX_FILES&&packages.every(p=>p.blob.size<=ETSY_MAX_BYTES);
       checks.push({id:"etsy-package",state:sizeOk?"pass":"fail",label:"Etsy buyer package",detail:sizeOk?packages.length+" upload ZIP"+(packages.length===1?"":"s")+" prepared; largest is "+mb(Math.max(...packages.map(p=>p.blob.size)))+".":"Generated buyer files exceed Etsy's upload limits."});
       if(!sizeOk)throw new Error("Generated buyer package exceeds Etsy's upload limits.");
-      bridge.setStatus("Etsy export: generating listing images…");
+      bridge.setStatus("Etsy export: generating design-only listing images…");
       const listing=includeListing?await listingImages():[];
       const after=stateFingerprint(),unchanged=before===after;
       checks.push({id:"editable-design",state:unchanged?"pass":"fail",label:"Original design unchanged",detail:unchanged?"Packaging did not alter the editable artwork.":"The editable design changed during packaging; export has been blocked."});
@@ -271,7 +262,7 @@
       ];
       const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
       if(download)bridge.downloadBlob(kit,kitName);
-      bridge.setStatus("Etsy kit ready: "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" listing images.");
+      bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
       return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
