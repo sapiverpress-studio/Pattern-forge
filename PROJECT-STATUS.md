@@ -28,7 +28,7 @@ staging interface is the latest implementation.
 | Repository | `sapiverpress-studio/Pattern-forge` |
 | Active working branch | `feature/advanced-editing-v1` |
 | Latest saved implementation | `3711649d3ffcbfb52a627c4bf6413a6b4cb4fd24`; subsequent status-only commits may advance HEAD |
-| Current branch head before this status update | `3ef9b3f51233682430ffb6bdfe635e6a82937bf9`; application files remain those of `7030c645` |
+| Current branch head before this status update | `543dfa8855e865a959d58b783dbd8ccd51fcd4c5` |
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
 | Development vs UX2 at takeover | 113 commits ahead, 0 behind; not merged |
@@ -70,6 +70,7 @@ Availability is different from physical Android validation.
 | Count-driven seamless layout templates | Pattern → Design setup → Layout templates | V1 implemented: choose 1–30 placements, compare three generated layouts, regenerate alternatives, show non-exporting guides, place selected/all editable elements; grouped motif counts as one |
 | Saved variations and colourways, rename/duplicate/compare, batch export | Pattern → Design setup → Variations & colourways | Implemented; export preserves current work |
 | Physical-scale preview, units, rulers, view windows and repeat-cell boundaries | Pattern → Design setup → Product-scale preview | Implemented; scale/units/half-drop/brick checks; not a printer proof |
+| Etsy digital-product packaging | Pattern → Export → Export for Etsy | Implemented and browser-verified: seam/source checks, Etsy file-limit checks, PNG/JPG/3×3 preview, conditional genuine-vector SVG, README/licence, buyer ZIP splitting, seller listing-image kit; publishing remains manual |
 
 Doodle stays standalone; its mirror, grid and guides are under Canvas setup.
 The Line shape exists, but **line-connect is deferred**, not completed.
@@ -278,39 +279,49 @@ maximum five buyer files, maximum 20 MB each; ZIP/PNG/JPG are supported digital
 download file types, while SVG is not a standalone Etsy upload type. Listing
 images should be at least 2000 px wide.
 
-Core architecture is staged as a separate `etsy-export.js` module loaded after
-the existing editor. The editor exposes only the existing render/export primitives
-needed by that module. The output is one master seller kit containing Etsy-ready
-buyer ZIP(s), separate 2400 × 1800 listing images, seller checklist and quality
-evidence. Buyer ZIPs contain PNG, flattened JPG, 3×3 repeat preview, README/licence
-and an optional SVG only when all placed imported assets are SVG sources. If one
-buyer ZIP exceeds 20 MB, the exporter splits payloads into up to five individually
-compliant ZIPs; an individual payload that still cannot fit blocks export.
+Core module commit: `4f1150c7b281f98e1091a03eec259d8826881fcf`.
+Visible Export-for-Etsy UI and regression commit:
+`543dfa8855e865a959d58b783dbd8ccd51fcd4c5`.
 
-The Export drawer now has a dedicated **Export for Etsy** block with preflight
-results and a **Check & build Etsy kit** action. It does not publish to Etsy.
-A new browser regression uses an SVG motif deliberately moved across the tile edge,
-requires the seam-continuity preflight to pass, builds the complete kit without
-downloading it, checks the five-file/20 MB Etsy limits, verifies PNG/JPG/3×3
-preview/SVG inclusion, verifies seven listing images at 2400 × 1800, and proves
-the editable design is unchanged. Verification is pending for this UI/test commit.
+The exporter produces one master seller kit containing Etsy-ready buyer ZIP(s),
+separate 2400 × 1800 listing images, seller checklist and quality evidence. Buyer
+ZIPs contain PNG, flattened JPG, 3×3 repeat preview, README/licence and an optional
+SVG only when all placed imported assets are SVG sources. If one buyer ZIP exceeds
+20 MB, the exporter splits payloads into up to five individually compliant ZIPs;
+an individual payload that still cannot fit blocks export. Etsy publishing is not
+automated.
+
+Verification on the exact `543dfa88` implementation:
+- Package workflow `37911514158`: **success**.
+- Complete UX audit `37911514136`: **51/51 passed, 0 failed**, with the same
+  four existing advisory layout warnings.
+- The Etsy regression deliberately moves an SVG motif across the tile boundary,
+  requires seam continuity to pass, builds the kit, checks the five-file/20 MB
+  Etsy limits, verifies PNG/JPG/3×3 preview/vector SVG, verifies seven separate
+  2400 × 1800 listing images, and confirms the editable design is unchanged.
+- Extended readiness `37911514200`: **31/31 passed**.
+- Netlify Deploy Preview `6ac8b3c9548d680008427d38`: **ready**, exact source
+  commit `543dfa8855e865a959d58b783dbd8ccd51fcd4c5`.
+- Drawer-free permalink for this implementation:
+  https://6ac8b3c9548d680008427d38--sapiver-pattern-forge.netlify.app/
 
 ## Remaining work, in order
 
-1. Packaging/workflow/help validation: **done** (results above).
-2. Fresh complete UX and extended-readiness tests: **done**, 48/48 and 31/31.
-3. Source commit and remote-file verification: **done**, `7030c645`; packaging CI also passed.
-4. Restore a valid GitHub Actions repository secret named
-   `NETLIFY_AUTH_TOKEN`, then run the existing **manual** staging workflow from
-   `feature/advanced-editing-v1`. The pre-deploy test gate is already proven,
-   but must run again for the exact dispatch commit. After publication, verify
-   Netlify ready state and compare deployed `build.json` plus asset hashes with
-   the package. Check live Pattern/Doodle entry, visible new controls, drawing,
-   project save/reopen and export.
-5. Perform the physical Android gate below. If this environment cannot reach the
-   phone, say so and provide a precise device checklist; do not claim it passed.
-6. Record a readiness decision. Production merge/deploy or APK release requires
-   an explicit subsequent release decision by Jim.
+1. **Physical-device check of the latest build:** use the drawer-free deploy
+   permalink above on the intended Android phone/tablet. Verify fluid drag/draw,
+   Template Engine controls and the Export for Etsy panel at real mobile scale.
+2. **Real-product Etsy export check:** finish or open a representative pattern
+   with edge-crossing motifs, run Export for Etsy, extract the master kit and
+   inspect every buyer file plus all seven listing images. Confirm the seam check
+   agrees with visual inspection and the listing mockups are good enough to sell.
+3. Review the default Sapiver Prints README/licence wording and mockup styling
+   against the actual shop offer. Change wording/style only where Jim wants it;
+   do not weaken file/repeat validation.
+4. The old isolated UX2 staging site still needs a restored
+   `NETLIFY_AUTH_TOKEN` if that exact staging URL is required again. This is no
+   longer blocking account-owned Deploy Preview testing.
+5. Production merge/deploy, APK/AAB release, or Etsy publishing requires explicit
+   separate approval from Jim.
 
 ## Physical Android gate — still unverified
 
@@ -325,6 +336,9 @@ the editable design is unchanged. Verification is pending for this UI/test commi
   device verification and may require a fix. Read `mobile/AGENTS.md` before changes.
 - Test large imports/layers and 4000px or rectangular exports on the intended
   phone; desktop JS heap measurements exclude native canvas/image memory.
+- Extract one generated Etsy master kit on-device. Open the buyer PNG/JPG/repeat
+  preview, inspect any included SVG, confirm all upload ZIPs are visible and below
+  20 MB, and inspect the seven 2400 × 1800 seller listing images.
 - Check physical stylus response if pressure support will be advertised.
 - Do not promise offline cold start: the wrapper loads a hosted site and has no
   bundled offline editor/service worker in this configuration.
