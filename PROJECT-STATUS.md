@@ -280,14 +280,20 @@ images should be at least 2000 px wide.
 
 Core architecture is staged as a separate `etsy-export.js` module loaded after
 the existing editor. The editor exposes only the existing render/export primitives
-needed by that module. The intended output is one master seller kit containing:
-Etsy-ready buyer ZIP(s), separate 2400 × 1800 listing images, seller checklist,
-and quality evidence. Buyer ZIPs contain PNG, flattened JPG, 3×3 repeat preview,
-README/licence and an optional SVG only when all placed imported assets are SVG
-sources. If one buyer ZIP exceeds 20 MB, the exporter will split payloads into up
-to five individually compliant ZIPs; an individual payload that still cannot fit
-will block export with a specific error. UI wiring and regression verification
-remain pending for this stage.
+needed by that module. The output is one master seller kit containing Etsy-ready
+buyer ZIP(s), separate 2400 × 1800 listing images, seller checklist and quality
+evidence. Buyer ZIPs contain PNG, flattened JPG, 3×3 repeat preview, README/licence
+and an optional SVG only when all placed imported assets are SVG sources. If one
+buyer ZIP exceeds 20 MB, the exporter splits payloads into up to five individually
+compliant ZIPs; an individual payload that still cannot fit blocks export.
+
+The Export drawer now has a dedicated **Export for Etsy** block with preflight
+results and a **Check & build Etsy kit** action. It does not publish to Etsy.
+A new browser regression uses an SVG motif deliberately moved across the tile edge,
+requires the seam-continuity preflight to pass, builds the complete kit without
+downloading it, checks the five-file/20 MB Etsy limits, verifies PNG/JPG/3×3
+preview/SVG inclusion, verifies seven listing images at 2400 × 1800, and proves
+the editable design is unchanged. Verification is pending for this UI/test commit.
 
 ## Remaining work, in order
 

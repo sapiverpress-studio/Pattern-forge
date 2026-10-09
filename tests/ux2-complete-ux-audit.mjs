@@ -544,6 +544,37 @@ try{
     await view.locator('#ux2PaletteClose').click();await shot(view,'template-six-elements');await context.close();
   });
 
+  await step('Pattern: Etsy kit validates a boundary-crossing repeat and preserves the editable design',async()=>{
+    const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
+    const view=await context.newPage();view.setDefaultTimeout(60000);await attachErrors(view,'etsy-export');
+    await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="straight"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+    const chooserP=view.waitForEvent('filechooser');await view.locator('[data-ux2-action="image"]').click();const chooser=await chooserP;await chooser.setFiles(fixture);await view.waitForTimeout(180);
+    await view.evaluate(()=>{
+      const bridge=window.PatternForgeEtsyBridge,state=bridge.state,item=state.items[0];if(!item)throw new Error('Imported Etsy test item missing');
+      item.x=25;item.y=450;item.scale=Math.max(item.scale,.72);
+      document.querySelector('#transparent').checked=true;
+    });
+    await view.locator('#ux2Export').click();
+    assert(await view.locator('#ux2EtsyExport').isVisible(),'Export for Etsy button is missing');
+    const pre=await view.evaluate(()=>window.PatternForgeEtsy.check());
+    assert(pre.some(check=>check.id==='seams'&&check.state==='pass'),'Boundary-crossing repeat did not pass seam continuity: '+JSON.stringify(pre.find(check=>check.id==='seams')));
+    assert(!pre.some(check=>check.state==='fail'),'Etsy preflight unexpectedly failed: '+JSON.stringify(pre));
+    const result=await view.evaluate(()=>window.PatternForgeEtsy.prepare({download:false}));
+    assert(result.success===true,'Etsy kit generation failed: '+JSON.stringify(result));
+    assert(result.designUnchanged===true,'Etsy packaging modified the editable design');
+    assert(result.buyerPackages.length>=1&&result.buyerPackages.length<=5,'Etsy buyer package count is outside the five-file limit');
+    assert(result.buyerPackages.every(file=>file.size<=20000000),'An Etsy buyer ZIP exceeds 20 MB');
+    const buyerNames=result.buyerFiles.map(file=>file.name);
+    assert(buyerNames.some(name=>name.endsWith('.png')),'Etsy buyer files are missing PNG');
+    assert(buyerNames.some(name=>name.endsWith('.jpg')),'Etsy buyer files are missing JPG');
+    assert(buyerNames.some(name=>name.includes('repeat-preview-3x3')),'Etsy buyer files are missing the 3 × 3 repeat preview');
+    assert(result.vectorIncluded===true&&buyerNames.some(name=>name.endsWith('.svg')),'Vector-only design did not receive an SVG inside the buyer package');
+    assert(result.listingImages.length===7,'Expected seven separate Etsy listing images');
+    assert(result.listingImages.every(image=>image.width>=2000&&image.height>=1500),'Listing images are below the intended listing-ready size');
+    assert(result.rules.maxFiles===5&&result.rules.maxBytes===20000000,'Encoded Etsy upload limits are incorrect');
+    await shot(view,'etsy-export-ready');await context.close();
+  });
+
   await step('Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing',async()=>{
     const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'scatter-controls');
