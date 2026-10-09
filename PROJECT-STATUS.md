@@ -30,7 +30,7 @@ staging interface is the latest implementation.
 | --- | --- |
 | Repository | `sapiverpress-studio/Pattern-forge` |
 | Active working branch | `feature/advanced-editing-v1` |
-| Latest saved implementation | `3711649d3ffcbfb52a627c4bf6413a6b4cb4fd24`; subsequent status-only commits may advance HEAD |
+| Latest saved implementation | `b913c812492571ff9b108a5591e7ecc8441e1c8a` — corrected adaptable-master SVG export; subsequent status-only commits may advance HEAD |
 | Current branch head before this status update | `543dfa8855e865a959d58b783dbd8ccd51fcd4c5` |
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
@@ -429,8 +429,19 @@ identical `viewBox`:
 No inch/cm unit is introduced, so this remains consistent with the adaptable
 master model. New browser regression coverage rejects `undefined`/`NaN`,
 parses the SVG as XML, reopens the straight SVG as an image, and checks
-straight/half-drop/brick root geometry. Production is unchanged until this fix
-passes the full browser gates and Jim separately approves deployment.
+straight/half-drop/brick root geometry.
+
+Verified on exact implementation commit
+`b913c812492571ff9b108a5591e7ecc8441e1c8a`:
+- Package workflow `37939425592`: **success**.
+- Complete UX audit `37939425520`: **52/52 passed, 0 failed**.
+- Extended readiness `37939425514`: **31/31 passed, 0 failed**.
+- The Etsy boundary-crossing regression passes with the corrected SVG.
+- Straight SVG parses and reopens as an image with
+  `width="4000" height="4000" viewBox="0 0 4000 4000"`.
+- Half-drop and brick root dimensions/viewBoxes are also explicitly covered.
+- Production remains unchanged; deployment still requires Jim's separate
+  explicit approval.
 
 ## Remaining work, in order
 
