@@ -10,11 +10,12 @@ workspace (Doodle). The current work adds practical editing, reusable motifs,
 fill/pressure controls, colourways and physical-scale previews, then verifies
 save/reopen, export and mobile usability before release.
 
-**Current stage: advanced-editing source is pushed and a proper account-owned
-Netlify Deploy Preview is live from the exact development branch. The separate
-UX2 staging URL still serves its 4 October upload because its direct-upload
-connector action is no longer exposed. Production/main remains unchanged.
-Physical Android release approval remains open.**
+**Current stage: advanced-editing source now includes the verified live-interaction
+performance pass and count-driven Template Engine v1. Both are pushed and live on
+the account-owned Netlify Deploy Preview. The separate UX2 staging URL still
+serves its 4 October upload because its direct-upload connector action is no
+longer exposed. Production/main remains unchanged. Physical Android release
+approval remains open.**
 
 The source feature work and browser hardening have progressed beyond the last
 published staging version. Do not restart those features or assume the old
@@ -26,7 +27,7 @@ staging interface is the latest implementation.
 | --- | --- |
 | Repository | `sapiverpress-studio/Pattern-forge` |
 | Active working branch | `feature/advanced-editing-v1` |
-| Latest saved implementation | `7030c64501d2f0689babab7ea44feef439a64951`; subsequent deployment/status-only commits may advance HEAD |
+| Latest saved implementation | `3711649d3ffcbfb52a627c4bf6413a6b4cb4fd24`; subsequent status-only commits may advance HEAD |
 | Current branch head before this status update | `3ef9b3f51233682430ffb6bdfe635e6a82937bf9`; application files remain those of `7030c645` |
 | Incoming development head | `b3c357b50245f770f1caac6660ad1dff80c9027f` — 6 October, 19:51 BST |
 | UX2 branch | `feature/canvas-first-ux-v2` at `06a9fdb9da5955b2dc73e58916ba610968ef94e2` |
@@ -230,33 +231,43 @@ new rule that the fullscreen Tools sheet must not cover the feature dock. Netlif
 Deploy Preview also succeeded for the same commit, deploy
 `6ac62cd93329d30008383b6e`.
 
-### Fluidity/render optimisation — implementation staged
+### Fluidity/render optimisation — verified
 
-Following physical-reference review on 9 October, the editor interaction path has
-been changed so active drag/draw/resize uses a 540px working tile while idle and
-export remain full quality. Pan/pinch captures and reuses a full tile rather than
+Following physical-reference review on 9 October, the editor interaction path was
+changed so active drag/draw/resize uses a 540px working tile while idle and export
+remain full quality. Pan/pinch captures and reuses a full tile rather than
 recompositing unchanged artwork on every movement. Autosave, preview generation,
 quality calculation and selection/layer UI rebuilds are deferred until the
-gesture ends. Brush/eraser/fill stroke capture now consumes coalesced PointerEvent
+gesture ends. Brush/eraser/fill stroke capture consumes coalesced PointerEvent
 samples when the browser provides them. Export dimensions, saved project geometry
-and the 4000px production pipeline are unchanged. A browser regression now checks
-that interactive frames use the lightweight path and a full-quality frame returns
-after pointer release. Verification pending for the implementation commit.
+and the 4000px production pipeline are unchanged.
 
-### Count-driven Template Engine v1 — implementation staged
+Implementation commit: `7b0d9653f59f01d8aad2efaa3c3bcee288d87a1c`.
+Package workflow `37897997508` passed. Complete UX audit
+`37897997512` passed **49/49**, including the new lightweight-interaction
+regression. Extended readiness `37897997519` passed **31/31**.
+
+### Count-driven Template Engine v1 — verified and deployed to preview
 
 On 9 October the researched placement-template idea was converted into the simpler
 workflow Jim chose: **element count → three visual layout choices → choose one → place/refine**.
-Pattern Projects now support 1–30 element placements and generate three deterministic
+Pattern Projects support 1–30 element placements and generate three deterministic
 but refreshable composition families: Balanced, Flowing and Feature + fill. “Show me
 3 different layouts” advances the generation round while retaining the same element
 count. The chosen guide is drawn as numbered wrap-aware placement zones on the canvas,
 never enters PNG/SVG exports, and is saved in the editable project. “Place current
 elements” moves selected elements when a selection exists, otherwise all visible
 unlocked editable elements; a grouped motif counts as one element and remains editable.
-No template system is exposed in standalone Doodle. Browser regression coverage was
-added for exactly three choices, regeneration, selection, placement and project
-persistence. Verification pending for the implementation commit.
+No template system is exposed in standalone Doodle.
+
+Implementation commit: `3711649d3ffcbfb52a627c4bf6413a6b4cb4fd24`.
+Package workflow `37898879466` passed. Complete UX audit
+`37898879384` passed **50/50**, including the count-driven template regression and
+the fluidity regression. Extended readiness `37898879387` passed **31/31**.
+
+Netlify Deploy Preview `6ac896ca964e350008f34db2` is **ready** for the same
+implementation commit. Drawer-free device-test permalink:
+https://6ac896ca964e350008f34db2--sapiver-pattern-forge.netlify.app/
 
 ## Remaining work, in order
 
