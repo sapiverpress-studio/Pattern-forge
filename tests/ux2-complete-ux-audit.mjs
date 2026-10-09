@@ -569,6 +569,24 @@ try{
     assert(buyerNames.some(name=>name.endsWith('.jpg')),'Etsy buyer files are missing JPG');
     assert(buyerNames.some(name=>name.includes('repeat-preview-3x3')),'Etsy buyer files are missing the 3 × 3 repeat preview');
     assert(result.vectorIncluded===true&&buyerNames.some(name=>name.endsWith('.svg')),'Vector-only design did not receive an SVG inside the buyer package');
+    const vectorDownload=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const vectorFile=await vectorDownload;const vectorPath=await vectorFile.path();assert(vectorPath,'SVG export file unavailable');
+    const vectorText=fs.readFileSync(vectorPath,'utf8'),rootMatch=vectorText.match(/<svg\b([^>]*)>/i);assert(rootMatch,'SVG root element missing');
+    assert(!/undefined|NaN/i.test(rootMatch[1]),'SVG root contains an undefined or invalid dimension');
+    assert(/\bwidth="4000"/.test(rootMatch[1])&&/\bheight="4000"/.test(rootMatch[1]),'Straight-repeat SVG intrinsic dimensions are not 4000 × 4000');
+    assert(/\bviewBox="0 0 4000 4000"/.test(rootMatch[1]),'Straight-repeat SVG viewBox is incorrect');
+    const vectorParse=await view.evaluate(async svgText=>{
+      const doc=new DOMParser().parseFromString(svgText,'image/svg+xml'),root=doc.documentElement,parserError=doc.querySelector('parsererror')?.textContent||'';
+      let imageLoaded=false;
+      try{
+        const blob=new Blob([svgText],{type:'image/svg+xml'}),url=URL.createObjectURL(blob);
+        imageLoaded=await new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image.naturalWidth>0&&image.naturalHeight>0);image.onerror=()=>resolve(false);image.src=url});
+        URL.revokeObjectURL(url);
+      }catch{}
+      return {name:root?.localName||'',width:root?.getAttribute('width'),height:root?.getAttribute('height'),viewBox:root?.getAttribute('viewBox'),parserError,imageLoaded};
+    },vectorText);
+    assert(vectorParse.name==='svg'&&!vectorParse.parserError,'SVG cannot be parsed as XML');
+    assert(vectorParse.width==='4000'&&vectorParse.height==='4000'&&vectorParse.viewBox==='0 0 4000 4000','Parsed SVG dimensions/viewBox are incorrect');
+    assert(vectorParse.imageLoaded===true,'Exported SVG cannot be reopened as an image');
     assert(buyerNames.some(name=>name.endsWith('-seamless-master.png'))&&buyerNames.some(name=>name.endsWith('-seamless-master.jpg')),'Buyer filenames should describe one adaptable master design rather than a physical size');
     assert(!buyerNames.some(name=>/300dpi|4000x4000/i.test(name)),'Buyer filenames still imply a fixed size/resolution product');
     assert(result.listingImages.length===3,'Expected three design-only Etsy listing images');
@@ -578,6 +596,19 @@ try{
     assert(!listingNames.some(name=>/(fabric|cushion|wallpaper|wrapping|stationery)/.test(name)),'Product mockup imagery leaked into the design-only Etsy kit');
     assert(result.rules.maxFiles===5&&result.rules.maxBytes===20000000,'Encoded Etsy upload limits are incorrect');
     await shot(view,'etsy-export-ready');await context.close();
+  });
+
+  await step('Pattern: SVG root dimensions stay valid for half-drop and brick repeats',async()=>{
+    for(const testCase of [{repeat:'half-drop',width:'4000',height:'8000',viewBox:'0 0 4000 8000'},{repeat:'brick',width:'8000',height:'4000',viewBox:'0 0 8000 4000'}]){
+      const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true}),view=await context.newPage();view.setDefaultTimeout(20000);await attachErrors(view,'svg-root-'+testCase.repeat);
+      await view.goto(BASE+'/app/pattern/',{waitUntil:'networkidle'});await view.locator('.workspaceRepeatCard[data-repeat="'+testCase.repeat+'"]').click();await view.locator('#createProject').click();await view.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+      await view.locator('#ux2Export').click();const p=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const d=await p,file=await d.path();assert(file,testCase.repeat+' SVG export unavailable');
+      const svgText=fs.readFileSync(file,'utf8'),root=svgText.match(/<svg\b([^>]*)>/i)?.[1]||'';
+      assert(root&&!/undefined|NaN/i.test(root),testCase.repeat+' SVG root contains an invalid dimension');
+      assert(root.includes('width="'+testCase.width+'"')&&root.includes('height="'+testCase.height+'"'),testCase.repeat+' SVG intrinsic dimensions are incorrect');
+      assert(root.includes('viewBox="'+testCase.viewBox+'"'),testCase.repeat+' SVG viewBox is incorrect');
+      await context.close();
+    }
   });
 
   await step('Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing',async()=>{

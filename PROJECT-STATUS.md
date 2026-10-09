@@ -412,6 +412,26 @@ Android state after promotion:
 - A fresh APK build and real-device checks remain required before calling the
   Android release production-ready.
 
+### SVG adaptable-master export defect — fixed in development
+
+A real Etsy kit inspection found that the SVG root exported
+`width="undefinedin" height="undefinedin"`. Root cause: the global
+adaptable-master change removed physical `wIn/hIn` values from
+`getExportSpec()`, but `renderSVGBlob()` still referenced them.
+
+The development fix now derives SVG intrinsic dimensions directly from the
+complete repeat-cell coordinate space and uses **unitless** values plus an
+identical `viewBox`:
+- straight: `width="4000" height="4000" viewBox="0 0 4000 4000"`;
+- half-drop: `4000 × 8000`;
+- brick: `8000 × 4000`.
+
+No inch/cm unit is introduced, so this remains consistent with the adaptable
+master model. New browser regression coverage rejects `undefined`/`NaN`,
+parses the SVG as XML, reopens the straight SVG as an image, and checks
+straight/half-drop/brick root geometry. Production is unchanged until this fix
+passes the full browser gates and Jim separately approves deployment.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy
