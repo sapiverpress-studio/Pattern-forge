@@ -2555,6 +2555,26 @@
     }catch(err){setStatus("ZIP export failed: "+err.message);}
   }
 
+
+  window.PatternForgeEtsyBridge=Object.freeze({
+    get state(){return state;},
+    getSpec:getExportSpec,
+    getRepeatStyle:projectRepeatStyle,
+    getMultipliers:exportMultipliers,
+    makeTileCanvas,
+    renderPNGBlob,
+    renderSVGBlob,
+    makeZip,
+    downloadBlob,
+    safeName,
+    setStatus,
+    isDoodle:isDoodleProject,
+    assetOf,
+    layerForArtwork,
+    layerIsRenderable,
+    baseLayerIds:BASE_LAYER_IDS
+  });
+
   $("drop").addEventListener("click",()=>$("files").click());
   $("files").addEventListener("click",e=>e.stopPropagation());
   $("files").addEventListener("change",e=>addFiles([...e.target.files]).catch(()=>setStatus("The selected image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));

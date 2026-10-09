@@ -269,6 +269,26 @@ Netlify Deploy Preview `6ac896ca964e350008f34db2` is **ready** for the same
 implementation commit. Drawer-free device-test permalink:
 https://6ac896ca964e350008f34db2--sapiver-pattern-forge.netlify.app/
 
+### Etsy digital-product exporter — core implementation staged
+
+The commercial-output brief supplied on 9 October is now being implemented as a
+separate exporter that does not mutate the editable design. The current Etsy
+instant-download constraints were verified against Etsy Help before coding:
+maximum five buyer files, maximum 20 MB each; ZIP/PNG/JPG are supported digital
+download file types, while SVG is not a standalone Etsy upload type. Listing
+images should be at least 2000 px wide.
+
+Core architecture is staged as a separate `etsy-export.js` module loaded after
+the existing editor. The editor exposes only the existing render/export primitives
+needed by that module. The intended output is one master seller kit containing:
+Etsy-ready buyer ZIP(s), separate 2400 × 1800 listing images, seller checklist,
+and quality evidence. Buyer ZIPs contain PNG, flattened JPG, 3×3 repeat preview,
+README/licence and an optional SVG only when all placed imported assets are SVG
+sources. If one buyer ZIP exceeds 20 MB, the exporter will split payloads into up
+to five individually compliant ZIPs; an individual payload that still cannot fit
+will block export with a specific error. UI wiring and regression verification
+remain pending for this stage.
+
 ## Remaining work, in order
 
 1. Packaging/workflow/help validation: **done** (results above).
