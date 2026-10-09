@@ -337,6 +337,32 @@ Verification on exact implementation commit
 - Drawer-free permalink:
   https://6ac8cf2aca4eb500082cfaab--sapiver-pattern-forge.netlify.app/
 
+### Global adaptable-master design model
+
+Jim clarified on 9 October that the scale-neutral concept is not Etsy-specific:
+**every Pattern Forge design is an adaptable master design**. Physical product
+size must never be part of the design's identity.
+
+Implementation staged:
+- Design setup replaces Product-scale preview/reference products/cm/in sizing
+  with **Master output**: neutral repeat-density preview, master raster dimensions
+  and repeat-cell boundaries only.
+- Fullscreen Info removes visible physical-size controls and platform-specific
+  print profiles. Legacy size/unit fields remain hidden solely so older project
+  JSON continues to load without migration risk.
+- Source-quality checks report raster enlargement against the master raster
+  instead of converting artwork to a presumed print DPI.
+- Normal PNG, colourway PNG and project-bundle PNG filenames use
+  `-master.png`, not `-300dpi.png`.
+- Help/setup/export/footer copy states that raster pixel dimensions describe
+  file detail, not physical size. Genuine vector SVG remains resolution-independent.
+- New project JSON declares `scaleModel: "adaptable-master-v1"`; legacy
+  `dpi: 300` remains for PNG metadata/backward compatibility only.
+- Regression tests replace physical-product preview checks with scale-neutral
+  master-output tests and repeat-cell geometry checks for straight/half-drop/brick.
+
+Verification pending.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy

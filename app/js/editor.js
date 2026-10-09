@@ -397,7 +397,9 @@
   };
   function getExportSpec(){
     const mult=exportMultipliers();
-    return {dpi:300,wIn:4000*mult.x/300,hIn:4000*mult.y/300,wPx:4000*mult.x,hPx:4000*mult.y};
+    // Pixel dimensions define raster detail. DPI metadata is compatibility data only;
+    // Pattern Forge designs do not have a physical size.
+    return {dpi:300,wPx:4000*mult.x,hPx:4000*mult.y};
   }
   function updatePixelReadout(){
     const s=getExportSpec();
@@ -1283,10 +1285,12 @@
     finally{bucketBusy=false;}
   }
 
-  window.PatternForgeProductPreview=()=>{
+  const masterPreviewData=()=>{
     const mult=exportMultipliers(),base=360,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
-    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle()};
+    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle(),wPx:4000*mult.x,hPx:4000*mult.y};
   };
+  window.PatternForgeMasterPreview=masterPreviewData;
+  window.PatternForgeProductPreview=masterPreviewData; // compatibility alias
   function renderPreview(){
     const mult=exportMultipliers(),base=450,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
     const data=thumb.toDataURL("image/png");
@@ -1301,66 +1305,40 @@
     const box=$("quality");
     if(state.items.length===0){
       box.className="warning ok";
-      box.textContent=state.marks.length?"Drawn lines and shapes render at the full 4000 px export size.":"Add artwork to calculate effective raster resolution.";
+      box.textContent=state.marks.length?"Drawn lines and shapes render directly at the master raster resolution.":"Add artwork to check raster-source enlargement.";
       return;
     }
-    const spec=getExportSpec();
-    const sx=spec.wPx/TILE, sy=spec.hPx/TILE;
-    const uniform=Math.sqrt(sx*sy);
-    let worst=Infinity, rasterCount=0, vectorCount=0;
+    const spec=getExportSpec(),sx=spec.wPx/TILE,sy=spec.hPx/TILE,uniform=Math.sqrt(sx*sy);
+    let maxUpscale=1,rasterCount=0,vectorCount=0;
     for(const item of state.items){
-      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item); if(!a||!layerIsRenderable(layer,true)) continue;
-      if(a.vector){ vectorCount++; continue; }
+      const layer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item);if(!a||!layerIsRenderable(layer,true))continue;
+      if(a.vector){vectorCount++;continue;}
       rasterCount++;
-      const drawW=a.w*item.scale*uniform;
-      const drawH=a.h*item.scale*uniform;
-      const physicalW=drawW/spec.dpi;
-      const physicalH=drawH/spec.dpi;
-      const effX=a.w/Math.max(.0001,physicalW);
-      const effY=a.h/Math.max(.0001,physicalH);
-      worst=Math.min(worst,effX,effY);
+      const renderedW=a.w*item.scale*uniform,renderedH=a.h*item.scale*uniform;
+      maxUpscale=Math.max(maxUpscale,renderedW/Math.max(1,a.w),renderedH/Math.max(1,a.h));
     }
     if(rasterCount===0){
       box.className="warning ok";
-      box.innerHTML=`All ${vectorCount} placed motifs are SVG sources. Export scaling is not limited by raster DPI.`;
+      box.textContent="All "+vectorCount+" placed motif"+(vectorCount===1?" is":"s are")+" vector source"+(vectorCount===1?"":"s")+". SVG output is resolution-independent.";
       return;
     }
-    const rounded=Math.round(worst);
-    if(worst>=300){
+    if(maxUpscale<=1.05){
       box.className="warning ok";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Good for a 300-DPI export.${vectorCount?` ${vectorCount} SVG motif(s) are resolution-independent.`:""}`;
-    }else if(worst>=220){
+      box.textContent="Raster sources are used at native size or reduced in the master raster."+(vectorCount?" "+vectorCount+" SVG motif"+(vectorCount===1?" is":"s are")+" resolution-independent.":"");
+    }else if(maxUpscale<=2){
       box.className="warning";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Usually usable, but below a true 300-DPI source standard. Reduce motif scale or use a higher-resolution original.`;
+      box.innerHTML="Largest raster-source enlargement: <strong>"+maxUpscale.toFixed(1)+"×</strong>. Inspect sharpness in the master raster before distributing the design.";
     }else{
       box.className="warning";
-      box.innerHTML=`Lowest effective raster resolution: <strong>${rounded} DPI</strong>. Likely soft in print. The PNG can be tagged 300 DPI, but the source artwork does not contain enough pixels at its current scale.`;
+      box.innerHTML="Largest raster-source enlargement: <strong>"+maxUpscale.toFixed(1)+"×</strong>. The design remains adaptable, but the raster master may soften at this enlargement; replace that source or use vector artwork if available.";
     }
   }
 
   function updatePrintEligibility(){
-    const size=Number($("focusPrintSize").value);
-    const unit=$("focusPrintUnit").value;
-    const inches=unit==="cm"?size/2.54:size;
-    const readout=$("focusPrintReadout"),list=$("platformChecks");
-    if(!Number.isFinite(inches)||inches<=0){readout.textContent="Enter a valid tile width.";list.innerHTML="";return;}
-    const dpi=Math.floor(4000/inches);
-    const cm=inches*2.54;
-    const spec=getExportSpec();
-    readout.textContent=`Base tile: 4000 px at ${inches.toFixed(2)} in (${cm.toFixed(1)} cm) = ${dpi} DPI. Export swatch: ${spec.wPx} × ${spec.hPx} px.`;
-    const profiles=[
-      {name:"Print Shrimp · posters",minimum:150,target:300,low:"Below 150 DPI guidance.",mid:"150 DPI is often fine; below the 300-DPI recommendation.",high:"Meets the 300-DPI recommendation."},
-      {name:"Spoonflower · fabric",minimum:150,target:150,low:"Below Spoonflower’s 150-DPI sizing guidance.",mid:"Matches Spoonflower’s 150-DPI workflow.",high:"Above Spoonflower’s 150-DPI print workflow."},
-      {name:"Printful · paper",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets general minimum; paper prints recommend 300 DPI.",high:"Meets the 300-DPI paper recommendation."},
-      {name:"Printful · apparel",minimum:150,target:300,low:"Below the general 150-DPI minimum.",mid:"Meets the general minimum; finer details may benefit from 300 DPI.",high:"Meets the 300-DPI detailed-artwork target."},
-      {name:"Printify · standard products",minimum:0,target:300,low:"Below the common 300-DPI recommendation; product tools may accept less.",mid:"Below the common 300-DPI recommendation; check the product template.",high:"Meets the common 300-DPI recommendation."},
-      {name:"Printify · large textiles",minimum:120,target:150,low:"Below the 120–150-DPI range cited for some large textiles.",mid:"Within the 120–150-DPI range for some large textiles.",high:"Meets the 150-DPI large-textile target."}
-    ];
-    list.innerHTML=profiles.map(p=>{
-      const status=dpi<p.minimum?p.low:dpi<p.target?p.mid:p.high;
-      const cls=dpi<p.minimum?"low":dpi<p.target?"warn":"good";
-      return `<div class="platformCheck ${cls}"><strong>${p.name}</strong>${status}</div>`;
-    }).join("");
+    // Legacy function name retained for project/backward compatibility.
+    const readout=$("focusPrintReadout"),list=$("platformChecks"),spec=getExportSpec(),doodle=isDoodleProject();
+    if(readout)readout.textContent=(doodle?"Master raster canvas: ":"Complete master repeat cell: ")+spec.wPx.toLocaleString()+" × "+spec.hPx.toLocaleString()+" px.";
+    if(list)list.innerHTML='<div class="platformCheck good"><strong>Adaptable master design</strong> No physical size is assigned here. Choose scale later in the software, printer or production workflow where the design is used.</div>';
   }
 
   function rebuildSelectedPanel(){
@@ -1936,8 +1914,8 @@
   async function exportPNG(){
     const result=await renderPNGBlob();if(!result)return;
     const {blob,spec}=result;
-    downloadBlob(blob,`${safeName()}-${exportFileStem()}-${spec.dpi}dpi.png`);
-    setStatus(isDoodleProject()?`Standalone PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency and ${spec.dpi}-DPI metadata.`:`Repeat PNG exported at ${spec.wPx} × ${spec.hPx}px with ${spec.dpi}-DPI metadata.`);
+    downloadBlob(blob,`${safeName()}-${exportFileStem()}-master.png`);
+    setStatus(isDoodleProject()?`Standalone master PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency. No physical size is assigned.`:`Seamless master PNG exported at ${spec.wPx} × ${spec.hPx}px. No physical size is assigned.`);
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -2094,16 +2072,16 @@
     $("snapHelp").textContent=doodle?"Smart snapping uses the grid plus canvas centre lines and canvas edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.":"Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.";
     $("assetPlacementHelp").textContent=doodle?"The first selected image is placed on the canvas automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.":"The first selected image is placed on the tile automatically. Tap a thumbnail to add another copy, then drag, scale or rotate it.";
     $("focusRecentEmpty").textContent=doodle?"Choose Add image. The first image will be placed on the canvas; tap a thumbnail here to add another copy.":"Choose Add image. The first image will be placed on the tile; tap a thumbnail here to add another copy.";
-    $("focusPrintHeading").textContent=doodle?"Artwork size & DPI":"Tile size & DPI";
-    $("focusPrintSizeLabel").textContent=doodle?"Printed artwork width":"Printed base-tile width";
-    $("focusInfoPrintNote").textContent=doodle?"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px artwork canvas; original raster quality is checked above.":"Guide only. Product templates can set different print areas and requirements. DPI uses the 4000 px base tile; original raster quality is checked above.";
+    $("focusPrintHeading").textContent="Master output";
+    $("focusPrintSizeLabel").textContent="Legacy physical scale (ignored)";
+    $("focusInfoPrintNote").textContent=doodle?"The pixel dimensions describe the reusable raster master only. Pattern Forge does not assign a physical size to the artwork.":"The repeat-cell pixel dimensions describe the reusable raster master only. Pattern Forge does not assign a physical size to the design.";
     $("tileBorderLabelText").textContent=doodle?"Show canvas edge":"Show centre tile edge";
     $("stageHelpHint").textContent=doodle?"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the standalone artwork without guides.":"Use Pan or two fingers to move the view. Mouse wheel zooms. Export contains the full repeat swatch, without guides or faded neighbours.";
     canvas.setAttribute("aria-label",doodle?"Doodle artwork canvas":"Pattern tile editor");
     $("exportFilesTitle").textContent=doodle?"Artwork files":"Pattern files";
     $("exportPng").textContent=doodle?"Export artwork as PNG":"Export pattern as PNG";
     $("exportSvg").textContent=doodle?"Export artwork as SVG":"Export pattern as SVG";
-    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px canvas. PNG carries 300-DPI metadata. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
+    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px raster master. That pixel size does not assign a physical size. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG use the complete repeat-cell dimensions shown at left. Straight uses a 4000 × 4000 px raster master; half-drop and brick use the required rectangular repeat cell. Pixel dimensions describe raster detail, not a physical product size. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
     pendingAutosaveData=null;
@@ -2169,7 +2147,7 @@
     state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
     $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
-    setStatus("Practice mode started. Your practice work autosaves on this device; set up a print project when you’re ready.");
+    setStatus("Practice mode started. Your practice work autosaves on this device; save it as a named Pattern Project when you’re ready.");
   }
   function variationSnapshot(){
     return {
@@ -2247,7 +2225,7 @@
         applyVariationSnapshot(variation.snapshot,{history:false,render:false});if(state.project)state.project.variation=variation.name;
         const png=await renderPNGBlob();if(!png)throw new Error("Colourway PNG export was cancelled.");
         const stem=variationFilename(variation.name,i);
-        files.push({name:`${base}-${stem}-${png.spec.dpi}dpi.png`,blob:png.blob},{name:`${base}-${stem}.svg`,blob:renderSVGBlob()});
+        files.push({name:`${base}-${stem}-master.png`,blob:png.blob},{name:`${base}-${stem}.svg`,blob:renderSVGBlob()});
       }
       files.push({name:`${base}-editable-project.json`,blob:editableProject});
       setStatus("Packaging "+state.variations.length+" saved colourways…");
@@ -2263,7 +2241,7 @@
   };
   function projectData(){
     if(state.project)state.project.updatedAt=new Date().toISOString();
-    return {format:"pattern-forge-v4",tile:4000,dpi:300,
+    return {format:"pattern-forge-v4",tile:4000,dpi:300,scaleModel:"adaptable-master-v1",
       project:state.project?{...state.project}:null,
       templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
@@ -2545,7 +2523,7 @@
       const png=await renderPNGBlob();if(!png){setStatus("ZIP export cancelled.");return;}
       const base=safeName();
       const files=[
-        {name:`${base}-${exportFileStem()}-${png.spec.dpi}dpi.png`,blob:png.blob},
+        {name:`${base}-${exportFileStem()}-master.png`,blob:png.blob},
         {name:`${base}-${exportFileStem()}.svg`,blob:renderSVGBlob()},
         {name:`${base}-editable-project.json`,blob:projectBlob()}
       ];

@@ -93,9 +93,9 @@ try {
   assert((await page.locator('#snapHelp').textContent()).includes('canvas centre lines'), 'Doodle smart-snap help still uses tile terminology');
   assert((await page.locator('#assetPlacementHelp').textContent()).includes('placed on the canvas'), 'Doodle image placement help still uses tile terminology');
   assert((await page.locator('#focusRecentEmpty').textContent()).includes('placed on the canvas'), 'Doodle recent-image help still uses tile terminology');
-  assert((await page.locator('#focusPrintHeading').textContent()).trim() === 'Artwork size & DPI', 'Doodle print panel heading still uses tile terminology');
-  assert((await page.locator('#focusPrintSizeLabel').textContent()).trim() === 'Printed artwork width', 'Doodle print size label still uses base-tile terminology');
-  assert((await page.locator('#focusInfoPrintNote').textContent()).includes('artwork canvas'), 'Doodle print note still uses base-tile terminology');
+  assert((await page.locator('#focusPrintHeading').textContent()).trim() === 'Master output', 'Doodle info panel does not use the adaptable-master model');
+  assert(await page.locator('#focusPrintSize').isHidden(), 'Legacy physical-size field is exposed in Doodle');
+  assert((await page.locator('#focusInfoPrintNote').textContent()).includes('does not assign a physical size'), 'Doodle master-output note still implies a fixed physical size');
   assert((await page.locator('#tileBorderLabelText').textContent()).trim() === 'Show canvas edge', 'Doodle border control still says centre tile edge');
   assert((await page.locator('#stageHelpHint').textContent()).includes('standalone artwork'), 'Doodle stage help still describes repeat swatch export');
   assert((await page.locator('#editorCanvas').getAttribute('aria-label')) === 'Doodle artwork canvas', 'Doodle canvas accessibility label still says pattern tile');
