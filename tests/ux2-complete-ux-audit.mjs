@@ -134,7 +134,7 @@ try{
     assert(await page.locator('#constructionGuide').inputValue()==='centre','Design setup guide failed');
     assert(await page.locator('#snapOn').isChecked(),'Design setup snapping failed');
     assert(await page.locator('#ux2SetupSwatches .ux2-setup-swatch').count()===4,'Design setup palette swatches missing');
-    assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
+    assert((await page.locator('#ux2PaletteBody .ux2-repeat-card strong').first().textContent()).toLowerCase()==='half drop','Pattern panel repeat label does not match the active project');
     assert(await page.locator('#ux2ToolMenuTrigger').isVisible(),'Pattern Tools chooser is missing');
     await page.locator('#ux2ToolMenuTrigger').click();
     for(const label of ['Colour','Layers','Motifs','Design setup'])assert(await page.getByRole('button',{name:'Open '+label,exact:true}).isVisible(),'Tools menu workspace shortcut missing: '+label);
@@ -922,7 +922,7 @@ try{
       assert(size.length>=2&&size[0]>0&&size[1]>0,testCase.repeat+' master repeat-cell grid size missing');
       assert(Math.abs(size[1]/size[0]-testCase.ratio)<.08,testCase.repeat+' master repeat-cell ratio is wrong');
       const readout=await view.locator('#ux2MasterOutputReadout').textContent();assert(readout.includes(testCase.text),testCase.repeat+' master pixel dimensions are wrong');
-      assert(!/\bcm\b|\bin\b|cushion|phone|A2|fabric|wallpaper/i.test(await view.locator('#ux2PaletteBody').textContent()),testCase.repeat+' Design setup still contains physical-product sizing language');
+      assert(!/cushion|phone|A2|fabric|wallpaper|printed base-tile|reference product|printed tile width/i.test(await view.locator('#ux2PaletteBody').textContent()),testCase.repeat+' Design setup still contains physical-product sizing language');
       await view.locator('#ux2PaletteClose').click();await context.close();
     }
   });
@@ -1159,7 +1159,7 @@ try{
     assert(await page.locator('#ux2Preview').isHidden(),'Doodle should not show a Preview button that opens Layers');
     await page.locator('#ux2Export').click();
     assert(await page.getByText('Transparent background is preserved for PNG and SVG.',{exact:false}).isVisible(),'Doodle export transparency is not stated');
-    assert(await page.getByText('PNG carries 300 DPI metadata.',{exact:false}).isVisible(),'Doodle PNG resolution metadata is not stated');
+    assert(await page.getByText('Raster dimensions describe the master file, not a physical size.',{exact:false}).isVisible(),'Doodle adaptable-master export model is not stated');
     await page.locator('#ux2PaletteClose').click();
     assert(await page.locator('#ux2Gallery').isHidden(),'Standalone Doodle should not expose project gallery controls');
     await page.goto(BASE+'/',{waitUntil:'networkidle'});

@@ -361,7 +361,13 @@ Implementation staged:
 - Regression tests replace physical-product preview checks with scale-neutral
   master-output tests and repeat-cell geometry checks for straight/half-drop/brick.
 
-Verification pending.
+First complete UX rerun on commit `86a20ccd9b86b69ea2b59f11d6db50345319f5b9`
+reported 48/51 because three assertions still encoded old assumptions: a strict
+locator expected only one summary card; one new assertion treated the English
+word “in” as the inch unit; and Doodle still expected the intentionally removed
+300-DPI wording. Application behaviour was correct in those three cases. Tests
+were corrected without changing the scale-neutral implementation. Fresh
+verification is pending.
 
 ## Remaining work, in order
 
