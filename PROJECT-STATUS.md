@@ -366,8 +366,21 @@ reported 48/51 because three assertions still encoded old assumptions: a strict
 locator expected only one summary card; one new assertion treated the English
 word “in” as the inch unit; and Doodle still expected the intentionally removed
 300-DPI wording. Application behaviour was correct in those three cases. Tests
-were corrected without changing the scale-neutral implementation. Fresh
-verification is pending.
+were corrected without changing the scale-neutral implementation.
+
+Verified state:
+- Adaptable-master application commit:
+  `86a20ccd9b86b69ea2b59f11d6db50345319f5b9`.
+- Test/status correction commit:
+  `9061204ae221e4af4a313d834a3cd646aa1ae171`; application files are unchanged
+  from `86a20ccd`.
+- Package workflow `37925047936`: **success**.
+- Extended readiness `37925047962`: **31/31 passed, 0 failed**.
+- Complete UX audit rerun `37925300165`: **51/51 passed, 0 failed** with the
+  same four existing advisory scroll-rail warnings.
+- Netlify Deploy Preview `6ac8d2eecfef520007a1236a`: **ready**.
+- Drawer-free permalink:
+  https://6ac8d2eecfef520007a1236a--sapiver-pattern-forge.netlify.app/
 
 ## Remaining work, in order
 
