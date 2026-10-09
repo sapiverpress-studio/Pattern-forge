@@ -157,6 +157,9 @@
     dragOffset: {x:0,y:0},
     snapGuides: {x:null,y:null},
     renderQueued: false,
+    interactionActive: false,
+    interactionKind: null,
+    interactionTile: null,
     tool: "select",
     previousTool: "select",
     zoom: 1,
@@ -648,10 +651,30 @@
     const fitScale=Math.min(availableWidth,availableHeight)*.92/(TILE*.38);
     state.panX=state.panY=0;setZoom(fitScale);
   }
+  const LIVE_TILE_SIZE=540;
+  window.PatternForgeInteractionMetrics={interactiveFrames:0,fullFrames:0,deferredWorkFrames:0,lastInteractiveTileSize:null,coalescedSamples:0,active:false,kind:null};
+  function beginInteraction(kind){
+    state.interactionActive=true;state.interactionKind=kind;
+    if(kind==="view"&&!state.interactionTile)state.interactionTile=makeTileCanvas(TILE,TILE,TILE,TILE);
+    const metrics=window.PatternForgeInteractionMetrics;metrics.active=true;metrics.kind=kind;
+  }
+  function finishInteraction(){
+    state.interactionActive=false;state.interactionKind=null;state.interactionTile=null;
+    const metrics=window.PatternForgeInteractionMetrics;metrics.active=false;metrics.kind=null;
+  }
   function drawEditor(){
     const W=canvas.width,H=canvas.height;
     ctx.fillStyle="#e9e4da";ctx.fillRect(0,0,W,H);
-    const tile=makeTileCanvas(TILE,TILE,TILE,TILE);
+    let tile,tileSize=TILE;
+    if(state.interactionActive&&state.interactionKind==="view"&&state.interactionTile){
+      tile=state.interactionTile;
+    }else{
+      tileSize=state.interactionActive?LIVE_TILE_SIZE:TILE;
+      tile=makeTileCanvas(tileSize,tileSize,tileSize,tileSize);
+    }
+    const metrics=window.PatternForgeInteractionMetrics;
+    if(state.interactionActive){metrics.interactiveFrames++;metrics.lastInteractiveTileSize=tileSize;}
+    else metrics.fullFrames++;
     const o=viewOrigin(),sc=viewScale();
     ctx.save();ctx.translate(o.x,o.y);ctx.scale(sc,sc);
     const repeatReach=isDoodleProject()?0:(state.focusMode&&!state.focusRepeatPreview?0:2);
@@ -1316,12 +1339,16 @@
   function renderAll(rebuildSelected=true,refreshPreview=true){
     state.pendingPreview ||= refreshPreview;
     state.pendingSelected ||= rebuildSelected;
-    scheduleAutosave();
+    if(!state.interactionActive)scheduleAutosave();
     if(state.renderQueued) return;
     state.renderQueued=true;
     requestAnimationFrame(()=>{
       state.renderQueued=false;
       drawEditor();
+      if(state.interactionActive){
+        window.PatternForgeInteractionMetrics.deferredWorkFrames++;
+        return;
+      }
       if(state.pendingPreview)renderPreview();
       updateQuality();
       if(state.pendingSelected){rebuildSelectedPanel();rebuildLayerUI();}
@@ -1553,12 +1580,12 @@
     e.preventDefault();canvas.setPointerCapture(e.pointerId);
     const p=pointerPos(e);state.pointers.set(e.pointerId,p);
     if(state.pointers.size===2){
-      state.activeMark=null;state.dragging=false;state.dragStart=null;
+      state.activeMark=null;state.dragging=false;state.dragStart=null;beginInteraction("view");
       const g=gestureInfo();state.gesture={...g,zoom:state.zoom};renderAll();return;
     }
     if(state.pointers.size>2)return;
     state.dragStart=p;
-    if(state.tool==="pan" || e.button===1)return;
+    if(state.tool==="pan" || e.button===1){beginInteraction("view");return;}
     const w=worldPoint(p);
     if(state.tool==="eyedropper"){pickCanvasColour(w);state.dragStart=null;return;}
     if(state.tool==="select"){
@@ -1571,10 +1598,10 @@
         saveHistory();const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);
         if(markHandle==="rotate")state.transformState={kind:"mark",mode:"rotate",id:currentMark.id,startRotation:t.rotation,startAngle:Math.atan2(w.y-bounds.cy,w.x-bounds.cx),center:{x:bounds.cx,y:bounds.cy}};
         else state.transformState={kind:"mark",mode:"move",id:currentMark.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:markGeometryBounds(currentMark).cx+t.x,y:markGeometryBounds(currentMark).cy+t.y}};
-        state.dragging=false;state.resizeState=null;renderAll();return;
+        state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
       }
       if(currentMark&&markResizeHandleHit(currentMark,w.x,w.y)){
-        const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);saveHistory();state.resizeState={kind:"mark",id:currentMark.id,scale:t.scale,startDistance:Math.max(1,Math.hypot(w.x-bounds.cx,w.y-bounds.cy)),center:{x:bounds.cx,y:bounds.cy}};state.dragging=false;renderAll();return;
+        const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);saveHistory();state.resizeState={kind:"mark",id:currentMark.id,scale:t.scale,startDistance:Math.max(1,Math.hypot(w.x-bounds.cx,w.y-bounds.cy)),center:{x:bounds.cx,y:bounds.cy}};state.dragging=false;beginInteraction("edit");renderAll();return;
       }
       const handle=current&&imageHandleAt(current,w.x,w.y);
       if(handle){
@@ -1583,10 +1610,10 @@
           delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
           state.transformState={kind:"item",mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
         }else state.transformState={kind:"item",mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
-        state.dragging=false;state.resizeState=null;renderAll();return;
+        state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
       }
       if(current&&resizeHandleHit(current,w.x,w.y)){
-        delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;renderAll();return;
+        delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;beginInteraction("edit");renderAll();return;
       }
       const hit=hitTestArtwork(w.x,w.y),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
       if(additive){
@@ -1598,17 +1625,18 @@
         renderAll();return;
       }
       if(hit&&currentIds.length>1&&currentIds.includes(hit.artwork.id)){
-        saveHistory();startSelectionMove(currentIds,w);renderAll();return;
+        saveHistory();startSelectionMove(currentIds,w);beginInteraction("edit");renderAll();return;
       }
       const hitIds=hit?expandedArtworkIds(hit.artwork):[];
       if(hitIds.length>1){
-        setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);renderAll();return;
+        setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);beginInteraction("edit");renderAll();return;
       }
       setSelection(hit?[hit.artwork.id]:[],hit?.artwork?.id??null);state.dragging=hit?.kind==="item";
       if(hit?.kind==="item"){saveHistory();delete hit.artwork.scatterGenerated;state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
       else if(hit?.kind==="mark"){
         saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
       }
+      if(hit)beginInteraction("edit");
       renderAll();return;
     }
     const drawLayer=activeLayer();
@@ -1618,7 +1646,7 @@
     const markStart=canonicalPoint(w.x,w.y),pressureEnabled=state.tool==="brush"&&$("pressureWidth").checked;
     if(pressureEnabled)markStart.p=pointerPressure(e);
     const mark={id:state.nextId++,layerId:drawLayer.id,type:state.tool,alphaLocked:state.tool!=="eraser"&&!!drawLayer.alphaLock,color:$("ink").value,width:Math.max(.45,parseInt($("brushSize").value,10)*TILE/4000),fill:$("shapeFill").checked,opacity:state.tool==="eraser"?1:(parseInt($("inkOpacity").value,10)||100)/100,texture:(parseInt($("textureAmount").value,10)||0)/100,brushStyle:$("brushStyle").value,pressureWidth:pressureEnabled,pressureMin:Number($("pressureMin").value)||18,pressureSensitivity:Number($("pressureSensitivity").value)||100,stampShape:$("stampShape").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,endColor:$("gradientEnd").value,points:[markStart]};
-    state.marks.push(mark);state.activeMark=mark;state.selectedId=null;
+    state.marks.push(mark);state.activeMark=mark;state.selectedId=null;beginInteraction("draw");
     renderAll(false,false);
   });
   canvas.addEventListener("pointermove",e=>{
@@ -1678,9 +1706,14 @@
     if(state.activeMark){
       const m=state.activeMark;
       if(m.type==="brush"||m.type==="eraser"||m.type==="freefill"||m.type==="gradient"){
-        const last=m.points[m.points.length-1],raw=nearestLatticePoint(w.x,w.y,last.x,last.y),next=m.type==="brush"?stabiliseStrokePoint(last,raw):raw;
-        if(m.pressureWidth&&m.type==="brush"){const rawPressure=pointerPressure(e,last.p??.5);next.p=stabilisePressure(last.p??rawPressure,rawPressure);}
-        if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
+        const coalesced=typeof e.getCoalescedEvents==="function"?e.getCoalescedEvents():[],samples=[...coalesced];
+        if(!samples.length||samples.at(-1).clientX!==e.clientX||samples.at(-1).clientY!==e.clientY)samples.push(e);
+        if(coalesced.length)window.PatternForgeInteractionMetrics.coalescedSamples+=coalesced.length;
+        for(const sample of samples){
+          const sampleWorld=worldPoint(pointerPos(sample)),last=m.points[m.points.length-1],raw=nearestLatticePoint(sampleWorld.x,sampleWorld.y,last.x,last.y),next=m.type==="brush"?stabiliseStrokePoint(last,raw):raw;
+          if(m.pressureWidth&&m.type==="brush"){const rawPressure=pointerPressure(sample,last.p??.5);next.p=stabilisePressure(last.p??rawPressure,rawPressure);}
+          if(Math.hypot(next.x-last.x,next.y-last.y)>1.2)m.points.push(next);
+        }
       }else m.points[1]=nearestLatticePoint(w.x,w.y,m.points[0].x,m.points[0].y);
       renderAll(false,false);return;
     }
@@ -1704,7 +1737,7 @@
     }else{
       const transformedMarkId=state.transformState?.kind==="mark"?state.transformState.id:state.resizeState?.kind==="mark"?state.resizeState.id:null;if(transformedMarkId){const mark=state.marks.find(m=>m.id===transformedMarkId);if(mark)normaliseMarkTranslation(mark);}
     }
-    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();renderAll();
+    state.dragging=false;state.resizeState=null;state.transformState=null;state.activeMark=null;state.dragStart=null;clearSnapGuides();finishInteraction();renderAll();
   }
   canvas.addEventListener("pointerup",endDrag);
   canvas.addEventListener("pointercancel",endDrag);

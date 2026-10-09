@@ -229,6 +229,19 @@ new rule that the fullscreen Tools sheet must not cover the feature dock. Netlif
 Deploy Preview also succeeded for the same commit, deploy
 `6ac62cd93329d30008383b6e`.
 
+### Fluidity/render optimisation — implementation staged
+
+Following physical-reference review on 9 October, the editor interaction path has
+been changed so active drag/draw/resize uses a 540px working tile while idle and
+export remain full quality. Pan/pinch captures and reuses a full tile rather than
+recompositing unchanged artwork on every movement. Autosave, preview generation,
+quality calculation and selection/layer UI rebuilds are deferred until the
+gesture ends. Brush/eraser/fill stroke capture now consumes coalesced PointerEvent
+samples when the browser provides them. Export dimensions, saved project geometry
+and the 4000px production pipeline are unchanged. A browser regression now checks
+that interactive frames use the lightweight path and a full-quality frame returns
+after pointer release. Verification pending for the implementation commit.
+
 ## Remaining work, in order
 
 1. Packaging/workflow/help validation: **done** (results above).

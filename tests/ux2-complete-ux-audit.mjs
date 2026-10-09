@@ -500,6 +500,24 @@ try{
     assert(assetCount>0 || (await page.locator('#status').textContent()||'').length>0,'Image import gave no visible engine response');
   });
 
+  await step('Pattern: live interaction uses lightweight frames and restores full quality on release',async()=>{
+    await page.locator('[data-ux2-tool="select"]').click();
+    const canvas=page.locator('#editorCanvas'),box=await canvas.boundingBox();assert(box,'Canvas bounds unavailable for interaction test');
+    await page.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await page.waitForTimeout(60);
+    await page.evaluate(()=>{const m=window.PatternForgeInteractionMetrics;m.interactiveFrames=0;m.fullFrames=0;m.deferredWorkFrames=0;m.lastInteractiveTileSize=null;});
+    await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();
+    for(let i=1;i<=8;i++)await page.mouse.move(box.x+box.width*(.5+i*.012),box.y+box.height*(.5+i*.006));
+    await page.waitForTimeout(70);
+    const during=await page.evaluate(()=>({...window.PatternForgeInteractionMetrics}));
+    assert(during.interactiveFrames>0,'No lightweight interaction frames were rendered');
+    assert(during.lastInteractiveTileSize===540,'Interaction frames did not use the 540px working tile');
+    assert(during.deferredWorkFrames>0,'Heavy preview/quality work was not deferred during interaction');
+    await page.mouse.up();await page.waitForTimeout(90);
+    const after=await page.evaluate(()=>({...window.PatternForgeInteractionMetrics}));
+    assert(after.active===false,'Interaction mode did not end on pointer release');
+    assert(after.fullFrames>0,'Full-quality frame was not restored after interaction');
+  });
+
   await step('Pattern: scatter preserves manual items, freezes, and respects seam-aware spacing',async()=>{
     const context=await browser.newContext({viewport:{width:1100,height:760},acceptDownloads:true});
     const view=await context.newPage();view.setDefaultTimeout(12000);await attachErrors(view,'scatter-controls');
