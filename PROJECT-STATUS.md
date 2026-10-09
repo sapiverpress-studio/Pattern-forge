@@ -326,7 +326,16 @@ The Etsy exporter has therefore been simplified:
   full pattern, exact seamless tile and pattern detail.
 
 Regression coverage now requires exactly those three design-only listing images
-and explicitly rejects product-mockup names. Verification pending for this commit.
+and explicitly rejects product-mockup names.
+
+Verification on exact implementation commit
+`b7fa95a0879bc613da5dd110526fd5afc26d9842`:
+- Package workflow `37923629926`: **success**.
+- Complete UX audit `37923630049`: **51/51 passed, 0 failed**.
+- Extended readiness `37923629965`: **31/31 passed, 0 failed**.
+- Netlify Deploy Preview `6ac8cf2aca4eb500082cfaab`: **ready**.
+- Drawer-free permalink:
+  https://6ac8cf2aca4eb500082cfaab--sapiver-pattern-forge.netlify.app/
 
 ## Remaining work, in order
 
