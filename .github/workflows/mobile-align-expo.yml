@@ -24,7 +24,9 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - name: Regenerate lockfile from declared dependencies
         working-directory: mobile
-        run: npm install
+        run: |
+          rm -f package-lock.json
+          npm install
       - name: Align direct packages with Expo SDK 57
         working-directory: mobile
         run: npx expo install --fix
