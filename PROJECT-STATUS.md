@@ -480,8 +480,11 @@ Development fix:
   website alone. A new preview APK is required for physical validation before
   Android release readiness can be claimed.
 
-Verification pending on development branch. Production website and current APK
-remain unchanged.
+First mobile verification run on `5ef6ed810f8c922c5bade02b2e02d46cd293de7c`
+passed `npm ci` and TypeScript. Expo Doctor reported only one pre-existing
+patch-level SDK mismatch: installed Expo 57.0.26 while SDK 57 now expects
+`~57.0.27`. The development branch was aligned to `~57.0.27` and will be
+rerun. Production website and current APK remain unchanged.
 
 ## Remaining work, in order
 
