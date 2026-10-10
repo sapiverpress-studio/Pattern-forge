@@ -10,7 +10,7 @@
     "preview-ux2": {
       "extends": "preview",
       "env": {
-        "EXPO_PUBLIC_PATTERN_FORGE_URL": "https://sapiver-pattern-forge-ux2-staging.netlify.app/"
+        "EXPO_PUBLIC_PATTERN_FORGE_URL": "https://sapiver-pattern-forge.netlify.app/"
       }
     },
     "production": {
