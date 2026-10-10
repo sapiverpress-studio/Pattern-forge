@@ -5,6 +5,9 @@
       "android": {
         "buildType": "apk",
         "image": "latest"
+      },
+      "env": {
+        "EXPO_PUBLIC_PATTERN_FORGE_URL": "https://sapiver-pattern-forge.netlify.app/"
       }
     },
     "preview-ux2": {

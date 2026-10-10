@@ -521,6 +521,38 @@ Build target:
 
 Build pending.
 
+### Expo build path and current APK mismatch — 10 October 2026
+
+The installed Android APK screenshots are from an older UX2 build and display the
+pre-Etsy export controls. The verified production web app currently has Pattern →
+Export → Export for Etsy; Doodle intentionally does not offer seamless-pattern
+Etsy packaging. The older `preview-ux2` Android profile was configured for the
+older staging URL in prior source. Changing the website alone cannot fix the
+native safe-area/camera cutout behaviour of an installed APK.
+
+On 10 October PR #5 `build/android-preview-1.0.1-cutout` remained open/unmerged;
+Expo GitHub Base directory was shown as `/mobile`. Reapplying the
+`eas-build-android:preview` label produced an `expo/eas-build` success check,
+but no new entry was visible on Expo Builds; an older EAS workflow check still
+reported an error. That check alone is not evidence of a completed APK.
+
+Root-cause configuration correction in this temporary PR branch:
+- Move the test EAS workflow from repository-root `.eas/workflows/` into
+  `mobile/.eas/workflows/`, at the same level as `mobile/eas.json`, as required
+  for the configured Expo project root.
+- Use only the APK `preview` build profile in that workflow.
+- Set `EXPO_PUBLIC_PATTERN_FORGE_URL` explicitly to
+  https://sapiver-pattern-forge.netlify.app/ for the `preview` profile, rather than relying on environment
+  defaults or the older UX2 staging profile.
+- Trigger only for PR #5 head updates targeting `feature/advanced-editing-v1`,
+  not for normal main/staging pushes.
+- No Android store submission, production web deployment or PR merge.
+
+Verification pending: new EAS workflow run, actual APK artifact/install, effective
+loaded website, Pattern Etsy export and Android native safe-area/cutout behaviour.
+Preserve the installed app's editable project backups before changing the hosted
+origin or reinstalling, because WebView browser storage is origin-scoped.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy
