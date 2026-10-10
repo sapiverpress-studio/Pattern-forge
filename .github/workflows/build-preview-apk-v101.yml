@@ -1,0 +1,49 @@
+name: Build Android preview APK 1.0.1
+
+on:
+  push:
+    branches: [feature/advanced-editing-v1]
+    paths:
+      - mobile/app.json
+      - .github/workflows/build-preview-apk-v101.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Verify mobile source
+        working-directory: mobile
+        run: |
+          npm run typecheck
+          npx expo-doctor
+      - name: Verify EAS authentication
+        working-directory: mobile
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "No EXPO_TOKEN/EAS_TOKEN repository secret is configured."; exit 2; }
+          npx eas-cli@latest whoami
+      - name: Build preview APK
+        working-directory: mobile
+        run: |
+          npx eas-cli@latest build --platform android --profile preview --non-interactive --wait --json --message "Pattern Forge 1.0.1 camera cutout preview" > ../eas-preview-build.json
+          cat ../eas-preview-build.json
+      - name: Upload build result
+        uses: actions/upload-artifact@v4
+        with:
+          name: pattern-forge-preview-apk-1.0.1-build-result
+          path: eas-preview-build.json
+          retention-days: 7

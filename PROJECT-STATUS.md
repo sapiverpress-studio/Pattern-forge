@@ -503,6 +503,24 @@ The fix is development-source verified but still requires a fresh APK and a
 physical landscape rotation test on the actual cutout device. Production website
 and the currently installed APK remain unchanged.
 
+### Preview APK 1.0.1 build — approved
+
+Jim explicitly approved building a fresh internal Android preview APK after the
+camera/cutout safe-area fix passed source verification.
+
+Build target:
+- app version: `1.0.1`
+- Android versionCode: `2`
+- package: `uk.co.sapiverpress.patternforge`
+- EAS profile: `preview`
+- output: installable APK, internal distribution only
+- hosted app URL: https://sapiver-pattern-forge.netlify.app/
+- purpose: physical-device validation of camera/cutout clearance, rotation,
+  fullscreen, Android Back and export/file handling.
+- This approval is for the preview APK only; it is not Play Store/AAB approval.
+
+Build pending.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy

@@ -3,14 +3,14 @@
     "name": "Sapiver Pattern Forge",
     "slug": "pattern-forge",
     "owner": "sapiverforge",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "icon": "./assets/icon.png",
     "orientation": "default",
     "userInterfaceStyle": "light",
     "scheme": "sapiverpatternforge",
     "android": {
       "package": "uk.co.sapiverpress.patternforge",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
