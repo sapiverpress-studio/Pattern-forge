@@ -519,7 +519,23 @@ Build target:
   fullscreen, Android Back and export/file handling.
 - This approval is for the preview APK only; it is not Play Store/AAB approval.
 
-Build pending.
+Build initiation status:
+- Version bump/build-prep commit: `783e7069b72fce795ce16c7035fc332a4a30fdb4`.
+- First GitHub Actions attempt passed mobile source verification but stopped before
+  EAS because this repository has no usable `EXPO_TOKEN`/`EAS_TOKEN` secret.
+  No EAS build was created by that failed route.
+- Switched to the already-connected Expo GitHub App, which avoids repository-token
+  authentication.
+- Build-only branch: `build/android-preview-1.0.1-cutout`.
+- Build-only PR: #5 — **do not merge**.
+- On that branch the existing `preview-ux2` build profile is temporarily pointed
+  at https://sapiver-pattern-forge.netlify.app/ so the APK loads the production
+  web app while using the new native safe-area shell.
+- Expo build trigger label `eas-build-android:preview-ux2` has been applied.
+- A branch-local EAS Workflow was also added as a linked-repository trigger.
+- GitHub currently exposes no EAS check/comment/build URL through the available
+  connector, so the external EAS build completion/install URL is not yet verified.
+
 
 ## Remaining work, in order
 
