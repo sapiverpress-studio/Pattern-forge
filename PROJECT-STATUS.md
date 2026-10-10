@@ -459,6 +459,30 @@ merged the development branch into `main`.
 - The corrected production SVG root uses unitless intrinsic dimensions and a
   matching viewBox; the former `undefinedin` defect is removed.
 
+### Android camera/cutout safe-area fix — development
+
+A real Android landscape screenshot showed the Doodle tool rail starting at the
+physical screen edge, so a front-camera/display cutout can cover the left-side
+controls. The web app's CSS safe-area environment is not sufficient inside the
+current Android WebView shell.
+
+Development fix:
+- Expo SDK 57 recommended `react-native-safe-area-context ~5.7.0` added.
+- The native shell now wraps the WebView in `SafeAreaProvider` +
+  `SafeAreaView` with **left/right** safe edges.
+- The WebView therefore starts after the actual Android cutout inset on whichever
+  side the camera occupies after rotation.
+- Top status-bar handling remains unchanged and fullscreen still removes the
+  manual top padding; horizontal cutout protection remains active in fullscreen.
+- This is device-adaptive, not a hard-coded pixel offset, so phones/tablets without
+  a cutout do not lose arbitrary canvas space.
+- The currently installed APK cannot receive this native-wrapper change from the
+  website alone. A new preview APK is required for physical validation before
+  Android release readiness can be claimed.
+
+Verification pending on development branch. Production website and current APK
+remain unchanged.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy

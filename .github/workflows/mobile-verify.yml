@@ -1,0 +1,33 @@
+name: Mobile wrapper verification
+
+on:
+  push:
+    branches: [feature/advanced-editing-v1]
+    paths:
+      - mobile/**
+      - .github/workflows/mobile-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: TypeScript
+        working-directory: mobile
+        run: npm run typecheck
+      - name: Expo Doctor
+        working-directory: mobile
+        run: npx expo-doctor

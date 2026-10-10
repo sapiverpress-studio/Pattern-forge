@@ -16,6 +16,11 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 
 const PATTERN_FORGE_URL =
   process.env.EXPO_PUBLIC_PATTERN_FORGE_URL ??
@@ -325,7 +330,11 @@ export default function App() {
   }, []);
 
   return (
-    <View style={[styles.safeArea, fullscreen && styles.fullscreenSafeArea]}>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SafeAreaView
+        edges={['left', 'right']}
+        style={[styles.safeArea, fullscreen && styles.fullscreenSafeArea]}
+      >
       <ExpoStatusBar style="dark" hidden={fullscreen} />
       <View style={styles.container}>
         <WebView
@@ -394,7 +403,8 @@ export default function App() {
           </View>
         ) : null}
       </View>
-    </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
