@@ -480,11 +480,28 @@ Development fix:
   website alone. A new preview APK is required for physical validation before
   Android release readiness can be claimed.
 
-First mobile verification run on `5ef6ed810f8c922c5bade02b2e02d46cd293de7c`
-passed `npm ci` and TypeScript. Expo Doctor reported only one pre-existing
-patch-level SDK mismatch: installed Expo 57.0.26 while SDK 57 now expects
-`~57.0.27`. The development branch was aligned to `~57.0.27` and will be
-rerun. Production website and current APK remain unchanged.
+Initial verification exposed a stale Expo lockfile after the safe-area package
+was introduced. The mobile lock was regenerated from the declared SDK 57
+dependencies, yielding Expo 57.0.27, @expo/cli 57.0.28, @expo/config 57.0.10 and
+@expo/metro-config 57.0.13.
+
+Verified checkpoint:
+- Native safe-area implementation commit:
+  `5ef6ed810f8c922c5bade02b2e02d46cd293de7c`.
+- Clean SDK dependency lock commit:
+  `81a0ec556d1426439aa17f360f604577fc693880`.
+- Exact verification trigger:
+  `5f78214ae63681f0406d1705a5a615048c456796`.
+- Mobile wrapper verification run `38031329634`: **success**.
+- `npm ci`: **pass**.
+- TypeScript (`tsc --noEmit`): **pass**.
+- Expo Doctor: **21/21 checks pass**.
+- Expo SDK 57 official safe-area dependency is
+  `react-native-safe-area-context ~5.7.0`.
+
+The fix is development-source verified but still requires a fresh APK and a
+physical landscape rotation test on the actual cutout device. Production website
+and the currently installed APK remain unchanged.
 
 ## Remaining work, in order
 
