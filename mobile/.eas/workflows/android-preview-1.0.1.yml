@@ -1,0 +1,14 @@
+name: Android preview 1.0.1 - cutout and Etsy production test
+on:
+  pull_request:
+    branches:
+      - feature/advanced-editing-v1
+    types:
+      - synchronize
+jobs:
+  build_android:
+    name: Build Android internal preview APK
+    type: build
+    params:
+      platform: android
+      profile: preview
