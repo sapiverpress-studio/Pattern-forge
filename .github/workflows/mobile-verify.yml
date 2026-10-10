@@ -1,3 +1,4 @@
+# Exact rerun after clean Expo SDK 57 lockfile regeneration.
 name: Mobile wrapper verification
 
 on:
