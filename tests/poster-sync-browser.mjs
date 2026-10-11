@@ -37,7 +37,7 @@ try{
     if(url.pathname==='/poster/upload' && method==='GET' && !url.searchParams.has('id')){
       if(url.searchParams.has('test-login')){loggedIn=true;return reply(200,formHtml);}
       if(!loggedIn)return reply(200,loginHtml);
-      return reply(200,formHtml);
+      return reply(200,url.searchParams.has('update')?formHtml.replace('name="price" type="number"','name="price" type="number" value="3.95"'):formHtml);
     }
     if(url.pathname==='/poster-upload.mjs')return reply(200,receiverScript,'application/javascript');
     if(url.pathname==='/poster/uploads' && method==='POST'){
@@ -73,7 +73,8 @@ try{
    assert.equal(file.name,kitName);assert.equal(file.size,8192);
    assert.equal(await popup.locator('[name=type]').inputValue(),'digital');
    assert.equal(await popup.locator('[name=kind]').inputValue(),'pattern');
-   assert.equal(await popup.locator('[name=price]').inputValue(),'');
+   assert.equal(await popup.locator('[name=price]').inputValue(),pass===0?'':'3.95');
+   if(pass===1)assert.equal(new URL(popup.url()).searchParams.get('update'),PRODUCT);
    assert.equal(await popup.locator('[name=seamlessConfirmed]').isChecked(),false);
    assert.equal(await popup.locator('[name=useEmbeddedText]').isChecked(),true);
    await popup.locator('[name=price]').fill('3.95');
