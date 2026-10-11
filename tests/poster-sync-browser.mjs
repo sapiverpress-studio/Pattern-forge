@@ -25,7 +25,7 @@ const browser=await chromium.launch({headless:true});
 try{
  for(const mobile of [false,true]){
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:800},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});
-  let loggedIn=false;const creates=[],chunks=[],finishes=[],bad=[],errors=[];
+  let loggedIn=true;const creates=[],chunks=[],finishes=[],bad=[],errors=[];
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url()),method=request.method();
    const reply=(status,body,type='text/html')=>route.fulfill({status,contentType:type,headers:{'Cache-Control':'no-store'},body});
@@ -66,7 +66,7 @@ try{
    popup.on('pageerror',e=>errors.push(String(e)));
    await popup.waitForLoadState('load');
    console.log('POPUP',pass,popup.url());
-   if(pass===0){await popup.locator('#login').click();await popup.waitForURL('**/poster/upload?test-login=1');}
+   // Owner session already established: test browser-to-browser transfer independently of OAuth login.
    await popup.waitForSelector('#pattern-handoff-status',{timeout:25000});
    await popup.waitForFunction(()=>document.querySelector('input[name=poster]')?.files?.length===1,null,{timeout:25000});
    const file=await popup.locator('input[name=poster]').evaluate(el=>({name:el.files[0].name,size:el.files[0].size}));
@@ -92,7 +92,7 @@ try{
   assert.equal(finishes.length,2);
   assert.deepEqual(bad,[],'Unexpected network calls');
   assert.deepEqual(errors,[],'Browser exceptions');
-  console.log('PASS',mobile?'mobile':'desktop','real Chromium: cross-origin popup, owner login redirect, browser File, private CSRF upload, product revision');
+  console.log('PASS',mobile?'mobile':'desktop','real Chromium: cross-origin popup, existing owner session, browser File, private CSRF upload, product revision');
   await context.close();
  }
 }finally{await browser.close()}
