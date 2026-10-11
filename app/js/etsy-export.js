@@ -228,42 +228,37 @@
     return packages;
   }
   async function prepare(options={}){
-    const download=options.download!==false,includeListing=options.listingImages!==false,before=stateFingerprint(),checks=check();
+    const download=options.download!==false,before=stateFingerprint(),checks=check();
     if(blocking(checks).length){bridge.setStatus("Etsy export blocked: "+blocking(checks)[0].detail);return {success:false,checks,blockers:blocking(checks)};}
     try{
       bridge.setStatus("Etsy export: rendering seamless PNG…");
       const png=await bridge.renderPNGBlob();if(!png)throw new Error("PNG rendering was cancelled.");
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
-      bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),buyerFiles=[
         {name:stem+"-seamless-master.png",blob:png.blob},
-        {name:stem+"-seamless-master.jpg",blob:jpg.blob},
-        {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
+        {name:stem+"-seamless-master.jpg",blob:jpg.blob}
       ];
       if(hasSvg)buyerFiles.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
-      buyerFiles.push({name:"README.txt",blob:new Blob([instructions(png.spec,hasSvg)],{type:"text/plain"})});
       buyerFiles.push({name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})});
-      buyerFiles.push({name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})});
-      bridge.setStatus("Etsy export: checking Etsy package sizes…");
+      bridge.setStatus("Etsy export: checking package size…");
       const packages=await buyerPackages(buyerFiles,stem);
       const sizeOk=packages.length<=ETSY_MAX_FILES&&packages.every(p=>p.blob.size<=ETSY_MAX_BYTES);
       checks.push({id:"etsy-package",state:sizeOk?"pass":"fail",label:"Etsy buyer package",detail:sizeOk?packages.length+" upload ZIP"+(packages.length===1?"":"s")+" prepared; largest is "+mb(Math.max(...packages.map(p=>p.blob.size)))+".":"Generated buyer files exceed Etsy's upload limits."});
       if(!sizeOk)throw new Error("Generated buyer package exceeds Etsy's upload limits.");
-      bridge.setStatus("Etsy export: generating design-only listing images…");
-      const listing=includeListing?await listingImages():[];
       const after=stateFingerprint(),unchanged=before===after;
       checks.push({id:"editable-design",state:unchanged?"pass":"fail",label:"Original design unchanged",detail:unchanged?"Packaging did not alter the editable artwork.":"The editable design changed during packaging; export has been blocked."});
       if(!unchanged)throw new Error("Editable design changed while packaging.");
-      const kitFiles=[
-        ...packages.map(p=>({name:"UPLOAD-TO-ETSY/"+p.name,blob:p.blob})),
-        ...listing.map(file=>({name:"LISTING-IMAGES/"+stem+"-"+file.name,blob:file.blob})),
-        {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerChecklist(packages,listing)],{type:"text/plain"})},
-        {name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})}
-      ];
-      const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
-      if(download)bridge.downloadBlob(kit,kitName);
-      bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
-      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
+      let downloadName="",downloadSize=0;
+      if(packages.length===1){
+        downloadName=packages[0].name;downloadSize=packages[0].blob.size;
+        if(download)bridge.downloadBlob(packages[0].blob,downloadName);
+      }else{
+        const wrapper=await bridge.makeZip(packages.map(p=>({name:p.name,blob:p.blob})));
+        downloadName=(stem+"-etsy-upload-files.zip").slice(0,70);downloadSize=wrapper.size;
+        if(download)bridge.downloadBlob(wrapper,downloadName);
+      }
+      bridge.setStatus("Etsy package ready: one adaptable seamless design in PNG, JPG"+(hasSvg?" and SVG":"")+" plus licence.");
+      return {success:true,checks,blockers:[],kitName:downloadName,kitSize:downloadSize,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:[],vectorIncluded:hasSvg,rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
       return {success:false,checks,blockers:blocking(checks),error:message};

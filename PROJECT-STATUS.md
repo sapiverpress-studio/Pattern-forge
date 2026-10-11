@@ -537,6 +537,28 @@ Build initiation status:
   connector, so the external EAS build completion/install URL is not yet verified.
 
 
+### Etsy buyer package simplification — development
+
+Jim clarified that the Etsy download itself should contain only the singular
+adaptable design in a few useful formats plus the licence. It should not carry
+seller/support assets or alternate presentation files.
+
+Development change:
+- buyer package contains seamless master PNG + seamless master JPG;
+- genuine-vector SVG is included only when eligible;
+- `LICENSE.txt` is included;
+- removed from customer package: 3×3 repeat preview, README, quality report;
+- removed from downloaded Etsy package: seller checklist and listing-image folder;
+- no alternate physical sizes are generated;
+- seam/vector/source/package validation still runs internally before download;
+- when one Etsy-safe ZIP is sufficient, Pattern Forge downloads that ZIP directly;
+  only if Etsy's file-size limit forces splitting will a wrapper contain multiple
+  upload ZIPs.
+
+Regression now requires a vector-capable product to contain exactly four buyer
+files: PNG, JPG, SVG and LICENSE.txt, and rejects the removed support files.
+Verification pending.
+
 ## Remaining work, in order
 
 1. **Physical-device check of the latest build:** use the drawer-free deploy

@@ -567,8 +567,9 @@ try{
     const buyerNames=result.buyerFiles.map(file=>file.name);
     assert(buyerNames.some(name=>name.endsWith('.png')),'Etsy buyer files are missing PNG');
     assert(buyerNames.some(name=>name.endsWith('.jpg')),'Etsy buyer files are missing JPG');
-    assert(buyerNames.some(name=>name.includes('repeat-preview-3x3')),'Etsy buyer files are missing the 3 × 3 repeat preview');
     assert(result.vectorIncluded===true&&buyerNames.some(name=>name.endsWith('.svg')),'Vector-only design did not receive an SVG inside the buyer package');
+    assert(buyerNames.includes('LICENSE.txt'),'Etsy buyer package is missing LICENSE.txt');
+    assert(!buyerNames.some(name=>/repeat-preview|README|QUALITY-CHECK|SELLER-CHECKLIST/i.test(name)),'Etsy buyer package still contains non-product support files');
     const vectorDownload=view.waitForEvent('download');await view.locator('[data-export-old="exportSvg"]').click();const vectorFile=await vectorDownload;const vectorPath=await vectorFile.path();assert(vectorPath,'SVG export file unavailable');
     const vectorText=fs.readFileSync(vectorPath,'utf8'),rootMatch=vectorText.match(/<svg\b([^>]*)>/i);assert(rootMatch,'SVG root element missing');
     assert(!/undefined|NaN/i.test(rootMatch[1]),'SVG root contains an undefined or invalid dimension');
@@ -589,11 +590,8 @@ try{
     assert(vectorParse.imageLoaded===true,'Exported SVG cannot be reopened as an image');
     assert(buyerNames.some(name=>name.endsWith('-seamless-master.png'))&&buyerNames.some(name=>name.endsWith('-seamless-master.jpg')),'Buyer filenames should describe one adaptable master design rather than a physical size');
     assert(!buyerNames.some(name=>/300dpi|4000x4000/i.test(name)),'Buyer filenames still imply a fixed size/resolution product');
-    assert(result.listingImages.length===3,'Expected three design-only Etsy listing images');
-    assert(result.listingImages.every(image=>image.width>=2000&&image.height>=1500),'Listing images are below the intended listing-ready size');
-    const listingNames=result.listingImages.map(image=>image.name.toLowerCase());
-    assert(listingNames.some(name=>name.includes('full-pattern'))&&listingNames.some(name=>name.includes('seamless-tile'))&&listingNames.some(name=>name.includes('pattern-detail')),'Design-only listing views are incomplete');
-    assert(!listingNames.some(name=>/(fabric|cushion|wallpaper|wrapping|stationery)/.test(name)),'Product mockup imagery leaked into the design-only Etsy kit');
+    assert(result.listingImages.length===0,'Etsy customer package should not contain listing images');
+    assert(buyerNames.length===4,'Vector-capable Etsy customer package should contain exactly PNG, JPG, SVG and LICENSE.txt');
     assert(result.rules.maxFiles===5&&result.rules.maxBytes===20000000,'Encoded Etsy upload limits are incorrect');
     await shot(view,'etsy-export-ready');await context.close();
   });
