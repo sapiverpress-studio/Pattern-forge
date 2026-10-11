@@ -20,7 +20,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Fetch pinned public Poster_gen receiver source
         run: |
-          curl -fsSL --retry 3 https://raw.githubusercontent.com/sapiverpress-studio/Poster_gen/a0d502b4a5a904c48b59ab53c8e81d85375778ff/public/poster-upload.mjs -o /tmp/poster-receiver-handoff.mjs
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/sapiverpress-studio/Poster_gen/a0c316f7f5b9c2de6d67761e14eaabbc200a78b2/public/poster-upload.mjs -o /tmp/poster-receiver-handoff.mjs
           node --check /tmp/poster-receiver-handoff.mjs
       - name: Run real Chromium two-origin and mobile handoff checks
         run: node tests/poster-sync-browser.mjs
