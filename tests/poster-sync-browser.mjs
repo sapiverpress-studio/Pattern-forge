@@ -65,6 +65,7 @@ try{
    const popup=await popupPromise;
    popup.on('pageerror',e=>errors.push(String(e)));
    await popup.waitForLoadState('load');
+   console.log('POPUP debug',pass,'url',popup.url(),'loggedIn',loggedIn,'bad',JSON.stringify(bad),'body',String(await popup.content()).slice(0,1000));
    if(pass===0){await popup.locator('#login').click();await popup.waitForURL('**/poster/upload');}
    await popup.waitForSelector('#pattern-handoff-status',{timeout:25000});
    await popup.waitForFunction(()=>document.querySelector('input[name=poster]')?.files?.length===1,null,{timeout:25000});
