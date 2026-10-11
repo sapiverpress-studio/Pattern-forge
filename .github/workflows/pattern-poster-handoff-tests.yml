@@ -24,3 +24,9 @@ jobs:
           node --check /tmp/poster-receiver-handoff.mjs
       - name: Run real Chromium two-origin and mobile handoff checks
         run: node tests/poster-sync-browser.mjs
+      - name: Verify full Pattern Forge editor exposes the handoff
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pattern-sync-http.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          node tests/poster-sync-app-ui.mjs
