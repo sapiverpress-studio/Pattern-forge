@@ -1,5 +1,16 @@
 # Pattern Forge — current work and handover
 
+## 11 October 2026 — Sapiver Prints handoff (development branch only)
+
+**NOT DEPLOYED.** In `feature/poster-gen-handoff-20261011`, the Pattern Project Export panel now has **Send to Sapiver Prints** alongside the existing untouched manual Etsy ZIP export. It reuses the checked seller-kit generator with `download:false,returnKit:true` and opens the existing private Poster_gen upload page. After strict two-way origin/window-source/challenge checks, it sends the kit as a browser File via postMessage, without credentials or an external upload intermediary.
+
+Poster_gen's companion branch is `feature/pattern-forge-handoff-20261011`. After the existing owner login, its importer populates the digital Pattern product form with the ZIP. The owner must still enter a GBP price, confirm seamless accuracy and press Prepare my product; Etsy publication and supplier ordering are **not** triggered. Following acknowledged private-upload submission, Pattern Forge stores the returned product ID against the project's local ID and sends updates to that same product on later transfers from this browser. It does **not** synchronize between devices or auto-update a published listing without the Poster_gen workflow.
+
+Security limits: exact approved origins, matching popup/opener, 128-bit per-page challenge, 100 MB ZIP bound, no pass-through cookies/API tokens. A missing opener, old receiving deployment, unsupported browser File/DataTransfer behaviour, or closed tab requires the original manual ZIP workflow; the fallback only downloads on specific transfer failure/timeout. Production browsers and real Netlify owner/device session have not yet been validated. No Etsy API calls, PrintShrimp orders, production deployment, or APK update authorised here.
+
+Changes: `app/js/poster-sync.js`, `app/js/etsy-export.js`, `app/js/canvas-first-v2.js`, `app/index.html`, `tests/poster-sync.test.mjs`, isolated handoff CI. Existing export and project data are unchanged. Test evidence and deployment approval must be recorded before merge/release.
+
+
 Last updated: 9 October 2026 (UK). Read this first when continuing the project.
 Update this file after every completed stage and before ending each work session.
 
