@@ -11,4 +11,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: node --check app/js/poster-sync.js && node --check app/js/etsy-export.js && node --check app/js/canvas-first-v2.js
       - run: node --test tests/poster-sync.test.mjs
