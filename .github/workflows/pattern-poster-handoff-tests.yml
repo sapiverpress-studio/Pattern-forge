@@ -31,3 +31,20 @@ jobs:
           trap 'kill "$pid" 2>/dev/null || true' EXIT
           node tests/poster-sync-app-ui.mjs
           node tests/poster-sync-real-kit.mjs
+
+      - name: Confirm Poster_gen accepts the actual Pattern Forge seller kit
+        run: |
+          git clone --quiet --depth 1 --branch feature/pattern-handoff-parity-20261011 https://github.com/sapiverpress-studio/Poster_gen.git /tmp/postergen-receiver
+          npm ci --ignore-scripts --prefix /tmp/postergen-receiver
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const {inspectDigitalUpload}=await import('/tmp/postergen-receiver/lib/seller-kit.mjs');
+          const bytes=fs.readFileSync('/tmp/pattern-forge-actual-seller-kit.zip');
+          const output=await inspectDigitalUpload(bytes);
+          assert.equal(output.kit,true,'Uploader did not recognise Pattern Forge seller kit');
+          assert.equal(output.packages.length,1,'Unexpected Etsy download package count');
+          assert.equal(output.previews.length,3,'Listing photos missing');
+          assert.ok(output.licence.length>10 && output.instructions.length>10,'Buyer documents missing');
+          console.log('PASS Poster_gen actual seller-kit parser: 1 customer ZIP, 3 listing photos, embedded licence and instructions, validated files');
+          NODE
