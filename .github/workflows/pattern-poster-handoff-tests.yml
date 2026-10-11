@@ -1,0 +1,14 @@
+name: Pattern to Poster handoff tests
+on:
+  push:
+    branches: [feature/poster-gen-handoff-20261011]
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/poster-sync.test.mjs
