@@ -43,7 +43,7 @@ try{
     if(url.pathname==='/poster/uploads' && method==='POST'){
       creates.push(request.postDataJSON());
       if(request.headers()['x-poster-csrf']!=='integration-csrf')bad.push('No CSRF');
-      return reply(201,JSON.stringify({id:PRODUCT,chunkBytes:3000,phase:'uploading'}),'application/json');
+      return reply(201,JSON.stringify({id:PRODUCT,productId:PRODUCT,chunkBytes:3000,phase:'uploading'}),'application/json');
     }
     if(url.pathname.startsWith('/poster/uploads/'+PRODUCT+'/chunks/') && method==='PUT'){
       chunks.push(request.postDataBuffer());return reply(200,'{"stored":true}','application/json');
@@ -87,6 +87,8 @@ try{
   assert.equal(creates[0].updateProductId,null);
   assert.equal(creates[1].updateProductId,PRODUCT);
   assert.equal(creates[0].type,'digital');
+  assert.equal(creates[0].sourceProjectId,PROJECT);
+  assert.equal(creates[1].sourceProjectId,PROJECT);
   assert.equal(creates[1].metadata.price,'3.95');
   assert.equal(creates[0].metadata.seamlessConfirmed,true);
   assert.equal(chunks.length,6);
