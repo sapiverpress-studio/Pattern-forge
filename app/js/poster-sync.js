@@ -42,7 +42,7 @@
      if(target.closed){fallback("The Sapiver Prints tab was closed.");return;}
      try{
        const file=new File([kitBlob],kitName,{type:"application/zip",lastModified:Date.now()});
-       target.postMessage({channel:CHANNEL,type:"kit",challenge,projectId,projectTitle,updateProductId:existingId,file},POSTER_ORIGIN);
+       target.postMessage({channel:CHANNEL,type:"kit",challenge,projectId,projectTitle,updateProductId:existingId,fileName:kitName,file},POSTER_ORIGIN);
        delivered=true;
        status("Sending the prepared kit to Sapiver Prints. Complete owner sign-in there if prompted.");
      }catch(error){fallback("The browser could not transfer the kit: "+(error?.message||"unknown error"));}
@@ -58,7 +58,7 @@
        status("Sapiver Prints received the kit. Enter the price, verify the repeat and press Prepare my product there.");
      }else if(msg.challenge===challenge&&msg.type==="saved"&&msg.projectId===projectId&&PRODUCT_ID.test(msg.productId||"")){
        const stored=safeStorage.put(projectId,msg.productId);
-       status(stored?"Product draft prepared. Later sends from this project will update the same product.":"Product draft prepared. This device could not save its product link; record the product ID before making revisions.");
+       status(stored?"Product upload accepted for private preparation. Future sends from this project will reuse the same product. Check its review in Sapiver Prints.":"Product upload accepted for private preparation, but this device could not save its product link. Record its ID before making revisions.");
        cleanup();
      }else if(msg.challenge===challenge&&msg.type==="error"&&!received){
        fallback("Sapiver Prints could not receive the kit: "+String(msg.message||"Transfer failed").slice(0,150));
