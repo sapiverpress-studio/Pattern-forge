@@ -263,7 +263,7 @@
       const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
       if(download)bridge.downloadBlob(kit,kitName);
       bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
-      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
+      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged,...(options.returnKit===true?{kitBlob:kit}:{})};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
       return {success:false,checks,blockers:blocking(checks),error:message};

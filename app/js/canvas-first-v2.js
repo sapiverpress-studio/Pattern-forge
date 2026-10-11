@@ -409,7 +409,7 @@
   function exportPanel(){
     const quality=$('quality')?.textContent?.trim()||'Add artwork to check raster-source enlargement.',pixels=$('pixelReadout')?.textContent||'4000 × 4000',doodle=document.body.classList.contains('doodle-project');
     const exportNote=doodle?'Transparent background is preserved for PNG and SVG. Raster dimensions describe the master file, not a physical size.':'Raster dimensions describe the complete seamless master, not a physical size.';
-    const etsy=doodle?'':`<div class="ux2-panel-block ux2-etsy-block"><div class="ux2-panel-label">Export for Etsy</div><div class="ux2-repeat-card"><strong>Single adaptable seamless design</strong><span>Checks the repeat and Etsy upload limits, then packages the same design in useful digital formats. No physical product size or product mockup is implied.</span></div><button class="ux2-btn primary" id="ux2EtsyExport" style="width:100%;margin-top:8px">Check & build Etsy kit</button><p class="ux2-info">Creates Etsy-ready buyer ZIP file(s) plus three design-only listing images: full pattern, seamless tile and detail view. It does not publish anything to Etsy.</p><div id="ux2EtsyReport" class="ux2-etsy-report" aria-live="polite"></div></div>`;
+    const etsy=doodle?'':`<div class="ux2-panel-block ux2-etsy-block"><div class="ux2-panel-label">Export for Etsy</div><div class="ux2-repeat-card"><strong>Single adaptable seamless design</strong><span>Checks the repeat and Etsy upload limits, then packages the same design in useful digital formats. No physical product size or product mockup is implied.</span></div><button class="ux2-btn primary" id="ux2EtsyExport" style="width:100%;margin-top:8px">Check & build Etsy kit</button><button class="ux2-btn" id="ux2PosterSync" style="width:100%;margin-top:8px">Send to Sapiver Prints</button><p class="ux2-info" id="ux2PosterSyncStatus" role="status" aria-live="polite">Digital downloads only; no PrintShrimp physical product is created. The checked kit goes to your private Sapiver Prints studio for price, contents and final review.</p><p class="ux2-info">Creates Etsy-ready buyer ZIP file(s) plus three design-only listing images: full pattern, seamless tile and detail view. It does not publish anything to Etsy.</p><div id="ux2EtsyReport" class="ux2-etsy-report" aria-live="polite"></div></div>`;
     return `<div class="ux2-panel-block"><div class="ux2-panel-label">Export confidence</div><div class="ux2-repeat-card"><strong>${pixels}</strong><span>${exportNote}</span></div><p class="ux2-info">${quality}</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Artwork</div><button class="ux2-btn primary" data-export-old="exportPng" style="width:100%;margin-bottom:7px">Export PNG · master raster</button><button class="ux2-btn" data-export-old="exportSvg" style="width:100%">Export SVG</button></div>${etsy}<div class="ux2-panel-block"><div class="ux2-panel-label">Editable project</div><button class="ux2-btn" data-export-old="saveProject" style="width:100%;margin-bottom:7px">Save editable project</button><button class="ux2-btn" data-export-old="openProject" style="width:100%;margin-bottom:7px">Open project file</button><button class="ux2-btn" data-export-old="exportZip" style="width:100%">Download project bundle</button><p class="ux2-info"><strong>Back up this project:</strong> Autosave stays on this device. Save a project file before clearing app or browser data.</p></div>`;
   }
   function renderEtsyReport(result){
@@ -463,6 +463,13 @@
       document.querySelectorAll('[data-export-old]').forEach(b=>b.addEventListener('click',()=>clickOld(b.dataset.exportOld)));
       const etsyApi=window.PatternForgeEtsy,etsyButton=$('ux2EtsyExport');
       if(etsyButton&&etsyApi){
+        const syncButton=$('ux2PosterSync');
+        if(syncButton&&window.PatternForgePosterSync)syncButton.addEventListener('click',async()=>{
+          syncButton.disabled=true;const syncStatus=$('ux2PosterSyncStatus');
+          try{await window.PatternForgePosterSync.send(etsyApi,{onReport:renderEtsyReport,onStatus:message=>{if(syncStatus)syncStatus.textContent=message;}})}
+          catch(error){if(syncStatus)syncStatus.textContent=error?.message||'Could not transfer the Etsy kit.'}
+          finally{syncButton.disabled=false}
+        });
         renderEtsyReport({checks:etsyApi.check()});
         etsyButton.addEventListener('click',async()=>{
           etsyButton.disabled=true;const original=etsyButton.textContent;etsyButton.textContent='Checking & packaging…';

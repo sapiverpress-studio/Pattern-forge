@@ -1,0 +1,50 @@
+name: Pattern to Poster handoff tests
+on:
+  push:
+    branches: [feature/poster-gen-handoff-20261011]
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check app/js/poster-sync.js && node --check app/js/etsy-export.js && node --check app/js/canvas-first-v2.js
+      - run: node --test tests/poster-sync.test.mjs
+
+      - name: Install isolated Chromium test runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Fetch pinned public Poster_gen receiver source
+        run: |
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/sapiverpress-studio/Poster_gen/a213b35ef2299be7360110fc36163fbbab1502cd/public/poster-upload.mjs -o /tmp/poster-receiver-handoff.mjs
+          node --check /tmp/poster-receiver-handoff.mjs
+      - name: Run real Chromium two-origin and mobile handoff checks
+        run: node tests/poster-sync-browser.mjs
+      - name: Verify full Pattern Forge editor exposes the handoff
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pattern-sync-http.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          node tests/poster-sync-app-ui.mjs
+          node tests/poster-sync-real-kit.mjs
+
+      - name: Confirm Poster_gen accepts the actual Pattern Forge seller kit
+        run: |
+          git clone --quiet --depth 1 --branch feature/pattern-handoff-parity-20261011 https://github.com/sapiverpress-studio/Poster_gen.git /tmp/postergen-receiver
+          npm ci --ignore-scripts --prefix /tmp/postergen-receiver
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const {inspectDigitalUpload}=await import('/tmp/postergen-receiver/lib/seller-kit.mjs');
+          const bytes=fs.readFileSync('/tmp/pattern-forge-actual-seller-kit.zip');
+          const output=await inspectDigitalUpload(bytes);
+          assert.equal(output.kit,true,'Uploader did not recognise Pattern Forge seller kit');
+          assert.equal(output.packages.length,1,'Unexpected Etsy download package count');
+          assert.equal(output.previews.length,3,'Listing photos missing');
+          assert.ok(output.licence.length>10 && output.instructions.length>10,'Buyer documents missing');
+          console.log('PASS Poster_gen actual seller-kit parser: 1 customer ZIP, 3 listing photos, embedded licence and instructions, validated files');
+          NODE
