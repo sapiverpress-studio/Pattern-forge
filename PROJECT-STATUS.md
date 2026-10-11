@@ -1,5 +1,16 @@
 # Pattern Forge — current work and handover
 
+## 11 October 2026 — Pattern Forge → Sapiver Prints latest release checkpoint
+
+**Implementation ready for authenticated acceptance, NOT deployed to production.** Draft [PR #6](https://github.com/sapiverpress-studio/Pattern-forge/pull/6) is based on `main`, with the `Send to Sapiver Prints` action in the real Export drawer. It sends the generated buyer ZIP(s), listing photos and documents together in a seller ZIP to the private Poster_gen owner page. New products require a selling price and seamless-repeat confirmation; subsequent sends open the existing product's review page, keeping the previous approved price available. Practice projects cannot be sent. This route is for **digital download patterns only**, not a physically printed PrintShrimp poster or order.
+
+**Evidence:** [Chromium E2E CI](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38152311561) passed mobile-emulated and desktop Chromium two-origin popup, File/DataTransfer, owner-session reload, two successive transfers, returned product mapping, same-origin CSRF upload, and full editor Export button smoke. It then exported one actual checked seamless pattern into a seller ZIP, validated all nested buyer ZIPs and gallery assets, and passed the generated ZIP through Poster_gen's actual `inspectDigitalUpload` parser. Unit tests also passed 3/3. No marketplace writes or supplier orders occurred. Final copy clarifying digital-only scope was added after that run and must retain a passing syntax/UI check.
+
+**Related production state:** Poster_gen's PR #1 is a Ready authenticated private-workflow **deploy preview** at https://deploy-preview-1--sapiver-poster-gen-auth.netlify.app, with HTTP read-only route smoke 200/200/303. Poster_gen's production URL still uses the prior production commit. Pattern Forge production still runs the pre-integration main build; do not claim the new button is live. GitHub preview app/domain and signed-in owner handoff need a real-device check. The button currently targets the existing production Poster_gen origin, so it cannot be accepted there until the receiver is released.
+
+**Risks and next steps:** real owner login/cookie/opener continuity on the Android device, large-file network transfer, persistent private Blobs record creation, revising a real draft and production deployment must still be tested. Source linking is authoritative in Poster_gen, but an incomplete abandoned upload is intentionally not deleted automatically. No physical PrintShrimp artwork conversion has been built. Neither draft PR is approved for merge by virtue of this test run alone. Deployment/credit impact to date: CI runs and one Netlify deploy preview, **no new Pattern Forge production deploy**.
+
+
 ## 11 October 2026 — Sapiver Prints handoff (development branch only)
 
 **NOT DEPLOYED.** In `feature/poster-gen-handoff-20261011`, the Pattern Project Export panel now has **Send to Sapiver Prints** alongside the existing untouched manual Etsy ZIP export. It reuses the checked seller-kit generator with `download:false,returnKit:true` and opens the existing private Poster_gen upload page. After strict two-way origin/window-source/challenge checks, it sends the kit as a browser File via postMessage, without credentials or an external upload intermediary.
