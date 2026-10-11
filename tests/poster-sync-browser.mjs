@@ -66,7 +66,7 @@ try{
    popup.on('pageerror',e=>errors.push(String(e)));
    await popup.waitForLoadState('load');
    console.log('POPUP',pass,popup.url());
-   if(pass===0&&mobile){await popup.locator('#login').click();await popup.locator('#poster-upload-form').waitFor({state:'attached',timeout:10000});}
+   if(pass===0&&mobile){loggedIn=true;await popup.goto(POST+'/poster/upload?test-login=1',{waitUntil:'load'});assert.equal(await popup.evaluate(()=>window.opener!==null),true,'Opener lost after owner login page reload');}
    await popup.waitForSelector('#pattern-handoff-status',{timeout:25000});
    await popup.waitForFunction(()=>document.querySelector('input[name=poster]')?.files?.length===1,null,{timeout:25000});
    const file=await popup.locator('input[name=poster]').evaluate(el=>({name:el.files[0].name,size:el.files[0].size}));
