@@ -57,3 +57,9 @@ test('failed exporter check never opens owner studio',async()=>{
   await assert.rejects(h.win.PatternForgePosterSync.send({check:()=>[{state:'fail'}]}),/failed Etsy export checks/);
   assert.equal(h.opens.length,0);
 });
+
+test('practice projects cannot become sellable products',async()=>{
+  const h=setup();h.win.PatternForgeEtsyBridge.state.project.isPractice=true;
+  await assert.rejects(h.win.PatternForgePosterSync.send(mkApi()),/named Pattern Project/);
+  assert.equal(h.opens.length,0);
+});
