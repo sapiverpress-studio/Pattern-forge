@@ -9,7 +9,7 @@ const appHtml='<!doctype html><html><meta charset="utf-8"><button id="send">Send
 '<script>window.PatternForgeEtsyBridge={state:{project:{id:"'+PROJECT+'",title:"Autumn Leaves"}},setStatus(s){document.querySelector("#status").textContent=s}};'+
 'window.mockEtsy={check(){return [{state:"pass"}]},async prepare(o){if(o.download!==false||o.returnKit!==true)throw Error("Wrong export options");return {success:true,kitName:"'+kitName+'",kitBlob:new Blob([new Uint8Array(8192).fill(77)],{type:"application/zip"})}}};</script>'+
 '<script src="/app/js/poster-sync.js"></script><script>document.querySelector("#send").addEventListener("click",async()=>{try{await PatternForgePosterSync.send(window.mockEtsy)}catch(e){document.querySelector("#status").textContent=e.message}})</script></html>';
-const loginHtml='<!doctype html><html><meta charset="utf-8"><h1>Owner sign in</h1><form action="/poster/upload"><button id="login">Open private product studio</button></form></html>';
+const loginHtml='<!doctype html><html><meta charset="utf-8"><h1>Owner sign in</h1><form action="/poster/upload?test-login=1"><button id="login">Open private product studio</button></form></html>';
 const formHtml='<!doctype html><html><head><meta charset="utf-8"><meta name="poster-csrf" content="integration-csrf"></head><body>'+
 '<form id="poster-upload-form"><label>Type<select name="type"><option value="physical" selected>Physical</option><option value="digital">Digital</option></select></label>'+
 '<div data-physical><input name="referenceListingId"></div><input name="poster" type="file"><div data-digital>'+
@@ -34,11 +34,11 @@ try{
     if(url.pathname==='/app/')return reply(200,appHtml);
    }
    if(url.origin===POST){
-    if(url.pathname==='/poster/upload' && method==='GET' && !url.search){
-      if(!loggedIn)return route.fulfill({status:303,headers:{Location:'/poster/workflow'},body:''});
+    if(url.pathname==='/poster/upload' && method==='GET' && !url.searchParams.has('id')){
+      if(url.searchParams.has('test-login')){loggedIn=true;return reply(200,formHtml);}
+      if(!loggedIn)return reply(200,loginHtml);
       return reply(200,formHtml);
     }
-    if(url.pathname==='/poster/workflow'){loggedIn=true;return reply(200,loginHtml);}
     if(url.pathname==='/poster-upload.mjs')return reply(200,receiverScript,'application/javascript');
     if(url.pathname==='/poster/uploads' && method==='POST'){
       creates.push(request.postDataJSON());
@@ -65,8 +65,8 @@ try{
    const popup=await popupPromise;
    popup.on('pageerror',e=>errors.push(String(e)));
    await popup.waitForLoadState('load');
-   console.log('POPUP debug',pass,'url',popup.url(),'loggedIn',loggedIn,'bad',JSON.stringify(bad),'body',String(await popup.content()).slice(0,1000));
-   if(pass===0){await popup.locator('#login').click();await popup.waitForURL('**/poster/upload');}
+   console.log('POPUP',pass,popup.url());
+   if(pass===0){await popup.locator('#login').click();await popup.waitForURL('**/poster/upload?test-login=1');}
    await popup.waitForSelector('#pattern-handoff-status',{timeout:25000});
    await popup.waitForFunction(()=>document.querySelector('input[name=poster]')?.files?.length===1,null,{timeout:25000});
    const file=await popup.locator('input[name=poster]').evaluate(el=>({name:el.files[0].name,size:el.files[0].size}));
