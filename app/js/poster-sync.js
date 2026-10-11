@@ -20,15 +20,16 @@
  async function send(etsyApi,{onReport=()=>{},onStatus=()=>{}}={}){
    if(pending)throw Error("A transfer to Sapiver Prints is already in progress.");
    const project=window.PatternForgeEtsyBridge?.state?.project;
-   if(!project||!PROJECT_ID.test(project.id))throw Error("Save a named Pattern Project before sending it to Sapiver Prints.");
+   if(!project||project.isPractice===true||!PROJECT_ID.test(project.id))throw Error("Save a named Pattern Project before sending it to Sapiver Prints.");
    const checks=etsyApi.check();
    if(checks.some(c=>c.state==="fail")){onReport({checks,blockers:checks.filter(c=>c.state==="fail")});throw Error("Fix the failed Etsy export checks before sending.");}
-   // Open while processing a direct user click, before awaiting expensive image/ZIP work.
-   const target=window.open(POSTER_ORIGIN+"/poster/upload","_blank");
-   if(!target)throw Error("Your browser blocked the Sapiver Prints tab. Allow pop-ups or use Check & build Etsy kit instead.");
-   pending=true;
    const projectId=project.id,projectTitle=String(project.title||"Seamless pattern").trim().slice(0,100);
    const existingId=safeStorage.get(projectId);
+   // Open while processing a direct user click, before awaiting expensive image/ZIP work.
+   // An existing link preloads the private listing record and its approved details.
+   const target=window.open(POSTER_ORIGIN+"/poster/upload"+(existingId?"?update="+encodeURIComponent(existingId):""),"_blank");
+   if(!target)throw Error("Your browser blocked the Sapiver Prints tab. Allow pop-ups or use Check & build Etsy kit instead.");
+   pending=true;
    let kitBlob=null,kitName="",challenge="",received=false,delivered=false,closed=false;
    const status=message=>{onStatus(message);window.PatternForgeEtsyBridge?.setStatus(message);};
    function cleanup(){if(closed)return;closed=true;pending=false;clearTimeout(expiry);window.removeEventListener("message",receive);}
