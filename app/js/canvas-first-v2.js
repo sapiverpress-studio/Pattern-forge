@@ -175,15 +175,30 @@
     $('ux2Hint').textContent=hints[tool]||'Create on the canvas';
     if(tool==='brush'||tool==='eraser'){
       const size=$('brushSize')?.value||20, opacity=$('inkOpacity')?.value||100, style=$('brushStyle')?.value||'ink',stabilisation=$('strokeStabilisation')?.value||'off';
-      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">${tool==='eraser'?'Eraser':'Brush'}</span><select id="ux2BrushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select>${tool==='brush'?'<button class="ux2-chip" id="ux2BrushLibrary">Brush library</button>':''}</div><div class="ux2-context-group"><label class="ux2-slider">Size <input id="ux2Size" type="range" min="2" max="400" value="${size}"><b id="ux2SizeOut">${size}</b></label><label class="ux2-slider">Opacity <input id="ux2Opacity" type="range" min="5" max="100" value="${opacity}"><b id="ux2OpacityOut">${opacity}%</b></label>${tool==='brush'?'<label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750">Stabilise <select id="ux2Stabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong">Strong</option></select></label><label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750"><input id="ux2PressureWidth" type="checkbox"> Pressure width</label>':''}</div>`;
+      context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">${tool==='eraser'?'Eraser':'Brush'}</span><select id="ux2BrushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="impasto">Oil impasto</option><option value="piped">Piped paint</option><option value="knife">Palette knife</option><option value="stamp">Stamp</option></select>${tool==='brush'?'<button class="ux2-chip" id="ux2BrushLibrary">Brush library</button>':''}</div><div class="ux2-context-group"><label class="ux2-slider">Size <input id="ux2Size" type="range" min="2" max="400" value="${size}"><b id="ux2SizeOut">${size}</b></label><label class="ux2-slider">Opacity <input id="ux2Opacity" type="range" min="5" max="100" value="${opacity}"><b id="ux2OpacityOut">${opacity}%</b></label>${tool==='brush'?'<label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750">Stabilise <select id="ux2Stabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong">Strong</option></select></label><label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750"><input id="ux2PressureWidth" type="checkbox"> Pressure width</label>':''}</div>`;
       if(tool==='brush')showJoinControls();
       $('ux2BrushStyle').value=style;
-      $('ux2BrushStyle').addEventListener('change',e=>dispatchValue('brushStyle',e.target.value,'change'));
+      $('ux2BrushStyle').addEventListener('change',e=>{
+        const chosen=e.target.value;dispatchValue('brushStyle',chosen,'change');
+        if(['impasto','piped','knife'].includes(chosen)){
+          if(Number($('brushSize')?.value)<110)dispatchValue('brushSize','150');
+          if(Number($('textureAmount')?.value)<65)dispatchValue('textureAmount','80');
+        }
+        renderContext(tool);
+      });
       if($('ux2Stabilisation')){$('ux2Stabilisation').value=stabilisation;$('ux2Stabilisation').addEventListener('change',e=>dispatchValue('strokeStabilisation',e.target.value,'change'))}
       if($('ux2PressureWidth')){$('ux2PressureWidth').checked=!!$('pressureWidth')?.checked;$('ux2PressureWidth').addEventListener('change',e=>dispatchChecked('pressureWidth',e.target.checked))}
       $('ux2Size').addEventListener('input',e=>{dispatchValue('brushSize',e.target.value);$('ux2SizeOut').textContent=e.target.value});
       $('ux2Opacity').addEventListener('input',e=>{dispatchValue('inkOpacity',e.target.value);$('ux2OpacityOut').textContent=e.target.value+'%'});
       if($('ux2BrushLibrary'))$('ux2BrushLibrary').addEventListener('click',()=>openPanel('brushes'));
+      if(['impasto','piped','knife'].includes(style)&&tool==='brush'){
+        const slider=document.createElement('label');slider.className='ux2-slider';
+        slider.textContent='Relief ';
+        const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.value=$('textureAmount')?.value||80;input.id='ux2PaintRelief';
+        const output=document.createElement('b');output.textContent=input.value+'%';
+        input.addEventListener('input',()=>{dispatchValue('textureAmount',input.value);output.textContent=input.value+'%'});
+        slider.append(input,output);const group=document.createElement('div');group.className='ux2-context-group';group.append(slider);context.append(group);
+      }
     } else if(['line','rect','ellipse'].includes(tool)){
       const size=$('brushSize')?.value||20,filled=$('shapeFill')?.checked;
       context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Shape</span><button class="ux2-chip ${tool==='line'?'active':''}" id="ux2Line">Line</button><button class="ux2-chip ${tool==='rect'?'active':''}" id="ux2Rect">Rectangle</button><button class="ux2-chip ${tool==='ellipse'?'active':''}" id="ux2Ellipse">Ellipse</button></div><div class="ux2-context-group"><label class="ux2-slider">Width <input id="ux2ShapeWidth" type="range" min="2" max="400" value="${size}"><b>${size}</b></label>${tool==='line'?'':`<label style="display:flex;align-items:center;gap:6px;font-size:11px"><input id="ux2ShapeFill" type="checkbox" ${filled?'checked':''}> Fill shape</label>`}<button class="ux2-chip" id="ux2ShapeColour">Colour</button></div>`;
@@ -251,9 +266,9 @@
 
   function brushPanel(){
     const current=$('brushStyle')?.value||'ink',pressure=!!$('pressureWidth')?.checked,min=$('pressureMin')?.value||18,response=$('pressureSensitivity')?.value||100;
-    const styles=[['ink','Ink','Clean, solid line'],['pencil','Pencil','Lighter textured edge'],['marker','Marker','Broader translucent stroke'],['texture','Textured paint','Broken paint texture'],['stamp','Stamp','Repeated shape marks']];
+    const styles=[['ink','Ink','Clean, solid line'],['pencil','Pencil','Lighter textured edge'],['marker','Marker','Broader translucent stroke'],['texture','Textured paint','Broken paint texture'],['impasto','Oil impasto','Raised bristle ridges, glossy edges and thick pigment'],['piped','Piped paint','Rounded cake-icing swirls and deep grooves'],['knife','Palette knife','Broad buttery paint, carved highlights and scraped edges'],['stamp','Stamp','Repeated shape marks']];
     const pressureBlock=`<div class="ux2-panel-block"><div class="ux2-panel-label">Stylus pressure</div><label class="ux2-check"><input id="ux2PressurePanelEnable" type="checkbox" ${pressure?'checked':''}> Pressure controls stroke width</label><label class="ux2-slider">Minimum width <input id="ux2PressureMin" type="range" min="5" max="80" value="${min}"><b id="ux2PressureMinOut">${min}%</b></label><label class="ux2-slider">Pressure response <input id="ux2PressureResponse" type="range" min="0" max="100" value="${response}"><b id="ux2PressureResponseOut">${response}%</b></label><p class="ux2-info">Stylus only. Mouse and finger drawing use full width. Stroke stabilisation also smooths sudden pressure spikes.</p></div>`;
-    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Brush library</div><div class="ux2-brush-list">${styles.map(([value,name,desc])=>`<button class="ux2-brush-card ${current===value?'active':''}" data-brush-style="${value}"><span class="ux2-brush-sample ${value}"></span><span><strong>${name}</strong><small>${desc}</small></span></button>`).join('')}</div></div>${pressureBlock}${current==='stamp'?`<div class="ux2-panel-block"><div class="ux2-panel-label">Stamp shape</div><div class="ux2-segment"><button data-stamp="leaf">Leaf</button><button data-stamp="star">Star</button><button data-stamp="dot">Dot</button></div></div>`:''}`;
+    return `<div class="ux2-panel-block"><div class="ux2-panel-label">Brush library</div><p class="ux2-info">For the raised oil and icing brushes, use a large size (130–400px) and adjust Relief for depth. Highlights and grooves export as editable vector paint.</p><div class="ux2-brush-list">${styles.map(([value,name,desc])=>`<button class="ux2-brush-card ${current===value?'active':''}" data-brush-style="${value}"><span class="ux2-brush-sample ${value}"></span><span><strong>${name}</strong><small>${desc}</small></span></button>`).join('')}</div></div>${pressureBlock}${current==='stamp'?`<div class="ux2-panel-block"><div class="ux2-panel-label">Stamp shape</div><div class="ux2-segment"><button data-stamp="leaf">Leaf</button><button data-stamp="star">Star</button><button data-stamp="dot">Dot</button></div></div>`:''}`;
   }
 
   function colourPanel(){
@@ -487,7 +502,15 @@
     }
     if(name==='motifs')wireMotifPanel();
     if(name==='brushes'){
-      document.querySelectorAll('[data-brush-style]').forEach(b=>b.addEventListener('click',()=>{dispatchValue('brushStyle',b.dataset.brushStyle,'change');setTool('brush');openPanel('brushes')}));
+      document.querySelectorAll('[data-brush-style]').forEach(b=>b.addEventListener('click',()=>{
+        const style=b.dataset.brushStyle;dispatchValue('brushStyle',style,'change');
+        if(['impasto','piped','knife'].includes(style)){
+          const minimum=style==='knife'?170:style==='piped'?140:130;
+          if(Number($('brushSize')?.value)<minimum)dispatchValue('brushSize',String(minimum));
+          if(Number($('textureAmount')?.value)<70)dispatchValue('textureAmount','80');
+        }
+        setTool('brush');openPanel('brushes');
+      }));
       document.querySelectorAll('[data-stamp]').forEach(b=>b.addEventListener('click',()=>dispatchValue('stampShape',b.dataset.stamp,'change')));
       $('ux2PressurePanelEnable')?.addEventListener('change',e=>{dispatchChecked('pressureWidth',e.target.checked);const top=$('ux2PressureWidth');if(top)top.checked=e.target.checked});
       $('ux2PressureMin')?.addEventListener('input',e=>{dispatchValue('pressureMin',e.target.value);$('ux2PressureMinOut').textContent=e.target.value+'%'});
