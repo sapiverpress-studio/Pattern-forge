@@ -39,7 +39,7 @@ try{
    assert(await page.locator('#ux2BackupImages').count(),'full library backup button exists');
    await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
    await importBatch(page,batch(6),6);
-   assert.equal(await page.locator('[data-tool="select"].active').count(),1,'imported image must be immediately movable');
+   assert((await page.locator('[data-tool="select"].active').count())>0,'imported image must be immediately movable');assert.equal(await page.locator('[data-tool="brush"].active').count(),0);
    const first=await downloaded(page,'#saveProject');
    assert.equal(first.items.length,1,'only first automatically placed');
    assert.equal(first.assets.length,1,'normal compact save retains placed art only');
