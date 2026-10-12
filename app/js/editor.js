@@ -1834,6 +1834,19 @@
       if(state.activeMark.pressureWidth){const rawPressure=pointerPressure(e,last.p??.5);end.p=stabilisePressure(last.p??rawPressure,rawPressure);}
       if(Math.hypot(end.x-last.x,end.y-last.y)>.5)state.activeMark.points.push(end);
     }
+    // Close only near-complete hand-drawn loops. The joining distance is in CSS
+    // screen pixels, so a zoomed-out canvas gets the same finger-sized target.
+    const mark=state.activeMark;
+    if(mark&&["brush","freefill"].includes(mark.type)&&$("autoCloseShapes").checked
+       &&(mark.type!=="brush"||mark.brushStyle!=="stamp")){
+      const bounds=canvas.getBoundingClientRect();
+      const tolerancePx=clamp(Number($("autoCloseTolerance").value)||24,10,40);
+      const worldTolerance=tolerancePx*canvas.width/Math.max(1,bounds.width)/Math.max(.01,viewScale());
+      const result=window.PatternForgeStrokeClosure?.closeNearLoop(mark.points,{
+        tolerance:worldTolerance,period:isDoodleProject()?0:TILE
+      });
+      if(result){mark.points=result.points;mark.autoClosed=true;}
+    }
     state.pointers.delete(e.pointerId);if(state.pointers.size<2)state.gesture=null;
     if(state.transformState?.kind==="selection"){
       for(const member of state.transformState.members||[]){if(member.kind==="mark"){const mark=state.marks.find(m=>m.id===member.id);if(mark)normaliseMarkTranslation(mark);}}
@@ -2121,6 +2134,13 @@
     empty.hidden=records.some(r=>r.project.id!==state.project?.id);
     empty.textContent=typeof indexedDB==="undefined"?"Saved project listing needs browser device storage. Open a JSON project or ZIP instead.":"No other saved projects on this device yet.";
   }
+  function setDrawingDefaults(){
+    $("strokeStabilisation").value="strong";
+    $("autoCloseShapes").checked=true;
+    $("autoCloseTolerance").value="24";
+    $("autoCloseToleranceLabel").textContent="24";
+    $("snapOn").checked=true;
+  }
   function createProjectFromSetup(event){
     event.preventDefault();
     const title=$("projectTitleInput").value.trim();if(!title){$("projectTitleInput").focus();return;}
@@ -2133,7 +2153,7 @@
         $("gridOn").checked=true;
         updateSettingReadouts();
       }
-      if(!promotePractice){state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
+      if(!promotePractice){setDrawingDefaults();state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
       setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
@@ -2144,7 +2164,7 @@
     if(state.project)await saveAutosave();
     const now=new Date().toISOString();
     state.project={id:newProjectId(),title:"Practice mode",customer:"",theme:"",variation:"",projectType:"pattern",repeatStyle:"straight",isPractice:true,createdAt:now,updatedAt:now};
-    state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
+    setDrawingDefaults();state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];
     $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();
     await saveAutosave();
     setStatus("Practice mode started. Your practice work autosaves on this device; save it as a named Pattern Project when you’re ready.");
@@ -2246,7 +2266,7 @@
       templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,autoCloseShapes:$("autoCloseShapes").checked,autoCloseTolerance:Number($("autoCloseTolerance").value),pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
@@ -2459,9 +2479,15 @@
     state.assets=assets;state.items=data.items.map(item=>({...item,groupId:typeof item.groupId==="string"?item.groupId:null,layerId:validLayerIds.has(String(item.layerId))?String(item.layerId):motifsFallback}));state.marks=data.marks.map(m=>({opacity:1,texture:0,brushStyle:"ink",stampShape:"leaf",...m,groupId:typeof m.groupId==="string"?m.groupId:null,layerId:validLayerIds.has(String(m.layerId))?String(m.layerId):drawingFallback}));
     state.recentAssetIds=assets.slice(-9).reverse().map(a=>a.id);state.variations=Array.isArray(data.variations)?data.variations.slice(0,30):[];state.nextId=Math.max(1,Number(data.nextId)||1);clearSelection();state.past=[];state.future=[];
     $("bg").value=data.background||"#ffffff";$("transparent").checked=isDoodleProject()?true:!!data.transparent;if(typeof data.seed==="string")$("seed").value=data.seed;const s=data.settings||{};
+    // Missing values in older projects inherit the new defaults, regardless
+    // of the last project opened on this device.
+    $("strokeStabilisation").value="strong";
+    $("autoCloseShapes").checked=s.autoCloseShapes===undefined?true:!!s.autoCloseShapes;
+    $("autoCloseTolerance").value=String(clamp(Number(s.autoCloseTolerance)||24,10,40));
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
     for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
+    $("autoCloseToleranceLabel").textContent=$("autoCloseTolerance").value;
     $("brushSizeLabel").textContent=$("brushSize").value;$("pressureMinLabel").textContent=$("pressureMin").value+"%";$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
     updateProjectModeUi();rebuildAssetGrid();renderAll();setProjectBadge();updatePixelReadout();updateSettingReadouts();updatePrintEligibility();saveAutosave();
   }
@@ -2572,6 +2598,8 @@
   $("bucketTolerance").addEventListener("input",()=>{$("bucketToleranceLabel").textContent=$("bucketTolerance").value+"%";scheduleAutosave();});
   $("bucketSampleVisible").addEventListener("change",scheduleAutosave);
   $("strokeStabilisation").addEventListener("change",scheduleAutosave);
+  $("autoCloseShapes").addEventListener("change",scheduleAutosave);
+  $("autoCloseTolerance").addEventListener("input",()=>{$("autoCloseToleranceLabel").textContent=$("autoCloseTolerance").value;scheduleAutosave();});
   $("pressureMin").addEventListener("input",()=>{$("pressureMinLabel").textContent=$("pressureMin").value+"%";scheduleAutosave();});
   $("pressureSensitivity").addEventListener("input",()=>{$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";scheduleAutosave();});
   $("pressureWidth").addEventListener("change",scheduleAutosave);
