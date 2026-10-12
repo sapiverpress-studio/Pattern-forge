@@ -1041,6 +1041,9 @@
     const opacity=clamp(Number(m.opacity??1),.05,1)*clamp(Number(alphaMultiplier??1),0,1),style=m.brushStyle||"ink";
     c.save();c.strokeStyle=m.color;c.fillStyle=m.color;c.lineWidth=m.width;
     c.lineCap="round";c.lineJoin="round";c.globalAlpha=opacity;
+    if(m.type==="brush"&&window.PatternForgeRaisedPaint?.styles.includes(style)){
+      window.PatternForgeRaisedPaint.draw(c,m);c.restore();return;
+    }
     if(m.type==="eraser"){
       c.globalCompositeOperation="destination-out";c.globalAlpha=1;c.lineWidth=m.width;
       c.beginPath();c.moveTo(pts[0].x,pts[0].y);if(pts.length===1)c.lineTo(pts[0].x+.01,pts[0].y+.01);else for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.stroke();c.restore();return;
@@ -1643,7 +1646,7 @@
     }return inside;
   }
   function rawMarkHit(m,p,tolerance){
-    const pts=m.points||[];if(!pts.length)return false;const first=pts[0],last=pts[pts.length-1],brush=m.brushStyle||"ink",strokeFactor=m.type==="brush"?(brush==="marker"?1.8:brush==="pencil"?.72:1):1,strokeRadius=Math.max(tolerance,(Number(m.width)||1)*strokeFactor/2);
+    const pts=m.points||[];if(!pts.length)return false;const first=pts[0],last=pts[pts.length-1],brush=m.brushStyle||"ink",strokeFactor=m.type==="brush"?(brush==="marker"?1.8:brush==="pencil"?.72:brush==="knife"?1.3:brush==="impasto"?1.18:brush==="piped"?1.12:1):1,strokeRadius=Math.max(tolerance,(Number(m.width)||1)*strokeFactor/2);
     if(m.type==="rect"){
       const left=Math.min(first.x,last.x),right=Math.max(first.x,last.x),top=Math.min(first.y,last.y),bottom=Math.max(first.y,last.y),inside=p.x>=left&&p.x<=right&&p.y>=top&&p.y<=bottom;if(m.fill)return inside;
       return (p.x>=left-tolerance&&p.x<=right+tolerance&&(Math.abs(p.y-top)<=strokeRadius||Math.abs(p.y-bottom)<=strokeRadius))||(p.y>=top-tolerance&&p.y<=bottom+tolerance&&(Math.abs(p.x-left)<=strokeRadius||Math.abs(p.x-right)<=strokeRadius));
@@ -2066,7 +2069,9 @@
         stamp(first.x,first.y,0);for(let i=1;i<m.points.length;i++){const a=m.points[i-1],b=m.points[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);for(let d=carry;d<=len;d+=spacing){const t=d/len;stamp(a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx));}carry=((carry-len)%spacing+spacing)%spacing||spacing;}
         shape=parts.join("");
       }
-      if(m.type==="brush"&&m.pressureWidth&&(m.brushStyle||"ink")!=="stamp"){
+      const raisedPaint=m.type==="brush"&&window.PatternForgeRaisedPaint?.styles.includes(m.brushStyle);
+      if(raisedPaint)shape=window.PatternForgeRaisedPaint.toSVG(m);
+      if(m.type==="brush"&&m.pressureWidth&&(m.brushStyle||"ink")!=="stamp"&&!raisedPaint){
         const pressureStyle=m.brushStyle||"ink",segments=[];
         if(m.points.length===1){
           const width=brushWidthAtPressure(m,pressureStyle,m.points[0].p);segments.push(`<circle cx="${m.points[0].x}" cy="${m.points[0].y}" r="${width/2}" fill="${svgEscape(m.color)}" stroke="none"/>`);
@@ -2084,7 +2089,8 @@
         if(dots.length)shape=`<g>${shape}${dots.join("")}</g>`;
       }
       let style;
-      if(m.type==="eraser")style=`stroke="#000" stroke-width="${m.width}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="1"`;
+      if(raisedPaint)style=`opacity="${(m.opacity??1)*layer.opacity}"`;
+      else if(m.type==="eraser")style=`stroke="#000" stroke-width="${m.width}" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="1"`;
       else if(m.type==="gradient"){
         const id=`tile-gradient-${++gradientId}`;
         const dir=m.gradientDirection||"diagonal",x1=dir==="horizontal"?"0%":"0%",y1=dir==="vertical"?"0%":"0%",x2=dir==="vertical"?"0%":"100%",y2=dir==="horizontal"?"0%":"100%";
