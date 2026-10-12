@@ -511,7 +511,13 @@
     };
     saveHistory();
     state.items.push(item);
-    state.selectedId=item.id;
+    setSelection([item.id],item.id);
+    // A newly imported image is visibly selected. Switch the *active tool* to
+    // Select as well, otherwise a user sees handles but drawing/erasing starts
+    // when they try to drag. Honour UX2 and the legacy editor alike.
+    const selectButton=document.querySelector('[data-ux2-tool="select"]')||document.querySelector('[data-tool="select"]');
+    if(selectButton)selectButton.click();
+    else state.tool="select";
     renderAll();
   }
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
