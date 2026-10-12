@@ -1,0 +1,43 @@
+name: Drawing assistance regression checks
+on:
+  push:
+    branches: [feature/strong-stabilisation-auto-close-20261012]
+    paths:
+      - app/index.html
+      - app/js/stroke-closure.js
+      - app/js/editor.js
+      - app/js/canvas-first-v2.js
+      - tests/auto-close-geometry.test.mjs
+      - tests/auto-close-browser.mjs
+      - .github/workflows/drawing-assistance-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  drawing-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check script syntax
+        run: |
+          node --check app/js/stroke-closure.js
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check tests/auto-close-geometry.test.mjs
+          node --check tests/auto-close-browser.mjs
+      - name: Run pure geometry regression tests
+        run: node --test tests/auto-close-geometry.test.mjs
+      - name: Install browser runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run real full-app Chromium checks (no deployment)
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/drawing-assistance-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/auto-close-browser.mjs
