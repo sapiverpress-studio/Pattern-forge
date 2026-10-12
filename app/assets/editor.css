@@ -57,6 +57,7 @@
   .stageBar .stageDescription{white-space:nowrap}
   .stageBar .btn{padding:7px 9px;white-space:nowrap}
   #editorCanvas{display:block;width:100%;height:auto;touch-action:none;background:#e9e4da;cursor:crosshair}
+  #editorCanvas.dragging-image{cursor:grabbing!important}
   .toolRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:8px 0}
   .toolRow .btn{min-width:0;padding:8px 3px;font-size:.75rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere;min-height:38px}
   .toolRow .btn.active,.mobileTools .btn.active{background:#173d36;color:#fff;border-color:#173d36}
