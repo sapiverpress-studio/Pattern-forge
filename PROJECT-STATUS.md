@@ -1,5 +1,18 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Drawing assistance production release VERIFIED
+
+**DEPLOYED on the existing production website**, https://sapiver-pattern-forge.netlify.app/app/, after Jim explicitly authorised "Deploy" on 12 October. Safe fast-forward of `main` from `89ded43676a0f81b8e57c5d092f4196211921a92` to **`cd69f4174550b476bae5988925e5c06ee77d27dd`**, which contains only the previously audited Strong / Auto-close / Snap change set and tests. No PR #6 (Poster_gen transfer) was included.
+
+**Netlify source-to-published verification:** site `25cb894e-3e25-404a-b784-1b65fc8ce933`, production deploy `6acc7c9c9f99880008db10d4`, state **ready**, `commit_ref=cd69f4174550b476bae5988925e5c06ee77d27dd`, published 12 Oct 2026 06:22 UTC. Release permalink https://6acc7c9c9f99880008db10d4--sapiver-pattern-forge.netlify.app/ . Previous production deploy `6ac9067f42301d0008b605d5` remains known for rollback reference. Separate staging site was verified unchanged at deploy `6ac226566d5c6842cea2c5c8`. No APK or AAB built.
+
+**Actual public website accepted:** Live GitHub Actions run [38212347780](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38212347780) completed successfully. It fetched production HTTPS `/app/`, `/app/js/stroke-closure.js`, `editor.js` and `canvas-first-v2.js` and confirmed default Strong, default checked auto-close, default checked snapping, closure engine and UX2 controls all served correctly. **Three/three Chromium browser flows passed against the live site**, drawing and exporting a closed oval, retaining open lines, undo/redo, project save/reopen, Doodle, and Brush/Fill UI controls. These disposable browser sessions do not write server-side data. The pre-release CI run [38209627559](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38209627559) also passed 5/5 geometry, 3/3 local browser flows, and 31/31 existing regressions.
+
+**Remaining gate:** physically try finger/stylus input on the actual Android device; synthetic Chromium is not a substitute. Android wrapper may load the hosted version but no native build was made or verified. Legacy saved designs' recorded preferences remain respected; new projects get Strong/Auto-close/Snap. **Do not equate this release with the still-unpublished Pattern Forge → Poster_gen draft PR #6.**
+
+**Documentation location:** This final deployment record was committed to the separate source-feature branch to avoid causing a second production deploy merely for documentation; the previously published `main` commit contains the approved pre-deploy release checkpoint.
+
+
 ## 12 October 2026 — Strong stabiliser and automatic freehand closure (development only)
 
 **Approved for one controlled PRODUCTION WEBSITE deployment on 12 October 2026, NOT an Android APK/AAB release.** Source branch `feature/strong-stabilisation-auto-close-20261012` is tested; production publishing and live verification are separate stages. User originally placed deployment on hold, then explicitly authorised **Deploy** on 12 October. Poster_gen draft PR #6 remains separate and excluded.
