@@ -102,10 +102,11 @@
       <div class="field"><label for="brushSize">Brush / outline size <span id="brushSizeLabel">20</span> px at export</label><input id="brushSize" type="range" min="2" max="400" value="20"></div>
       <div class="row">
         <div class="field"><label for="brushStyle">Brush style</label><select id="brushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select></div>
-        <div class="field"><label for="strokeStabilisation">Stroke stabilisation</label><select id="strokeStabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong">Strong</option></select></div>
+        <div class="field"><label for="strokeStabilisation">Stroke stabilisation</label><select id="strokeStabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong" selected>Strong</option></select></div>
         <label class="check"><input id="pressureWidth" type="checkbox"> Stylus pressure controls width</label>
         <div class="field"><label for="stampShape">Stamp shape</label><select id="stampShape"><option value="leaf">Leaf</option><option value="star">Star</option><option value="dot">Dot</option></select></div>
       </div>
+      <div class="row"><label class="check"><input id="autoCloseShapes" type="checkbox" checked> Auto-close near-complete freehand shapes</label><div class="field"><label for="autoCloseTolerance">Join distance <span id="autoCloseToleranceLabel">24</span> screen px</label><input id="autoCloseTolerance" type="range" min="10" max="40" step="2" value="24"></div></div>
       <div class="row pressureControls">
         <div class="field"><label for="pressureMin">Minimum pressure width <span id="pressureMinLabel">18%</span></label><input id="pressureMin" type="range" min="5" max="80" value="18"></div>
         <div class="field"><label for="pressureSensitivity">Pressure response <span id="pressureSensitivityLabel">100%</span></label><input id="pressureSensitivity" type="range" min="0" max="100" value="100"></div>
@@ -127,7 +128,7 @@
       <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
       <button id="startAgain" class="btn danger" type="button" style="width:100%;margin-top:8px">Start again</button>
       <p class="help">Start again clears placed images and drawing marks, but keeps this project’s setup, imported image library, layers and settings.</p>
-      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.</p>
+      <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Brush strokes ending near their starting point form a closed loop when Auto-close is enabled. Clearly open strokes remain open. Draw across edges to wrap. Two fingers zoom and move.</p>
 
       <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
       <summary id="tileSettingsSummary">Tile and placement settings</summary>
@@ -147,7 +148,7 @@
         <div class="field"><label for="guideOpacity">Guide opacity <span id="guideOpacityLabel">55%</span></label><input id="guideOpacity" type="range" min="10" max="100" value="55"></div>
       </div>
       <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
-      <label class="check"><input id="snapOn" type="checkbox"> Smart snapping</label>
+      <label class="check"><input id="snapOn" type="checkbox" checked> Smart snapping</label>
       <p id="snapHelp" class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
 
       <div id="backgroundSettingsRow" class="row">
@@ -358,6 +359,7 @@
 </div>
 
 <script src="/app/js/platform.js"></script>
+<script src="/app/js/stroke-closure.js"></script>
 <script src="/app/js/editor.js"></script>
 <script src="/app/js/etsy-export.js"></script>
 <script src="/app/js/workspace.js"></script>
