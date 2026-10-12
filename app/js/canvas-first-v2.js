@@ -32,7 +32,7 @@
         <button class="ux2-tool" data-ux2-tool="eraser" aria-label="Erase">${icon('eraser')}<b>Erase</b></button>
         <button class="ux2-tool" data-ux2-tool="freefill" aria-label="Fill">${icon('fill')}<b>Fill</b></button>
         <button class="ux2-tool" data-ux2-tool="pan" aria-label="Pan">${icon('pan')}<b>Pan</b></button>
-        <button class="ux2-tool" data-ux2-action="image" aria-label="Image">${icon('image')}<b>Image</b></button>
+        <button class="ux2-tool" data-ux2-action="image" aria-label="Images">${icon('image')}<b>Images</b></button>
         <button class="ux2-tool" data-ux2-tool="rect" aria-label="Shape">${icon('shape')}<b>Shape</b></button>
       </nav>
       <main class="ux2-canvas-area">
@@ -66,7 +66,7 @@
     {id:'eraser',label:'Erase',icon:'eraser',detail:'Size & opacity'},
     {id:'freefill',label:'Fill',icon:'fill',detail:'Bucket, gradient & tolerance'},
     {id:'pan',label:'Pan',icon:'pan',detail:'Move around the canvas'},
-    {id:'image',label:'Image',icon:'image',detail:'Import artwork'},
+    {id:'image',label:'Images',icon:'image',detail:'Upload 5+ images and manage the library'},
     {id:'rect',label:'Shape',icon:'shape',detail:'Line, rectangle & ellipse'}
   ];
   const favouriteStorageKey='patternForgeUx2FavouriteTools';
@@ -414,6 +414,32 @@
     return `<div class="ux2-panel-block"><div class="ux2-panel-label">Repeat</div><div class="ux2-repeat-card"><strong>${repeat}</strong><span>${$('pixelReadout')?.textContent||'4000 × 4000'} raster master · adaptable design</span></div><button class="ux2-btn" id="ux2FullPreview" style="width:100%;margin-top:8px">Full repeat preview</button><button class="ux2-btn" id="ux2SeamInspect" style="width:100%;margin-top:7px">Inspect seams</button><label class="ux2-slider" style="margin-top:8px">Repeat visibility <input id="ux2Neighbour" type="range" min="15" max="100" value="${$('neighborOpacity')?.value||35}"></label><label class="ux2-check"><input id="ux2TileEdge" type="checkbox" ${$('showTileBorder')?.checked?'checked':''}> Show centre tile edge</label></div>${templatePanel()}${masterOutputPanel()}${scatterPanel()}${variationPanel()}${canvasAssistControls(paletteOptions)}`;
   }
 
+  function imagesPanel(){
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Your image library</div><button class="ux2-btn primary" id="ux2ImportImages" type="button" style="width:100%">+ Choose images (5 or more at once)</button><p class="ux2-info">Select multiple PNG, JPG, WebP or SVG files in one picker. The first image is placed automatically; add the others from the library below.</p><strong class="ux2-image-count" id="ux2ImageCount" aria-live="polite"></strong><div class="ux2-image-grid" id="ux2ImageLibrary"></div></div><div class="ux2-panel-block"><div class="ux2-panel-label">Keep every imported image</div><button class="ux2-btn" id="ux2BackupImages" type="button" style="width:100%">Back up project + all images</button><p class="ux2-info">Normal compact exports keep only images placed on the canvas. This separate backup also keeps images waiting in your library, for reopening on another device.</p></div>';
+  }
+  function renderImageLibrary(){
+    const host=$('ux2ImageLibrary'),count=$('ux2ImageCount');if(!host||!count)return;
+    host.replaceChildren();
+    const api=window.PatternForgeImageLibrary,assets=api?.list()||[];
+    count.textContent=assets.length+' uploaded image'+(assets.length===1?'':'s');
+    if(!assets.length){
+      const empty=document.createElement('p');empty.className='ux2-info';empty.textContent='No images added yet. Choose five or more images together, or start with one.';host.append(empty);return;
+    }
+    for(const asset of assets){
+      const card=document.createElement('div');card.className='ux2-image-card';
+      const img=document.createElement('img');img.src=asset.src;img.alt='';img.loading='lazy';
+      const body=document.createElement('div');body.className='ux2-image-details';
+      const name=document.createElement('strong');name.textContent=asset.name;name.title=asset.name;
+      const meta=document.createElement('small');meta.textContent=asset.w+' × '+asset.h+' px · '+asset.placed+' on canvas';
+      const actions=document.createElement('div');actions.className='ux2-image-actions';
+      const add=document.createElement('button');add.type='button';add.className='ux2-btn primary';add.textContent='Add to canvas';add.setAttribute('aria-label','Add '+asset.name+' to canvas');
+      add.addEventListener('click',()=>{api.place(asset.id);renderImageLibrary()});
+      const remove=document.createElement('button');remove.type='button';remove.className='ux2-btn';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+asset.name+' from library');
+      remove.addEventListener('click',()=>{api.remove(asset.id);renderImageLibrary()});
+      actions.append(add,remove);body.append(name,meta,actions);card.append(img,body);host.append(card);
+    }
+  }
+
   function exportPanel(){
     const quality=$('quality')?.textContent?.trim()||'Add artwork to check raster-source enlargement.',pixels=$('pixelReadout')?.textContent||'4000 × 4000',doodle=document.body.classList.contains('doodle-project');
     const exportNote=doodle?'Transparent background is preserved for PNG and SVG. Raster dimensions describe the master file, not a physical size.':'Raster dimensions describe the complete seamless master, not a physical size.';
@@ -438,9 +464,15 @@
 
   function openPanel(name){
     const p=$('ux2Palette'), body=$('ux2PaletteBody'); p.hidden=false;
-    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='motifs'?'My Motifs':name==='pattern'?(document.body.classList.contains('doodle-project')?'Canvas setup':'Design setup'):name==='brushes'?'Brush Library':'Export';
-    body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='motifs'?motifPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
+    $('ux2PaletteTitle').textContent=name==='colour'?'Colour':name==='layers'?'Layers':name==='motifs'?'My Motifs':name==='images'?'Images':name==='pattern'?(document.body.classList.contains('doodle-project')?'Canvas setup':'Design setup'):name==='brushes'?'Brush Library':'Export';
+    body.innerHTML=name==='colour'?colourPanel():name==='layers'?layerPanel():name==='motifs'?motifPanel():name==='images'?imagesPanel():name==='pattern'?patternPanel():name==='brushes'?brushPanel():exportPanel();
+    p.dataset.panel=name;
     document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.toggle('active',b.dataset.ux2Panel===name));
+    if(name==='images'){
+      renderImageLibrary();
+      $('ux2ImportImages').addEventListener('click',()=>{$('files')?.click()});
+      $('ux2BackupImages').addEventListener('click',()=>window.PatternForgeImageLibrary?.backupAll());
+    }
     if(name==='colour'){
       $('ux2ColourInput').addEventListener('input',e=>dispatchValue('ink',e.target.value));
       $('ux2Eyedropper').addEventListener('click',()=>setTool('eyedropper'));
@@ -536,7 +568,9 @@
   $('ux2Export').addEventListener('click',()=>openPanel('export'));$('ux2Fit').addEventListener('click',()=>clickOld('fit'));$('ux2ZoomOut').addEventListener('click',()=>clickOld('zoomOut'));$('ux2ZoomIn').addEventListener('click',()=>clickOld('zoomIn'));
   $('ux2PaletteClose').addEventListener('click',()=>{$('ux2Palette').hidden=true;document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'))});
   document.querySelectorAll('[data-ux2-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.ux2Tool)));
-  document.querySelectorAll('[data-ux2-action="image"]').forEach(b=>b.addEventListener('click',()=>{const picker=document.getElementById('files');if(picker)picker.click()}));
+  document.querySelectorAll('[data-ux2-action="image"]').forEach(b=>b.addEventListener('click',()=>openPanel('images')));
+  window.addEventListener('patternforge:images-imported',()=>openPanel('images'));
+  window.addEventListener('patternforge:images-changed',()=>{if(!$('ux2Palette')?.hidden&&$('ux2Palette')?.dataset.panel==='images')renderImageLibrary()});
   document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.addEventListener('click',()=>openPanel(b.dataset.ux2Panel)));
 
   const setText=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value};
