@@ -1,5 +1,18 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Responsive image dragging PRODUCTION DEPLOYED AND VERIFIED
+
+**Production website release is complete, explicitly approved by owner (“Deploy and tell me how to update the app”).** At the release checkpoint, `main` was `cd69f4174550b476bae5988925e5c06ee77d27dd`; the reviewed feature branch was fast-forward-promoted once to `0f0b8fe22f003b1e11a8e4383c38568ab4f5dfa8` with five changed paths: `app/js/editor.js`, `app/assets/editor.css`, `tests/image-drag-browser.mjs`, `.github/workflows/image-drag-checks.yml`, and `PROJECT-STATUS.md`. No Poster_gen integration code included, no native build initiated.
+
+**Netlify verified:** production site `sapiver-pattern-forge` id `25cb894e-3e25-404a-b784-1b65fc8ce933`, new deploy **`6acc841433e9f70008e78ca0`**, state **ready**, `commit_ref=0f0b8fe22f003b1e11a8e4383c38568ab4f5dfa8`, published at **2026-10-12T06:54:18.114Z**. Live site https://sapiver-pattern-forge.netlify.app/ and editor https://sapiver-pattern-forge.netlify.app/app/. Previous ready production deploy `6acc7c9c9f99880008db10d4` is rollback reference. `preview-ux2` staging was intentionally not deployed.
+
+**Actual public-domain browser verification:** GitHub Actions [38214911788](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38214911788) **success**. The workflow first fetched the production `/app/`, `/app/js/editor.js` and `/app/assets/editor.css` over HTTPS and validated the responsive image drag and auto-select source signatures. Then it ran the real-browser `tests/image-drag-browser.mjs` with `PF_TEST_BASE_URL=https://sapiver-pattern-forge.netlify.app`, and **all 7/7 live scenarios passed** (desktop small drag, Android-emulated short/long finger drag, Doodle drag, dedicated move handle, tiny image hit halo, adding second image while Brush active). The same changes passed 31/31 pre-release existing readiness checks in [38213831486](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38213831486). A physical Android device acceptance run is still outstanding.
+
+**Android updating:** `mobile/App.tsx` wraps a URL configured via `EXPO_PUBLIC_PATTERN_FORGE_URL`, default `https://sapiver-pattern-forge.netlify.app/`. The normal `preview` APK serves the production website and loads web changes upon full restart with a connection. The `preview-ux2` profile explicitly overrides to `https://sapiver-pattern-forge-ux2-staging.netlify.app/`; that older staging APK **will not update** from the production site and would need a newly built production-linked preview APK to test this release. No APK/AAB compiled, updated or distributed during this deployment. Advise backing up locally saved projects before uninstalling or clearing app storage.
+
+**Handover placement:** This completion note is saved on the separate feature branch only to avoid a second automatic production deployment triggered by a documentation-only `main` change. The production branch includes the original approved release checkpoint and code at the exact verified SHA above.
+
+
 ## 12 October 2026 — Image dragging usability fix (TESTED, NOT DEPLOYED)
 
 **Working branch:** `feature/responsive-image-drag-20261012`, based on the already published production web commit `cd69f4174550b476bae5988925e5c06ee77d27dd`. **The code is implemented and CI-tested only. Do not claim it is live.** The last read-back of production Netlify site `sapiver-pattern-forge` remained deploy `6acc7c9c9f99880008db10d4` (ready) and the unfinished Poster_gen handoff PR #6 remains wholly separate.
