@@ -12,7 +12,7 @@ function mark(style,texture=.8,pressureWidth=false){
 }
 const fake={
   globalAlpha:.75,
-  calls:[],save(){this.calls.push('save')},restore(){this.calls.push('restore')},
+  calls:[],stack:[],save(){this.stack.push(this.globalAlpha);this.calls.push('save')},restore(){this.globalAlpha=this.stack.pop();this.calls.push('restore')},
   beginPath(){this.calls.push('begin')},moveTo(){},lineTo(){},closePath(){},
   fill(){this.calls.push('fill')},arc(){this.calls.push('arc')},
   set fillStyle(c){this.calls.push(c)}
