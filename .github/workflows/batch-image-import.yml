@@ -1,0 +1,44 @@
+name: Batch image library import regression
+on:
+  push:
+    branches: [feature/batch-image-library-20261012]
+    paths:
+      - app/index.html
+      - app/js/editor.js
+      - app/js/canvas-first-v2.js
+      - app/assets/canvas-first-v2.css
+      - tests/multi-image-import-browser.mjs
+      - .github/workflows/batch-image-import.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  multi-image-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check tests/multi-image-import-browser.mjs
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test batch imports and library roundtrips
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-batch-images.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/multi-image-import-browser.mjs
+      - name: Check existing project/export recovery regressions
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-batch-existing.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          UX2_AUDIT_OUTPUT=/tmp/pf-batch-regressions node tests/ux2-extended-readiness.mjs
