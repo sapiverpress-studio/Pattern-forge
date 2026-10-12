@@ -1730,7 +1730,8 @@
       // On a touchscreen, the image itself is the primary drag handle.
       // Transform handles remain usable from just outside its outline;
       // tiny pictures no longer turn intended movements into resizing.
-      if(current&&(e.pointerType==="touch"||e.pointerType==="pen")&&itemHitTest(current,w.x,w.y)){
+      if(current&&!state.selectionAddMode&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey
+         &&(e.pointerType==="touch"||e.pointerType==="pen")&&itemHitTest(current,w.x,w.y)){
         startImageDrag(current,w);return;
       }
       const markHandle=currentMark&&markHandleAt(currentMark,w.x,w.y);
@@ -1749,8 +1750,11 @@
         if(handle==="rotate"){
           delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);
           state.transformState={kind:"item",mode:"rotate",id:current.id,startRotation:current.rotation,startAngle:Math.atan2(delta.y,delta.x)};
-        }else state.transformState={kind:"item",mode:"move",id:current.id,offset:{x:w.x-current.x,y:w.y-current.y}};
-        state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
+          state.dragging=false;state.resizeState=null;beginInteraction("edit");renderAll();return;
+        }
+        // The move handle should be just as responsive as dragging the body;
+        // using transformState previously applied the sticky snap per frame.
+        startImageDrag(current,w);return;
       }
       if(current&&resizeHandleHit(current,w.x,w.y)){
         delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;beginInteraction("edit");renderAll();return;
