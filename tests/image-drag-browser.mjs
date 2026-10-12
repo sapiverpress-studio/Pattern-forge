@@ -14,10 +14,15 @@ async function fresh({touch=false,doodle=false}={}){
  await page.locator('#projectTitleInput').fill('Drag response regression');
  await page.locator('#projectSetupForm').evaluate(el=>el.requestSubmit());
  await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
+ // Reproduce the reported failure: import while Brush is still active.
+ await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
+ assert(await page.locator('[data-tool="brush"].active').count(),'Brush must be active before the import');
  const image=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="red"/></svg>');
  await page.locator('#files').setInputFiles({name:'drag-test.svg',mimeType:'image/svg+xml',buffer:image});
  await page.waitForFunction(()=>document.querySelectorAll('.assetWrap').length===1);
- await page.locator('[data-ux2-tool="select"]').first().evaluate(el=>el.click());
+ await page.waitForFunction(()=>document.querySelector('[data-tool="select"].active'));
+ assert.equal(await page.locator('[data-tool="brush"].active').count(),0,
+  'image appears selected so active tool must no longer be Brush');
  return {context,page,errors};
 }
 async function project(page){
@@ -86,6 +91,23 @@ try{
       'touch hit halo must pick up an otherwise very small image');
    assert.deepEqual(errors,[]);completed++;
    console.log('PASS very small image is draggable within finger-sized hit halo');
+  }finally{await context.close()}
+ }
+ {
+  const {context,page,errors}=await fresh({touch:true,doodle:false});
+  try{
+   // Add a *second* library copy while Brush is active. Selection must make
+   // both the new item and the active tool unambiguous.
+   await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
+   await page.getByRole('button',{name:'Add drag-test.svg',exact:true}).first().evaluate(el=>el.click());
+   await page.waitForFunction(()=>document.querySelector('[data-tool="select"].active'));
+   const before=await project(page);assert.equal(before.items.length,2);
+   await drag(page,true,11,6);
+   const after=await project(page);
+   assert.equal(after.items.length,2);
+   assert(Math.hypot(after.items[1].x-before.items[1].x,after.items[1].y-before.items[1].y)>.5);
+   assert.deepEqual(errors,[]);completed++;
+   console.log('PASS adding another image switches to Select and supports immediate touch dragging');
   }finally{await context.close()}
  }
  console.log('PASS all',completed,'real-pointer input regressions');
