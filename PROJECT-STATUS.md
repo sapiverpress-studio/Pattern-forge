@@ -1,5 +1,18 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Multi-image library and 5+ image selection (TESTED, NOT DEPLOYED)
+
+**Scope:** User asked to import five or more images at once. The existing HTML file picker had `multiple`, but canvas-first UX2 launched the picker without a visible image library. Only the first file was placed; other imported files were not accessible from the primary UX2 controls. Compact downloads intentionally omit unplaced images, risking loss on transferring work. This stage fixes the actual user workflow and adds a backup without changing the established compact export.
+
+**Implementation:** Isolated branch `feature/batch-image-library-20261012` off production `0f0b8fe22f003b1e11a8e4383c38568ab4f5dfa8`. The **Images** tool now opens a visible library with **Choose images (5 or more at once)**, previews with image dimensions and placed-copy counts, **Add to canvas**, **Remove**, and **Back up project + all images**. The first successfully imported image is placed automatically, while others remain individually reusable. Handles any batch size subject to device memory, processes each file with progress, skips corrupt/unsupported files without discarding good ones, and resets the picker to permit subsequent selections of the same files. Full-library backup contains unused images and the complete editable project; existing compact exports keep their original semantics. No change to the native Android source, Etsy, PrintShrimp or Poster_gen.
+
+**Files:** `app/index.html`, `app/js/editor.js`, `app/js/canvas-first-v2.js`, `app/assets/canvas-first-v2.css`, `tests/multi-image-import-browser.mjs`, and branch-only `.github/workflows/batch-image-import.yml`.
+
+**Testing:** [GitHub Actions run 38217639262](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38217639262) passed **3/3 browser scenarios** (six images with individual placement and complete backup/reopen; 12 plus five more images on Android-emulated viewport and invalid-image recovery; Doodle five-image import and backup), plus **31/31 existing extended-readiness tests**. The Android native file picker was not physically tested; some Android providers may handle multiselect differently.
+
+**Deployment:** **NOT DEPLOYED**. Production Netlify was independently read and remains `6acc841433e9f70008e78ca0` in **ready** state. User has not expressly authorised deploying this separate feature. Do not merge to `main`, deploy Netlify or release an APK/AAB without permission. Next action: obtain release approval, perform one controlled web deployment, and test actual Android photo/file selection.
+
+
 ## 12 October 2026 — Image dragging usability fix (TESTED, NOT DEPLOYED)
 
 **Working branch:** `feature/responsive-image-drag-20261012`, based on the already published production web commit `cd69f4174550b476bae5988925e5c06ee77d27dd`. **The code is implemented and CI-tested only. Do not claim it is live.** The last read-back of production Netlify site `sapiver-pattern-forge` remained deploy `6acc7c9c9f99880008db10d4` (ready) and the unfinished Poster_gen handoff PR #6 remains wholly separate.
@@ -93,6 +106,7 @@ Availability is different from physical Android validation.
 | --- | --- | --- |
 | Consistent saved favourite tools | Tools menu; choose quick tools | Implemented; reload and workspace-switch coverage |
 | Imported image drag and selection | Import image or add another from library → automatically Select; drag image body or Move handle | **New fix on `feature/responsive-image-drag-20261012`; tested 7/7 browser flows + 31/31 regression, NOT deployed** |
+| Multi-image batch library | Images → Choose images (5 or more at once) → gallery / Add / full backup | Tested 3/3 batch import and 31/31 existing; **not deployed** |
 | Multi-select, group/ungroup, move, scale, rotate, duplicate, delete, flips | Select tool; add artwork to selection; contextual controls | Implemented; transforms, save/reopen and undo covered |
 | Recolour selected drawn artwork and replace matching colours | Colour panel | Implemented; editable marks and replacement covered |
 | Stroke stabilisation | Brush contextual controls → Stabilise | **Live production website** since the approved 12 Oct Strong-stabilisation release |
