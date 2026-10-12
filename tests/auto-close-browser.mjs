@@ -102,7 +102,7 @@ try{
  }
  {
   const {context,page,errors}=await fresh('pattern',false);
-  await choose(page,'brush');
+  await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
   // UX2 real shell proxy controls should be wired, not merely visual placeholders.
   const ux=page.locator('#ux2AutoClose');
   assert.equal(await ux.count(),1,'Brush controls must expose auto-close');
@@ -111,7 +111,7 @@ try{
   await ux.check({force:true});
   await page.locator('#ux2AutoCloseDistance').fill('32');
   assert.equal(await page.locator('#autoCloseTolerance').inputValue(),'32');
-  await choose(page,'freefill');
+  await page.locator('[data-ux2-tool="freefill"]').first().evaluate(el=>el.click());
   assert.equal(await page.locator('#ux2AutoClose').count(),1,'Freehand fill needs join control');
   assert.deepEqual(errors,[]);checks++;
   console.log('PASS UX2: Brush/Fill auto-join controls change editor settings');
