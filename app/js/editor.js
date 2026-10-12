@@ -419,26 +419,40 @@
       r.readAsDataURL(file);
     });
   }
+  let imageImportBusy=false;
   async function addFiles(files){
-    const candidates=files.filter(file=>/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type));
-    if(!candidates.length){setStatus("No supported image was added. Choose a PNG, JPG, WebP or SVG file.");return;}
-    const firstNewAssetIndex=state.assets.length;
-    for(const file of candidates){
-      const src=await fileToDataURL(file);
-      const img=new Image();
-      await new Promise((resolve,reject)=>{
-        img.onload=resolve;img.onerror=()=>reject(new Error(`“${file.name}” could not be decoded as an image.`));img.src=src;
-      });
-      const assetId=nextAssetId();
-      state.assets.push({id:assetId,name:file.name,src,img,w:img.naturalWidth||1000,h:img.naturalHeight||1000,vector:file.type==="image/svg+xml"});
-      state.recentAssetIds.unshift(assetId);
-    }
-    rebuildAssetGrid();
-    const firstAdded=state.assets[firstNewAssetIndex];
-    if(firstAdded)addAssetInstance(firstAdded);
-    renderAll();
-    const extra=candidates.length>1?` ${candidates.length-1} more ${candidates.length===2?"image is":"images are"} ready in your image list.`:"";
-    setStatus(`“${firstAdded?.name||candidates[0].name}” was added and placed on the tile.${extra} Tap a thumbnail to place another copy.`);
+    if(imageImportBusy){setStatus("An image batch is already importing. Please finish that import before choosing another.");return;}
+    const candidates=files.filter(file=>/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)||(!file.type&&/\.(png|jpe?g|webp|svg)$/i.test(file.name)));
+    const skipped=files.length-candidates.length;
+    if(!candidates.length){setStatus("No supported image was added. Choose PNG, JPG, WebP or SVG files.");return;}
+    imageImportBusy=true;
+    const successful=[],failed=[];
+    try{
+      for(let index=0;index<candidates.length;index++){
+        const file=candidates[index];
+        setStatus(`Importing image ${index+1} of ${candidates.length}…`);
+        try{
+          const src=await fileToDataURL(file),img=new Image();
+          await new Promise((resolve,reject)=>{
+            img.onload=resolve;img.onerror=()=>reject(new Error("Image could not be decoded"));img.src=src;
+          });
+          const asset={id:nextAssetId(),name:file.name,src,img,w:img.naturalWidth||1000,h:img.naturalHeight||1000,vector:file.type==="image/svg+xml"||/\.svg$/i.test(file.name)};
+          state.assets.push(asset);state.recentAssetIds.unshift(asset.id);successful.push(asset);
+        }catch(_){failed.push(file.name);}
+      }
+      if(successful.length){
+        rebuildAssetGrid();
+        // Keep single-image behaviour: place the first only, leaving every
+        // other uploaded image available as a reusable library item.
+        addAssetInstance(successful[0]);
+        renderAll();
+      }
+      const noun=n=>n===1?"image":"images";
+      const summary=successful.length?`Imported ${successful.length} ${noun(successful.length)}. First placed on canvas; ${successful.length-1} more available in Images.`:"No images could be imported.";
+      const errorCount=failed.length+skipped;
+      setStatus(summary+(errorCount?` ${errorCount} skipped/failed — check file formats.`:""));
+      window.dispatchEvent(new CustomEvent("patternforge:images-imported",{detail:{imported:successful.length,failed:errorCount,total:state.assets.length}}));
+    }finally{imageImportBusy=false;}
   }
   function nextAssetId(){
     const used=new Set(state.assets.map(asset=>String(asset.id)));
@@ -520,6 +534,12 @@
     else state.tool="select";
     renderAll();
   }
+  window.PatternForgeImageLibrary={
+    list:()=>state.assets.map(a=>({id:a.id,name:a.name,src:a.src,w:a.w,h:a.h,vector:!!a.vector,placed:state.items.filter(i=>i.assetId===a.id).length})),
+    place:id=>{const asset=state.assets.find(a=>a.id===id);if(!asset)return false;addAssetInstance(asset);setStatus(`Placed “${asset.name}” on canvas. Drag to move it.`);window.dispatchEvent(new Event("patternforge:images-changed"));return true;},
+    remove:id=>{const asset=state.assets.find(a=>a.id===id);if(!asset)return false;removeAssetFromLibrary(asset);window.dispatchEvent(new Event("patternforge:images-changed"));return true;},
+    backupAll:()=>{if(!state.project)return false;downloadBlob(new Blob([JSON.stringify(projectData())],{type:"application/json"}),`${safeName()}-full-image-library.json`);setStatus("Downloaded full editable project and all imported images.");return true;}
+  };
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
@@ -2648,7 +2668,10 @@
 
   $("drop").addEventListener("click",()=>$("files").click());
   $("files").addEventListener("click",e=>e.stopPropagation());
-  $("files").addEventListener("change",e=>addFiles([...e.target.files]).catch(()=>setStatus("The selected image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
+  $("files").addEventListener("change",e=>{
+    const selected=[...e.target.files];e.target.value="";
+    void addFiles(selected).catch(err=>setStatus("Image batch could not be imported: "+(err?.message||"Try a smaller batch.")));
+  });
   ["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("drag");}));
   ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("drag");}));
   $("drop").addEventListener("drop",e=>addFiles([...e.dataTransfer.files]).catch(()=>setStatus("The dropped image could not be opened. Choose a PNG, JPG, WebP or SVG file and try again.")));
