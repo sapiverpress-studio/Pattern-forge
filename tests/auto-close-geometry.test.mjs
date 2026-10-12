@@ -34,6 +34,7 @@ test('invalid, giant tolerance and already-closed loops are safe',()=>{
  const p=ellipse(200,200,95,95,31);
  assert.equal(closed(p,{tolerance:Infinity}),null);
  assert.equal(closed(p,{tolerance:-2}),null);
- const r=closed(p,{tolerance:20});assert(r?.closed);assert.equal(r.points,p);
+ const r=closed(p,{tolerance:20});assert(r?.closed);assert.equal(r.points.length,p.length);
+ assert.equal(r.points.at(-1).x,p[0].x);assert.equal(r.points.at(-1).y,p[0].y);
  assert.equal(closed([{x:0,y:0},{x:Infinity,y:1},{x:0,y:0}],{minPoints:3}),null);
 });
