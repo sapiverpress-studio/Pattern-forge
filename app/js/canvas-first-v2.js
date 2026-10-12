@@ -166,10 +166,17 @@
   function renderContext(tool=currentTool()){
     const context=$('ux2Context');
     context.classList.remove('ux2-context--empty-selection');
+    const showJoinControls=()=>{
+      const enabled=!!$('autoCloseShapes')?.checked,tolerance=$('autoCloseTolerance')?.value||24;
+      context.insertAdjacentHTML('beforeend',`<div class="ux2-context-group"><label style="display:flex;align-items:center;gap:5px;font-size:11px"><input type="checkbox" id="ux2AutoClose" ${enabled?'checked':''}> Auto-join ends</label><label class="ux2-slider">Join px <input id="ux2AutoCloseDistance" type="range" min="10" max="40" step="2" value="${tolerance}"><b id="ux2AutoCloseOut">${tolerance}</b></label></div>`);
+      $('ux2AutoClose').addEventListener('change',e=>dispatchChecked('autoCloseShapes',e.target.checked));
+      $('ux2AutoCloseDistance').addEventListener('input',e=>{dispatchValue('autoCloseTolerance',e.target.value);$('ux2AutoCloseOut').textContent=e.target.value;});
+    };
     $('ux2Hint').textContent=hints[tool]||'Create on the canvas';
     if(tool==='brush'||tool==='eraser'){
       const size=$('brushSize')?.value||20, opacity=$('inkOpacity')?.value||100, style=$('brushStyle')?.value||'ink',stabilisation=$('strokeStabilisation')?.value||'off';
       context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">${tool==='eraser'?'Eraser':'Brush'}</span><select id="ux2BrushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select>${tool==='brush'?'<button class="ux2-chip" id="ux2BrushLibrary">Brush library</button>':''}</div><div class="ux2-context-group"><label class="ux2-slider">Size <input id="ux2Size" type="range" min="2" max="400" value="${size}"><b id="ux2SizeOut">${size}</b></label><label class="ux2-slider">Opacity <input id="ux2Opacity" type="range" min="5" max="100" value="${opacity}"><b id="ux2OpacityOut">${opacity}%</b></label>${tool==='brush'?'<label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750">Stabilise <select id="ux2Stabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong">Strong</option></select></label><label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:750"><input id="ux2PressureWidth" type="checkbox"> Pressure width</label>':''}</div>`;
+      if(tool==='brush')showJoinControls();
       $('ux2BrushStyle').value=style;
       $('ux2BrushStyle').addEventListener('change',e=>dispatchValue('brushStyle',e.target.value,'change'));
       if($('ux2Stabilisation')){$('ux2Stabilisation').value=stabilisation;$('ux2Stabilisation').addEventListener('change',e=>dispatchValue('strokeStabilisation',e.target.value,'change'))}
@@ -186,6 +193,7 @@
     } else if(['freefill','bucket','gradient'].includes(tool)){
       const tolerance=$('bucketTolerance')?.value||8,sampleVisible=!!$('bucketSampleVisible')?.checked;
       context.innerHTML=`<div class="ux2-context-group"><span class="ux2-label">Fill</span><button class="ux2-chip ${tool==='freefill'?'active':''}" id="ux2FreehandFill">Freehand area</button><button class="ux2-chip ${tool==='bucket'?'active':''}" id="ux2BucketFill">Bucket</button><button class="ux2-chip ${tool==='gradient'?'active':''}" id="ux2GradientFill">Gradient</button></div><div class="ux2-context-group">${tool==='bucket'?`<label class="ux2-slider">Tolerance <input id="ux2BucketTolerance" type="range" min="0" max="100" value="${tolerance}"><b id="ux2BucketToleranceOut">${tolerance}%</b></label><label style="display:flex;align-items:center;gap:5px;font-size:10px"><input id="ux2BucketSampleVisible" type="checkbox" ${sampleVisible?'checked':''}> Sample visible canvas</label>`:''}<button class="ux2-chip" id="ux2ColourShortcut">Choose colour</button></div>`;
+      if(tool==='freefill')showJoinControls();
       $('ux2FreehandFill').addEventListener('click',()=>setTool('freefill'));
       $('ux2BucketFill').addEventListener('click',()=>setTool('bucket'));
       $('ux2GradientFill').addEventListener('click',()=>setTool('gradient'));
