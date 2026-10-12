@@ -99,7 +99,7 @@ try{
    // Add a *second* library copy while Brush is active. Selection must make
    // both the new item and the active tool unambiguous.
    await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
-   await page.getByRole('button',{name:'Add drag-test.svg',exact:true}).first().evaluate(el=>el.click());
+   await page.locator('#assetGrid .asset').first().evaluate(el=>el.click());
    await page.waitForFunction(()=>document.querySelector('[data-tool="select"].active'));
    const before=await project(page);assert.equal(before.items.length,2);
    await drag(page,true,11,6);
