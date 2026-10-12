@@ -318,3 +318,20 @@ body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
 .ux2-image-details small{font-size:10px;color:#647487}
 .ux2-image-actions{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
 .ux2-image-actions .ux2-btn{padding:6px 8px;min-height:32px;font-size:10px}
+
+/* Raised-pigment preset swatches: relief is actually built in vector/canvas geometry. */
+.ux2-brush-sample.impasto:after{
+  height:15px;border-radius:40% 50% 44% 38%;
+  background:linear-gradient(to bottom,#7c391d 0%,#d77531 17%,#ffe0a0 29%,#f0a34d 38%,#995020 47%,#c97834 57%,#ffd28a 69%,#dc853c 80%,#7b3219 100%);
+  box-shadow:1px 3px 2px #7d482760;transform:translateY(-50%) rotate(-4deg);
+}
+.ux2-brush-sample.piped:after{
+  height:19px;border-radius:45%;
+  background:linear-gradient(to bottom,#8d3361 0%,#d46b9b 13%,#ffbdd8 23%,#ad4b7d 31%,#f8abd1 47%,#8c3564 58%,#ffd1e5 72%,#c35993 87%,#75254f 100%);
+  box-shadow:1px 3px 3px #6e25503d;transform:translateY(-50%) rotate(-3deg);
+}
+.ux2-brush-sample.knife:after{
+  height:17px;border-radius:3px 9px 3px 2px;
+  background:linear-gradient(to bottom,#264869 0%,#78c1da 15%,#caeef5 28%,#518db9 39%,#36719f 58%,#8ecde5 69%,#25658f 88%,#1b3d5d 100%);
+  box-shadow:2px 3px 2px #26486966;transform:translateY(-50%) rotate(-5deg);
+}
