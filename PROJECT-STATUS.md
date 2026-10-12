@@ -1,5 +1,10 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Batch image import production release approval checkpoint
+
+**Owner explicitly authorised** one production website release: “Deploy and tell me how to update the app.” This supersedes the earlier release hold for the batch-image library only. Tests previously passed 3/3 batch scenarios and 31/31 existing regressions in CI [38217639262](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38217639262). Before release, main source was `0f0b8fe22f003b1e11a8e4383c38568ab4f5dfa8` and the published Netlify deploy was `6acc841433e9f70008e78ca0`. This checkpoint **does not claim deployment is complete**. Fast-forward main only after checking the exact files; verify the new Netlify commit and live browser separately. Do not merge Poster_gen or build a new Android APK/AAB. Standard `preview` Android WebView uses production Netlify URL and receives the updated hosted editor upon restart; `preview-ux2` points to staging, so it cannot receive this production change without replacement.
+
+
 ## 12 October 2026 — Multi-image library and 5+ image selection (TESTED, NOT DEPLOYED)
 
 **Scope:** User asked to import five or more images at once. The existing HTML file picker had `multiple`, but canvas-first UX2 launched the picker without a visible image library. Only the first file was placed; other imported files were not accessible from the primary UX2 controls. Compact downloads intentionally omit unplaced images, risking loss on transferring work. This stage fixes the actual user workflow and adds a backup without changing the established compact export.
