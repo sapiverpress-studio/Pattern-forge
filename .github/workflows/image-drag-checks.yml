@@ -1,0 +1,35 @@
+name: Image drag responsiveness checks
+on:
+  push:
+    branches: [feature/responsive-image-drag-20261012]
+    paths:
+      - app/js/editor.js
+      - app/assets/editor.css
+      - tests/image-drag-browser.mjs
+      - .github/workflows/image-drag-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  touch-drag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check source syntax
+        run: |
+          node --check app/js/editor.js
+          node --check tests/image-drag-browser.mjs
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise mouse and Android-emulated touch image drag
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-image-drag-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/image-drag-browser.mjs
