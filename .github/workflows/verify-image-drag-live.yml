@@ -1,0 +1,46 @@
+name: Verify published responsive image dragging (read only)
+on:
+  push:
+    branches: [feature/responsive-image-drag-20261012]
+    paths:
+      - .github/workflows/verify-image-drag-live.yml
+      - tests/image-drag-browser.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-drag-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify website serves the updated image drag engine
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://sapiver-pattern-forge.netlify.app';
+          const [html,editor,css]=await Promise.all(['/app/','/app/js/editor.js','/app/assets/editor.css'].map(async p=>{
+            const res=await fetch(base+p,{headers:{'Cache-Control':'no-cache'}});
+            if(!res.ok)throw Error(p+' HTTP '+res.status);
+            return await res.text();
+          }));
+          const tests=[
+            ['editor loaded',html.includes('src="/app/js/editor.js"')],
+            ['drag follows finger',editor.includes('Tiny 2–10px nudges must visibly track 1:1')],
+            ['import switches to Select',editor.includes('a user sees handles but drawing/erasing starts')],
+            ['touch hit zone',editor.includes('pointerType==="touch"?18:10')],
+            ['move handle direct dragging',editor.includes('startImageDrag(current,w);return')],
+            ['drag cursor',css.includes('#editorCanvas.dragging-image')]
+          ];
+          for(const [name,pass] of tests){if(!pass)throw Error('Live feature missing: '+name);console.log('PASS live asset '+name)}
+          JS
+      - name: Install Chromium browser runner
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run seven image drag scenarios against the live site
+        env:
+          PF_TEST_BASE_URL: https://sapiver-pattern-forge.netlify.app
+        run: node tests/image-drag-browser.mjs
