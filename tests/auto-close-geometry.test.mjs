@@ -25,7 +25,7 @@ test('path spanning repeated tile edge closes against nearest periodic start',()
  assert.equal(closed(shifted,{tolerance:32,period:size}),null,'discontinuous paths are not misread as closed loops');
 });
 test('repeated periodic traversal snaps to exact periodic start without distorting saved coordinates',()=>{
- const p=ellipse(200,200,100,100,30,0,Math.PI*1.99).map((p,i)=>i===29?{...p,x:p.x+4000}:p);
+ const p=Array.from({length:50},(_,i)=>{const t=i/49;return {x:200+4000*t,y:200+110*Math.sin(2*Math.PI*t)}});
  const result=closed(p,{tolerance:30,period:4000});
  assert(result?.closed);assert.equal(result.points.at(-1).x,p[0].x+4000);
  assert.equal(result.points.at(-1).y,p[0].y);
