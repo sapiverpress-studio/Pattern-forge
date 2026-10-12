@@ -59,6 +59,7 @@ try{
   assert.equal((await saved(page)).marks.length,0,'Undo must restore previous state');
   await page.locator('#redo').evaluate(el=>el.click());
   assert.equal((await saved(page)).marks.at(-1).autoClosed,true,'Redo must restore joined loop');
+  await choose(page,'brush');
   await stroke(page,{ring:false});
   project=await saved(page);
   assert.equal(project.marks.length,2);
@@ -66,6 +67,7 @@ try{
   await page.locator('#autoCloseShapes').uncheck();
   await page.locator('#strokeStabilisation').selectOption('off');
   await page.locator('#autoCloseTolerance').fill('16');
+  await choose(page,'brush');
   await stroke(page,{ring:true});
   project=await saved(page);
   assert.equal(project.marks[2].autoClosed,undefined,'disabled setting must respect intentional gaps');
