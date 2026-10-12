@@ -1514,6 +1514,10 @@
     const r=canvas.getBoundingClientRect();
     return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
   }
+  function worldPerCssPixel(){
+    const bounds=canvas.getBoundingClientRect();
+    return canvas.width/Math.max(1,bounds.width)/Math.max(.01,viewScale());
+  }
   function historySnapshot(){
     return {
       items:state.items,marks:state.marks,layers:state.layers,activeLayerId:state.activeLayerId,nextId:state.nextId,
@@ -1634,14 +1638,35 @@
     }
     return false;
   }
-  function hitTestArtwork(x,y){
+  function itemHitTest(item,x,y,padding=0){
+    const asset=assetOf(item);if(!asset)return false;
+    const delta=nearestLatticeDelta(x,y,item.x,item.y),angle=-item.rotation,c=Math.cos(angle),s=Math.sin(angle);
+    const lx=delta.x*c-delta.y*s,ly=delta.x*s+delta.y*c;
+    return Math.abs(lx)<=asset.w*item.scale/2+padding&&Math.abs(ly)<=asset.h*item.scale/2+padding;
+  }
+  function hitTestArtwork(x,y,pointerType="mouse"){
     for(let layerIndex=state.layers.length-1;layerIndex>=0;layerIndex--){
       const layer=state.layers[layerIndex];if(!layerIsRenderable(layer,false)||layer.locked)continue;
       for(let idx=state.marks.length-1;idx>=0;idx--){const mark=state.marks[idx];if(mark.type!=="eraser"&&layerForArtwork(mark,BASE_LAYER_IDS.drawing)?.id===layer.id&&markHitTest(mark,x,y))return {kind:"mark",artwork:mark};}
       for(let idx=state.items.length-1;idx>=0;idx--){
         const item=state.items[idx],itemLayer=layerForArtwork(item,BASE_LAYER_IDS.motifs),a=assetOf(item);if(!a||itemLayer?.id!==layer.id)continue;
-        const delta=nearestLatticeDelta(x,y,item.x,item.y),dx=delta.x,dy=delta.y,cos=Math.cos(-item.rotation),sin=Math.sin(-item.rotation),lx=dx*cos-dy*sin,ly=dx*sin+dy*cos,iw=a.w*item.scale,ih=a.h*item.scale;
-        if(Math.abs(lx)<=iw/2&&Math.abs(ly)<=ih/2)return {kind:"item",artwork:item};
+        if(itemHitTest(item,x,y))return {kind:"item",artwork:item};
+      }
+    }
+    // A finger often lands just outside a small image. Honour exact artwork
+    // hits first so nearby elements cannot steal a direct touch; only then
+    // offer a modest screen-size hit halo to touch and stylus users.
+    if(pointerType==="touch"||pointerType==="pen"){
+      const radius=(pointerType==="touch"?18:10)*worldPerCssPixel();
+      const selected=selectedItem(),selectedLayer=selected&&layerForArtwork(selected,BASE_LAYER_IDS.motifs);
+      if(selected&&selectedLayer&&!selectedLayer.locked&&layerIsRenderable(selectedLayer,false)
+         &&itemHitTest(selected,x,y,radius))return {kind:"item",artwork:selected};
+      for(let layerIndex=state.layers.length-1;layerIndex>=0;layerIndex--){
+        const layer=state.layers[layerIndex];if(!layerIsRenderable(layer,false)||layer.locked)continue;
+        for(let i=state.items.length-1;i>=0;i--){
+          const item=state.items[i];if(layerForArtwork(item,BASE_LAYER_IDS.motifs)?.id===layer.id&&itemHitTest(item,x,y,radius))
+            return {kind:"item",artwork:item};
+        }
       }
     }
     return null;
@@ -1679,6 +1704,12 @@
     state.transformState={kind:"selection",mode:"move",startPointer:{x:w.x,y:w.y},members};
     state.dragging=false;state.resizeState=null;
   }
+  function startImageDrag(item,w){
+    saveHistory();delete item.scatterGenerated;
+    setSelection([item.id],item.id);
+    state.dragOffset=nearestLatticeDelta(w.x,w.y,item.x,item.y);
+    state.dragging=true;beginInteraction("edit");canvas.classList.add("dragging-image");renderAll(false,false);
+  }
   canvas.addEventListener("pointerdown",e=>{
     e.preventDefault();canvas.setPointerCapture(e.pointerId);
     const p=pointerPos(e);state.pointers.set(e.pointerId,p);
@@ -1696,6 +1727,12 @@
       let current=singleSelection?selectedItem():null,currentMark=singleSelection?selectedMark():null;
       const currentLayer=current?layerForArtwork(current,BASE_LAYER_IDS.motifs):currentMark?layerForArtwork(currentMark,BASE_LAYER_IDS.drawing):null;
       if((current||currentMark)&&(!layerIsRenderable(currentLayer,false)||currentLayer.locked)){clearSelection();current=null;currentMark=null;}
+      // On a touchscreen, the image itself is the primary drag handle.
+      // Transform handles remain usable from just outside its outline;
+      // tiny pictures no longer turn intended movements into resizing.
+      if(current&&(e.pointerType==="touch"||e.pointerType==="pen")&&itemHitTest(current,w.x,w.y)){
+        startImageDrag(current,w);return;
+      }
       const markHandle=currentMark&&markHandleAt(currentMark,w.x,w.y);
       if(markHandle){
         saveHistory();const t=markTransformValues(currentMark),bounds=markPrimaryBounds(currentMark);
@@ -1718,7 +1755,7 @@
       if(current&&resizeHandleHit(current,w.x,w.y)){
         delete current.scatterGenerated;const delta=nearestLatticeDelta(w.x,w.y,current.x,current.y);saveHistory();state.resizeState={kind:"item",id:current.id,scale:current.scale,startDistance:Math.max(1,Math.hypot(delta.x,delta.y))};state.dragging=false;beginInteraction("edit");renderAll();return;
       }
-      const hit=hitTestArtwork(w.x,w.y),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
+      const hit=hitTestArtwork(w.x,w.y,e.pointerType),additive=state.selectionAddMode||e.shiftKey||e.ctrlKey||e.metaKey;
       if(additive){
         if(hit){
           const hitIds=expandedArtworkIds(hit.artwork),next=new Set(currentIds),allSelected=hitIds.every(id=>next.has(id));
@@ -1735,7 +1772,7 @@
         setSelection(hitIds,hit.artwork.id);saveHistory();startSelectionMove(hitIds,w);beginInteraction("edit");renderAll();return;
       }
       setSelection(hit?[hit.artwork.id]:[],hit?.artwork?.id??null);state.dragging=hit?.kind==="item";
-      if(hit?.kind==="item"){saveHistory();delete hit.artwork.scatterGenerated;state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);}
+      if(hit?.kind==="item"){saveHistory();delete hit.artwork.scatterGenerated;state.dragOffset=nearestLatticeDelta(w.x,w.y,hit.artwork.x,hit.artwork.y);canvas.classList.add("dragging-image");}
       else if(hit?.kind==="mark"){
         saveHistory();const t=markTransformValues(hit.artwork),b=markGeometryBounds(hit.artwork);state.transformState={kind:"mark",mode:"move",id:hit.artwork.id,startX:t.x,startY:t.y,startPointer:{x:w.x,y:w.y},baseCenter:{x:b.cx+t.x,y:b.cy+t.y}};
       }
@@ -1822,13 +1859,32 @@
     }
     if(state.dragging){
       const item=selectedItem();if(!item)return;
-      const extents=itemSnapHalfExtents(item),snapped=smartSnapPosition(w.x-state.dragOffset.x,w.y-state.dragOffset.y,extents.x,extents.y);
-      item.x=isDoodleProject()?snapped.x:((snapped.x%TILE)+TILE)%TILE;
-      item.y=isDoodleProject()?snapped.y:((snapped.y%TILE)+TILE)%TILE;
+      const rawX=w.x-state.dragOffset.x,rawY=w.y-state.dragOffset.y;
+      // Guides may preview an alignment, but never slow or pin the artwork
+      // under the finger. Tiny 2–10px nudges must visibly track 1:1.
+      const half=itemSnapHalfExtents(item);
+      smartSnapPosition(rawX,rawY,half.x,half.y);
+      const pos=isDoodleProject()?{x:rawX,y:rawY}:canonicalPoint(rawX,rawY);
+      item.x=pos.x;item.y=pos.y;
       renderAll(false,false);
     }
   });
   function endDrag(e){
+    if(state.dragging){
+      const image=selectedItem();
+      if(image&&e.type==="pointerup"&&$("snapOn").checked&&state.dragStart){
+        const end=pointerPos(e),deltaPixels=Math.hypot(end.x-state.dragStart.x,end.y-state.dragStart.y);
+        const distanceCss=deltaPixels*canvas.getBoundingClientRect().width/Math.max(1,canvas.width);
+        // Keep delicate nudges exact. Only longer deliberate moves can
+        // magnetise to a nearby guide when the finger is released.
+        if(distanceCss>=24){
+          const size=itemSnapHalfExtents(image),snapped=smartSnapPosition(image.x,image.y,size.x,size.y);
+          const p=isDoodleProject()?snapped:canonicalPoint(snapped.x,snapped.y);
+          image.x=p.x;image.y=p.y;
+        }
+      }
+    }
+    canvas.classList.remove("dragging-image");
     if(state.activeMark?.type==="brush"&&strokeStabilisationBase()<.999&&state.activeMark.points.length){
       const last=state.activeMark.points[state.activeMark.points.length-1],w=worldPoint(pointerPos(e)),end=nearestLatticePoint(w.x,w.y,last.x,last.y);
       if(state.activeMark.pressureWidth){const rawPressure=pointerPressure(e,last.p??.5);end.p=stabilisePressure(last.p??rawPressure,rawPressure);}
