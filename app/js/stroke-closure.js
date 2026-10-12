@@ -17,7 +17,11 @@
     for(let i=1;i<points.length;i++){
       const a=points[i-1],b=points[i];
       if(![a?.x,a?.y,b?.x,b?.y].every(Number.isFinite))return null;
-      travel+=Math.hypot(b.x-a.x,b.y-a.y);
+      const segment=Math.hypot(b.x-a.x,b.y-a.y);
+      // Real seam crossing uses unwrapped coordinates. Reject giant artificial
+      // jumps rather than mistaking a broken stroke for a closed loop.
+      if(size>0&&segment>size*.45)return null;
+      travel+=segment;
       maxDistance=Math.max(maxDistance,Math.hypot(b.x-first.x,b.y-first.y));
     }
     // Reject short dabs, almost-straight corrections and small accidental hooks.
