@@ -30,7 +30,10 @@
     // Keep the exact final point for a genuinely closed loop; otherwise add the
     // seam-matching endpoint, preserving original editable strokes for Undo.
     const alreadyClosed=Math.hypot(target.x-last.x,target.y-last.y)<.001;
-    return alreadyClosed?{points,closed:true}:{points:[...points,closedPoint],closed:true};
+    if(!alreadyClosed)return {points:[...points,closedPoint],closed:true};
+    if(target.x===last.x&&target.y===last.y)return {points,closed:true};
+    const normalised=points.slice();normalised[normalised.length-1]={...last,x:target.x,y:target.y};
+    return {points:normalised,closed:true};
   }
   window.PatternForgeStrokeClosure=Object.freeze({closeNearLoop});
 })();
