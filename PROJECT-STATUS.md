@@ -1,5 +1,18 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Image dragging usability fix (TESTED, NOT DEPLOYED)
+
+**Working branch:** `feature/responsive-image-drag-20261012`, based on the already published production web commit `cd69f4174550b476bae5988925e5c06ee77d27dd`. **The code is implemented and CI-tested only. Do not claim it is live.** The last read-back of production Netlify site `sapiver-pattern-forge` remained deploy `6acc7c9c9f99880008db10d4` (ready) and the unfinished Poster_gen handoff PR #6 remains wholly separate.
+
+**User report:** "Drag image is not good/sensitive enough" and "They're not moving at all when selected." Two concrete source defects were found: (1) importing/placing an image set `selectedId` and drew selection handles but did **not** change the active drawing tool, so the image looked selected while Brush or Eraser continued to draw/erase instead of moving it; (2) image dragging applied Smart Snap every pointermove frame, pinning tiny finger movements to the grid. Small mobile images also had unforgiving exact hit rectangles, and the image move handle used the old sticky snapping transform.
+
+**Implementation:** `app/js/editor.js` now activates **Select** when imported artwork or a new image-library copy is placed; correctly synchronises the legacy and canvas-first UX2 tool controls; grabs any visible image body for normal touch dragging; adds a small 18 CSS px touch / 10 CSS px pen halo to selected/touch-target images after testing exact artwork hits; makes all image moves follow finger/mouse directly during drag; shows snap guides while moving and only applies final snap to longer, deliberate drags (at least 24 CSS px), preserving exact short nudges. The dedicated **Move** handle uses the same responsive path. Selected-group and explicit transform handle paths are preserved. `app/assets/editor.css` indicates image dragging with a grabbing pointer on capable devices. Existing project data schemas and saved work are unchanged.
+
+**Verifiable regression evidence:** branch-only GitHub Action [38213831486](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38213831486) **completed SUCCESS**, with **7/7 direct real-pointer Chromium scenarios** (desktop 8 px mouse, Android-emulated touch short/long drags, Doodle, move handle, tiny-image finger hit, importing a further image while Brush is active and then immediately dragging) and **31/31 existing extended-editor readiness checks** (save, reopen, undo/export, half-drop/brick/straight patterns, mobile viewport layouts, recovery, large design). No failure lines in that run. Touch input is Android-*emulated* via Chrome DevTools Protocol, **not an actual Android phone**.
+
+**Deployment boundary / next action:** DO NOT fast-forward `main`, deploy Netlify, or build an Android APK/AAB without a new explicit release approval. After approval, promote only this 12 October drag fix, verify the exact Netlify commit and live browser drag, and physically test image import/drag on Jim's Android device. The previous successfully deployed Strong/Auto-close features remain live; this additional drag fix is **NOT** live yet.
+
+
 ## 12 October 2026 — Strong stabiliser and automatic freehand closure (development only)
 
 **Approved for one controlled PRODUCTION WEBSITE deployment on 12 October 2026, NOT an Android APK/AAB release.** Source branch `feature/strong-stabilisation-auto-close-20261012` is tested; production publishing and live verification are separate stages. User originally placed deployment on hold, then explicitly authorised **Deploy** on 12 October. Poster_gen draft PR #6 remains separate and excluded.
@@ -79,10 +92,11 @@ Availability is different from physical Android validation.
 | Feature | Where the user finds it | Source / browser status |
 | --- | --- | --- |
 | Consistent saved favourite tools | Tools menu; choose quick tools | Implemented; reload and workspace-switch coverage |
+| Imported image drag and selection | Import image or add another from library → automatically Select; drag image body or Move handle | **New fix on `feature/responsive-image-drag-20261012`; tested 7/7 browser flows + 31/31 regression, NOT deployed** |
 | Multi-select, group/ungroup, move, scale, rotate, duplicate, delete, flips | Select tool; add artwork to selection; contextual controls | Implemented; transforms, save/reopen and undo covered |
 | Recolour selected drawn artwork and replace matching colours | Colour panel | Implemented; editable marks and replacement covered |
-| Stroke stabilisation | Brush contextual controls → Stabilise | Implemented; **Strong default for new projects** only on the unreleased 12 Oct drawing-assistance branch |
-| Auto-close near-complete shapes | Brush/Freehand Fill contextual controls → Auto-join ends / Join px | New, toggleable and screen-scale-tolerant on the **unreleased 12 Oct branch**; open strokes and Doodle verified in isolated Chromium tests |
+| Stroke stabilisation | Brush contextual controls → Stabilise | **Live production website** since the approved 12 Oct Strong-stabilisation release |
+| Auto-close near-complete shapes | Brush/Freehand Fill contextual controls → Auto-join ends / Join px | **Live production website** since the approved 12 Oct release; physical phone accuracy still to verify |
 | Reusable editable motifs, including Doodle → Pattern | Motifs panel → save selected artwork; insert saved motif | Implemented; cross-feature regression covered |
 | Bucket fill with tolerance and visible-canvas sampling | Fill → Bucket | Implemented; contours, repeat seams, undo and budget checks |
 | Alpha Lock | Layers → selected layer → Alpha Lock | Implemented; paint/recolour/eraser/reopen/export checks |
