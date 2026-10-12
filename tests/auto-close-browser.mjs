@@ -23,6 +23,7 @@ async function file(page,id='saveProject'){
 }
 async function saved(page){return JSON.parse((await file(page)).buffer.toString());}
 async function stroke(page,{ring=true,radius=0.105}={}){
+ await page.locator('#editorCanvas').scrollIntoViewIfNeeded();
  const b=await page.locator('#editorCanvas').boundingBox();
  assert(b,'editor canvas must have geometry');
  const x=b.x+b.width*.52,y=b.y+b.height*.47,r=b.width*radius;
