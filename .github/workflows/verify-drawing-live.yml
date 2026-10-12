@@ -1,0 +1,55 @@
+name: Verify published drawing assistance (read-only browser)
+
+on:
+  push:
+    branches: [feature/strong-stabilisation-auto-close-20261012]
+    paths:
+      - tests/auto-close-browser.mjs
+      - .github/workflows/verify-drawing-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify live public assets match approved release features
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://sapiver-pattern-forge.netlify.app';
+          const get=async path=>{
+            const r=await fetch(base+path,{redirect:'follow',headers:{'cache-control':'no-cache'}});
+            if(!r.ok)throw Error(path+' HTTP '+r.status);
+            return r.text();
+          };
+          const [page,helper,engine,ux2]=await Promise.all([
+            get('/app/'),get('/app/js/stroke-closure.js'),get('/app/js/editor.js'),get('/app/js/canvas-first-v2.js')
+          ]);
+          for(const [label,ok] of [
+            ['Strong default',page.includes('value="strong" selected')],
+            ['Auto-close default',page.includes('id="autoCloseShapes" type="checkbox" checked')],
+            ['Snap default',page.includes('id="snapOn" type="checkbox" checked')],
+            ['Closure script included',page.includes('src="/app/js/stroke-closure.js"')],
+            ['Live seam closure geometry',helper.includes('function closeNearLoop')],
+            ['Live brush closure engine',engine.includes('PatternForgeStrokeClosure')],
+            ['UX2 controls',ux2.includes('ux2AutoCloseDistance')],
+          ]){
+            if(!ok)throw Error('Missing live feature: '+label);
+            console.log('PASS live asset',label);
+          }
+          JS
+      - name: Install isolated browser testing runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test live Pattern and Doodle using disposable local browser data
+        env:
+          DRAWING_SMOKE_URL: https://sapiver-pattern-forge.netlify.app
+        run: node tests/auto-close-browser.mjs
