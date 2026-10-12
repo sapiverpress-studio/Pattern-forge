@@ -1,0 +1,51 @@
+name: Verify published batch image library (read only)
+on:
+  push:
+    branches: [feature/batch-image-library-20261012]
+    paths:
+      - .github/workflows/verify-batch-images-live.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Confirm live site serves the batch picker and image library
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://sapiver-pattern-forge.netlify.app';
+          const read=async path=>{
+            const r=await fetch(base+path,{headers:{'cache-control':'no-cache'}});
+            if(!r.ok)throw Error(path+' HTTP '+r.status);
+            return r.text();
+          };
+          const [html,engine,shell]=await Promise.all([
+            read('/app/'),read('/app/js/editor.js'),read('/app/js/canvas-first-v2.js')
+          ]);
+          const checks=[
+            ['multiple image picker',html.includes('id="files"')&&html.includes('multiple hidden')],
+            ['complete library backup',engine.includes('backupAll:()=>')],
+            ['batch import progress',engine.includes('Importing image')],
+            ['Images gallery',shell.includes('ux2ImageLibrary')],
+            ['add individually',shell.includes('Add to canvas')],
+            ['five-plus image selection',shell.includes('Choose images (5 or more at once)')]
+          ];
+          for(const [label,ok] of checks){
+            if(!ok)throw Error('Missing live feature: '+label);
+            console.log('PASS live asset '+label);
+          }
+          JS
+      - name: Install Chromium runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test 5+ image imports on public production app
+        env:
+          PF_TEST_BASE_URL: https://sapiver-pattern-forge.netlify.app
+        run: node tests/multi-image-import-browser.mjs
