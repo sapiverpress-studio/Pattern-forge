@@ -26,11 +26,11 @@ async function project(page){
  const d=await p;
  return JSON.parse((await fs.readFile(await d.path())).toString());
 }
-async function drag(page,touch,dx,dy){
+async function drag(page,touch,dx,dy,{startX=0,startY=0}={}){
  const el=page.locator('#editorCanvas');
  await el.scrollIntoViewIfNeeded();
  const box=await el.boundingBox();assert(box&&box.width>100);
- const x=box.x+box.width/2,y=box.y+box.height/2;
+ const x=box.x+box.width/2+startX,y=box.y+box.height/2+startY;
  if(!touch){await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:15});await page.mouse.up();return;}
  const client=await page.context().newCDPSession(page);
  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
@@ -57,5 +57,36 @@ try{
  await run('Android touch drag short 8px with snapping on',{touch:true,doodle:false},[8,7]);
  await run('Android touch drag longer 45px with snapping on',{touch:true,doodle:false},[45,20]);
  await run('Android Doodle drag 12px with snapping on',{touch:true,doodle:true},[12,9]);
+ {
+  const {context,page,errors}=await fresh({touch:true,doodle:false});
+  try{
+   const before=await project(page);
+   const b=await page.locator('#editorCanvas').boundingBox();
+   const zoom=Number(await page.locator('#zoom').inputValue())/100;
+   const extraY=(before.assets[0].h*before.items[0].scale/2*.38*zoom+22)*b.height/1000;
+   await drag(page,true,10,8,{startY:extraY});
+   const after=await project(page);
+   assert(Math.hypot(after.items[0].x-before.items[0].x,after.items[0].y-before.items[0].y)>.5,
+      'dedicated move handle must move image, not wait for snap threshold');
+   assert.deepEqual(errors,[]);completed++;
+   console.log('PASS touch image dedicated move handle');
+  }finally{await context.close()}
+ }
+ {
+  const {context,page,errors}=await fresh({touch:true,doodle:false});
+  try{
+   const snapshot=await project(page);
+   snapshot.items[0].scale=.012;
+   await page.locator('#projectFile').setInputFiles({name:'tiny.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(snapshot))});
+   await page.waitForFunction(()=>document.querySelector('#projectFile').files.length===0);
+   const before=await project(page);
+   await drag(page,true,12,7,{startX:10});
+   const after=await project(page);
+   assert(Math.hypot(after.items[0].x-before.items[0].x,after.items[0].y-before.items[0].y)>1,
+      'touch hit halo must pick up an otherwise very small image');
+   assert.deepEqual(errors,[]);completed++;
+   console.log('PASS very small image is draggable within finger-sized hit halo');
+  }finally{await context.close()}
+ }
  console.log('PASS all',completed,'real-pointer input regressions');
 }finally{await browser.close()}
