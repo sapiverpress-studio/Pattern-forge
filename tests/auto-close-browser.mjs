@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-const base='http://127.0.0.1:4173';
+const base=process.env.DRAWING_SMOKE_URL||'http://127.0.0.1:4173';
 const browser=await chromium.launch({headless:true});
 let checks=0;
 async function fresh(type='pattern',legacy=true){
