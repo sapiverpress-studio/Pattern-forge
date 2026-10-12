@@ -101,7 +101,7 @@
       </div>
       <div class="field"><label for="brushSize">Brush / outline size <span id="brushSizeLabel">20</span> px at export</label><input id="brushSize" type="range" min="2" max="400" value="20"></div>
       <div class="row">
-        <div class="field"><label for="brushStyle">Brush style</label><select id="brushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="stamp">Stamp</option></select></div>
+        <div class="field"><label for="brushStyle">Brush style</label><select id="brushStyle"><option value="ink">Ink</option><option value="pencil">Pencil</option><option value="marker">Marker</option><option value="texture">Textured paint</option><option value="impasto">Oil impasto — raised bristle ridges</option><option value="piped">Piped paint — thick icing-style swirls</option><option value="knife">Palette knife — thick scraped paint</option><option value="stamp">Stamp</option></select></div>
         <div class="field"><label for="strokeStabilisation">Stroke stabilisation</label><select id="strokeStabilisation"><option value="off">Off</option><option value="light">Light</option><option value="medium">Medium</option><option value="strong" selected>Strong</option></select></div>
         <label class="check"><input id="pressureWidth" type="checkbox"> Stylus pressure controls width</label>
         <div class="field"><label for="stampShape">Stamp shape</label><select id="stampShape"><option value="leaf">Leaf</option><option value="star">Star</option><option value="dot">Dot</option></select></div>
@@ -360,6 +360,7 @@
 
 <script src="/app/js/platform.js"></script>
 <script src="/app/js/stroke-closure.js"></script>
+<script src="/app/js/raised-paint.js"></script>
 <script src="/app/js/editor.js"></script>
 <script src="/app/js/etsy-export.js"></script>
 <script src="/app/js/workspace.js"></script>
