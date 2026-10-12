@@ -1,5 +1,20 @@
 # Pattern Forge — current work and handover
 
+## 12 October 2026 — Strong stabiliser and automatic freehand closure (development only)
+
+**Implemented on isolated branch `feature/strong-stabilisation-auto-close-20261012`, NOT deployed, NOT merged.** The owner's instruction is to hold off production and staging deployment, including any new Android build, while improving drawing usability. The existing Pattern Forge → Poster_gen draft PR #6 remains separate and unchanged.
+
+**Where to find controls after a future approved release:** Brush → Stabilise (**Strong** by default on new projects); Brush → **Auto-join ends** and **Join px** (default on, 24 CSS screen pixels, adjustable 10–40); Freehand Fill → the same Auto-join controls. Smart snapping defaults on for new projects. Open or imported saved projects retain their saved stabilisation, snap and auto-close settings; older archives lacking the new fields receive the new defaults.
+
+**Behaviour:** A completed brush/freehand-fill outline returns to its first point only if it has sufficient travelled length and returns close enough to its start. Open marks, tiny dabs and stamp brushes are not force-closed. Repeated-pattern seams use continuous unwrapped stroke geometry; joins are saved as editable points, so undo/redo and raster/vector exports use the actual joined path. Doodle uses ordinary non-wrapping closure. No background publication, Etsy or supplier action is involved.
+
+**Changes:** `app/index.html` (defaults/controls/script order), `app/js/stroke-closure.js` (pure seam-aware geometry), `app/js/editor.js` (finish stroke, project defaults, save/restore), `app/js/canvas-first-v2.js` (Brush/Fill contextual UI), `tests/auto-close-geometry.test.mjs`, `tests/auto-close-browser.mjs`, `.github/workflows/drawing-assistance-checks.yml` (branch-only CI). Preserve existing project data and the unrelated integration PR.
+
+**Testing:** targeted CI [38209466803](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38209466803) completed successfully: **5/5 geometry tests**, plus **3 full-app Chromium scenarios** covering Pattern and Doodle outlines, open strokes, disabled closure, persistence/import, undo/redo, actual PNG/SVG export and UX2 Brush/Freehand Fill controls. An additional existing extended-readiness regression run was introduced for this branch; verify its final result before claiming readiness. Physical Android/stylus behaviour is still **UNVERIFIED**.
+
+**Deployment/credits:** no Netlify build requested or triggered by this branch-only GitHub workflow, no live file or user setting modified, no APK/AAB. **Next action:** address any broader test failures, then create a draft PR targeting `main`. Owner approval remains necessary for staging, production or mobile release.
+
+
 Last updated: 9 October 2026 (UK). Read this first when continuing the project.
 Update this file after every completed stage and before ending each work session.
 
@@ -66,7 +81,8 @@ Availability is different from physical Android validation.
 | Consistent saved favourite tools | Tools menu; choose quick tools | Implemented; reload and workspace-switch coverage |
 | Multi-select, group/ungroup, move, scale, rotate, duplicate, delete, flips | Select tool; add artwork to selection; contextual controls | Implemented; transforms, save/reopen and undo covered |
 | Recolour selected drawn artwork and replace matching colours | Colour panel | Implemented; editable marks and replacement covered |
-| Stroke stabilisation | Brush contextual controls → Stabilise | Implemented |
+| Stroke stabilisation | Brush contextual controls → Stabilise | Implemented; **Strong default for new projects** only on the unreleased 12 Oct drawing-assistance branch |
+| Auto-close near-complete shapes | Brush/Freehand Fill contextual controls → Auto-join ends / Join px | New, toggleable and screen-scale-tolerant on the **unreleased 12 Oct branch**; open strokes and Doodle verified in isolated Chromium tests |
 | Reusable editable motifs, including Doodle → Pattern | Motifs panel → save selected artwork; insert saved motif | Implemented; cross-feature regression covered |
 | Bucket fill with tolerance and visible-canvas sampling | Fill → Bucket | Implemented; contours, repeat seams, undo and budget checks |
 | Alpha Lock | Layers → selected layer → Alpha Lock | Implemented; paint/recolour/eraser/reopen/export checks |
