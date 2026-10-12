@@ -4,11 +4,11 @@ import fs from 'node:fs/promises';
 const base='http://127.0.0.1:4173';
 const browser=await chromium.launch({headless:true});
 let checks=0;
-async function fresh(type='pattern'){
+async function fresh(type='pattern',legacy=true){
  const context=await browser.newContext({viewport:{width:1300,height:900},acceptDownloads:true});
  const page=await context.newPage();page.setDefaultTimeout(20000);
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
- await page.goto(base+'/app/?legacy=1',{waitUntil:'networkidle'});
+ await page.goto(base+'/app/'+(legacy?'?legacy=1':''),{waitUntil:'networkidle'});
  await page.locator('#projectTypeInput').selectOption(type);
  await page.locator('#projectTitleInput').fill('Auto-close test '+type);
  await page.locator('#projectSetupForm').evaluate(el=>el.requestSubmit());
@@ -101,7 +101,7 @@ try{
   await context.close();
  }
  {
-  const {context,page,errors}=await fresh('pattern');
+  const {context,page,errors}=await fresh('pattern',false);
   await choose(page,'brush');
   // UX2 real shell proxy controls should be wired, not merely visual placeholders.
   const ux=page.locator('#ux2AutoClose');
