@@ -2482,6 +2482,7 @@
     // Missing values in older projects inherit the new defaults, regardless
     // of the last project opened on this device.
     $("strokeStabilisation").value="strong";
+    $("snapOn").checked=true;
     $("autoCloseShapes").checked=s.autoCloseShapes===undefined?true:!!s.autoCloseShapes;
     $("autoCloseTolerance").value=String(clamp(Number(s.autoCloseTolerance)||24,10,40));
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
