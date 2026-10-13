@@ -1,0 +1,48 @@
+name: Verify full-screen Shape Clean and uncluttered landscape toolbar
+on:
+  push:
+    branches: [feature/fullscreen-landscape-control-ux-20261013]
+    paths:
+      - app/assets/canvas-first-v2.css
+      - app/js/canvas-first-v2.js
+      - tests/fullscreen-landscape-controls-browser.mjs
+      - .github/workflows/fullscreen-landscape-ux.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate editor and test syntax
+        run: |
+          node --check app/js/canvas-first-v2.js
+          node --check tests/fullscreen-landscape-controls-browser.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify landscape full screen and accessible controls at 5 sizes
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-ux-landscape.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/fullscreen-landscape-controls-browser.mjs
+      - name: Existing editor, Doodle, PNG and SVG regressions
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-ux-regress.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          UX2_AUDIT_OUTPUT=/tmp/pf-ux-regress node tests/ux2-extended-readiness.mjs
+      - name: Preserve Shape Clean geometry and transparent Doodle exports
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-ux-shapes.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/shape-clean-geometry.test.mjs
+          node tests/shape-clean-browser.mjs
