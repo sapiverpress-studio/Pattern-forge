@@ -96,7 +96,7 @@
         {x:isSquare?b.cx+radius:b.maxX,y:isSquare?b.cy+radius:b.maxY}
       ],confidence:1-relativeError};
     }
-    const ordered=tri.slice().sort((a,b)=>Math.atan2(a.y-b.cy,a.x-b.cx)-Math.atan2(b.y-b.cy,b.x-b.cx));
+    const ordered=tri.slice().sort((a,c)=>Math.atan2(a.y-b.cy,a.x-b.cx)-Math.atan2(c.y-b.cy,c.x-b.cx));
     ordered.push({...ordered[0]});
     return {kind:"triangle",type:"brush",points:ordered,confidence:1-relativeError};
   }
