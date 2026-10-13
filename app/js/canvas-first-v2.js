@@ -20,6 +20,7 @@
         <span class="ux2-status" id="ux2Status"></span>
         <button class="ux2-icon-btn" id="ux2Undo" title="Undo" aria-label="Undo">${icon('undo')}</button>
         <button class="ux2-icon-btn" id="ux2Redo" title="Redo" aria-label="Redo">${icon('redo')}</button>
+        <button class="ux2-btn ux2-shape-clean" id="ux2ShapeClean" type="button" title="Perfect the selected or last rough closed outline" aria-label="Shape Clean: perfect a freehand circle, square, rectangle or triangle">Shape Clean</button>
         <button class="ux2-icon-btn" id="ux2Fullscreen" title="Full screen" aria-label="Enter full screen">${icon('fullscreen')}</button>
         <button class="ux2-btn" id="ux2Preview">Preview</button>
         <button class="ux2-btn primary" id="ux2Export">Export</button>
@@ -584,6 +585,7 @@
   });
   window.addEventListener('patternforge:native-fullscreen-exit',()=>void setUx2Fullscreen(false));
 
+  $('ux2ShapeClean').addEventListener('click',()=>window.PatternForgeShapeCleanAction?.clean());
   $('ux2Gallery').addEventListener('click',()=>{location.href='/'});
   $('ux2Undo').addEventListener('click',()=>clickOld('undo'));$('ux2Redo').addEventListener('click',()=>clickOld('redo'));
   $('ux2Fullscreen').addEventListener('click',()=>setUx2Fullscreen(!ux2FullscreenActive));syncFullscreenButton();
