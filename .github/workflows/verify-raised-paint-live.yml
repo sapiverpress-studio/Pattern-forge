@@ -1,0 +1,55 @@
+name: Verify published raised paint brushes (read only)
+on:
+  push:
+    branches: [feature/raised-impasto-brushes-20261012]
+    paths:
+      - .github/workflows/verify-raised-paint-live.yml
+      - tests/raised-paint-browser.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Confirm released raised-paint engine and menus on public website
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://sapiver-pattern-forge.netlify.app';
+          const read=async path=>{
+            const r=await fetch(base+path,{headers:{'cache-control':'no-cache'}});
+            if(!r.ok)throw Error(path+' HTTP '+r.status);
+            return r.text();
+          };
+          const [html,engine,editor,shell]=await Promise.all([
+            read('/app/'),read('/app/js/raised-paint.js'),read('/app/js/editor.js'),read('/app/js/canvas-first-v2.js')
+          ]);
+          const checks=[
+            ['script loaded',html.includes('src="/app/js/raised-paint.js"')],
+            ['Oil impasto option',html.includes('Oil impasto')],
+            ['Piped paint option',html.includes('Piped paint')],
+            ['Palette knife option',html.includes('Palette knife')],
+            ['deterministic vector relief',engine.includes('window.PatternForgeRaisedPaint=Object.freeze')],
+            ['SVG exporter uses relief',editor.includes('window.PatternForgeRaisedPaint.toSVG(m)')],
+            ['canvas paints relief',editor.includes('window.PatternForgeRaisedPaint.draw(c,m)')],
+            ['relief slider',shell.includes('ux2PaintRelief')],
+            ['Brush Library presets',shell.includes('Raised bristle ridges')]
+          ];
+          for(const [label,pass] of checks){
+            if(!pass)throw Error('Missing public release feature: '+label);
+            console.log('PASS live asset '+label);
+          }
+          JS
+      - name: Install headless Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test live paint brush drawing and exports on public Netlify
+        env:
+          PF_TEST_BASE_URL: https://sapiver-pattern-forge.netlify.app
+        run: node tests/raised-paint-browser.mjs
