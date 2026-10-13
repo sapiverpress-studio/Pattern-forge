@@ -543,6 +543,37 @@
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
+  // One-tap Shape Clean: use the selected brush or the most recently completed
+  // brush stroke. Never edit images, previously converted shapes or open marks.
+  function cleanLastSketch(){
+    if(state.activeMark){setStatus("Finish drawing the outline before using Shape Clean.");return false;}
+    const selected=selectedArtwork(),single=selected.length===1?selected[0]:null;
+    const candidate=selected.length
+      ? (single?.kind==="mark"&&single.artwork.type==="brush"&&!single.artwork.shapeCleanKind?single.artwork:null)
+      : [...state.marks].reverse().find(mark=>mark.type==="brush"&&!mark.shapeCleanKind&&layerForArtwork(mark,BASE_LAYER_IDS.drawing)?.visible!==false);
+    if(!candidate){setStatus("Draw a rough circle, square, rectangle or triangle with Brush, or select one brush stroke.");return false;}
+    const ownerLayer=layerForArtwork(candidate,BASE_LAYER_IDS.drawing);
+    if(!ownerLayer||ownerLayer.locked||!ownerLayer.visible){setStatus("Unlock and show the drawing layer before cleaning its shape.");return false;}
+    const fitted=window.PatternForgeShapeClean?.fit(candidate.points);
+    if(!fitted){setStatus("Shape Clean couldn't confidently recognise a closed circle, square, rectangle or triangle. The drawing has been kept.");return false;}
+    saveHistory();
+    candidate.type=fitted.type;
+    candidate.points=fitted.points;
+    candidate.fill=false; // An outline stays hollow even when Fill shape is checked.
+    candidate.brushStyle="ink"; // Straight, crisp edges rather than rough bristle dabs.
+    candidate.pressureWidth=false;
+    candidate.autoClosed=true;
+    candidate.shapeCleanKind=fitted.kind;
+    setSelection([candidate.id],candidate.id);
+    const select=document.querySelector('[data-ux2-tool="select"]')||document.querySelector('[data-tool="select"]');
+    if(select)select.click();
+    else state.tool="select";
+    renderAll();
+    setStatus("Shape Clean: "+fitted.kind+" perfected at the original position and size. Undo restores the freehand drawing.");
+    window.dispatchEvent(new CustomEvent("patternforge:shape-cleaned",{detail:{kind:fitted.kind,id:candidate.id}}));
+    return true;
+  }
+  window.PatternForgeShapeCleanAction={clean:cleanLastSketch};
   function artworkRecord(id){
     const item=state.items.find(i=>i.id===id);if(item)return {kind:"item",artwork:item,layer:layerForArtwork(item,BASE_LAYER_IDS.motifs)};
     const mark=state.marks.find(m=>m.id===id);if(mark)return {kind:"mark",artwork:mark,layer:layerForArtwork(mark,BASE_LAYER_IDS.drawing)};
@@ -2714,6 +2745,7 @@
     canvas.style.cursor=state.tool==="pan"?"grab":state.tool==="select"?"default":state.tool==="eyedropper"?"copy":"crosshair";
     setStatus(`${b.textContent} tool active.`);
   }));
+  $("shapeCleanLegacy")?.addEventListener("click",cleanLastSketch);
   $("layerAdd").addEventListener("click",addLayer);
   $("layerDuplicate").addEventListener("click",duplicateActiveLayer);
   $("layerDelete").addEventListener("click",deleteActiveLayer);
