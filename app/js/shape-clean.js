@@ -21,7 +21,7 @@
     if(size<6||!Number.isFinite(size))return null;
     const gap=dist(first,last),length=clean.slice(1).reduce((sum,p,i)=>sum+dist(p,clean[i]),0);
     // Never silently close a U, a C or a short freehand line.
-    if(gap>Math.max(8,size*.27)||length<2.1*Math.max(w,h))return null;
+    if(gap>Math.max(8,size*.27)||length<2.1*Math.max(w,h)||length>3.1*(w+h))return null;
     let total=0;const cum=[0];
     for(let i=1;i<count;i++){total+=dist(clean[i-1],clean[i]);cum.push(total);}
     if(total<1)return null;
