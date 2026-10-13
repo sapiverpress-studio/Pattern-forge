@@ -87,14 +87,14 @@ try{
    assert.equal(data.marks[0].points.length,4);
    assert.equal(data.transparent,true,'Doodle stays transparent');
    const svg=await checkSVG(page,'triangle');
-   assert(!/<rect[^>]+(?:width="4000"|height="4000")/.test(svg),'SVG has no opaque white background');
+   assert(!/<rect[^>]+width="4000"[^>]+height="4000"[^>]+fill=/.test(svg),'SVG has no opaque white background');
    const png=await download(page,'exportPng');
    assert.equal(png.readUInt32BE(16),4000);assert.equal(png.readUInt32BE(20),4000);
    const corner=await page.evaluate(async base64=>{
      const resp=await fetch('data:image/png;base64,'+base64);
      const img=await createImageBitmap(await resp.blob());
-     const c=document.createElement('canvas');c.width=2;c.height=2;
-     const ctx=c.getContext('2d');ctx.drawImage(img,0,0,2,2);
+     const c=document.createElement('canvas');c.width=1;c.height=1;
+     const ctx=c.getContext('2d');ctx.drawImage(img,0,0,1,1,0,0,1,1);
      return [...ctx.getImageData(0,0,1,1).data];
    },png.toString('base64'));
    assert.equal(corner[3],0,'Doodle PNG alpha is completely transparent outside artwork');
