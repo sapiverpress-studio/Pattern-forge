@@ -1,0 +1,49 @@
+name: Shape Clean geometry, Doodle transparency and editor regressions
+on:
+  push:
+    branches: [feature/shape-clean-20261013]
+    paths:
+      - app/js/shape-clean.js
+      - app/js/editor.js
+      - app/js/canvas-first-v2.js
+      - app/index.html
+      - app/assets/canvas-first-v2.css
+      - tests/shape-clean-geometry.test.mjs
+      - tests/shape-clean-browser.mjs
+      - .github/workflows/shape-clean-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-shape-clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check JS syntax and geometry classification
+        run: |
+          node --check app/js/shape-clean.js
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check tests/shape-clean-geometry.test.mjs
+          node --check tests/shape-clean-browser.mjs
+          node tests/shape-clean-geometry.test.mjs
+      - name: Install browser test environment
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test Shape Clean and alpha transparency in real browser
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-shape-clean.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/shape-clean-browser.mjs
+      - name: Protect existing editor and export behaviour
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-shape-clean-extended.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          UX2_AUDIT_OUTPUT=/tmp/pf-shape-clean-extended node tests/ux2-extended-readiness.mjs
