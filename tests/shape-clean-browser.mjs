@@ -46,7 +46,7 @@ async function checkSVG(page,type){
  if(type==='rect')assert(xml.includes('<rect ')&&xml.includes('fill="none"'),'clean square must be a hollow rectangle');
  if(type==='triangle'){
    const flags={path:xml.includes('<path d="M'),stroke:xml.includes('stroke="#286753"'),hollow:xml.includes('fill="none"')};
-   assert(Object.values(flags).every(Boolean),'triangle must be an editable hollow vector outline: '+JSON.stringify(flags)+' SVG snippet '+xml.slice(xml.indexOf('path d='),xml.indexOf('path d=')+350));
+   assert(Object.values(flags).every(Boolean),'triangle must be an editable hollow vector outline: '+JSON.stringify(flags)+' SVG body '+xml.slice(0,2100));
  }
  assert(!xml.includes('NaN'));
  return xml;
