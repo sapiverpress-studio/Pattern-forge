@@ -178,6 +178,12 @@
   function organiseContextControls(tool){
     const context=$('ux2Context'),body=$('ux2ContextExtrasBody'),pane=$('ux2ContextExtras');
     if(!context||!body||!pane)return;
+    // Normal editor and Doodle's vertical immersive palette already have
+    // usable layout/accessibility contracts. Do not move controls there.
+    // Compact only Pattern's overflowing landscape fullscreen footer.
+    if(!document.body.classList.contains('ux2-fullscreen')||document.body.classList.contains('doodle-project')){
+      closeContextExtras();return;
+    }
     const groups=[...context.children].filter(node=>node.classList?.contains('ux2-context-group'));
     const extras=[];
     const makeGroup=()=>{const div=document.createElement('div');div.className='ux2-context-extra-group';return div};
