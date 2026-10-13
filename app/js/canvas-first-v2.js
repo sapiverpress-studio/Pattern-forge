@@ -49,7 +49,11 @@
       <aside class="ux2-palette" id="ux2Palette" hidden><div class="ux2-palette-head"><span id="ux2PaletteTitle">Panel</span><button class="ux2-palette-close" id="ux2PaletteClose" aria-label="Close">×</button></div><div class="ux2-palette-body" id="ux2PaletteBody"></div></aside>
     </div>
     <section class="ux2-tool-menu" id="ux2ToolMenu" hidden aria-label="Tools and quick tools"></section>
-    <footer class="ux2-context" id="ux2Context"></footer>`;
+    <footer class="ux2-context" id="ux2Context" aria-label="Essential tool controls"></footer>
+    <aside class="ux2-context-extras" id="ux2ContextExtras" hidden aria-label="Additional tool settings">
+      <div class="ux2-context-extras-head"><strong id="ux2ContextExtrasTitle">Tool settings</strong><button id="ux2ContextExtrasClose" type="button" aria-label="Close tool settings">×</button></div>
+      <div class="ux2-context-extras-body" id="ux2ContextExtrasBody"></div>
+    </aside>`;
 
   oldLayout.before(shell);
   $('ux2CanvasSlot').appendChild(stage);
@@ -163,8 +167,72 @@
   const clickOld = id => { const el=$(id); if(el) el.click(); };
   const currentTool = () => [...oldLayout.querySelectorAll('[data-tool]')].find(b=>b.classList.contains('active'))?.dataset.tool || 'select';
 
+  // Keep the footer focused on immediate drawing actions. The rest of each
+  // tool's existing, fully wired controls move into an explicitly labelled
+  // settings tray; do not duplicate inputs or hide them in an unmarked scroller.
+  function closeContextExtras(){
+    const pane=$('ux2ContextExtras'),toggle=$('ux2ContextSettingsToggle');
+    if(pane)pane.hidden=true;
+    if(toggle)toggle.setAttribute('aria-expanded','false');
+  }
+  function organiseContextControls(tool){
+    const context=$('ux2Context'),body=$('ux2ContextExtrasBody'),pane=$('ux2ContextExtras');
+    if(!context||!body||!pane)return;
+    const groups=[...context.children].filter(node=>node.classList?.contains('ux2-context-group'));
+    const extras=[];
+    const makeGroup=()=>{const div=document.createElement('div');div.className='ux2-context-extra-group';return div};
+    if(tool==='brush'||tool==='eraser'){
+      const settings=groups[1];
+      if(settings){
+        const extra=makeGroup();
+        // Size is the only always-visible slider. Opacity, stabilisation and
+        // pressure width remain available by a single tap.
+        for(const id of ['ux2Opacity','ux2Stabilisation','ux2PressureWidth']){
+          const control=settings.querySelector('#'+id)?.closest('label');
+          if(control)extra.appendChild(control);
+        }
+        if(extra.childElementCount)extras.push(extra);
+      }
+      for(const group of groups.slice(2))extras.push(group);
+    }else{
+      // Selection/shape/fill operations get a compact command strip and a
+      // discoverable tray with every edit or advanced option.
+      for(const group of groups.slice(1))extras.push(group);
+    }
+    if(!extras.length){closeContextExtras();return}
+    for(const group of extras){
+      group.classList.add('ux2-context-extra-group');
+      body.appendChild(group);
+    }
+    const names={brush:'Brush settings',eraser:'Eraser settings',rect:'Shape settings',ellipse:'Shape settings',line:'Shape settings',select:'Selection tools',freefill:'Fill settings',bucket:'Fill settings',gradient:'Fill settings'};
+    const title=names[tool]||'Tool settings';
+    $('ux2ContextExtrasTitle').textContent=title;
+    const more=document.createElement('button');
+    more.type='button';more.id='ux2ContextSettingsToggle';more.className='ux2-chip ux2-context-more';
+    more.setAttribute('aria-controls','ux2ContextExtras');
+    more.setAttribute('aria-expanded','false');
+    more.textContent=title+' ▾';
+    more.addEventListener('click',()=>{const opened=pane.hidden;pane.hidden=!opened;more.setAttribute('aria-expanded',String(opened));});
+    context.appendChild(more);
+    // As a last resort on very narrow displays put size into the tray as
+    // well, never allow it to be silently cropped off the screen.
+    const layoutWidth=window.innerWidth;
+    const maxWidth=document.body.classList.contains('ux2-fullscreen')?Math.max(230,layoutWidth-170):Math.max(230,layoutWidth-35);
+    if(context.scrollWidth>maxWidth&&groups[1]?.isConnected&&groups[1].parentElement===context)body.prepend(groups[1]);
+    closeContextExtras();
+  }
+  $('ux2ContextExtrasClose').addEventListener('click',closeContextExtras);
+  document.addEventListener('pointerdown',event=>{
+    const pane=$('ux2ContextExtras'),toggle=$('ux2ContextSettingsToggle');
+    if(pane&&!pane.hidden&&!pane.contains(event.target)&&!toggle?.contains(event.target))closeContextExtras();
+  });
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')closeContextExtras()});
+
   const hints={select:'Select artwork to move, scale or rotate',brush:'Draw on the active layer',eraser:'Erase from the active layer',freefill:'Trace a closed area to fill',bucket:'Tap a region to bucket fill',gradient:'Trace a closed area for gradient fill',pan:'Move around the canvas',line:'Draw a straight line',rect:'Draw a rectangle',ellipse:'Draw an ellipse'};
   function renderContext(tool=currentTool()){
+    // Remove the previous tool's moved inputs before rebuilding id-based UI.
+    $('ux2ContextExtrasBody')?.replaceChildren();
+    closeContextExtras();
     const context=$('ux2Context');
     context.classList.remove('ux2-context--empty-selection');
     const showJoinControls=()=>{
@@ -256,6 +324,7 @@
       if($('ux2Back'))$('ux2Back').addEventListener('click',()=>clickOld('backSel'));
       if($('ux2Snap'))$('ux2Snap').addEventListener('click',()=>{const el=$('snapOn');if(el){el.checked=!el.checked;el.dispatchEvent(new Event('change',{bubbles:true}))}});
     }
+    organiseContextControls(tool);
   }
 
   function setTool(tool){
@@ -563,6 +632,8 @@
       document.querySelectorAll('[data-ux2-panel]').forEach(b=>b.classList.remove('active'));
     }
     document.body.classList.toggle('ux2-fullscreen',ux2FullscreenActive);
+    closeContextExtras();
+    renderContext();
     syncFullscreenButton();
     notifyNativeFullscreen(ux2FullscreenActive);
     if(ux2FullscreenActive){
