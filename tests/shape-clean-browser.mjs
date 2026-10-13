@@ -24,10 +24,10 @@ function pen(pts){
  return {id:978,layerId:null,type:'brush',alphaLocked:false,color:'#286753',width:65,fill:false,opacity:.84,texture:.35,brushStyle:'ink',pressureWidth:false,stampShape:'leaf',points:pts};
 }
 function circle(){
- return Array.from({length:100},(_,i)=>{const a=i/99*Math.PI*2,r=720*(1+.025*Math.sin(a*11));return {x:1800+Math.cos(a)*r,y:1900+Math.sin(a)*r};});
+ return Array.from({length:100},(_,i)=>{const a=i/99*Math.PI*2,r=270*(1+.025*Math.sin(a*11));return {x:450+Math.cos(a)*r,y:450+Math.sin(a)*r};});
 }
 function triangle(){
- const vs=[{x:1400,y:1000},{x:2750,y:2760},{x:750,y:2770}],points=[];
+ const vs=[{x:440,y:140},{x:725,y:680},{x:145,y:695}],points=[];
  for(let k=0;k<3;k++)for(let j=0;j<30;j++){const t=j/30,a=vs[k],b=vs[(k+1)%3];points.push({x:a.x+(b.x-a.x)*t+7*Math.sin(j*2.1),y:a.y+(b.y-a.y)*t+7*Math.cos(j*.9)})}
  points.push({...points[0]});return points;
 }
@@ -85,7 +85,6 @@ try{
    assert.equal(data.marks[0].shapeCleanKind,'triangle');
    assert.equal(data.marks[0].brushStyle,'ink');
    assert.equal(data.marks[0].points.length,4);
-   console.log('DOODLE_LAYER_DEBUG',JSON.stringify({active:data.activeLayerId,layers:data.layers,mark:data.marks[0],transparent:data.transparent}));
    assert.equal(data.transparent,true,'Doodle stays transparent');
    const svg=await checkSVG(page,'triangle');
    assert(!/<rect[^>]+(?:width="4000"|height="4000")/.test(svg),'SVG has no opaque white background');
