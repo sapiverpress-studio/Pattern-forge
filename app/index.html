@@ -125,7 +125,7 @@
         <label class="check"><input id="bucketSampleVisible" type="checkbox" checked> Bucket samples visible canvas</label>
       </div>
       <label class="check"><input id="shapeFill" type="checkbox" checked> Fill rectangles and ellipses</label>
-      <div class="btns" style="margin-top:9px"><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
+      <div class="btns" style="margin-top:9px"><button id="shapeCleanLegacy" class="btn" type="button" title="Perfect the last closed brush outline">Shape Clean</button><button id="undo" class="btn">Undo</button><button id="redo" class="btn">Redo</button></div>
       <button id="startAgain" class="btn danger" type="button" style="width:100%;margin-top:8px">Start again</button>
       <p class="help">Start again clears placed images and drawing marks, but keeps this project’s setup, imported image library, layers and settings.</p>
       <p id="drawingHelp" class="help">Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Brush strokes ending near their starting point form a closed loop when Auto-close is enabled. Clearly open strokes remain open. Draw across edges to wrap. Two fingers zoom and move.</p>
@@ -361,6 +361,7 @@
 <script src="/app/js/platform.js"></script>
 <script src="/app/js/stroke-closure.js"></script>
 <script src="/app/js/raised-paint.js"></script>
+<script src="/app/js/shape-clean.js"></script>
 <script src="/app/js/editor.js"></script>
 <script src="/app/js/etsy-export.js"></script>
 <script src="/app/js/workspace.js"></script>
