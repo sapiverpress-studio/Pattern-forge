@@ -429,3 +429,7 @@ body.ux2-fullscreen .ux2-context-extras{
   .ux2-context-extras-body{padding:7px 9px;gap:6px}
   .ux2-context-extra-group{padding-bottom:6px;gap:6px}
 }
+
+/* A filtered top bar would create a new containing block for position:fixed,
+   trapping the Tools trigger beside Export again instead of at the left edge. */
+body.ux2-fullscreen .ux2-topbar{backdrop-filter:none;-webkit-backdrop-filter:none}
