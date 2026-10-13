@@ -44,7 +44,10 @@ async function checkSVG(page,type){
  assert(xml.startsWith('<?xml')||xml.includes('<svg'),'SVG file exists');
  if(type==='ellipse')assert(xml.includes('<ellipse '),'editable circle or oval must export as ellipse');
  if(type==='rect')assert(xml.includes('<rect ')&&xml.includes('fill="none"'),'clean square must be a hollow rectangle');
- if(type==='triangle')assert(xml.includes('<path d="M')&&xml.includes('stroke="#286753"')&&xml.includes('fill="none"'),'triangle must be an editable hollow vector outline');
+ if(type==='triangle'){
+   const flags={path:xml.includes('<path d="M'),stroke:xml.includes('stroke="#286753"'),hollow:xml.includes('fill="none"')};
+   assert(Object.values(flags).every(Boolean),'triangle must be an editable hollow vector outline: '+JSON.stringify(flags)+' SVG snippet '+xml.slice(xml.indexOf('path d='),xml.indexOf('path d=')+350));
+ }
  assert(!xml.includes('NaN'));
  return xml;
 }
