@@ -433,3 +433,21 @@ body.ux2-fullscreen .ux2-context-extras{
 /* A filtered top bar would create a new containing block for position:fixed,
    trapping the Tools trigger beside Export again instead of at the left edge. */
 body.ux2-fullscreen .ux2-topbar{backdrop-filter:none;-webkit-backdrop-filter:none}
+
+/* Do not let legacy/portrait strip items shrink inside their independently
+   scrollable footer. That made the Brush Library hit box overlap the next
+   control at 360px. Apply the compact flex sizing only to landscape UX2. */
+body:not(.ux2-fullscreen) .ux2-context .ux2-context-group{
+  flex:0 0 auto;min-width:max-content
+}
+body:not(.ux2-fullscreen) .ux2-context .ux2-context-group .ux2-slider input{max-width:none}
+@media(orientation:portrait) and (max-width:600px){
+  body.ux2-fullscreen:not(.doodle-project) .ux2-context{
+    width:calc(100vw - 20px);max-width:calc(100vw - 20px);
+    flex-wrap:wrap;justify-content:center;overflow:visible;gap:4px
+  }
+  body.ux2-fullscreen:not(.doodle-project) .ux2-context .ux2-context-group{
+    flex:0 0 auto;min-width:max-content
+  }
+  body.ux2-fullscreen:not(.doodle-project) .ux2-context select{max-width:142px}
+}
