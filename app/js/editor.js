@@ -542,6 +542,33 @@
   };
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
+  // One-tap cleanup updates a freehand mark in place, retaining its brush,
+  // layer, colour, transforms and original identity.
+  function shapeCleanTarget(){
+    if(state.selectedId!==null&&state.selectedId!==undefined){
+      const selected=state.marks.find(m=>m.id===state.selectedId);
+      return selected?.type==="brush"?selected:null;
+    }
+    const newest=state.marks.at(-1);
+    return newest?.type==="brush"?newest:null;
+  }
+  function cleanLastShape(){
+    if(state.activeMark||state.dragging){setStatus("Finish your stroke before using Shape Clean.");return false;}
+    const mark=shapeCleanTarget();
+    if(!mark){setStatus("Draw a closed shape with Brush, then tap Shape Clean.");return false;}
+    const result=window.PatternForgeShapeClean?.clean(mark.points);
+    if(!result){setStatus("Shape Clean needs a recognisable closed outline. Your drawing was left unchanged.");return false;}
+    saveHistory();
+    const pressures=mark.points.map(p=>p.p).filter(p=>Number.isFinite(p));
+    const average=pressures.length?pressures.reduce((a,b)=>a+b,0)/pressures.length:undefined;
+    mark.points=result.points.map(p=>average===undefined?p:{...p,p:average});
+    mark.cleanShape=result.shape;mark.autoClosed=true;
+    renderAll();
+    setStatus("Shape Clean: "+result.shape+" perfected at its drawn position and size. Undo restores your hand-drawn outline.");
+    window.dispatchEvent(new CustomEvent("patternforge:shape-cleaned",{detail:{shape:result.shape,id:mark.id}}));
+    return true;
+  }
+  window.PatternForgeShapeCleanAction={clean:cleanLastShape};
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
   function artworkRecord(id){
     const item=state.items.find(i=>i.id===id);if(item)return {kind:"item",artwork:item,layer:layerForArtwork(item,BASE_LAYER_IDS.motifs)};
