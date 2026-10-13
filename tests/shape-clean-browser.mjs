@@ -54,12 +54,12 @@ try{
    const orig=await importSketch(page,circle());
    assert.equal(await page.locator('#ux2ShapeClean').count(),1);
    await page.locator('#ux2ShapeClean').evaluate(el=>el.click());
+   assert.match(await page.locator('#status').textContent(),/Shape Clean: circle perfected/);
    let p=await saved(page);
    assert.equal(p.marks.length,1);
    assert.equal(p.marks[0].type,'ellipse');assert.equal(p.marks[0].shapeCleanKind,'circle');
    assert.equal(p.marks[0].fill,false);
    assert.equal(p.marks[0].color,'#286753');assert.equal(p.marks[0].width,65);
-   assert.match(await page.locator('#status').textContent(),/Shape Clean: circle perfected/);
    await checkSVG(page,'ellipse');
    await page.locator('#undo').evaluate(el=>el.click());
    p=await saved(page);assert.equal(p.marks[0].type,'brush');
