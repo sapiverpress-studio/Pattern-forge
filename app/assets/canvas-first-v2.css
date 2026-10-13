@@ -335,3 +335,8 @@ body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
   background:linear-gradient(to bottom,#264869 0%,#78c1da 15%,#caeef5 28%,#518db9 39%,#36719f 58%,#8ecde5 69%,#25658f 88%,#1b3d5d 100%);
   box-shadow:2px 3px 2px #26486966;transform:translateY(-50%) rotate(-5deg);
 }
+
+/* Single-tap cleanup for freehand geometric outlines. Visible with any tool. */
+.ux2-shape-clean{flex:0 0 auto;white-space:nowrap;border:1px solid #99abbf;background:#e5edf5;color:#34516f;font-weight:850;padding:8px 10px}
+.ux2-shape-clean:hover,.ux2-shape-clean:focus-visible{background:#d1e2f2;outline-color:#42678b}
+@media(max-width:950px){.ux2-shape-clean{font-size:10px;padding:7px 6px}.ux2-top-actions{gap:4px}}
