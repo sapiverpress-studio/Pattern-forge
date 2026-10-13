@@ -214,11 +214,8 @@
     more.textContent=title+' ▾';
     more.addEventListener('click',()=>{const opened=pane.hidden;pane.hidden=!opened;more.setAttribute('aria-expanded',String(opened));});
     context.appendChild(more);
-    // As a last resort on very narrow displays put size into the tray as
-    // well, never allow it to be silently cropped off the screen.
-    const layoutWidth=window.innerWidth;
-    const maxWidth=document.body.classList.contains('ux2-fullscreen')?Math.max(230,layoutWidth-170):Math.max(230,layoutWidth-35);
-    if(context.scrollWidth>maxWidth&&groups[1]?.isConnected&&groups[1].parentElement===context)body.prepend(groups[1]);
+    // Brush size stays visible beside the tool at all widths. Other controls
+    // use the explicit tray rather than silently moving this main slider.
     closeContextExtras();
   }
   $('ux2ContextExtrasClose').addEventListener('click',closeContextExtras);
