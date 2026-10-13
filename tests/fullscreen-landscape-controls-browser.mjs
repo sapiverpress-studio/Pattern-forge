@@ -44,8 +44,18 @@ async function toggleFullscreen(page){
 }
 async function checkBrush(page,tag){
   await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
-  await assertCompact(page,tag+' brush');
+  const compact=await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen')&&!el.classList.contains('doodle-project'));
+  if(compact)await assertCompact(page,tag+' brush');
+  else assert(await page.locator('#ux2ShapeClean').isVisible(),'Shape Clean accessible in regular and Doodle workspaces');
   assert(await page.locator('#ux2Size').isVisible(),'Immediate brush size available');
+  if(!compact){
+    assert(await page.locator('#ux2Opacity').isVisible(),'Doodle and normal editors keep direct opacity');
+    assert(await page.locator('#ux2PressureWidth').isVisible(),'Doodle and normal editors keep direct pressure width');
+    assert.equal(await page.locator('#ux2ContextSettingsToggle').count(),0,'No needless Settings button in existing usable layouts');
+    await page.locator('#ux2ShapeClean').evaluate(el=>el.click());
+    assert.match(await page.locator('#status').textContent(),/Draw a rough circle/);
+    return;
+  }
   const toggle=page.locator('#ux2ContextSettingsToggle');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   await toggle.evaluate(el=>el.click());
