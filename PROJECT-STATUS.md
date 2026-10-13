@@ -1,5 +1,10 @@
 # Pattern Forge — current work and handover
 
+## 13 October 2026 — Raised oil / piped / knife production WEBSITE release authorised
+
+**Explicit owner approval:** Responded “Yes” to offer to deploy the three tested oil, icing and palette-knife brushes to the live Pattern Forge website. Scope is exactly one controlled production website deployment of `feature/raised-impasto-brushes-20261012`, NOT a native Android APK/AAB build, staging publication or unrelated Poster_gen/Etsy changes. Source and branch checked: `main=102b8be264612fa53e9dddc903eb4c83e0d95645`, release branch fast-forwards from it, prior production deploy `6acc8d29088aa40008fef2eb` was ready. Changed paths reviewed: `app/js/raised-paint.js`, `app/js/editor.js`, `app/js/canvas-first-v2.js`, `app/index.html`, `app/assets/canvas-first-v2.css`, branch-only unit/browser tests/workflow, and this handover file. Existing CI 38285792103 passed 3/3 brush geometry, 4/4 browser flows, 31/31 existing regressions. **Approval recorded before deployment; don't mark live until Netlify SHA and public web tests are confirmed.** On release, make only a safe fast-forward `main` ref update; keep later final handover changes on isolated source branch to avoid an unnecessary second deployment.
+
+
 ## 12 October 2026 — Raised impasto, piped-paint and palette-knife brushes (DEVELOPMENT ONLY)
 
 **Source branch:** `feature/raised-impasto-brushes-20261012`, based on the existing published production site source `102b8be264612fa53e9dddc903eb4c83e0d95645`. User provided `47239.mp4` (25.7-second reference video of an iPad artist producing orange pumpkin relief ridges and smooth white ghost shapes). Request: "Can we add big thick oil paint textures brushes, these almost look like icing". Interpretation: add 2D vector/canvas pseudo-3D raised paint, not reproduce video imagery or replace existing brushes. **No production, staging, or Android release authorisation was given**.
