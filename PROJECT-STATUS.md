@@ -1,5 +1,12 @@
 # Pattern Forge — current work and handover
 
+## 13 October 2026 — Shape Clean production website release approval checkpoint
+
+**Explicit user approval:** The owner said **"Deploy it"** after confirmation that Shape Clean passed testing but was not yet on the live app. This authorises **one controlled release of Shape Clean to the existing production Netlify website**, not an Android APK/AAB build, a staging deployment or unrelated Etsy/PrintShrimp work.
+
+**Verified gate before publishing:** `main=ad959a7bdc974b9487eed52758f35ee7941714ad`, latest ready Netlify production `6acda2f7da3b19f5e0cdb7bf`, release branch `feature/shape-clean-20261013` fast-forwardable without any intervening production changes. Workflow [38363878909](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/38363878909) finished **SUCCESS** (six geometry classes + rejection safeguards, 2/2 complete editor flows, transparent Doodle PNG/SVG and 31/31 legacy editor regressions). Changes after the tested commit `0a62d39d316f0cf50413d059b4037da1c6bb9611` only modified this handover markdown file. Code file scope: `app/js/shape-clean.js`, `app/js/editor.js`, `app/js/canvas-first-v2.js`, `app/index.html`, `app/assets/canvas-first-v2.css`; isolated test, workflow and handover files only. **This approval checkpoint is not a claim of successful deployment.** Promote using fast-forward with expected old SHA; verify Netlify exact new SHA and live editor browser behaviour. Record post-deployment evidence separately on the feature branch to avoid a second production deploy from a documentation-only main commit.
+
+
 ## 13 October 2026 — Shape Clean / Doodle transparent exports (DEVELOPMENT ONLY)
 
 **User request:** User provided an Android screenshot of an imperfect drawn circle and requested a *single small “Shape Clean” button* to perfect a pen-drawn circle, square, rectangle or triangle at the same position and overall dimensions, rather than switching tools and redrawing. User also established **transparent Doodle SVG and PNG exports** as non-negotiable for later sticker/doodle pack work. The Etsy/PrintShrimp shop architecture is being handled in a separate chat; no Etsy work in this stage.
