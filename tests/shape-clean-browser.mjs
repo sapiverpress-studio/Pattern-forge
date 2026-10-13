@@ -85,6 +85,7 @@ try{
    assert.equal(data.marks[0].shapeCleanKind,'triangle');
    assert.equal(data.marks[0].brushStyle,'ink');
    assert.equal(data.marks[0].points.length,4);
+   console.log('DOODLE_LAYER_DEBUG',JSON.stringify({active:data.activeLayerId,layers:data.layers,mark:data.marks[0],transparent:data.transparent}));
    assert.equal(data.transparent,true,'Doodle stays transparent');
    const svg=await checkSVG(page,'triangle');
    assert(!/<rect[^>]+(?:width="4000"|height="4000")/.test(svg),'SVG has no opaque white background');
