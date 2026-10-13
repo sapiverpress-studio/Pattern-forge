@@ -191,6 +191,12 @@
       $('ux2Size').addEventListener('input',e=>{dispatchValue('brushSize',e.target.value);$('ux2SizeOut').textContent=e.target.value});
       $('ux2Opacity').addEventListener('input',e=>{dispatchValue('inkOpacity',e.target.value);$('ux2OpacityOut').textContent=e.target.value+'%'});
       if($('ux2BrushLibrary'))$('ux2BrushLibrary').addEventListener('click',()=>openPanel('brushes'));
+      if(tool==='brush'){
+        const group=document.createElement('div');group.className='ux2-context-group';
+        const clean=document.createElement('button');clean.type='button';clean.className='ux2-chip';clean.id='ux2ShapeClean';
+        clean.textContent='Shape Clean';clean.title='Perfect your latest closed hand-drawn circle, ellipse, square, rectangle or triangle without changing its size';
+        clean.addEventListener('click',()=>window.PatternForgeShapeCleanAction?.clean());group.append(clean);context.append(group);
+      }
       if(['impasto','piped','knife'].includes(style)&&tool==='brush'){
         const slider=document.createElement('label');slider.className='ux2-slider';
         slider.textContent='Relief ';
@@ -227,6 +233,12 @@
         context.innerHTML=selectionControls+`<div class="ux2-context-group"><span class="ux2-label">Transform</span>${scale?`<label class="ux2-slider">Scale <input id="ux2SelScale" type="range" min="${scale.min||1}" max="${scale.max||600}" value="${scale.value}"><b>${scale.value}%</b></label>`:''}${rot?`<label class="ux2-slider">Rotate <input id="ux2SelRot" type="range" min="-180" max="180" value="${rot.value}"><b>${rot.value}°</b></label>`:''}${opacity?`<label class="ux2-slider">Opacity <input id="ux2SelOpacity" type="range" min="5" max="100" value="${opacity.value}"><b>${opacity.value}%</b></label>`:''}</div><div class="ux2-context-group"><button class="ux2-chip" id="ux2FlipH">Flip H</button><button class="ux2-chip" id="ux2FlipV">Flip V</button><button class="ux2-chip" id="ux2Duplicate">Duplicate</button><button class="ux2-chip" id="ux2Delete">Delete</button><button class="ux2-chip" id="ux2Front">Bring front</button><button class="ux2-chip" id="ux2Back">Send back</button><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
       }else{
         context.innerHTML=selectionControls+`<div class="ux2-context-group"><span style="font-size:11px;color:#6d7885">Tap artwork to select it. Use Add to build a multi-selection.</span><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
+      }
+      if(tool==='select'){
+        const group=document.createElement('div');group.className='ux2-context-group';
+        const clean=document.createElement('button');clean.type='button';clean.className='ux2-chip';clean.id='ux2ShapeClean';clean.textContent='Shape Clean';
+        clean.title='Perfect a selected freehand closed outline';
+        clean.addEventListener('click',()=>window.PatternForgeShapeCleanAction?.clean());group.append(clean);context.append(group);
       }
       const selectionApi=window.PatternForgeSelection;
       if($('ux2AddSelection'))$('ux2AddSelection').addEventListener('click',e=>{const active=selectionApi?.toggleAddMode();e.currentTarget.classList.toggle('active',!!active)});
