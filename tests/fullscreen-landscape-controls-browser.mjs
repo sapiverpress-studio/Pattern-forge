@@ -30,6 +30,12 @@ async function assertCompact(page,tag){
   assert(report.more.x>=0&&report.more.right<=report.viewport.w+2,'Settings button cropped off-screen: '+tag+' '+JSON.stringify(report));
   assert(report.footerScroll<=report.footerClient+3,'Overflow should be in explicit tray not hidden sideways: '+tag+' '+JSON.stringify(report));
   assert(report.clean.right<=report.viewport.w,'clean is usable: '+tag);
+  if(await page.locator('body').evaluate(el=>el.classList.contains('ux2-fullscreen'))){
+    assert(report.menu?.visible&&report.menu.x<80,'Tools must be anchored on left side, not crowding Undo/Shape Clean/Export: '+tag+' '+JSON.stringify(report));
+    if(report.header?.visible&&report.header.right>report.clean.x&&report.header.x<report.clean.right
+       &&report.header.bottom>report.clean.y&&report.header.y<report.clean.bottom)
+      throw Error('Colour/zoom palette obscures Shape Clean: '+tag+' '+JSON.stringify(report));
+  }
   return report;
 }
 async function toggleFullscreen(page){
