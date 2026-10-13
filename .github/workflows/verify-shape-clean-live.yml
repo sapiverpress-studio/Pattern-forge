@@ -1,0 +1,61 @@
+name: Verify published Shape Clean (read only)
+on:
+  push:
+    branches: [feature/shape-clean-20261013]
+    paths:
+      - .github/workflows/verify-shape-clean-live.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-shape-clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify public assets and Shape Clean button
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://sapiver-pattern-forge.netlify.app';
+          const get=async path=>{
+            for(let attempt=1;attempt<=5;attempt++){
+              try{
+                const r=await fetch(base+path,{headers:{'cache-control':'no-cache'}});
+                if(!r.ok)throw Error(path+' HTTP '+r.status);
+                return await r.text();
+              }catch(e){
+                if(attempt===5)throw e;
+                console.log('Retry',path,attempt);
+                await new Promise(resolve=>setTimeout(resolve,2000*attempt));
+              }
+            }
+          };
+          const [html,shape,editor,ux2]=await Promise.all([
+            get('/app/'),get('/app/js/shape-clean.js'),get('/app/js/editor.js'),get('/app/js/canvas-first-v2.js')
+          ]);
+          const checks=[
+            ['shape-clean source loaded before editor',html.indexOf('src="/app/js/shape-clean.js"')>0&&html.indexOf('src="/app/js/shape-clean.js"')<html.indexOf('src="/app/js/editor.js"')],
+            ['curve geometry analyser',shape.includes('window.PatternForgeShapeClean=Object.freeze')],
+            ['protected single-shape action',editor.includes('function cleanLastSketch()')],
+            ['last or selected mark',editor.includes('window.PatternForgeShapeClean?.fit(candidate.points)')],
+            ['undo on conversion',editor.includes('candidate.shapeCleanKind=fitted.kind')],
+            ['one-tap top toolbar control',ux2.includes('id="ux2ShapeClean"')],
+            ['shape clean event',ux2.includes("window.PatternForgeShapeCleanAction?.clean()")],
+            ['existing transparency exporter',editor.includes('if(!$("transparent").checked) body+=')]
+          ];
+          for(const [label,ok] of checks){
+            if(!ok)throw Error('Missing published feature: '+label);
+            console.log('PASS live asset '+label);
+          }
+          JS
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live circle, triangle and transparent Doodle exports
+        env:
+          PF_TEST_BASE_URL: https://sapiver-pattern-forge.netlify.app
+        run: node tests/shape-clean-browser.mjs
