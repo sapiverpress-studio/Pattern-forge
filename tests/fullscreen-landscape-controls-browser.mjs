@@ -110,6 +110,27 @@ try{
   }finally{await context.close()}
  }
  {
+  const {context,page,errors}=await setup(360,800);
+  try{
+   async function hit(name){
+     const el=page.locator(name);await el.scrollIntoViewIfNeeded();
+     const result=await el.evaluate(e=>{
+       const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,t=document.elementFromPoint(x,y);
+       return {visible:!!t&&(t===e||e.contains(t)),x,y,width:r.width,height:r.height};
+     });
+     assert(result.visible,'Portrait quick control not hittable: '+name+' '+JSON.stringify(result));
+   }
+   await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
+   await hit('#ux2BrushLibrary');
+   await toggleFullscreen(page);
+   await page.locator('[data-ux2-tool="brush"]').first().evaluate(el=>el.click());
+   await hit('#ux2BrushLibrary');
+   await hit('#ux2ShapeClean');
+   assert.deepEqual(errors,[]);
+   console.log('PASS 360x800 portrait Pattern Brush Library and Shape Clean are clickable in normal/fullscreen');
+  }finally{await context.close()}
+ }
+ {
   const {context,page,errors}=await setup(844,390,true);
   try{
    await toggleFullscreen(page);
@@ -118,5 +139,5 @@ try{
    console.log('PASS Doodle fullscreen, Brush settings and Shape Clean accessible');
   }finally{await context.close()}
  }
- console.log('PASS 5/5 responsive workspace scenarios');
+ console.log('PASS 6/6 responsive workspace scenarios');
 }finally{await browser.close()}
