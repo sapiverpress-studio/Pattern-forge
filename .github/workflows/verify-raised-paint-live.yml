@@ -22,7 +22,15 @@ jobs:
           node --input-type=module <<'JS'
           const base='https://sapiver-pattern-forge.netlify.app';
           const read=async path=>{
-            const r=await fetch(base+path,{headers:{'cache-control':'no-cache'}});
+            let r;
+            for(let attempt=1;attempt<=5;attempt++){
+              try{r=await fetch(base+path,{headers:{'cache-control':'no-cache'}});break;}
+              catch(err){
+                if(attempt===5)throw err;
+                console.log('Retry public-site fetch',path,attempt);
+                await new Promise(resolve=>setTimeout(resolve,2000*attempt));
+              }
+            }
             if(!r.ok)throw Error(path+' HTTP '+r.status);
             return r.text();
           };
