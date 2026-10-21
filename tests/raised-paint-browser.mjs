@@ -79,8 +79,8 @@ try{
    assert(svg.includes('fill="#')&&!svg.includes('NaN'));
    const png=await download(page,'exportPng');
    assert.equal(png.subarray(1,4).toString(),'PNG');
-   assert.equal(png.readUInt32BE(16),4000);
-   assert.equal(png.readUInt32BE(20),4000);
+   assert.equal(png.readUInt32BE(16),5000);
+   assert.equal(png.readUInt32BE(20),5000);
    assert.deepEqual(errors,[]);
    console.log('PASS Doodle mobile viewport PNG/SVG thick icing paint');
   }finally{await context.close()}
