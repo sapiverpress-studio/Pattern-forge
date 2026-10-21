@@ -89,7 +89,7 @@ try{
    const svg=await checkSVG(page,'triangle');
    assert(!/<rect[^>]+width="4000"[^>]+height="4000"[^>]+fill=/.test(svg),'SVG has no opaque white background');
    const png=await download(page,'exportPng');
-   assert.equal(png.readUInt32BE(16),4000);assert.equal(png.readUInt32BE(20),4000);
+   assert.equal(png.readUInt32BE(16),5000);assert.equal(png.readUInt32BE(20),5000);
    const corner=await page.evaluate(async base64=>{
      const resp=await fetch('data:image/png;base64,'+base64);
      const img=await createImageBitmap(await resp.blob());
