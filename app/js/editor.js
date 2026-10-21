@@ -399,7 +399,7 @@
     const mult=exportMultipliers();
     // Pixel dimensions define raster detail. DPI metadata is compatibility data only;
     // Pattern Forge designs do not have a physical size.
-    return {dpi:300,wPx:4000*mult.x,hPx:4000*mult.y};
+    return {dpi:300,wPx:5000*mult.x,hPx:5000*mult.y};
   }
   function updatePixelReadout(){
     const s=getExportSpec();
@@ -1347,7 +1347,7 @@
 
   const masterPreviewData=()=>{
     const mult=exportMultipliers(),base=360,thumb=makeTileCanvas(base*mult.x,base*mult.y,base,base,projectRepeatStyle(),true);
-    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle(),wPx:4000*mult.x,hPx:4000*mult.y};
+    return {dataUrl:thumb.toDataURL("image/png"),repeatWidthUnits:mult.x,repeatHeightUnits:mult.y,style:projectRepeatStyle(),wPx:5000*mult.x,hPx:5000*mult.y};
   };
   window.PatternForgeMasterPreview=masterPreviewData;
   window.PatternForgeProductPreview=masterPreviewData; // compatibility alias
@@ -2202,7 +2202,7 @@
     $("transparent").disabled=doodle;$("bg").disabled=doodle;
     $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
     $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;$("backgroundSettingsRow").hidden=doodle;
-    $("stageDescription").textContent=doodle?"4000 px standalone artwork canvas · transparent":"4000 px master tile · seamless repeat preview";
+    $("stageDescription").textContent=doodle?"5000 px standalone artwork export · transparent":"5000 px seamless export · live repeat preview";
     $("drawingHelp").textContent=doodle?"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Bucket fill colours a tapped region; freehand and gradient fill colour a closed area you trace. Artwork stays where you draw it; canvas edges do not repeat. Two fingers zoom and move.":"Choose a brush style, then adjust size, opacity and texture. Eraser removes pixels from the active unlocked layer and reveals layers underneath. Freehand and gradient fill colour a closed area you trace. Draw across edges to wrap. Two fingers zoom and move.";
     $("tileSettingsSummary").textContent=doodle?"Canvas and placement settings":"Tile and placement settings";
     $("snapHelp").textContent=doodle?"Smart snapping uses the grid plus canvas centre lines and canvas edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.":"Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.";
@@ -2217,7 +2217,7 @@
     $("exportFilesTitle").textContent=doodle?"Artwork files":"Pattern files";
     $("exportPng").textContent=doodle?"Export artwork as PNG":"Export pattern as PNG";
     $("exportSvg").textContent=doodle?"Export artwork as SVG":"Export pattern as SVG";
-    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 4000 × 4000 px raster master. That pixel size does not assign a physical size. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG use the complete repeat-cell dimensions shown at left. Straight uses a 4000 × 4000 px raster master; half-drop and brick use the required rectangular repeat cell. Pixel dimensions describe raster detail, not a physical product size. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
+    $("exportDimensionsHelp").textContent=doodle?"Doodle exports are one transparent 5000 × 5000 px raster master. That pixel size does not assign a physical size. SVG remains resolution-independent; raster artwork inside an SVG remains raster.":"PNG and SVG use the complete repeat-cell dimensions shown at left. Straight uses a 5000 × 5000 px raster master; half-drop and brick use the required rectangular repeat cell. Pixel dimensions describe raster detail, not a physical product size. SVG itself is resolution-independent; raster artwork inside an SVG remains raster.";
   }
   function showProjectSetup(){
     pendingAutosaveData=null;
@@ -2279,7 +2279,7 @@
       if(!promotePractice){setDrawingDefaults();state.assets=[];state.items=[];state.marks=[];resetLayerState();state.templateGuide=null;state.nextId=1;state.selectedId=null;state.past=[];state.future=[];state.recentAssetIds=[];}
       if(requestedType==="doodle")$("transparent").checked=true;
       $("projectSetupOverlay").hidden=true;setProjectBadge();updateProjectModeUi();rebuildAssetGrid();updatePixelReadout();updatePrintEligibility();scheduleAutosave();
-      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The 4000 px canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
+      setStatus(promotePractice?`Practice artwork saved as “${title}”. Its straight repeat is now a Pattern Project.`:requestedType==="doodle"?`Doodle is ready. The canvas is transparent and does not wrap at its edges.`:`Pattern Project “${title}” saved on this device. Draw and colour your seamless tile.`);
     };
     if(state.project)saveAutosave().then(begin);else begin();
   }
