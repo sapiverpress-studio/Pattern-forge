@@ -59,7 +59,7 @@
           <div class="field"><label for="projectVariationInput">Variation (optional)</label><input id="projectVariationInput" type="text" maxlength="60" placeholder="e.g. blue colourway"></div>
         </div>
         <div id="projectRepeatSetup"><div class="field"><label for="projectRepeatStyle">Repeat style</label><select id="projectRepeatStyle"><option value="straight">Straight repeat · square grid</option><option value="half-drop">Half-drop · rows shift sideways</option><option value="brick">Brick · columns shift down</option></select></div>
-        <p class="repeatLockNote">Repeat style is fixed when this project is created. Straight uses a 4000 × 4000 px raster master; half-drop uses 4000 × 8000 px and brick uses 8000 × 4000 px so the complete repeat is preserved. These are master-file pixel dimensions, not physical sizes. Grid, mirror, snapping and palettes are available in Design setup once the canvas opens.</p></div>
+        <p class="repeatLockNote">Repeat style is fixed when this project is created. Straight uses a 5000 × 5000 px raster master; half-drop uses 5000 × 10000 px and brick uses 10000 × 5000 px so the complete repeat is preserved. These are master-file pixel dimensions, not physical sizes. Grid, mirror, snapping and palettes are available in Design setup once the canvas opens.</p></div>
         <div class="btns"><button id="createProject" class="btn primary full" type="submit">Create pattern project</button><button id="cancelProjectSetup" class="btn full" type="button">Cancel</button></div>
       </form>
       <section id="localProjectsSection" hidden>
@@ -133,7 +133,7 @@
       <details id="tileSettingsDisclosure" class="advancedDisclosure" open>
       <summary id="tileSettingsSummary">Tile and placement settings</summary>
       <div class="advancedDisclosureBody">
-      <div class="kpi"><span>Export pixels</span><b id="pixelReadout">4000 × 4000</b></div>
+      <div class="kpi"><span>Export pixels</span><b id="pixelReadout">5000 × 5000</b></div>
       <div class="kpi"><span>PNG print metadata</span><b>300 DPI</b></div>
       <div class="row">
         <div class="field"><label class="settingLabel" for="gridCount"><span>Grid divisions</span><output id="gridCountValue" class="settingValue">16 × 16</output></label><select id="gridCount"><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="16" selected>16 × 16</option><option value="20">20 × 20</option><option value="40">40 × 40</option></select></div>
@@ -223,7 +223,7 @@
     <section id="stageWrap" class="stageWrap">
       <div class="stageBar">
         <span id="projectNameDisplay" class="projectBadge">Tile editor</span>
-        <span id="stageDescription" class="stageDescription">4000 px master tile · seamless repeat preview</span>
+        <span id="stageDescription" class="stageDescription">5000 px seamless export · live repeat preview</span>
         <button id="projectMenu" class="btn" type="button">Project</button>
         <button id="focusToggle" class="btn" type="button" aria-label="Open full screen workspace">Full screen</button>
         <button id="focusAddImage" class="btn" type="button">Add images</button>
@@ -332,7 +332,7 @@
       </div>
       <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
       <p id="exportDimensionsHelp" class="help">
-        PNG and SVG exports use the repeat swatch dimensions shown at left. The base drawing tile is 4000 × 4000 px; half-drop and brick swatches are rectangular.
+        PNG and SVG exports use the repeat swatch dimensions shown at left. The base exported straight-repeat tile is 5000 × 5000 px; half-drop and brick swatches are rectangular.
         SVG itself is resolution-independent; raster artwork inside an SVG remains raster.
       </p>
 
