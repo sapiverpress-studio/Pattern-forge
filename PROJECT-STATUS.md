@@ -1,3 +1,7 @@
+## 21 October 2026 — Motif library request and exporter release gate (INVESTIGATION ONLY)
+
+Owner authorised implementation, testing and deployment of the first 25 alpha-transparent mixed-style motifs on the existing `feature/5000px-seamless-export-20261021` branch, alongside the 5000px exporter. This session verified branch head `0cb8827aebaf661172b0beca68b1230d44204f89`, open PR #7 (unmerged), and inspected the actual UX2 My Motifs and Images interfaces. Existing My Motifs stores editable selections locally; Images supports multi-file import and complete backups, but there is no verified manifest-driven ZIP motif collection importer. The 25 new finished 2048px RGBA artworks do not exist in the branch. The existing exporter PR explicitly states live export/DPI/seam tests are outstanding. **No new motif importer, artwork, tests, or production/staging release was completed in this investigation. Do not deploy or merge this feature on the basis of this session.** Next: produce and alpha-validate 25 original RGBA PNGs; build collection ZIP parser integrated with existing Images UX, preserve My Motifs and saved projects, run browser/import/alpha/export regression tests, then verify a controlled staging deployment before production publication.
+
 # Pattern Forge — current work and handover
 
 ## 13 October 2026 — Shape Clean production website release approval checkpoint
