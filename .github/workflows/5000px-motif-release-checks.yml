@@ -1,0 +1,71 @@
+name: Pattern Forge 5000px and motif collection release checks
+on:
+  push:
+    branches: [feature/5000px-seamless-export-20261021]
+    paths:
+      - app/**
+      - tests/5000px-export-browser.mjs
+      - tests/motif-collection-browser.mjs
+      - tests/ux2-extended-readiness.mjs
+      - tests/multi-image-import-browser.mjs
+      - .github/workflows/5000px-motif-release-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  motif-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check editor and import JavaScript
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check app/js/motif-packs.js
+          node --check tests/motif-collection-browser.mjs
+          node --check tests/multi-image-import-browser.mjs
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install --with-deps chromium
+      - name: Serve static Pattern Forge
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-motif.log 2>&1 &
+      - name: Validate 100-motif collections and PNG alpha
+        run: node tests/motif-collection-browser.mjs
+      - name: Validate existing six/twelve image workflow
+        run: node tests/multi-image-import-browser.mjs
+  raster-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check exporter test syntax
+        run: |
+          node --check app/js/editor.js
+          node --check tests/5000px-export-browser.mjs
+          node --check tests/ux2-extended-readiness.mjs
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install --with-deps chromium
+      - name: Serve static Pattern Forge
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-export.log 2>&1 &
+      - name: Validate 5000px PNG dimensions, 300 DPI, real alpha and repeat edges
+        run: node tests/5000px-export-browser.mjs
+      - name: Existing projects, editable exports, mobile-layout and performance regression
+        run: node tests/ux2-extended-readiness.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: export-readiness-results
+          path: ux2-extended-results/
+          retention-days: 7
