@@ -1,0 +1,30 @@
+name: Verify Pattern Forge 5000px production live once
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/verify-5000px-production-once.yml]
+permissions:
+  contents: read
+jobs:
+  live-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PF_TEST_BASE_URL: https://sapiver-pattern-forge.netlify.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm public site serves new motif reader
+        run: |
+          curl -fsSL --retry 5 --max-time 15 "$PF_TEST_BASE_URL/app/js/motif-packs.js" | grep -q "Pattern Forge motif-pack reader"
+          curl -fsSL --retry 5 --max-time 15 "$PF_TEST_BASE_URL/app/js/editor.js" | grep -q 'makeTileCanvas(spec.wPx,spec.hPx,5000,5000'
+      - name: Install browser verification dependencies
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install --with-deps chromium
+      - name: Check actual published 100-motif import and ZIP support
+        run: node tests/motif-collection-browser.mjs
+      - name: Check actual published 5000px PNG, DPI and seam
+        run: node tests/5000px-export-browser.mjs
