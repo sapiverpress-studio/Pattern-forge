@@ -84,7 +84,7 @@ try{
         assert.equal(original.items.length,3);assert.equal(original.layers.length,3);assert(original.marks.length>0);
         const png=await exported(page,'exportPng'),svg=await exported(page,'exportSvg'),zip=await exported(page,'exportZip');
         const dimensions=[png.buffer.readUInt32BE(16),png.buffer.readUInt32BE(20)];
-        assert.deepEqual(dimensions,repeat==='straight'?[4000,4000]:repeat==='half-drop'?[4000,8000]:[8000,4000]);
+        assert.deepEqual(dimensions,repeat==='straight'?[5000,5000]:repeat==='half-drop'?[5000,10000]:[10000,5000]);
         for(const input of [{buffer:Buffer.from(JSON.stringify(original)),name:'roundtrip.json'},zip]){
           const oldId=(await saved(page)).project.id;await importFile(page,input.buffer,input.name);
           const opened=await saved(page);assert.notEqual(opened.project.id,oldId,'import should open a separate copy');
@@ -244,7 +244,7 @@ try{
       data.items=Array.from({length:80},(_,i)=>({...data.items[0],id:i+1,assetId:'large-'+i%8,layerId:'load-'+i%24,x:40+(i*83)%850,y:30+(i*59)%850,scale:.045}));
       data.marks=Array.from({length:600},(_,i)=>({...data.marks[0],id:100+i,layerId:'load-'+i%24,points:Array.from({length:40},(_,j)=>({x:(i*13+j*3)%900,y:(i*23+j*2)%900}))}));data.nextId=1000;
       const t=performance.now();await importFile(page,data);const importMs=Math.round(performance.now()-t);const client=await context.newCDPSession(page);await client.send('Performance.enable');
-      const start=performance.now(),png=await exported(page,'exportPng');const exportMs=Math.round(performance.now()-start);assert.equal(png.buffer.readUInt32BE(16),8000);assert.equal(png.buffer.readUInt32BE(20),4000);
+      const start=performance.now(),png=await exported(page,'exportPng');const exportMs=Math.round(performance.now()-start);assert.equal(png.buffer.readUInt32BE(16),10000);assert.equal(png.buffer.readUInt32BE(20),5000);
       const before=performance.now();await page.locator('[data-tool="pan"]').first().click();const controlMs=Math.round(performance.now()-before);assert(await page.locator('[data-tool="pan"]').first().evaluate(el=>el.classList.contains('active')));
       const metrics=await client.send('Performance.getMetrics');const heap=metrics.metrics.find(x=>x.name==='JSHeapUsedSize')?.value;
       return {layers:24,marks:600,points:24000,images:8,placements:80,imagePixelsEach:2048*2048,importMs,exportMs,controlMs,pngBytes:png.buffer.length,jsHeapMiB:heap?Math.round(heap/1048576):null,note:'Desktop Chromium measurement; JS heap excludes native canvas/image memory and does not establish Android limits.'};
