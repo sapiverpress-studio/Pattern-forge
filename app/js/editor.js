@@ -2482,16 +2482,18 @@
     if(!window.PatternForgeMotifPacks)throw Error("Motif pack reader did not load.");
     motifCollectionBusy=true;
     try{
-      const collection=window.PatternForgeMotifPacks.normaliseCollection(name);
       const prepared=await window.PatternForgeMotifPacks.prepare(files,(current,total)=>{
-        window.dispatchEvent(new CustomEvent("patternforge:motif-import-progress",{detail:{current,total,collection}}));
+        window.dispatchEvent(new CustomEvent("patternforge:motif-import-progress",{detail:{current,total}}));
       });
+      const collection=window.PatternForgeMotifPacks.normaliseCollection(name||prepared.rootFolder);
       if(!prepared.result.length)return {imported:0,collection,failures:prepared.failures};
       const existing=await listSavedMotifs();
-      const existingNames=new Set(existing.filter(m=>m.collection===collection).map(m=>String(m.originalFilename||'').toLowerCase()));
+      // Two motifs may share a filename when they live in different folders.
+      // Legacy flat records remain compatible with originalFilename.
+      const existingPaths=new Set(existing.filter(m=>m.collection===collection).map(m=>String(m.relativePath||m.originalFilename||'').toLowerCase()));
       const newAssets=prepared.result.filter(m=>{
-        if(existingNames.has(m.filename.toLowerCase())){
-          prepared.failures.push(m.filename+": already in collection "+collection);
+        if(existingPaths.has(m.relativePath.toLowerCase())){
+          prepared.failures.push(m.relativePath+": already in collection "+collection);
           return false;
         }
         return true;
@@ -2499,7 +2501,8 @@
       if(!newAssets.length)return {imported:0,collection,failures:prepared.failures};
       const now=new Date().toISOString(),records=newAssets.map((m,index)=>({
         id:"motif-import-"+Date.now().toString(36)+"-"+index.toString(36)+"-"+Math.random().toString(36).slice(2,8),
-        name:m.name,collection,originalFilename:m.filename,sourceType:"rgba-png",
+        name:m.name,collection,originalFilename:m.filename,relativePath:m.relativePath,
+        categoryPath:m.categoryPath,sourceType:"rgba-png",
         createdAt:now,updatedAt:now,origin:{x:TILE/2,y:TILE/2},
         assets:[{id:"source",name:m.filename,src:m.src,w:m.w,h:m.h,vector:false}],
         items:[{id:1,assetId:"source",layerId:BASE_LAYER_IDS.motifs,x:TILE/2,y:TILE/2,scale:TILE*.25/Math.max(m.w,m.h),rotation:0,opacity:1}],
@@ -2520,7 +2523,7 @@
     if(!file)throw Error("Choose a ZIP folder first.");
     if(!window.PatternForgeMotifPacks)throw Error("Motif pack reader did not load.");
     const files=await window.PatternForgeMotifPacks.fromZip(file);
-    return importMotifCollection(files,name||file.name.replace(/\.zip$/i,''));
+    return importMotifCollection(files,name||window.PatternForgeMotifPacks.detectRoot(files)||file.name.replace(/\.zip$/i,''));
   }
   window.PatternForgeMotifs={
     list:listSavedMotifs,saveSelection:saveSelectionAsMotif,insert:insertSavedMotif,remove:deleteSavedMotif,
