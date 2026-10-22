@@ -2040,7 +2040,7 @@
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
-    const out=makeTileCanvas(spec.wPx,spec.hPx,4000,4000,projectRepeatStyle(),true);
+    const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true);
     const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
     return {blob,spec};
   }
@@ -2054,8 +2054,8 @@
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   function renderSVGBlob(){
     const spec=getExportSpec();
-    const W=spec.wPx,H=spec.hPx,sx=4000/TILE,sy=4000/TILE,uniform=Math.sqrt(sx*sy),clipW=W/sx,clipH=H/sy;
-    const itemBasis=repeatBasis(4000,4000),markBasis=repeatBasis();
+    const W=spec.wPx,H=spec.hPx,sx=5000/TILE,sy=5000/TILE,uniform=Math.sqrt(sx*sy),clipW=W/sx,clipH=H/sy;
+    const itemBasis=repeatBasis(5000,5000),markBasis=repeatBasis();
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
     if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
