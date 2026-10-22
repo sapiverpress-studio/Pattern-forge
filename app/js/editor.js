@@ -2476,7 +2476,56 @@
     }
     rebuildAssetGrid();setSelection(newIds,newIds.at(-1));renderAll();setStatus("Inserted “"+String(motif.name||"motif")+"” as an editable group.");return newIds.length;
   }
-  window.PatternForgeMotifs={list:listSavedMotifs,saveSelection:saveSelectionAsMotif,insert:insertSavedMotif,remove:deleteSavedMotif};
+  let motifCollectionBusy=false;
+  async function importMotifCollection(files,name){
+    if(motifCollectionBusy)throw Error("A motif folder is already importing.");
+    if(!window.PatternForgeMotifPacks)throw Error("Motif pack reader did not load.");
+    motifCollectionBusy=true;
+    try{
+      const collection=window.PatternForgeMotifPacks.normaliseCollection(name);
+      const prepared=await window.PatternForgeMotifPacks.prepare(files,(current,total)=>{
+        window.dispatchEvent(new CustomEvent("patternforge:motif-import-progress",{detail:{current,total,collection}}));
+      });
+      if(!prepared.result.length)return {imported:0,collection,failures:prepared.failures};
+      const existing=await listSavedMotifs();
+      const existingNames=new Set(existing.filter(m=>m.collection===collection).map(m=>String(m.originalFilename||'').toLowerCase()));
+      const newAssets=prepared.result.filter(m=>{
+        if(existingNames.has(m.filename.toLowerCase())){
+          prepared.failures.push(m.filename+": already in collection "+collection);
+          return false;
+        }
+        return true;
+      });
+      if(!newAssets.length)return {imported:0,collection,failures:prepared.failures};
+      const now=new Date().toISOString(),records=newAssets.map((m,index)=>({
+        id:"motif-import-"+Date.now().toString(36)+"-"+index.toString(36)+"-"+Math.random().toString(36).slice(2,8),
+        name:m.name,collection,originalFilename:m.filename,sourceType:"rgba-png",
+        createdAt:now,updatedAt:now,origin:{x:TILE/2,y:TILE/2},
+        assets:[{id:"source",name:m.filename,src:m.src,w:m.w,h:m.h,vector:false}],
+        items:[{id:1,assetId:"source",layerId:BASE_LAYER_IDS.motifs,x:TILE/2,y:TILE/2,scale:TILE*.25/Math.max(m.w,m.h),rotation:0,opacity:1}],
+        marks:[]
+      }));
+      const tx=await motifLibraryTransaction("readwrite");
+      await new Promise((resolve,reject)=>{
+        tx.oncomplete=resolve;
+        tx.onerror=tx.onabort=()=>reject(tx.error||new Error("Could not store this collection. Check available device storage and try smaller batches."));
+        for(const record of records)tx.objectStore("motifs").put(record);
+      });
+      window.dispatchEvent(new CustomEvent("patternforge:motifs-changed"));
+      setStatus("Imported "+records.length+" PNG motifs into “"+collection+"”."+(prepared.failures.length?" "+prepared.failures.length+" rejected.":""));
+      return {imported:records.length,collection,failures:prepared.failures};
+    }finally{motifCollectionBusy=false;}
+  }
+  async function importMotifZip(file,name){
+    if(!file)throw Error("Choose a ZIP folder first.");
+    if(!window.PatternForgeMotifPacks)throw Error("Motif pack reader did not load.");
+    const files=await window.PatternForgeMotifPacks.fromZip(file);
+    return importMotifCollection(files,name||file.name.replace(/\.zip$/i,''));
+  }
+  window.PatternForgeMotifs={
+    list:listSavedMotifs,saveSelection:saveSelectionAsMotif,insert:insertSavedMotif,remove:deleteSavedMotif,
+    importFiles:importMotifCollection,importZip:importMotifZip
+  };
   function scheduleAutosave(){
     if(autosaveTimer)clearTimeout(autosaveTimer);
     if(!autosaveMaxTimer)autosaveMaxTimer=setTimeout(()=>{if(autosaveTimer)clearTimeout(autosaveTimer);autosaveTimer=null;autosaveMaxTimer=null;saveAutosave();},5000);
