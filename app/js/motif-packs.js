@@ -102,25 +102,44 @@
       }
       if(data.length!==ent.raw)throw Error("ZIP entry has an invalid uncompressed size");
       const name=ent.name.split('/').at(-1);
-      files.push(new File([data],name,{type:'image/png'}));
+      const motifFile=new File([data],name,{type:'image/png'});
+      // Retain directory identity; File.name alone loses ZIP subfolders.
+      Object.defineProperty(motifFile,'patternForgePath',{value:ent.name});
+      files.push(motifFile);
     }
     return files;
   }
+  function sourcePath(file){
+    const path=String(file.patternForgePath||file.webkitRelativePath||file.name||'').replace(/\\/g,'/');
+    const parts=path.split('/');
+    if(!path||path.startsWith('/')||parts.some(p=>!p||p==='.'||p==='..')||parts.length>12)throw Error("Unsafe or overly deep motif folder path");
+    return path;
+  }
+  function detectRoot(files){
+    const paths=Array.from(files||[]).map(sourcePath);
+    const first=paths[0]?.split('/')||[];
+    return first.length>1&&paths.every(p=>p.split('/').length>1&&p.split('/')[0]===first[0])?first[0]:'';
+  }
+  function displayFolder(path){return path.replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();}
   async function prepare(files,onProgress){
     const batch=Array.from(files||[]);
     if(batch.length<1||batch.length>MAX_FILES)throw Error("Select 1–100 PNG files per collection");
-    const result=[],failures=[];
-    const used=new Set();
+    const rootFolder=detectRoot(batch),result=[],failures=[],used=new Set();
     for(let i=0;i<batch.length;i++){
       const file=batch[i];onProgress?.(i+1,batch.length);
-      if(!/\.png$/i.test(file.name)){failures.push(file.name+": only PNG motifs allowed");continue;}
-      const name=file.name.toLowerCase();
-      if(used.has(name)){failures.push(file.name+": duplicate filename");continue;}
-      used.add(name);
-      try{result.push({name:filenameToTitle(file.name),filename:file.name,...await decode(file)});}
-      catch(e){failures.push(file.name+": "+(e?.message||"invalid PNG"));}
+      let path;
+      try{path=sourcePath(file);}catch(e){failures.push(file.name+": "+e.message);continue;}
+      if(!/\\.png$/i.test(file.name)){failures.push(path+": only PNG motifs allowed");continue;}
+      const identity=path.toLowerCase();
+      if(used.has(identity)){failures.push(path+": duplicate relative path");continue;}
+      used.add(identity);
+      const parts=path.split('/'),folders=parts.slice(0,-1);
+      if(rootFolder&&folders[0]===rootFolder)folders.shift();
+      const categoryPath=folders.map(displayFolder).filter(Boolean).join(' / ');
+      try{result.push({name:filenameToTitle(file.name),filename:file.name,relativePath:path,categoryPath,...await decode(file)});}
+      catch(e){failures.push(path+": "+(e?.message||"invalid PNG"));}
     }
-    return {result,failures};
+    return {result,failures,rootFolder};
   }
-  window.PatternForgeMotifPacks=Object.freeze({fromZip,prepare,normaliseCollection});
+  window.PatternForgeMotifPacks=Object.freeze({fromZip,prepare,normaliseCollection,detectRoot});
 })();
