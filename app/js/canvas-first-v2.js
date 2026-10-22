@@ -287,20 +287,27 @@
     if(!old.length){['#17202b','#526d8f','#6f89a8','#c5ccd5','#ffffff'].forEach(c=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.style.background=c;sw.addEventListener('click',()=>{dispatchValue('ink',c);syncCurrentColour(c)});target.appendChild(sw)})}
   }
   function motifPanel(){
-    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Save reusable motif</div><label class="ux2-field-label">Name<input id="ux2MotifName" type="text" maxlength="80" placeholder="e.g. Wildflower"></label><button class="ux2-btn primary" id="ux2SaveMotif" style="width:100%">Save current selection</button><p class="ux2-info">Select one or more editable artwork items first. Motifs stay on this device until exported as part of a project.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">My Motifs</div><div id="ux2MotifList"><p class="ux2-info">Loading motifs…</p></div></div>';
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Import PNG motif collection · up to 100</div><label class="ux2-field-label">Collection name<input id="ux2CollectionName" type="text" maxlength="80" placeholder="e.g. Woodland animals"></label><div class="ux2-image-actions" style="margin-top:9px;flex-wrap:wrap"><button class="ux2-btn primary" type="button" id="ux2MotifImportPng">Choose PNG files</button><button class="ux2-btn" type="button" id="ux2MotifImportZip">Import ZIP folder</button><button class="ux2-btn" type="button" id="ux2MotifImportFolder">Choose folder</button></div><input type="file" id="ux2MotifPngFiles" accept=".png,image/png" multiple hidden><input type="file" id="ux2MotifZipFile" accept=".zip,application/zip" hidden><input type="file" id="ux2MotifDirectory" webkitdirectory directory multiple hidden><p class="ux2-info">PNG files must contain a real RGBA alpha channel and transparent padding. ZIP folders work on mobile; Choose folder works only where the browser supports it. Imported motifs stay in this device’s library until inserted, and are not added to your current project automatically. Keep your original folders as backups.</p><p class="ux2-info" id="ux2MotifImportReport" aria-live="polite"></p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Save reusable motif</div><label class="ux2-field-label">Name<input id="ux2MotifName" type="text" maxlength="80" placeholder="e.g. Wildflower"></label><button class="ux2-btn primary" id="ux2SaveMotif" style="width:100%">Save current selection</button><p class="ux2-info">Select one or more artwork items first. Saved selections and imported collections stay on this device.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">My Motifs</div><label class="ux2-field-label">Collection<select id="ux2MotifCollectionFilter"><option value="">All collections</option></select></label><div id="ux2MotifList"><p class="ux2-info">Loading motifs…</p></div></div>';
   }
   async function refreshMotifList(){
     const list=$('ux2MotifList');if(!list)return;
     const api=window.PatternForgeMotifs;if(!api){list.innerHTML='<p class="ux2-info">Motif library is unavailable.</p>';return;}
     try{
       const motifs=await api.list();
+      const select=$('ux2MotifCollectionFilter'),selected=select?.value||'';
+      if(select){
+        const collections=[...new Set(motifs.map(m=>m.collection||'My saved motifs'))].sort();
+        select.replaceChildren(new Option('All collections',''),...collections.map(name=>new Option(name,name)));
+        select.value=collections.includes(selected)?selected:'';
+      }
       if(!motifs.length){list.innerHTML='<p class="ux2-info">No saved motifs yet.</p>';return;}
       list.innerHTML='';
-      motifs.forEach(motif=>{
+      motifs.filter(m=>!select?.value||(m.collection||'My saved motifs')===select.value).forEach(motif=>{
         const row=document.createElement('div');row.className='ux2-layer-row';row.dataset.motifId=motif.id;
         const thumb=document.createElement('span');thumb.className='ux2-layer-thumb';
         const meta=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');
-        strong.textContent=motif.name||'Untitled motif';small.textContent=((motif.items?.length||0)+(motif.marks?.length||0))+' editable item'+(((motif.items?.length||0)+(motif.marks?.length||0))===1?'':'s');
+        strong.textContent=motif.name||'Untitled motif';
+        small.textContent=motif.sourceType==='rgba-png'?(motif.collection+' · transparent PNG'):(motif.collection||'My saved motifs')+' · editable artwork';
         meta.append(strong,small);
         const actions=document.createElement('span');actions.className='ux2-motif-actions';
         const insert=document.createElement('button');insert.type='button';insert.className='ux2-btn';insert.textContent='Insert';insert.addEventListener('click',async()=>{insert.disabled=true;try{await api.insert(motif.id);openPanel('motifs')}catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not insert motif.'}finally{insert.disabled=false}});
@@ -311,6 +318,33 @@
   }
   function wireMotifPanel(){
     const api=window.PatternForgeMotifs;
+    const picker=(button,input)=>$(button)?.addEventListener('click',()=>$(input)?.click());
+    picker('ux2MotifImportPng','ux2MotifPngFiles');
+    picker('ux2MotifImportZip','ux2MotifZipFile');
+    picker('ux2MotifImportFolder','ux2MotifDirectory');
+    $('ux2MotifCollectionFilter')?.addEventListener('change',refreshMotifList);
+    async function upload(input,kind){
+      const files=[...(input?.files||[])];if(!files.length)return;
+      input.value='';
+      const report=$('ux2MotifImportReport'),group=$('ux2CollectionName')?.value.trim()||'';
+      const buttons=['ux2MotifImportPng','ux2MotifImportZip','ux2MotifImportFolder'].map($).filter(Boolean);
+      buttons.forEach(button=>button.disabled=true);
+      if(report)report.textContent='Validating motif transparency…';
+      try{
+        const derived=kind==='folder'?(files[0].webkitRelativePath||'').split('/')[0]:'';
+        const result=kind==='zip'?await api.importZip(files[0],group):await api.importFiles(files,group||derived||'Imported motifs');
+        if(report)report.textContent='Imported '+result.imported+' motifs into '+result.collection+'. '+(result.failures.length?result.failures.length+' rejected: '+result.failures.slice(0,6).join('; ')+(result.failures.length>6?' (more rejected files)':''):'All supplied PNGs passed.');
+        await refreshMotifList();
+      }catch(err){if(report)report.textContent='Import failed: '+(err?.message||'Try a smaller batch');}
+      finally{buttons.forEach(button=>button.disabled=false);}
+    }
+    for(const [id,kind] of [['ux2MotifPngFiles','files'],['ux2MotifDirectory','folder'],['ux2MotifZipFile','zip']]){
+      $(id)?.addEventListener('change',e=>{void upload(e.target,kind);});
+    }
+    const progress=event=>{const report=$('ux2MotifImportReport');if(report)report.textContent='Checking '+event.detail.current+' of '+event.detail.total+' motifs for real transparency…';};
+    window.PatternForgeMotifPanelSignal?.abort();
+    window.PatternForgeMotifPanelSignal=new AbortController();
+    window.addEventListener('patternforge:motif-import-progress',progress,{signal:window.PatternForgeMotifPanelSignal.signal});
     $('ux2SaveMotif')?.addEventListener('click',async()=>{
       const button=$('ux2SaveMotif'),name=$('ux2MotifName')?.value||'';button.disabled=true;
       try{await api?.saveSelection(name);if($('ux2MotifName'))$('ux2MotifName').value='';await refreshMotifList()}
