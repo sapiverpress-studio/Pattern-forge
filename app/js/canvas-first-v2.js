@@ -287,35 +287,72 @@
     if(!old.length){['#17202b','#526d8f','#6f89a8','#c5ccd5','#ffffff'].forEach(c=>{const sw=document.createElement('button');sw.className='ux2-swatch';sw.style.background=c;sw.addEventListener('click',()=>{dispatchValue('ink',c);syncCurrentColour(c)});target.appendChild(sw)})}
   }
   function motifPanel(){
-    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Import PNG motif collection · up to 100</div><label class="ux2-field-label">Collection name<input id="ux2CollectionName" type="text" maxlength="80" placeholder="e.g. Woodland animals"></label><div class="ux2-image-actions" style="margin-top:9px;flex-wrap:wrap"><button class="ux2-btn primary" type="button" id="ux2MotifImportPng">Choose PNG files</button><button class="ux2-btn" type="button" id="ux2MotifImportZip">Import ZIP folder</button><button class="ux2-btn" type="button" id="ux2MotifImportFolder">Choose folder</button></div><input type="file" id="ux2MotifPngFiles" accept=".png,image/png" multiple hidden><input type="file" id="ux2MotifZipFile" accept=".zip,application/zip" hidden><input type="file" id="ux2MotifDirectory" webkitdirectory directory multiple hidden><p class="ux2-info">PNG files must contain a real RGBA alpha channel and transparent padding. ZIP folders work on mobile; Choose folder works only where the browser supports it. Imported motifs stay in this device’s library until inserted, and are not added to your current project automatically. Keep your original folders as backups.</p><p class="ux2-info" id="ux2MotifImportReport" aria-live="polite"></p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Save reusable motif</div><label class="ux2-field-label">Name<input id="ux2MotifName" type="text" maxlength="80" placeholder="e.g. Wildflower"></label><button class="ux2-btn primary" id="ux2SaveMotif" style="width:100%">Save current selection</button><p class="ux2-info">Select one or more artwork items first. Saved selections and imported collections stay on this device.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">My Motifs</div><label class="ux2-field-label">Collection<select id="ux2MotifCollectionFilter"><option value="">All collections</option></select></label><div id="ux2MotifList"><p class="ux2-info">Loading motifs…</p></div></div>';
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Import PNG motif collection · up to 100</div><label class="ux2-field-label">Collection name (optional)<input id="ux2CollectionName" type="text" maxlength="80" placeholder="Uses top-level ZIP folder by default"></label><div class="ux2-image-actions" style="margin-top:9px;flex-wrap:wrap"><button class="ux2-btn primary" type="button" id="ux2MotifImportPng">Choose PNG files</button><button class="ux2-btn" type="button" id="ux2MotifImportZip">Import ZIP folder</button><button class="ux2-btn" type="button" id="ux2MotifImportFolder">Choose folder</button></div><input type="file" id="ux2MotifPngFiles" accept=".png,image/png" multiple hidden><input type="file" id="ux2MotifZipFile" accept=".zip,application/zip" hidden><input type="file" id="ux2MotifDirectory" webkitdirectory directory multiple hidden><p class="ux2-info">PNG files must contain a real RGBA alpha channel and transparent padding. Nested ZIP folders become searchable subcategories (Woodland creatures / Fox / Winter). ZIP folders work on mobile; Choose folder works only where the browser supports it. Imported motifs stay in this device’s library until inserted, and are not added to your current project automatically. Keep your original folders as backups.</p><p class="ux2-info" id="ux2MotifImportReport" aria-live="polite"></p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Save reusable motif</div><label class="ux2-field-label">Name<input id="ux2MotifName" type="text" maxlength="80" placeholder="e.g. Wildflower"></label><button class="ux2-btn primary" id="ux2SaveMotif" style="width:100%">Save current selection</button><p class="ux2-info">Select one or more artwork items first. Saved selections and imported collections stay on this device.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">My Motifs</div><label class="ux2-field-label">Search every collection<input id="ux2MotifSearch" type="search" autocomplete="off" placeholder="Search fox, oak, flowers…" aria-label="Search all motif collections"></label><p class="ux2-info" id="ux2MotifSearchHint">Search includes motif names, filenames and all folder names, even in other collections.</p><label class="ux2-field-label">Collection<select id="ux2MotifCollectionFilter"><option value="">All collections</option></select></label><label class="ux2-field-label">Subfolder<select id="ux2MotifCategoryFilter"><option value="">All subfolders</option></select></label><p class="ux2-info" id="ux2MotifResultsCount" aria-live="polite"></p><div id="ux2MotifList"><p class="ux2-info">Loading motifs…</p></div></div>';
+  }
+  let motifListRequest=0;
+  function searchText(value){
+    return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[_\\/\-]+/g,' ').toLocaleLowerCase().replace(/\s+/g,' ').trim();
   }
   async function refreshMotifList(){
-    const list=$('ux2MotifList');if(!list)return;
-    const api=window.PatternForgeMotifs;if(!api){list.innerHTML='<p class="ux2-info">Motif library is unavailable.</p>';return;}
+    const request=++motifListRequest,list=$('ux2MotifList');
+    if(!list)return;
+    const api=window.PatternForgeMotifs;
+    if(!api){list.textContent='Motif library is unavailable.';return;}
     try{
       const motifs=await api.list();
-      const select=$('ux2MotifCollectionFilter'),selected=select?.value||'';
-      if(select){
-        const collections=[...new Set(motifs.map(m=>m.collection||'My saved motifs'))].sort();
-        select.replaceChildren(new Option('All collections',''),...collections.map(name=>new Option(name,name)));
-        select.value=collections.includes(selected)?selected:'';
+      if(request!==motifListRequest||!list.isConnected)return;
+      const collection=$('ux2MotifCollectionFilter'),category=$('ux2MotifCategoryFilter');
+      const search=$('ux2MotifSearch'),hint=$('ux2MotifSearchHint'),count=$('ux2MotifResultsCount');
+      const searchTerms=searchText(search?.value).split(' ').filter(Boolean);
+      const selectedCollection=collection?.value||'',selectedCategory=category?.value||'';
+      const collections=[...new Set(motifs.map(m=>m.collection||'My saved motifs'))].sort((a,b)=>a.localeCompare(b));
+      if(collection){
+        collection.replaceChildren(new Option('All collections',''),...collections.map(name=>new Option(name,name)));
+        collection.value=collections.includes(selectedCollection)?selectedCollection:'';
       }
-      if(!motifs.length){list.innerHTML='<p class="ux2-info">No saved motifs yet.</p>';return;}
-      list.innerHTML='';
-      motifs.filter(m=>!select?.value||(m.collection||'My saved motifs')===select.value).forEach(motif=>{
+      const categories=new Set();
+      for(const m of motifs){
+        if(collection?.value&&(m.collection||'My saved motifs')!==collection.value)continue;
+        const chunks=String(m.categoryPath||'').split(' / ').filter(Boolean);
+        for(let i=1;i<=chunks.length;i++)categories.add(chunks.slice(0,i).join(' / '));
+      }
+      if(category){
+        const paths=[...categories].sort((a,b)=>a.localeCompare(b));
+        category.replaceChildren(new Option('All subfolders',''),...paths.map(path=>new Option(path,path)));
+        category.value=paths.includes(selectedCategory)?selectedCategory:'';
+      }
+      const global=searchTerms.length>0;
+      if(hint)hint.textContent=global?'Searching all collections and subfolders (collection filters are temporarily ignored).':'Search names and folders across all collections.';
+      const visible=motifs.filter(m=>{
+        const path=String(m.categoryPath||'');
+        if(global){
+          const haystack=searchText([m.name,m.originalFilename,m.relativePath,m.collection,path].filter(Boolean).join(' '));
+          return searchTerms.every(term=>haystack.includes(term));
+        }
+        if(collection?.value&&(m.collection||'My saved motifs')!==collection.value)return false;
+        return !category?.value||path===category.value||path.startsWith(category.value+' / ');
+      });
+      if(count)count.textContent=visible.length+' of '+motifs.length+' motifs'+(global?' matching your search':'');
+      list.replaceChildren();
+      if(!motifs.length||!visible.length){
+        const empty=document.createElement('p');empty.className='ux2-info';
+        empty.textContent=!motifs.length?'No saved motifs yet. Import a ZIP to get started.':'No motifs match. Try another search or clear the filters.';
+        list.append(empty);return;
+      }
+      for(const motif of visible){
         const row=document.createElement('div');row.className='ux2-layer-row';row.dataset.motifId=motif.id;
         const thumb=document.createElement('span');thumb.className='ux2-layer-thumb';
         if(motif.assets?.[0]?.src){thumb.style.backgroundImage='url('+JSON.stringify(motif.assets[0].src)+')';thumb.style.backgroundSize='contain';thumb.style.backgroundRepeat='no-repeat';thumb.style.backgroundPosition='center';}
         const meta=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');
         strong.textContent=motif.name||'Untitled motif';
-        small.textContent=motif.sourceType==='rgba-png'?(motif.collection+' · transparent PNG'):(motif.collection||'My saved motifs')+' · editable artwork';
+        small.textContent=(motif.collection||'My saved motifs')+(motif.categoryPath?' / '+motif.categoryPath:'')+(motif.sourceType==='rgba-png'?' · PNG':' · editable');
         meta.append(strong,small);
         const actions=document.createElement('span');actions.className='ux2-motif-actions';
         const insert=document.createElement('button');insert.type='button';insert.className='ux2-btn';insert.textContent='Insert';insert.addEventListener('click',async()=>{insert.disabled=true;try{await api.insert(motif.id);openPanel('motifs')}catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not insert motif.'}finally{insert.disabled=false}});
         const remove=document.createElement('button');remove.type='button';remove.className='ux2-btn';remove.textContent='Delete';remove.addEventListener('click',async()=>{remove.disabled=true;try{await api.remove(motif.id);await refreshMotifList()}catch(err){const st=$('status');if(st)st.textContent=err?.message||'Could not delete motif.'}});
         actions.append(insert,remove);row.append(thumb,meta,actions);list.append(row);
-      });
-    }catch(err){list.innerHTML='<p class="ux2-info">Could not open My Motifs on this device.</p>';}
+      }
+    }catch(err){if(request===motifListRequest)list.textContent='Could not open My Motifs on this device.';}
   }
   function wireMotifPanel(){
     const api=window.PatternForgeMotifs;
@@ -324,6 +361,8 @@
     picker('ux2MotifImportZip','ux2MotifZipFile');
     picker('ux2MotifImportFolder','ux2MotifDirectory');
     $('ux2MotifCollectionFilter')?.addEventListener('change',refreshMotifList);
+    $('ux2MotifCategoryFilter')?.addEventListener('change',refreshMotifList);
+    $('ux2MotifSearch')?.addEventListener('input',refreshMotifList);
     async function upload(input,kind){
       const files=[...(input?.files||[])];if(!files.length)return;
       input.value='';
