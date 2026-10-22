@@ -44,7 +44,7 @@ async function download(page,selector){
 }
 async function create(page,type,repeat){
   await page.locator('#projectTypeInput').selectOption(type);
-  await page.locator('#projectRepeatStyle').selectOption(repeat);
+  if(type!=='doodle')await page.locator('#projectRepeatStyle').selectOption(repeat);
   await page.locator('#projectTitleInput').fill('PF 5000 release '+type+' '+repeat);
   await page.locator('#projectSetupForm').evaluate(e=>e.requestSubmit());
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
