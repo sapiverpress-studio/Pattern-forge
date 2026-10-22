@@ -110,5 +110,74 @@ try{
       tests++;console.log('PASS only RGBA real-alpha PNG accepted; opaque and RGB rejected');
     }finally{await context.close();}
   }
+  {
+    const {page,context,errors}=await pageFor(true);
+    try{
+      const animal=(name,seed)=>({name,buffer:makePng(name,seed).buffer});
+      const first=zip([
+        {name:'Woodland_creatures/Fox/sitting.png',buffer:animal('sitting.png',1).buffer},
+        {name:'Woodland_creatures/Fox/running.png',buffer:animal('running.png',2).buffer},
+        {name:'Woodland_creatures/Fox/Winter/sitting.png',buffer:animal('sitting.png',3).buffer},
+        {name:'Woodland_creatures/Hedgehog/sitting.png',buffer:animal('sitting.png',4).buffer},
+        {name:'Woodland_creatures/Doe/sitting.png',buffer:animal('sitting.png',5).buffer}
+      ]);
+      await page.locator('#ux2MotifZipFile').setInputFiles({name:'woodland.zip',mimeType:'application/zip',buffer:first});
+      await page.waitForFunction(()=>document.querySelector('#ux2MotifImportReport')?.textContent.includes('Imported 5'),null,{timeout:90000});
+      const saved=await page.evaluate(()=>window.PatternForgeMotifs.list());
+      assert.equal(saved.length,5,'identical basenames in distinct directories are allowed');
+      assert(saved.every(m=>m.collection==='Woodland_creatures'),'ZIP root creates collection when no label supplied');
+      assert.equal(saved.filter(m=>m.categoryPath.startsWith('Fox')).length,3);
+      assert(saved.some(m=>m.relativePath==='Woodland_creatures/Fox/Winter/sitting.png'&&m.categoryPath==='Fox / Winter'));
+      await page.locator('#ux2MotifCollectionFilter').selectOption('Woodland_creatures');
+      assert((await page.locator('#ux2MotifCategoryFilter option').allTextContents()).includes('Fox / Winter'));
+      await page.locator('#ux2MotifCategoryFilter').selectOption('Fox');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===3);
+      const second=zip([
+        {name:'Arctic_Animals/Fox/sleeping.png',buffer:animal('sleeping.png',6).buffer},
+        {name:'Arctic_Animals/Wolf/sitting.png',buffer:animal('sitting.png',7).buffer}
+      ],false);
+      await page.locator('#ux2MotifZipFile').setInputFiles({name:'arctic.zip',mimeType:'application/zip',buffer:second});
+      await page.waitForFunction(()=>document.querySelector('#ux2MotifImportReport')?.textContent.includes('Imported 2'),null,{timeout:90000});
+      await page.locator('#ux2MotifSearch').fill('fox');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===4);
+      const details=await page.locator('#ux2MotifList .ux2-layer-row small').allTextContents();
+      assert(details.some(x=>x.includes('Arctic_Animals / Fox')),'global search bypasses active collection and subfolder filters');
+      assert(details.filter(x=>x.includes('Woodland_creatures / Fox')).length===3);
+      await page.locator('#ux2MotifSearch').fill('winter');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===1);
+      await page.locator('#ux2MotifSearch').fill('arctic fox');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===1);
+      await page.locator('#ux2MotifSearch').fill('');
+      await page.locator('#ux2MotifCollectionFilter').selectOption('Woodland_creatures');
+      await page.locator('#ux2MotifCategoryFilter').selectOption('Doe');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===1);
+      await page.reload({waitUntil:'networkidle'});
+      const reopened=await page.evaluate(()=>window.PatternForgeMotifs.list());
+      assert.equal(reopened.length,7,'nested metadata persists on reload');
+      assert.equal(reopened.filter(x=>x.categoryPath==='Fox').length,3);
+      assert.deepEqual(errors,[]);
+      tests++;console.log('PASS nested stored/deflated ZIP paths, duplicate basenames, subfolder browse, global cross-collection keyword search, persisted hierarchy');
+    }finally{await context.close()}
+  }
+  {
+    const {page,context,errors}=await pageFor();
+    try{
+      const png=makePng('fox-portrait.png',8);
+      const bytes=Array.from(png.buffer);
+      const result=await page.evaluate(async data=>{
+        const f=new File([new Uint8Array(data)],'fox-portrait.png',{type:'image/png'});
+        Object.defineProperty(f,'webkitRelativePath',{value:'Woodland_creatures/Fox/fox-portrait.png'});
+        return await window.PatternForgeMotifs.importFiles([f],'');
+      },bytes);
+      assert.equal(result.collection,'Woodland_creatures');
+      assert.equal(result.imported,1);
+      await page.locator('#ux2MotifSearch').fill('fox');
+      await page.waitForFunction(()=>document.querySelectorAll('#ux2MotifList .ux2-layer-row').length===1);
+      const saved=await page.evaluate(()=>window.PatternForgeMotifs.list());
+      assert.equal(saved[0].categoryPath,'Fox','native folder picker also preserves nested path');
+      assert.deepEqual(errors,[]);
+      tests++;console.log('PASS native folder hierarchy and single-motif search');
+    }finally{await context.close()}
+  }
   console.log('PASS motif collection browser suites '+tests);
 }finally{await browser.close();}
