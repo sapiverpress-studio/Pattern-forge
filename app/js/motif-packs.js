@@ -120,7 +120,7 @@
     const first=paths[0]?.split('/')||[];
     return first.length>1&&paths.every(p=>p.split('/').length>1&&p.split('/')[0]===first[0])?first[0]:'';
   }
-  function displayFolder(path){return path.replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();}
+  function displayFolder(path){return path.replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();}
   async function prepare(files,onProgress){
     const batch=Array.from(files||[]);
     if(batch.length<1||batch.length>MAX_FILES)throw Error("Select 1–100 PNG files per collection");
@@ -129,7 +129,7 @@
       const file=batch[i];onProgress?.(i+1,batch.length);
       let path;
       try{path=sourcePath(file);}catch(e){failures.push(file.name+": "+e.message);continue;}
-      if(!/\\.png$/i.test(file.name)){failures.push(path+": only PNG motifs allowed");continue;}
+      if(!/\.png$/i.test(file.name)){failures.push(path+": only PNG motifs allowed");continue;}
       const identity=path.toLowerCase();
       if(used.has(identity)){failures.push(path+": duplicate relative path");continue;}
       used.add(identity);
