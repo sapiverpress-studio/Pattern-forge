@@ -95,7 +95,7 @@
   }
   const blocking=checks=>checks.filter(c=>c.state==="fail");
   async function flattenedTileCanvas(){
-    const spec=bridge.getSpec(),tile=bridge.makeTileCanvas(spec.wPx,spec.hPx,4000,4000,bridge.getRepeatStyle(),true),out=document.createElement("canvas");
+    const spec=bridge.getSpec(),tile=bridge.makeTileCanvas(spec.wPx,spec.hPx,5000,5000,bridge.getRepeatStyle(),true),out=document.createElement("canvas");
     out.width=spec.wPx;out.height=spec.hPx;const ctx=out.getContext("2d");ctx.fillStyle=$("bg")?.value||"#ffffff";ctx.fillRect(0,0,out.width,out.height);ctx.drawImage(tile,0,0);tile.width=1;tile.height=1;return {canvas:out,spec};
   }
   async function jpegTile(){
