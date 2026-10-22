@@ -41,6 +41,12 @@ jobs:
           node --check public-release/app/js/editor.js
           node --check public-release/app/js/canvas-first-v2.js
           node --check public-release/app/js/motif-packs.js
+      - name: Keep the exact checked release package for manual recovery
+        uses: actions/upload-artifact@v4
+        with:
+          name: pattern-forge-5000px-release-site
+          path: public-release/
+          retention-days: 7
       - name: Publish exactly this static build to the production Netlify site
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
