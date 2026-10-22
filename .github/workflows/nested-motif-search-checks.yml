@@ -1,0 +1,58 @@
+name: Nested motif ZIP and global search regression
+on:
+  push:
+    branches: [feature/nested-motif-search-20261022]
+    paths:
+      - app/js/motif-packs.js
+      - app/js/editor.js
+      - app/js/canvas-first-v2.js
+      - tests/motif-collection-browser.mjs
+      - .github/workflows/nested-motif-search-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  motif-folders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax validation
+        run: |
+          node --check app/js/motif-packs.js
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check tests/motif-collection-browser.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install --with-deps chromium
+      - name: Serve exact branch
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-nested-motif.log 2>&1 &
+      - name: Test ZIP folder hierarchy, duplicate filenames, search and persistence
+        run: node tests/motif-collection-browser.mjs
+      - name: Run existing image import regressions
+        run: node tests/multi-image-import-browser.mjs
+  editor-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install --with-deps chromium
+      - name: Serve exact branch
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-nested-regression.log 2>&1 &
+      - name: Confirm 5000px export, alpha, repeat and DPI unchanged
+        run: node tests/5000px-export-browser.mjs
+      - name: Check all existing editor and project recovery tests
+        run: node tests/ux2-extended-readiness.mjs
