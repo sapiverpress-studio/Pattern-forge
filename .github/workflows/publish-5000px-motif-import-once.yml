@@ -1,0 +1,63 @@
+name: Publish vetted 5000px and motif importer once
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-5000px-motif-import-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: pattern-forge-production-manual-release-20261022
+  cancel-in-progress: false
+jobs:
+  production-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 19fe1a1157ba15ffe7f584daec686ef1d8345bdb
+      NETLIFY_SITE_ID: 25cb894e-3e25-404a-b784-1b65fc8ce933
+    steps:
+      - name: Check out explicit reviewed source and packaging script
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assert release is sourced from the audited commit
+        run: |
+          git cat-file -e "$SOURCE_SHA^{commit}"
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          test "$(git show "$SOURCE_SHA:app/js/editor.js" | sha256sum | cut -d' ' -f1)" = "$(git show HEAD:app/js/editor.js | sha256sum | cut -d' ' -f1)"
+      - name: Assemble minimal public website only
+        run: |
+          python3 dev/package-ux2-staging.py public-release --commit "$SOURCE_SHA"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('public-release/build.json')
+          data=json.loads(p.read_text())
+          data['target']='sapiver-pattern-forge'
+          data['release']='5000px-export-and-motif-import-20261022'
+          p.write_text(json.dumps(data,indent=2)+'\n')
+          PY
+          test -f public-release/app/js/motif-packs.js
+          node --check public-release/app/js/editor.js
+          node --check public-release/app/js/canvas-first-v2.js
+          node --check public-release/app/js/motif-packs.js
+      - name: Publish exactly this static build to the production Netlify site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo 'NETLIFY_AUTH_TOKEN missing; stopping without publish'; exit 1; }
+          npx --yes netlify-cli@23.11.0 deploy --dir public-release --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" --prod --message "Pattern Forge 5000px and 100-motif importer from $SOURCE_SHA"
+      - name: Confirm published build identifies exact audited commit
+        run: |
+          for attempt in $(seq 1 20); do
+            if curl -fsSL --max-time 10 "https://sapiver-pattern-forge.netlify.app/build.json" -o /tmp/pf-live-build.json; then
+              if python3 -c 'import json,os; p=json.load(open("/tmp/pf-live-build.json")); assert p["commit"]==os.environ["SOURCE_SHA"] and p["target"]=="sapiver-pattern-forge"'; then
+                curl -fsSL --max-time 10 "https://sapiver-pattern-forge.netlify.app/app/js/motif-packs.js" | grep -q 'Pattern Forge motif-pack reader'
+                echo "PASS correct live production content and source SHA"
+                exit 0
+              fi
+            fi
+            sleep 3
+          done
+          echo "Published site could not be verified against audited source."
+          exit 1
