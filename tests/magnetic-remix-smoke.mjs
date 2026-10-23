@@ -44,7 +44,7 @@ try{
   await page.evaluate(ids=>{for(const id of ids.slice(1))window.PatternForgeImageLibrary.place(id);window.PatternForgeImageLibrary.place(ids[0]);},list.map(a=>a.id));
   await page.waitForTimeout(200);
   await page.evaluate(()=>{
-    const st=window.PatternForgeEditor.state;
+    const st=window.PatternForgeEtsyBridge.state;
     st.items.forEach((item,i)=>{item.x=110+(i%10)*68;item.y=200+Math.floor(i/10)*240;item.rotation=i*.05;});
     document.getElementById('gridOn').dispatchEvent(new Event('change',{bubbles:true}));
   });
