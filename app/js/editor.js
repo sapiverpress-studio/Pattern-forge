@@ -541,6 +541,39 @@
     backupAll:()=>{if(!state.project)return false;downloadBlob(new Blob([JSON.stringify(projectData())],{type:"application/json"}),`${safeName()}-full-image-library.json`);setStatus("Downloaded full editable project and all imported images.");return true;}
   };
   function assetOf(item){ return state.assets.find(a=>a.id===item.assetId); }
+  // Ignore unequal transparent PNG margins: cache the visible alpha rectangle.
+  function assetVisibleRect(asset){
+    if(!asset)return {left:0,top:0,right:1,bottom:1};
+    if(asset.visibleRect)return asset.visibleRect;
+    const fallback={left:0,top:0,right:1,bottom:1};
+    try{
+      const w=Math.max(1,Math.min(512,Number(asset.w)||1)),h=Math.max(1,Math.min(512,Number(asset.h)||1));
+      const preview=document.createElement("canvas");preview.width=w;preview.height=h;
+      const c=preview.getContext("2d",{willReadFrequently:true});
+      c.clearRect(0,0,w,h);c.drawImage(asset.img,0,0,w,h);
+      const data=c.getImageData(0,0,w,h).data;
+      let left=w,top=h,right=-1,bottom=-1;
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        if(data[(y*w+x)*4+3]<12)continue;
+        left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);
+      }
+      asset.visibleRect=right>=left?{left:left/w,top:top/h,right:(right+1)/w,bottom:(bottom+1)/h}:fallback;
+    }catch(_){asset.visibleRect=fallback;}
+    return asset.visibleRect;
+  }
+  function itemVisualBounds(item){
+    const a=assetOf(item);if(!a)return {cx:item.x,cy:item.y,x:0,y:0};
+    const b=assetVisibleRect(a),iw=a.w*item.scale,ih=a.h*item.scale;
+    let left=(b.left-.5)*iw,right=(b.right-.5)*iw,top=(b.top-.5)*ih,bottom=(b.bottom-.5)*ih;
+    if(item.flipX)[left,right]=[-right,-left];
+    if(item.flipY)[top,bottom]=[-bottom,-top];
+    const c=Math.cos(item.rotation),s=Math.sin(item.rotation),vertices=[
+      [left,top],[right,top],[right,bottom],[left,bottom]
+    ].map(([x,y])=>({x:item.x+x*c-y*s,y:item.y+x*s+y*c}));
+    const xs=vertices.map(p=>p.x),ys=vertices.map(p=>p.y);
+    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+    return {cx:(minX+maxX)/2,cy:(minY+maxY)/2,x:(maxX-minX)/2,y:(maxY-minY)/2,minX,maxX,minY,maxY};
+  }
   function selectedItem(){ return state.items.find(i=>i.id===state.selectedId)||null; }
   function selectedMark(){ return state.marks.find(m=>m.id===state.selectedId)||null; }
   // One-tap Shape Clean: use the selected brush or the most recently completed
@@ -718,7 +751,7 @@
     renderAll();setStatus("Flipped "+records.length+" selected artwork item"+(records.length===1?"":"s")+" "+(axis==="horizontal"?"horizontally.":"vertically."));return records.length;
   }
   function alignmentHalfSize(record){
-    if(record.kind==="item")return itemSnapHalfExtents(record.artwork);
+    if(record.kind==="item")return itemVisualBounds(record.artwork);
     const b=markPrimaryBounds(record.artwork);
     return {x:Math.max(0,(b.maxX-b.minX)/2),y:Math.max(0,(b.maxY-b.minY)/2)};
   }
@@ -727,7 +760,7 @@
     // unwraps objects around the last selected motif; that would incorrectly
     // reorder a full-tile row that spans more than half the repeat width.
     const records=selectedArtwork();
-    const geometry=records.length<2?null:{members:records.map(record=>({record,unwrapped:artworkCenter(record)}))};
+    const geometry=records.length<2?null:{members:records.map(record=>({record,unwrapped:record.kind==="item"?itemVisualBounds(record.artwork):artworkCenter(record)}))};
     if(!geometry){setStatus("Select two or more items to align.");return false;}
     const horizontal=["left","centreX","right","distributeX"].includes(mode);
     if(!horizontal&&!["top","centreY","bottom","distributeY"].includes(mode))return false;
@@ -752,7 +785,7 @@
       const delta=target-member.centre,artwork=member.record.artwork;
       if(Math.abs(delta)<1e-7)return;
       if(member.record.kind==="item"){
-        const next={x:member.unwrapped.x,y:member.unwrapped.y};next[axis]+=delta;
+        const next={x:artwork.x,y:artwork.y};next[axis]+=delta;
         const pos=isDoodleProject()?next:canonicalPoint(next.x,next.y);
         artwork.x=pos.x;artwork.y=pos.y;delete artwork.scatterGenerated;
       }else{
@@ -762,6 +795,32 @@
     });
     clearSnapGuides();renderAll();
     setStatus("Aligned "+ranked.length+" items ("+mode+").");return true;
+  }
+  function moveSelectedToGrid(dirX=0,dirY=0){
+    const selected=selectedArtwork();
+    if(selected.length!==1||selected[0].kind!=="item"){
+      setStatus("Select one placed image to move its visible centre to a grid line.");return false;
+    }
+    const item=selected[0].artwork,layer=layerForArtwork(item,BASE_LAYER_IDS.motifs);
+    if(!layerIsRenderable(layer,false)||layer.locked){setStatus("Unlock and show the image layer first.");return false;}
+    const step=TILE/(parseInt($("gridCount").value,10)||16),bounds=itemVisualBounds(item);
+    const target={x:bounds.cx,y:bounds.cy},epsilon=1e-5;
+    if(dirX>0)target.x=(Math.floor((target.x+epsilon)/step)+1)*step;
+    else if(dirX<0)target.x=(Math.ceil((target.x-epsilon)/step)-1)*step;
+    else target.x=Math.round(target.x/step)*step;
+    if(dirY>0)target.y=(Math.floor((target.y+epsilon)/step)+1)*step;
+    else if(dirY<0)target.y=(Math.ceil((target.y-epsilon)/step)-1)*step;
+    else target.y=Math.round(target.y/step)*step;
+    if(dirX&&!dirY)target.y=bounds.cy;
+    if(dirY&&!dirX)target.x=bounds.cx;
+    saveHistory();
+    const next=isDoodleProject()?{x:item.x+target.x-bounds.cx,y:item.y+target.y-bounds.cy}:
+      canonicalPoint(item.x+target.x-bounds.cx,item.y+target.y-bounds.cy);
+    item.x=next.x;item.y=next.y;delete item.scatterGenerated;
+    state.snapGuides={x:dirY&&!dirX?null:target.x,y:dirX&&!dirY?null:target.y};
+    state.snapGuideKinds={x:"grid",y:"grid"};
+    renderAll();setStatus("Visible artwork centre positioned on the "+$("gridCount").value+"×"+$("gridCount").value+" grid.");
+    return true;
   }
   window.PatternForgeSelection={
     get count(){return selectionIds().length;},
@@ -779,6 +838,8 @@
     flipHorizontal(){return flipSelectedArtwork("horizontal");},
     flipVertical(){return flipSelectedArtwork("vertical");},
     align:alignSelectedArtwork,
+    gridCentre:()=>moveSelectedToGrid(),
+    gridStep:(x,y)=>moveSelectedToGrid(Number(x)||0,Number(y)||0),
     recolour:recolourSelectedMarks,
     replaceMatching:replaceMatchingMarkColour
   };
@@ -944,6 +1005,12 @@
           drawImageTransformHandle(ctx,0,ih/2+22/sc,"move",sc);
         }
         ctx.restore();
+        const visible=itemVisualBounds(item);
+        ctx.save();ctx.strokeStyle="#007e87";ctx.fillStyle="#fff";
+        ctx.lineWidth=2.5/sc;ctx.setLineDash([]);
+        ctx.beginPath();ctx.arc(visible.cx,visible.cy,8/sc,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(visible.cx-14/sc,visible.cy);ctx.lineTo(visible.cx+14/sc,visible.cy);
+        ctx.moveTo(visible.cx,visible.cy-14/sc);ctx.lineTo(visible.cx,visible.cy+14/sc);ctx.stroke();ctx.restore();
       }else if(record.kind==="mark"){
         if(layerIsRenderable(record.layer,false)&&!record.layer.locked)drawSelectedMarkOverlay(ctx,record.artwork,sc,showHandles);
       }
@@ -1686,12 +1753,12 @@
     if(allowObjects){
       const visible=state.items.filter(item=>item.id!==state.selectedId&&layerIsRenderable(layerForArtwork(item,BASE_LAYER_IDS.motifs),false));
       for(const item of visible.slice(0,200)){
-        const extent=itemSnapHalfExtents(item)[axis];
+        const visibleBounds=itemVisualBounds(item),extent=visibleBounds[axis];
         for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
           if(isDoodleProject()&&(a||b))continue;
           const offsetX=a*basis[0].x+b*basis[1].x,offsetY=a*basis[0].y+b*basis[1].y;
-          const centre=axis==="x"?item.x+offsetX:item.y+offsetY;
-          const ortho=axis==="x"?item.y+offsetY:item.x+offsetX;
+          const centre=axis==="x"?visibleBounds.cx+offsetX:visibleBounds.cy+offsetY;
+          const ortho=axis==="x"?visibleBounds.cy+offsetY:visibleBounds.cx+offsetX;
           if(Math.abs(centre-v)>TILE/2+extent+halfExtent+objectLimit)continue;
           centres.push({value:centre,orthogonal:ortho});
           proposals.push(
@@ -1729,7 +1796,7 @@
     }
     if(best)return best;
     const step=TILE/(parseInt($("gridCount").value,10)||16),target=Math.round(v/step)*step;
-    return Math.abs(target-v)<=10*unit?{value:target,guide:target,kind:"grid"}:{value:v,guide:null,kind:null};
+    return Math.abs(target-v)<=14*unit?{value:target,guide:target,kind:"grid"}:{value:v,guide:null,kind:null};
   }
   function smartSnapPosition(x,y,halfW=0,halfH=0){
     const sx=smartSnapAxis(x,Math.max(0,halfW),"x",y),sy=smartSnapAxis(y,Math.max(0,halfH),"y",x);
@@ -1737,17 +1804,18 @@
     state.snapGuideKinds={x:sx.kind,y:sy.kind};
     return {x:sx.value,y:sy.value};
   }
-  function itemSnapHalfExtents(item){
-    const a=assetOf(item);if(!a)return {x:0,y:0};
-    const iw=a.w*item.scale,ih=a.h*item.scale,c=Math.abs(Math.cos(item.rotation)),s=Math.abs(Math.sin(item.rotation));
-    return {x:(iw*c+ih*s)/2,y:(iw*s+ih*c)/2};
-  }
+  function itemSnapHalfExtents(item){const visible=itemVisualBounds(item);return {x:visible.x,y:visible.y};}
   function drawSnapGuides(c,sc){
     const guides=state.snapGuides||{};if(!Number.isFinite(guides.x)&&!Number.isFinite(guides.y))return;
-    c.save();c.strokeStyle="rgba(204,82,62,.92)";c.lineWidth=2/sc;c.setLineDash([5/sc,4/sc]);c.beginPath();
+    c.save();c.strokeStyle="rgba(0,113,130,.95)";c.lineWidth=2.8/sc;c.setLineDash([7/sc,4/sc]);c.beginPath();
     if(Number.isFinite(guides.x)){c.moveTo(guides.x,0);c.lineTo(guides.x,TILE);}
     if(Number.isFinite(guides.y)){c.moveTo(0,guides.y);c.lineTo(TILE,guides.y);}
-    c.stroke();c.restore();
+    c.stroke();
+    if(Number.isFinite(guides.x)&&Number.isFinite(guides.y)){
+      c.setLineDash([]);c.beginPath();c.arc(guides.x,guides.y,7/sc,0,2*Math.PI);
+      c.fillStyle="#fff";c.fill();c.stroke();
+    }
+    c.restore();
   }
   function wrappedDelta(a,b,size){
     let d=a-b;
@@ -2014,13 +2082,14 @@
       // Guides may preview an alignment, but never slow or pin the artwork
       // under the finger. Tiny 2–10px nudges must visibly track 1:1.
       const half=itemSnapHalfExtents(item);
-      const preview=smartSnapPosition(rawX,rawY,half.x,half.y);
+      const current=itemVisualBounds(item),deltaX=current.cx-item.x,deltaY=current.cy-item.y;
+       const preview=smartSnapPosition(rawX+deltaX,rawY+deltaY,half.x,half.y);
       const bounds=canvas.getBoundingClientRect();
       const dragCss=Math.hypot(p.x-state.dragStart.x,p.y-state.dragStart.y)*bounds.width/Math.max(1,canvas.width);
       // Live object magnets after deliberate motion; tiny touch nudges stay 1:1.
       const live=dragCss>=24;
-      const px=live&&["object","spacing"].includes(state.snapGuideKinds?.x)?preview.x:rawX;
-      const py=live&&["object","spacing"].includes(state.snapGuideKinds?.y)?preview.y:rawY;
+      const px=live&&["object","spacing","grid"].includes(state.snapGuideKinds?.x)?preview.x-deltaX:rawX;
+      const py=live&&["object","spacing","grid"].includes(state.snapGuideKinds?.y)?preview.y-deltaY:rawY;
       const pos=isDoodleProject()?{x:px,y:py}:canonicalPoint(px,py);
       item.x=pos.x;item.y=pos.y;
       renderAll(false,false);
@@ -2035,8 +2104,9 @@
         // Keep delicate nudges exact. Only longer deliberate moves can
         // magnetise to a nearby guide when the finger is released.
         if(distanceCss>=24){
-          const size=itemSnapHalfExtents(image),snapped=smartSnapPosition(image.x,image.y,size.x,size.y);
-          const p=isDoodleProject()?snapped:canonicalPoint(snapped.x,snapped.y);
+          const size=itemSnapHalfExtents(image),visible=itemVisualBounds(image),snapped=smartSnapPosition(visible.cx,visible.cy,size.x,size.y);
+          const destination={x:image.x+snapped.x-visible.cx,y:image.y+snapped.y-visible.cy};
+          const p=isDoodleProject()?destination:canonicalPoint(destination.x,destination.y);
           image.x=p.x;image.y=p.y;
         }
       }
