@@ -1630,24 +1630,64 @@
     renderAll();
     setStatus(`Started again — cleared ${summary}. Project setup and image library kept.`);
   }
-  function clearSnapGuides(){state.snapGuides={x:null,y:null};}
-  function smartSnapAxis(v,halfExtent){
-    if(!$("snapOn").checked)return {value:v,guide:null};
-    const strongLimit=18/viewScale(),gridLimit=10/viewScale();
-    const strong=[{value:TILE/2,guide:TILE/2}];
-    if(halfExtent<=TILE/2){strong.push({value:halfExtent,guide:0},{value:TILE-halfExtent,guide:TILE});}
+  function clearSnapGuides(){state.snapGuides={x:null,y:null};state.snapGuideKinds={x:null,y:null};}
+  // Motif guides use repeat-lattice copies to handle straight, brick and half-drop.
+  function smartSnapAxis(v,halfExtent,axis,orthogonalValue){
+    if(!$("snapOn").checked)return {value:v,guide:null,kind:null};
+    const unit=1/Math.max(.01,viewScale()),objectLimit=12*unit,spacingLimit=9*unit;
+    const proposals=[],centres=[],basis=repeatBasis(),allowObjects=$("objectSnapOn").checked;
+    if(allowObjects){
+      const visible=state.items.filter(item=>item.id!==state.selectedId&&layerIsRenderable(layerForArtwork(item,BASE_LAYER_IDS.motifs),false));
+      for(const item of visible.slice(0,200)){
+        const extent=itemSnapHalfExtents(item)[axis];
+        for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
+          if(isDoodleProject()&&(a||b))continue;
+          const offsetX=a*basis[0].x+b*basis[1].x,offsetY=a*basis[0].y+b*basis[1].y;
+          const centre=axis==="x"?item.x+offsetX:item.y+offsetY;
+          const ortho=axis==="x"?item.y+offsetY:item.x+offsetX;
+          if(Math.abs(centre-v)>TILE/2+extent+halfExtent+objectLimit)continue;
+          centres.push({value:centre,orthogonal:ortho});
+          proposals.push(
+            {value:centre,guide:centre,kind:"object"},
+            {value:centre-extent+halfExtent,guide:centre-extent,kind:"object"},
+            {value:centre+extent-halfExtent,guide:centre+extent,kind:"object"},
+            {value:centre+extent+halfExtent,guide:centre+extent,kind:"object"},
+            {value:centre-extent-halfExtent,guide:centre-extent,kind:"object"}
+          );
+        }
+      }
+    }
+    if(allowObjects&&$("spacingSnapOn").checked){
+      const sameLine=centres.filter(p=>Math.abs(p.orthogonal-orthogonalValue)<=Math.max(45,32*unit))
+        .map(p=>p.value).sort((a,b)=>a-b);
+      for(let i=1;i<sameLine.length;i++){
+        const first=sameLine[i-1],last=sameLine[i],gap=last-first;
+        if(gap<=1||gap>TILE)continue;
+        for(const candidate of [first-gap,(first+last)/2,last+gap])
+          proposals.push({value:candidate,guide:candidate,kind:"spacing"});
+      }
+    }
     let best=null;
+    for(const candidate of proposals){
+      const distance=Math.abs(candidate.value-v),limit=candidate.kind==="spacing"?spacingLimit:objectLimit;
+      if(distance<=limit&&(!best||distance<best.distance))best={...candidate,distance};
+    }
+    if(best)return best;
+    const strongLimit=18*unit;
+    const strong=[{value:TILE/2,guide:TILE/2,kind:"tile"}];
+    if(halfExtent<=TILE/2)strong.push({value:halfExtent,guide:0,kind:"tile"},{value:TILE-halfExtent,guide:TILE,kind:"tile"});
     for(const candidate of strong){
       const distance=Math.abs(candidate.value-v);
       if(distance<=strongLimit&&(!best||distance<best.distance))best={...candidate,distance};
     }
-    if(best)return {value:best.value,guide:best.guide};
-    const step=TILE/(parseInt($("gridCount").value,10)||16),gridTarget=Math.round(v/step)*step;
-    return Math.abs(gridTarget-v)<=gridLimit?{value:gridTarget,guide:null}:{value:v,guide:null};
+    if(best)return best;
+    const step=TILE/(parseInt($("gridCount").value,10)||16),target=Math.round(v/step)*step;
+    return Math.abs(target-v)<=10*unit?{value:target,guide:target,kind:"grid"}:{value:v,guide:null,kind:null};
   }
   function smartSnapPosition(x,y,halfW=0,halfH=0){
-    const sx=smartSnapAxis(x,Math.max(0,halfW)),sy=smartSnapAxis(y,Math.max(0,halfH));
+    const sx=smartSnapAxis(x,Math.max(0,halfW),"x",y),sy=smartSnapAxis(y,Math.max(0,halfH),"y",x);
     state.snapGuides={x:sx.guide,y:sy.guide};
+    state.snapGuideKinds={x:sx.kind,y:sy.kind};
     return {x:sx.value,y:sy.value};
   }
   function itemSnapHalfExtents(item){
@@ -1927,8 +1967,14 @@
       // Guides may preview an alignment, but never slow or pin the artwork
       // under the finger. Tiny 2–10px nudges must visibly track 1:1.
       const half=itemSnapHalfExtents(item);
-      smartSnapPosition(rawX,rawY,half.x,half.y);
-      const pos=isDoodleProject()?{x:rawX,y:rawY}:canonicalPoint(rawX,rawY);
+      const preview=smartSnapPosition(rawX,rawY,half.x,half.y);
+      const bounds=canvas.getBoundingClientRect();
+      const dragCss=Math.hypot(p.x-state.dragStart.x,p.y-state.dragStart.y)*bounds.width/Math.max(1,canvas.width);
+      // Live object magnets after deliberate motion; tiny touch nudges stay 1:1.
+      const live=dragCss>=24;
+      const px=live&&["object","spacing"].includes(state.snapGuideKinds?.x)?preview.x:rawX;
+      const py=live&&["object","spacing"].includes(state.snapGuideKinds?.y)?preview.y:rawY;
+      const pos=isDoodleProject()?{x:px,y:py}:canonicalPoint(px,py);
       item.x=pos.x;item.y=pos.y;
       renderAll(false,false);
     }
@@ -2263,6 +2309,8 @@
     $("autoCloseTolerance").value="24";
     $("autoCloseToleranceLabel").textContent="24";
     $("snapOn").checked=true;
+    $("objectSnapOn").checked=true;
+    $("spacingSnapOn").checked=true;
   }
   function createProjectFromSetup(event){
     event.preventDefault();
@@ -2389,7 +2437,7 @@
       templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,autoCloseShapes:$("autoCloseShapes").checked,autoCloseTolerance:Number($("autoCloseTolerance").value),pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
+      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,objectSnapOn:$("objectSnapOn").checked,spacingSnapOn:$("spacingSnapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,autoCloseShapes:$("autoCloseShapes").checked,autoCloseTolerance:Number($("autoCloseTolerance").value),pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
@@ -2658,10 +2706,12 @@
     // of the last project opened on this device.
     $("strokeStabilisation").value="strong";
     $("snapOn").checked=true;
+    $("objectSnapOn").checked=true;
+    $("spacingSnapOn").checked=true;
     $("autoCloseShapes").checked=s.autoCloseShapes===undefined?true:!!s.autoCloseShapes;
     $("autoCloseTolerance").value=String(clamp(Number(s.autoCloseTolerance)||24,10,40));
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
-    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
+    for(const [id,key] of [["gridOn","gridOn"],["symmetryGuides","symmetryGuides"],["snapOn","snapOn"],["objectSnapOn","objectSnapOn"],["spacingSnapOn","spacingSnapOn"],["showTileBorder","showTileBorder"],["scatterOverlap","scatterOverlap"],["scatterPreserveManual","scatterPreserveManual"],["pressureWidth","pressureWidth"],["bucketSampleVisible","bucketSampleVisible"]])if(s[key]!==undefined)$(id).checked=!!s[key];
     if(data.palette){state.colorPalette=Array.isArray(data.palette.colors)?data.palette.colors:[...state.colorPalette];state.savedPalettes=Array.isArray(data.palette.saved)?data.palette.saved:state.savedPalettes;setInkColour(data.palette.ink||"#2c5f54");rebuildPaletteUI();}
     $("autoCloseToleranceLabel").textContent=$("autoCloseTolerance").value;
     $("brushSizeLabel").textContent=$("brushSize").value;$("pressureMinLabel").textContent=$("pressureMin").value+"%";$("pressureSensitivityLabel").textContent=$("pressureSensitivity").value+"%";$("inkOpacityLabel").textContent=$("inkOpacity").value+"%";$("textureLabel").textContent=$("textureAmount").value+"%";$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";
