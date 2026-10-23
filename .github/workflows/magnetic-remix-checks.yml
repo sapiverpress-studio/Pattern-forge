@@ -29,6 +29,7 @@ jobs:
           node --check app/js/canvas-first-v2.js
           node --check app/js/motif-remix.js
           node --check tests/magnetic-remix-smoke.mjs
+          node --check tests/object-magnet-browser.mjs
       - name: Install Chromium
         run: |
           npm init -y >/dev/null 2>&1
@@ -41,6 +42,8 @@ jobs:
           curl -fsS http://127.0.0.1:4173/app/ >/dev/null
       - name: Alignment and batch replacement browser test
         run: node tests/magnetic-remix-smoke.mjs
+      - name: Real pointer object magnet browser test
+        run: node tests/object-magnet-browser.mjs
       - name: Existing snap-guide regression
         run: |
           sed -i "s#http://127.0.0.1:4173/app/'#http://127.0.0.1:4173/app/?legacy=1'#g" tests/smart-snapping-smoke.mjs
