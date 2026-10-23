@@ -151,7 +151,7 @@
       <label class="check"><input id="snapOn" type="checkbox" checked> Smart snapping</label>
       <label class="check"><input id="objectSnapOn" type="checkbox" checked> Align to other motifs</label>
       <label class="check"><input id="spacingSnapOn" type="checkbox" checked> Equal-spacing guides</label>
-      <p id="snapHelp" class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
+      <p id="snapHelp" class="help">Select an image to see its teal visible-artwork centre (transparent PNG padding is ignored). Smart snapping shows turquoise guide lines near the next grid or motif centre. For exact placement, select one image and use “Centre to grid” or the grid-step arrows. Guides are editor-only.</p>
 
       <div id="backgroundSettingsRow" class="row">
         <div class="field">
@@ -347,10 +347,19 @@
   <dialog id="motifSwapDialog" class="helpDialog motifSwapDialog" aria-labelledby="motifSwapTitle">
     <div class="helpDialogHead"><h2 id="motifSwapTitle">Duplicate &amp; replace motifs</h2><button id="motifSwapClose" class="btn" type="button">Close</button></div>
     <div class="helpDialogBody">
-      <p class="help">Choose up to ten replacement images in one upload. Match each file to an original motif type; every instance of that motif will be replaced in the copied design. Original project and arrangement stay untouched.</p>
+      <p class="help">Copy this exact pattern layout into a new editable project. Choose which original motif to replace, then pick its replacement. Every placed copy of that motif type is swapped; the original pattern is saved separately and untouched.</p>
       <div class="field"><label for="motifSwapName">New design name</label><input id="motifSwapName" maxlength="80" type="text" required></div>
-      <div class="field"><label for="motifSwapFiles">Replacement PNG, JPEG or WebP images (1–10)</label><input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
-      <div id="motifSwapMapping" class="motifSwapMapping"></div>
+      <div class="field"><label for="motifSwapMode">Choose replacement images from</label><select id="motifSwapMode"><option value="library">My already imported images</option><option value="upload">Upload new PNG, JPEG or WebP files</option></select></div>
+      <section id="motifSwapLibrarySection" aria-label="Choose images from your imported library">
+        <p class="help">Choose an original motif and an already imported replacement. Use “Add another swap” for up to ten different types.</p>
+        <div id="motifSwapLibraryMapping" class="motifSwapMapping"></div>
+        <button id="motifSwapAddMapping" class="btn" type="button">+ Add another swap</button>
+        <p class="help">Missing a replacement? Add it under Images first, or switch to uploading new files above.</p>
+      </section>
+      <section id="motifSwapUploadSection" aria-label="Upload new replacement images" hidden>
+        <div class="field"><label for="motifSwapFiles">Replacement image files (1–10)</label><input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
+        <div id="motifSwapMapping" class="motifSwapMapping"></div>
+      </section>
       <p id="motifSwapError" class="help motifSwapError" role="alert"></p>
       <p class="help">Motif centres, positions, rotations, layers and repetition stay unchanged. New images fit inside the replaced motif's bounding size to avoid unexpected overlaps. Check the result before export.</p>
       <div class="btns"><button id="motifSwapApply" type="button" class="btn primary">Create separate design</button><button id="motifSwapCancel" type="button" class="btn">Cancel</button></div>
