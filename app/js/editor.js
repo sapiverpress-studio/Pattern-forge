@@ -1297,10 +1297,11 @@
     return surface;
   }
 
+  function exportHasTransparency(){return isDoodleProject()||$("exportTransparent").checked;}
   function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
     const out=document.createElement("canvas"); out.width=W; out.height=H;
     const c=out.getContext("2d");
-    if(!$("transparent").checked){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
+    if(!(forExport?exportHasTransparency():$("transparent").checked)){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
 
     // Keep the legacy direct-render path on layers without erasers so existing brush
     // blending is byte-for-byte unchanged. Only layers with eraser strokes are isolated.
@@ -2218,7 +2219,7 @@
     const result=await renderPNGBlob();if(!result)return;
     const {blob,spec}=result;
     downloadBlob(blob,`${safeName()}-${exportFileStem()}-master.png`);
-    setStatus(isDoodleProject()?`Standalone master PNG exported at ${spec.wPx} × ${spec.hPx}px with transparency. No physical size is assigned.`:`Seamless master PNG exported at ${spec.wPx} × ${spec.hPx}px. No physical size is assigned.`);
+    setStatus(`${isDoodleProject()?"Standalone artwork":"Seamless pattern"} PNG exported at ${spec.wPx} × ${spec.hPx}px; background ${exportHasTransparency()?"transparent":"included"}. No physical size is assigned.`);
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -2228,7 +2229,7 @@
     const itemBasis=repeatBasis(5000,5000),markBasis=repeatBasis();
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
-    if(!$("transparent").checked) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
+    if(!exportHasTransparency()) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     let gradientId=0;
     let maskIndex=0;
     let clipBaseSvg="";
@@ -2370,6 +2371,8 @@
     document.body.classList.toggle("doodle-project",doodle);
     if(doodle){$("transparent").checked=true;state.focusRepeatPreview=false;$("repeatPreviewToggle").setAttribute("aria-pressed","false");$("repeatPreviewToggle").textContent="Preview repeat";}
     $("transparent").disabled=doodle;$("bg").disabled=doodle;
+    if(doodle)$("exportTransparent").checked=true;
+    $("exportTransparent").disabled=doodle;
     $("patternScatterDisclosure").hidden=doodle;$("repeatControls").hidden=doodle;$("repeatPreviewToggle").hidden=doodle;
     $("repeatPreviewHeading").hidden=doodle;$("preview").hidden=doodle;$("previewScaleField").hidden=doodle;$("backgroundSettingsRow").hidden=doodle;
     $("stageDescription").textContent=doodle?"5000 px standalone artwork export · transparent":"5000 px seamless export · live repeat preview";
@@ -2435,6 +2438,7 @@
     $("snapOn").checked=true;
     $("objectSnapOn").checked=true;
     $("spacingSnapOn").checked=true;
+    $("exportTransparent").checked=true;
   }
   function createProjectFromSetup(event){
     event.preventDefault();
@@ -2561,7 +2565,7 @@
       templateGuide:state.templateGuide?JSON.parse(JSON.stringify(state.templateGuide)):null,
       background:$("bg").value,transparent:$("transparent").checked,
       palette:{colors:state.colorPalette,saved:state.savedPalettes,ink:$("ink").value},
-      seed:$("seed").value,settings:{gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,objectSnapOn:$("objectSnapOn").checked,spacingSnapOn:$("spacingSnapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,autoCloseShapes:$("autoCloseShapes").checked,autoCloseTolerance:Number($("autoCloseTolerance").value),pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
+      seed:$("seed").value,settings:{exportTransparent:$("exportTransparent").checked,gridCount:$("gridCount").value,gridOn:$("gridOn").checked,symmetry:$("symmetry").value,symmetryGuides:$("symmetryGuides").checked,constructionGuide:$("constructionGuide").value,guideOpacity:$("guideOpacity").value,snapOn:$("snapOn").checked,objectSnapOn:$("objectSnapOn").checked,spacingSnapOn:$("spacingSnapOn").checked,showTileBorder:$("showTileBorder").checked,neighborOpacity:$("neighborOpacity").value,brushSize:$("brushSize").value,brushStyle:$("brushStyle").value,strokeStabilisation:$("strokeStabilisation").value,autoCloseShapes:$("autoCloseShapes").checked,autoCloseTolerance:Number($("autoCloseTolerance").value),pressureWidth:$("pressureWidth").checked,pressureMin:$("pressureMin").value,pressureSensitivity:$("pressureSensitivity").value,bucketTolerance:$("bucketTolerance").value,bucketSampleVisible:$("bucketSampleVisible").checked,stampShape:$("stampShape").value,inkOpacity:$("inkOpacity").value,textureAmount:$("textureAmount").value,gradientType:$("gradientType").value,gradientDirection:$("gradientDirection").value,gradientEnd:$("gradientEnd").value,count:$("count").value,minScale:$("minScale").value,maxScale:$("maxScale").value,rotationAmount:$("rotationAmount").value,scatterSpacing:$("scatterSpacing").value,scatterOverlap:$("scatterOverlap").checked,scatterPreserveManual:$("scatterPreserveManual").checked,focusPrintSize:$("focusPrintSize").value,focusPrintUnit:$("focusPrintUnit").value},
       assets:state.assets.map(({id,name,src,w,h,vector})=>({id,name,src,w,h,vector})),
       layers:state.layers.map(layer=>({...layer})),activeLayerId:state.activeLayerId,
       items:state.items,marks:state.marks,variations:state.variations,nextId:state.nextId};
@@ -2832,6 +2836,7 @@
     $("snapOn").checked=true;
     $("objectSnapOn").checked=true;
     $("spacingSnapOn").checked=true;
+    $("exportTransparent").checked=isDoodleProject()?true:s.exportTransparent===undefined?true:!!s.exportTransparent;
     $("autoCloseShapes").checked=s.autoCloseShapes===undefined?true:!!s.autoCloseShapes;
     $("autoCloseTolerance").value=String(clamp(Number(s.autoCloseTolerance)||24,10,40));
     for(const [id,key] of [["gridCount","gridCount"],["symmetry","symmetry"],["constructionGuide","constructionGuide"],["guideOpacity","guideOpacity"],["brushSize","brushSize"],["brushStyle","brushStyle"],["strokeStabilisation","strokeStabilisation"],["pressureMin","pressureMin"],["pressureSensitivity","pressureSensitivity"],["bucketTolerance","bucketTolerance"],["stampShape","stampShape"],["inkOpacity","inkOpacity"],["textureAmount","textureAmount"],["gradientType","gradientType"],["gradientDirection","gradientDirection"],["gradientEnd","gradientEnd"],["neighborOpacity","neighborOpacity"],["count","count"],["minScale","minScale"],["maxScale","maxScale"],["rotationAmount","rotationAmount"],["scatterSpacing","scatterSpacing"],["focusPrintSize","focusPrintSize"],["focusPrintUnit","focusPrintUnit"]])if(s[key]!==undefined)$(id).value=s[key];
@@ -2960,6 +2965,7 @@
   ["bg","transparent","gridOn","gridCount","showTileBorder","symmetry","symmetryGuides","constructionGuide"].forEach(id=>$(id).addEventListener("input",()=>renderAll()));
   $("guideOpacity").addEventListener("input",()=>{$("guideOpacityLabel").textContent=$("guideOpacity").value+"%";renderAll();});
   $("snapOn").addEventListener("change",()=>{if(!$("snapOn").checked)clearSnapGuides();renderAll(false,false);});
+  $("exportTransparent").addEventListener("change",()=>{scheduleAutosave();setStatus("PNG, SVG and ZIP artwork will export "+(exportHasTransparency()?"with transparency.":"with the selected background colour."));});
   document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
     const nextTool=b.dataset.tool;
     if(nextTool==="eyedropper"){
