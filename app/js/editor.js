@@ -561,6 +561,13 @@
     }catch(_){asset.visibleRect=fallback;}
     return asset.visibleRect;
   }
+  function visibleOffset(asset,item){
+    const b=assetVisibleRect(asset);
+    const dx=(b.left+b.right-1)*asset.w*item.scale/2*(item.flipX?-1:1);
+    const dy=(b.top+b.bottom-1)*asset.h*item.scale/2*(item.flipY?-1:1);
+    const c=Math.cos(item.rotation),s=Math.sin(item.rotation);
+    return {x:dx*c-dy*s,y:dx*s+dy*c};
+  }
   function itemVisualBounds(item){
     const a=assetOf(item);if(!a)return {cx:item.x,cy:item.y,x:0,y:0};
     const b=assetVisibleRect(a),iw=a.w*item.scale,ih=a.h*item.scale;
@@ -3107,7 +3114,7 @@
       const src=await fileToDataURL(row.file),img=new Image();
       await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
       if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
-      decoded.push({fromAssetId:String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight});
+      decoded.push({fromAssetId:String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
     }
     const original=projectData();
     const copy={...original,
@@ -3121,13 +3128,13 @@
     const mappingsById=new Map();
     for(const motif of decoded){
       if(motif.existingId){
-        mappingsById.set(motif.fromAssetId,{id:motif.existingId,w:motif.w,h:motif.h});
+        mappingsById.set(motif.fromAssetId,{id:motif.existingId,w:motif.w,h:motif.h,asset:state.assets.find(a=>String(a.id)===motif.existingId)});
         continue;
       }
       while(used.has("a"+candidate))candidate++;
       const id="a"+candidate++;used.add(id);
       copy.assets.push({id,name:motif.name,src:motif.src,w:motif.w,h:motif.h,vector:false});
-      mappingsById.set(motif.fromAssetId,{id,w:motif.w,h:motif.h});
+      mappingsById.set(motif.fromAssetId,{id,w:motif.w,h:motif.h,asset:motif});
     }
     const sourceById=new Map(original.assets.map(asset=>[String(asset.id),asset]));
     let swapped=0;
@@ -3138,7 +3145,15 @@
       if(!old)throw Error("Original motif image is missing.");
       // Fit replacement *inside* original item bounds, not simply reuse
       // source-pixel scale; retain centre, rotation, flip, layer and grouping.
+      const originalAsset=state.assets.find(a=>String(a.id)===String(item.assetId));
+      const previous=originalAsset?visibleOffset(originalAsset,item):{x:0,y:0};
       item.scale=Number(item.scale)*Math.min(old.w/replacement.w,old.h/replacement.h);
+      const nextVisible=visibleOffset(replacement.asset,item);
+      // Match the visible artwork centre in the saved layout even when new PNG
+      // transparent padding differs. The source design remains unchanged.
+      const nextPosition=isDoodleProject()?{x:item.x+previous.x-nextVisible.x,y:item.y+previous.y-nextVisible.y}:
+        canonicalPoint(item.x+previous.x-nextVisible.x,item.y+previous.y-nextVisible.y);
+      item.x=nextPosition.x;item.y=nextPosition.y;
       item.assetId=replacement.id;swapped++;
     }
     if(!swapped)throw Error("No placed motifs matched.");
