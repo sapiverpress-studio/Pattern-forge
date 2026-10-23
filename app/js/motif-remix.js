@@ -78,7 +78,7 @@
       return;
     }
     const title=$("projectNameDisplay")?.textContent?.split(" · ")[0]||"Pattern";
-    name.value=(title+" - New Colourway").slice(0,80);
+    name.value=(title+" - Motif Remix").slice(0,80);
     filesInput.value="";mappings.replaceChildren();libraryMapping.replaceChildren();
     uploadRows=[];libraryRows=[];message("");
     mode.value=library.some(asset=>sources.some(s=>s.id!==asset.id))?"library":"upload";
