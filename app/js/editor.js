@@ -717,6 +717,48 @@
     }
     renderAll();setStatus("Flipped "+records.length+" selected artwork item"+(records.length===1?"":"s")+" "+(axis==="horizontal"?"horizontally.":"vertically."));return records.length;
   }
+  function alignmentHalfSize(record){
+    if(record.kind==="item")return itemSnapHalfExtents(record.artwork);
+    const b=markPrimaryBounds(record.artwork);
+    return {x:Math.max(0,(b.maxX-b.minX)/2),y:Math.max(0,(b.maxY-b.minY)/2)};
+  }
+  function alignSelectedArtwork(mode){
+    const geometry=selectionTransformGeometry();
+    if(!geometry){setStatus("Select two or more items to align.");return false;}
+    const horizontal=["left","centreX","right","distributeX"].includes(mode);
+    if(!horizontal&&!["top","centreY","bottom","distributeY"].includes(mode))return false;
+    if(mode.startsWith("distribute")&&geometry.members.length<3){
+      setStatus("Select at least three items to distribute their centres.");return false;
+    }
+    const axis=horizontal?"x":"y";
+    const ranked=geometry.members.map(member=>{
+      const half=alignmentHalfSize(member.record)[axis];
+      return {...member,half,centre:member.unwrapped[axis]};
+    }).sort((a,b)=>a.centre-b.centre);
+    const minEdge=Math.min(...ranked.map(m=>m.centre-m.half));
+    const maxEdge=Math.max(...ranked.map(m=>m.centre+m.half));
+    const mid=(minEdge+maxEdge)/2,span=ranked.at(-1).centre-ranked[0].centre;
+    saveHistory();
+    ranked.forEach((member,index)=>{
+      let target=member.centre;
+      if(mode==="left"||mode==="top")target=minEdge+member.half;
+      else if(mode==="right"||mode==="bottom")target=maxEdge-member.half;
+      else if(mode==="centreX"||mode==="centreY")target=mid;
+      else if(mode.startsWith("distribute"))target=ranked[0].centre+span*index/(ranked.length-1);
+      const delta=target-member.centre,artwork=member.record.artwork;
+      if(Math.abs(delta)<1e-7)return;
+      if(member.record.kind==="item"){
+        const next={x:member.unwrapped.x,y:member.unwrapped.y};next[axis]+=delta;
+        const pos=isDoodleProject()?next:canonicalPoint(next.x,next.y);
+        artwork.x=pos.x;artwork.y=pos.y;delete artwork.scatterGenerated;
+      }else{
+        const key=axis==="x"?"transformX":"transformY";
+        artwork[key]=(Number(artwork[key])||0)+delta;
+      }
+    });
+    clearSnapGuides();renderAll();
+    setStatus("Aligned "+ranked.length+" items ("+mode+").");return true;
+  }
   window.PatternForgeSelection={
     get count(){return selectionIds().length;},
     get addMode(){return !!state.selectionAddMode;},
@@ -732,6 +774,7 @@
     rotateByDegrees(degrees){rotateSelectedArtwork(Number(degrees)*Math.PI/180);},
     flipHorizontal(){return flipSelectedArtwork("horizontal");},
     flipVertical(){return flipSelectedArtwork("vertical");},
+    align:alignSelectedArtwork,
     recolour:recolourSelectedMarks,
     replaceMatching:replaceMatchingMarkColour
   };
