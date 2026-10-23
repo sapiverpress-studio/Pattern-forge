@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 function assert(condition,message){if(!condition)throw Error(message);}
 function near(a,b,d=1){return Math.abs(a-b)<=d;}
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:'chrome'});
 const page=await browser.newPage({viewport:{width:980,height:880},acceptDownloads:true}),errors=[];
 page.on('pageerror',err=>errors.push(String(err)));
 const sample=async({forExport=true}={})=>page.evaluate(async forExport=>{
@@ -60,8 +60,8 @@ try{
   const pngSignature=Buffer.from('89504e470d0a1a0a','hex'),offset=zip.indexOf(pngSignature);
   assert(offset!==-1,'ZIP missing the seamless master PNG');
   assert(zip[offset+25]===6,'ZIP master PNG lost alpha colour type');
-  const snap=await page.evaluate(()=>window.PatternForgeEtsyBridge.state);
-  assert(snap.items.length===1,'Export ZIP modified design');
+  const itemCount=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.items.length);
+  assert(itemCount===1,'Export ZIP modified design');
   assert(errors.length===0,'Browser console/page errors: '+errors.join(' | '));
   console.log('PASS: transparent 5000px PNG RGBA alpha pixel, preserved opaque preview, SVG backgrounds, optional opaque export, UX2 control, ZIP master PNG and 300 DPI.');
 }finally{await browser.close();}
