@@ -43,7 +43,7 @@ try{
   assert(transparent.bytesHead[25]===6,'PNG colour type is not RGBA (type 6): '+transparent.bytesHead[25]);
   assert(transparent.bytesHead.some((v,i,arr)=>v===112&&arr[i+1]===72&&arr[i+2]===89&&arr[i+3]===115),'300 DPI pHYs metadata missing');
   assert((await sample({forExport:false}))[3]===255,'Editor preview changed after exporting transparent output');
-  await page.locator('[data-ux2-panel="export"]').click();
+  await page.locator('#ux2Export').click();
   assert(await page.locator('#ux2ExportTransparent').isChecked(),'Mobile export drawer not synced');
   await page.locator('#ux2ExportTransparent').uncheck();
   assert(!await page.locator('#exportTransparent').isChecked(),'Mobile export toggle did not update source control');
