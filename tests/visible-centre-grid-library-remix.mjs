@@ -25,27 +25,29 @@ try{
     window.PatternForgeImageLibrary.place(list[1].id);
     const st=window.PatternForgeEtsyBridge.state;
     st.items[0].x=517;st.items[0].y=610;
-    st.items[1].x=1390;st.items[1].y=610;
+    st.items[1].x=690;st.items[1].y=610;
     st.selectedIds=[st.items[0].id];st.selectedId=st.items[0].id;
     document.getElementById('gridOn').dispatchEvent(new Event('input',{bubbles:true}));
   });
   assert(await page.evaluate(()=>window.PatternForgeSelection.gridCentre()),'Centre to grid rejected');
   let st=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.items.map(i=>({id:i.id,x:i.x,y:i.y,assetId:i.assetId})));
   // First image has 25px off-centre alpha, enlarged by 5 => visible centre = x+125.
-  assert(Math.abs(st[0].x+125-750)<4,'PNG alpha-visible centre did not snap to 750 grid line: '+st[0].x);
-  assert(Math.abs(st[0].y-500)<4,'Centre Y did not snap to grid line: '+st[0].y);
+  const tile=900,divisions=16,step=tile/divisions,alphaOffset=25*(tile*.25/200);
+  const gridX=Math.round((517+alphaOffset)/step)*step,gridY=Math.round(610/step)*step;
+  assert(Math.abs(st[0].x+alphaOffset-gridX)<.7,'Alpha-visible centre did not land on grid: '+st[0].x);
+  assert(Math.abs(st[0].y-gridY)<.7,'Centre Y did not land on grid: '+st[0].y);
   assert(await page.evaluate(()=>window.PatternForgeSelection.gridStep(1,0)),'Next X grid failed');
   assert(await page.evaluate(()=>window.PatternForgeSelection.gridStep(0,-1)),'Previous Y grid failed');
   st=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.items.map(i=>({id:i.id,x:i.x,y:i.y,assetId:i.assetId})));
-  assert(Math.abs(st[0].x+125-1000)<4,'Next X line not reached: '+st[0].x);
-  assert(Math.abs(st[0].y-250)<4,'Previous Y line not reached: '+st[0].y);
+  assert(Math.abs(st[0].x+alphaOffset-(gridX+step))<.7,'Next X line not reached: '+st[0].x);
+  assert(Math.abs(st[0].y-(gridY-step))<.7,'Previous Y line not reached: '+st[0].y);
   await page.evaluate(()=>{
     const st=window.PatternForgeEtsyBridge.state;
     st.selectedIds=st.items.map(i=>i.id);st.selectedId=st.items[0].id;
   });
   assert(await page.evaluate(()=>window.PatternForgeSelection.align('centreX')),'Visible-centre alignment rejected');
   st=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.items.map(i=>({x:i.x,y:i.y})));
-  assert(Math.abs(st[0].x+125-st[1].x)<4,'Align X used PNG box centre instead of visible alpha centre: '+JSON.stringify(st));
+  assert(Math.abs(st[0].x+alphaOffset-st[1].x)<.7,'Align X used PNG box centre instead of visible alpha centre: '+JSON.stringify(st));
   const original=await saved();
   await page.locator('#motifSwapOpen').evaluate(el=>el.click());
   await page.locator('#motifSwapDialog').waitFor({state:'visible'});
@@ -61,7 +63,7 @@ try{
   assert(copied.project.id!==original.project.id,'Copied layout overwrote original');
   assert(copied.items.length===original.items.length,'Placed item count changed in copied layout');
   assert(String(copied.items[0].assetId)===to,'Original motif was not swapped to imported image');
-  assert(Math.abs(copied.items[0].x-original.items[0].x-125)<4,'Visible centre moved when swapping to differently padded image');
+  assert(Math.abs(copied.items[0].x-original.items[0].x-alphaOffset)<.7,'Visible centre moved when swapping to differently padded image');
   assert(copied.items[0].y===original.items[0].y,'Unrelated coordinate shifted');
   assert(errors.length===0,'Browser errors: '+errors.join(' | '));
   console.log('PASS: visible alpha centre, exact grid intersection/steps, visual alignment, imported-library layout remix and original isolation.');
