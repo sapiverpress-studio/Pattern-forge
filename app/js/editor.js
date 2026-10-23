@@ -723,7 +723,11 @@
     return {x:Math.max(0,(b.maxX-b.minX)/2),y:Math.max(0,(b.maxY-b.minY)/2)};
   }
   function alignSelectedArtwork(mode){
-    const geometry=selectionTransformGeometry();
+    // Alignment is a visible-tile operation. The generic group transform
+    // unwraps objects around the last selected motif; that would incorrectly
+    // reorder a full-tile row that spans more than half the repeat width.
+    const records=selectedArtwork();
+    const geometry=records.length<2?null:{members:records.map(record=>({record,unwrapped:artworkCenter(record)}))};
     if(!geometry){setStatus("Select two or more items to align.");return false;}
     const horizontal=["left","centreX","right","distributeX"].includes(mode);
     if(!horizontal&&!["top","centreY","bottom","distributeY"].includes(mode))return false;
