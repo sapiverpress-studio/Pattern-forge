@@ -87,8 +87,8 @@
       const seams=seamMetrics(),pass=seams.leftRight.pass&&seams.topBottom.pass;
       checks.push({id:"seams",state:pass?"pass":"fail",label:"Seam continuity",detail:pass?"Opposite-edge pixel continuity is within tolerance in both directions.":"A strong discontinuity was detected at "+(!seams.leftRight.pass&&!seams.topBottom.pass?"both tile seams":!seams.leftRight.pass?"the left/right seam":"the top/bottom seam")+". Inspect the repeat before sale.",metrics:seams});
     }
-    const transparent=!!$("transparent")?.checked;
-    checks.push({id:"transparency",state:"pass",label:"Background handling",detail:transparent?"PNG retains transparency; JPG and design-only listing images are flattened against the selected background colour.":"PNG, JPG and design-only listing images use the selected background colour."});
+    const transparent=!!$("exportTransparent")?.checked;
+    checks.push({id:"transparency",state:"pass",label:"Background handling",detail:transparent?"Master PNG and SVG omit the canvas background; JPG and design-only listing images stay opaque.":"Master PNG, SVG and JPG include the selected canvas background colour."});
     checks.push({id:"vector",state:"info",label:"SVG eligibility",detail:vectorEligible()?"A vector SVG can be included inside the buyer ZIP.":"At least one placed asset is raster, so the Etsy package will omit SVG rather than label a raster-backed SVG as genuine vector."});
     checks.push({id:"etsy-rules",state:"info",label:"Etsy upload rules",detail:"Checked against Etsy rules verified "+RULES_VERIFIED+": up to "+ETSY_MAX_FILES+" digital files, maximum 20 MB each. Buyer packages are generated as ZIP files."});
     return checks;
