@@ -30,6 +30,7 @@ jobs:
           node --check app/js/motif-remix.js
           node --check tests/magnetic-remix-smoke.mjs
           node --check tests/object-magnet-browser.mjs
+          node --check tests/ux2-magnetic-remix-mobile.mjs
       - name: Install Chromium
         run: |
           npm init -y >/dev/null 2>&1
@@ -44,6 +45,8 @@ jobs:
         run: node tests/magnetic-remix-smoke.mjs
       - name: Real pointer object magnet browser test
         run: node tests/object-magnet-browser.mjs
+      - name: Mobile design setup UX2 browser test
+        run: node tests/ux2-magnetic-remix-mobile.mjs
       - name: Existing snap-guide regression
         run: |
           sed -i "s#http://127.0.0.1:4173/app/'#http://127.0.0.1:4173/app/?legacy=1'#g" tests/smart-snapping-smoke.mjs
