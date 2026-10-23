@@ -107,7 +107,7 @@
       mappingsToApply=uploadRows.map(row=>({fromAssetId:row.picker.value,file:row.file}));
     }
     const ids=mappingsToApply.map(row=>row.fromAssetId);
-    if(new Set(ids).size!==ids.length){message("Choose each original motif only once.");return;}
+    if(new Set(ids).size!==ids.length){message("The same original motif has been chosen more than once.");return;}
     apply.disabled=true;apply.textContent="Creating separate pattern…";message("");
     try{
       await window.PatternForgeRemix.create(title,mappingsToApply);
