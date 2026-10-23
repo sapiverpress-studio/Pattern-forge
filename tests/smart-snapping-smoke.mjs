@@ -99,10 +99,17 @@ try {
 
   // Snap both axes to the tile centre and inspect the temporary alignment guides while held.
   await dragWorld(page, { x: item.x, y: item.y }, { x: 463, y: 462 }, true);
-  const verticalGuidePixel = await pixelAtWorld(page, { x: 450, y: 80 });
-  const horizontalGuidePixel = await pixelAtWorld(page, { x: 80, y: 450 });
-  assert(verticalGuidePixel[0] > verticalGuidePixel[1] + 35, `vertical temporary alignment guide not visible: ${verticalGuidePixel}`);
-  assert(horizontalGuidePixel[0] > horizontalGuidePixel[1] + 35, `horizontal temporary alignment guide not visible: ${horizontalGuidePixel}`);
+  const guide=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.snapGuides);
+  assert(near(guide.x,450,.5)&&near(guide.y,450,.5), `guide coordinates missing: ${JSON.stringify(guide)}`);
+  // Dashes can be absent at any single sampled pixel. Inspect a series.
+  const verticalSamples=[],horizontalSamples=[];
+  for(let point=60;point<=112;point+=4){
+    verticalSamples.push(await pixelAtWorld(page,{x:450,y:point}));
+    horizontalSamples.push(await pixelAtWorld(page,{x:point,y:450}));
+  }
+  const turquoise=rgba=>rgba[2]>rgba[0]+25&&rgba[1]>rgba[0]+20;
+  assert(verticalSamples.some(turquoise), `vertical temporary turquoise guide not drawn: ${JSON.stringify(verticalSamples)}`);
+  assert(horizontalSamples.some(turquoise), `horizontal temporary turquoise guide not drawn: ${JSON.stringify(horizontalSamples)}`);
   await page.mouse.up();
   await page.waitForTimeout(150);
 
