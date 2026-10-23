@@ -36,6 +36,8 @@ try{
   await page.locator('#ux2Context [data-pf-align="centreY"]').click();
   const aligned=await page.evaluate(()=>window.PatternForgeEtsyBridge.state.items.map(item=>item.y));
   assert(Math.abs(aligned[0]-aligned[1])<.01,'Mobile centre-align button did not align motifs');
+  // Selection actions close the setup drawer; reopen it before using Remix.
+  await page.locator('[data-ux2-panel="pattern"]').click();
   await page.locator('#ux2RemixOpen').click();
   assert(await page.locator('#motifSwapDialog').isVisible(),'Remix dialog failed to open from mobile design setup');
   await page.locator('#motifSwapClose').click();
