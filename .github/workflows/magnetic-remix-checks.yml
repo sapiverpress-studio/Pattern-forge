@@ -1,0 +1,47 @@
+name: Pattern Forge magnetic alignment and motif remix
+
+on:
+  push:
+    branches:
+      - feature/magnetic-guides-and-motif-swap-20261023
+  pull_request:
+    paths:
+      - app/**
+      - tests/magnetic-remix-smoke.mjs
+      - .github/workflows/magnetic-remix-checks.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check app/js/editor.js
+          node --check app/js/canvas-first-v2.js
+          node --check app/js/motif-remix.js
+          node --check tests/magnetic-remix-smoke.mjs
+      - name: Install Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium --with-deps >/dev/null 2>&1
+      - name: Serve Pattern Forge branch
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/pf-magnetic-remix.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:4173/app/ >/dev/null
+      - name: Alignment and batch replacement browser test
+        run: node tests/magnetic-remix-smoke.mjs
+      - name: Existing snap-guide regression
+        run: |
+          sed -i "s#http://127.0.0.1:4173/app/'#http://127.0.0.1:4173/app/?legacy=1'#g" tests/smart-snapping-smoke.mjs
+          node tests/smart-snapping-smoke.mjs
