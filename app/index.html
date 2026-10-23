@@ -149,6 +149,8 @@
       </div>
       <p class="help">Construction guides help position artwork while drawing. They are editor-only and never appear in PNG or SVG exports.</p>
       <label class="check"><input id="snapOn" type="checkbox" checked> Smart snapping</label>
+      <label class="check"><input id="objectSnapOn" type="checkbox" checked> Align to other motifs</label>
+      <label class="check"><input id="spacingSnapOn" type="checkbox" checked> Equal-spacing guides</label>
       <p id="snapHelp" class="help">Smart snapping uses the grid plus tile centre lines and tile edges. Temporary alignment guides appear while moved artwork is snapped. Grid visibility and snapping remain independent.</p>
 
       <div id="backgroundSettingsRow" class="row">
@@ -328,6 +330,7 @@
         <button id="saveProject" class="btn">Download editable project (JSON)</button>
         <button id="openProject" class="btn">Open project file</button>
         <button id="exportZip" class="btn full">Download project bundle (ZIP)</button>
+        <button id="motifSwapOpen" class="btn full" type="button">Duplicate &amp; replace motifs (up to 10)</button>
         <input id="projectFile" type="file" accept="application/json,.json,application/zip,.zip" hidden>
       </div>
       <p class="exportNote">JSON saves the editable design. ZIP includes the editable project, PNG preview and SVG. Autosave stays in this browser on this device.</p>
@@ -340,6 +343,19 @@
       </details>
     </section>
   </main>
+
+  <dialog id="motifSwapDialog" class="helpDialog motifSwapDialog" aria-labelledby="motifSwapTitle">
+    <div class="helpDialogHead"><h2 id="motifSwapTitle">Duplicate &amp; replace motifs</h2><button id="motifSwapClose" class="btn" type="button">Close</button></div>
+    <div class="helpDialogBody">
+      <p class="help">Choose up to ten replacement images in one upload. Match each file to an original motif type; every instance of that motif will be replaced in the copied design. Original project and arrangement stay untouched.</p>
+      <div class="field"><label for="motifSwapName">New design name</label><input id="motifSwapName" maxlength="80" type="text" required></div>
+      <div class="field"><label for="motifSwapFiles">Replacement PNG, JPEG or WebP images (1–10)</label><input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
+      <div id="motifSwapMapping" class="motifSwapMapping"></div>
+      <p id="motifSwapError" class="help motifSwapError" role="alert"></p>
+      <p class="help">Motif centres, positions, rotations, layers and repetition stay unchanged. New images fit inside the replaced motif's bounding size to avoid unexpected overlaps. Check the result before export.</p>
+      <div class="btns"><button id="motifSwapApply" type="button" class="btn primary">Create separate design</button><button id="motifSwapCancel" type="button" class="btn">Cancel</button></div>
+    </div>
+  </dialog>
 
   <dialog id="helpDialog" class="helpDialog" aria-labelledby="helpDialogTitle">
     <div class="helpDialogHead"><h2 id="helpDialogTitle">Pattern Forge quick guide</h2><form method="dialog"><button class="btn" aria-label="Close guide">Close</button></form></div>
