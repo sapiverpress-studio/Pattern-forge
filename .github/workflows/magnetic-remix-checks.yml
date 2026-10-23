@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - app/**
+      - tests/visible-centre-grid-library-remix.mjs
       - tests/magnetic-remix-smoke.mjs
       - .github/workflows/magnetic-remix-checks.yml
   workflow_dispatch:
@@ -31,6 +32,7 @@ jobs:
           node --check tests/magnetic-remix-smoke.mjs
           node --check tests/object-magnet-browser.mjs
           node --check tests/ux2-magnetic-remix-mobile.mjs
+          node --check tests/visible-centre-grid-library-remix.mjs
       - name: Install Chromium
         run: |
           npm init -y >/dev/null 2>&1
@@ -43,6 +45,8 @@ jobs:
           curl -fsS http://127.0.0.1:4173/app/ >/dev/null
       - name: Alignment and batch replacement browser test
         run: node tests/magnetic-remix-smoke.mjs
+      - name: Visible PNG centre, exact grid steps, and existing-library remix
+        run: node tests/visible-centre-grid-library-remix.mjs
       - name: Real pointer object magnet browser test
         run: node tests/object-magnet-browser.mjs
       - name: Mobile design setup UX2 browser test
