@@ -2989,6 +2989,79 @@
     }
   });
 
+  function swappableMotifs(){
+    const counts=new Map();
+    for(const item of state.items){const key=String(item.assetId);counts.set(key,(counts.get(key)||0)+1);}
+    return state.assets.filter(asset=>counts.has(String(asset.id))).map(asset=>({
+      id:String(asset.id),name:asset.name,src:asset.src,placed:counts.get(String(asset.id))
+    }));
+  }
+  async function duplicateAndReplaceMotifs(name,mappings){
+    if(!state.project)throw Error("Open a saved design first.");
+    const newName=String(name||"").trim();
+    if(!newName||newName.length>80)throw Error("Give the copied design a name (maximum 80 characters).");
+    if(!Array.isArray(mappings)||mappings.length<1||mappings.length>10)
+      throw Error("Choose between one and ten replacements.");
+    const allowed=swappableMotifs(),allowedIds=new Set(allowed.map(a=>a.id));
+    const sourceIds=mappings.map(row=>String(row?.fromAssetId));
+    if(new Set(sourceIds).size!==sourceIds.length)throw Error("Select a different original motif for every replacement.");
+    if(sourceIds.some(id=>!allowedIds.has(id)))throw Error("A chosen original motif is no longer on this design.");
+    let totalBytes=0;
+    for(const row of mappings){
+      const file=row?.file;
+      if(!file||!(/image\/(png|jpeg|webp)/.test(file.type)||(!file.type&&/\.(png|jpe?g|webp)$/i.test(file.name))))
+        throw Error("Only PNG, JPEG or WebP replacement files are supported.");
+      if(!file.size||file.size>20_000_000)throw Error("Each replacement image must be under 20 MB.");
+      totalBytes+=file.size;
+    }
+    if(totalBytes>100_000_000)throw Error("This batch is over 100 MB. Use smaller original image files.");
+    // Decode every file before modifying current project. An invalid batch
+    // cannot leave a half-replaced design or overwrite the original.
+    const decoded=[];
+    for(const row of mappings){
+      const src=await fileToDataURL(row.file),img=new Image();
+      await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
+      if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
+      decoded.push({fromAssetId:String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight});
+    }
+    const original=projectData();
+    const copy={...original,
+      project:{...original.project,title:newName,variation:"Motif remix",updatedAt:new Date().toISOString()},
+      assets:[...original.assets],items:original.items.map(item=>({...item})),
+      // Saved colourways refer to the old motif arrangement; start fresh.
+      variations:[]
+    };
+    const used=new Set(copy.assets.map(asset=>String(asset.id)));
+    let candidate=1;
+    const mappingsById=new Map();
+    for(const motif of decoded){
+      while(used.has("a"+candidate))candidate++;
+      const id="a"+candidate++;used.add(id);
+      copy.assets.push({id,name:motif.name,src:motif.src,w:motif.w,h:motif.h,vector:false});
+      mappingsById.set(motif.fromAssetId,{id,w:motif.w,h:motif.h});
+    }
+    const sourceById=new Map(original.assets.map(asset=>[String(asset.id),asset]));
+    let swapped=0;
+    for(const item of copy.items){
+      const replacement=mappingsById.get(String(item.assetId));
+      if(!replacement)continue;
+      const old=sourceById.get(String(item.assetId));
+      if(!old)throw Error("Original motif image is missing.");
+      // Fit replacement *inside* original item bounds, not simply reuse
+      // source-pixel scale; retain centre, rotation, flip, layer and grouping.
+      item.scale=Number(item.scale)*Math.min(old.w/replacement.w,old.h/replacement.h);
+      item.assetId=replacement.id;swapped++;
+    }
+    if(!swapped)throw Error("No placed motifs matched.");
+    await saveAutosave();
+    await restoreProject(copy,{asCopy:true});
+    await saveAutosave();
+    setStatus("Created “"+newName+"” as a separate saved design. Replaced "+mappings.length+
+      " motif type"+(mappings.length===1?"":"s")+" across "+swapped+" placements. Review before export.");
+    return {projectId:state.project.id,title:newName,types:mappings.length,placements:swapped};
+  }
+  window.PatternForgeRemix={sources:swappableMotifs,create:duplicateAndReplaceMotifs};
+
   $("saveProject").onclick=()=>{
     downloadBlob(projectBlob(),`${safeName()}-editable-project.json`);
     setStatus("Editable project JSON downloaded. Use Download project bundle (ZIP) for the JSON, PNG and SVG together.");
