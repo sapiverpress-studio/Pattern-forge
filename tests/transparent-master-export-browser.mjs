@@ -28,8 +28,7 @@ try{
   await page.locator('#projectTitleInput').fill('Transparency validation');
   await page.locator('#createProject').click();
   await page.locator('#projectSetupOverlay').waitFor({state:'hidden'});
-  await page.locator('#bg').fill('#112233');
-  await page.locator('#bg').dispatchEvent('input');
+  await page.locator('#bg').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}));});
   assert(!await page.locator('#transparent').isChecked(),'Canvas preview should be opaque by default');
   assert(await page.locator('#exportTransparent').isChecked(),'Export should default to transparent');
   await page.locator('#files').setInputFiles({name:'transparent-symbol.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="45" fill="#fe4533"/></svg>')});
