@@ -767,7 +767,7 @@
     // unwraps objects around the last selected motif; that would incorrectly
     // reorder a full-tile row that spans more than half the repeat width.
     const records=selectedArtwork();
-    const geometry=records.length<2?null:{members:records.map(record=>({record,unwrapped:record.kind==="item"?itemVisualBounds(record.artwork):artworkCenter(record)}))};
+    const geometry=records.length<2?null:{members:records.map(record=>{const centre=record.kind==="item"?itemVisualBounds(record.artwork):artworkCenter(record);return {record,unwrapped:{x:centre.cx??centre.x,y:centre.cy??centre.y}};})};
     if(!geometry){setStatus("Select two or more items to align.");return false;}
     const horizontal=["left","centreX","right","distributeX"].includes(mode);
     if(!horizontal&&!["top","centreY","bottom","distributeY"].includes(mode))return false;
