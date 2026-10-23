@@ -3082,6 +3082,12 @@
     if(sourceIds.some(id=>!allowedIds.has(id)))throw Error("A chosen original motif is no longer on this design.");
     let totalBytes=0;
     for(const row of mappings){
+      const existing=row?.toAssetId!==undefined?state.assets.find(asset=>String(asset.id)===String(row.toAssetId)):null;
+      if(existing){
+        if(String(row.fromAssetId)===String(existing.id))throw Error("Choose a different image to replace the original.");
+        continue;
+      }
+      if(row?.toAssetId!==undefined)throw Error("A replacement image from the library could not be found.");
       const file=row?.file;
       if(!file||!(/image\/(png|jpeg|webp)/.test(file.type)||(!file.type&&/\.(png|jpe?g|webp)$/i.test(file.name))))
         throw Error("Only PNG, JPEG or WebP replacement files are supported.");
@@ -3093,6 +3099,11 @@
     // cannot leave a half-replaced design or overwrite the original.
     const decoded=[];
     for(const row of mappings){
+      if(row.toAssetId!==undefined){
+        const asset=state.assets.find(a=>String(a.id)===String(row.toAssetId));
+        decoded.push({fromAssetId:String(row.fromAssetId),existingId:String(asset.id),w:asset.w,h:asset.h});
+        continue;
+      }
       const src=await fileToDataURL(row.file),img=new Image();
       await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
       if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
@@ -3109,6 +3120,10 @@
     let candidate=1;
     const mappingsById=new Map();
     for(const motif of decoded){
+      if(motif.existingId){
+        mappingsById.set(motif.fromAssetId,{id:motif.existingId,w:motif.w,h:motif.h});
+        continue;
+      }
       while(used.has("a"+candidate))candidate++;
       const id="a"+candidate++;used.add(id);
       copy.assets.push({id,name:motif.name,src:motif.src,w:motif.w,h:motif.h,vector:false});
@@ -3134,7 +3149,7 @@
       " motif type"+(mappings.length===1?"":"s")+" across "+swapped+" placements. Review before export.");
     return {projectId:state.project.id,title:newName,types:mappings.length,placements:swapped};
   }
-  window.PatternForgeRemix={sources:swappableMotifs,create:duplicateAndReplaceMotifs};
+  window.PatternForgeRemix={sources:swappableMotifs,library:()=>state.assets.map(a=>({id:String(a.id),name:a.name,src:a.src})),create:duplicateAndReplaceMotifs};
 
   $("saveProject").onclick=()=>{
     downloadBlob(projectBlob(),`${safeName()}-editable-project.json`);
