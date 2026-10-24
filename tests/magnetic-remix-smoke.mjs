@@ -72,7 +72,7 @@ try{
   let values=await selectors.evaluateAll(els=>els.map(el=>el.value));
   assert(new Set(values).size===10,'Default mapping did not select ten different motif types');
   await selectors.nth(1).selectOption(values[0]);
-  await page.locator('#motifSwapApply').click();
+  assert(await page.locator('#motifSwapApply').isDisabled(),'Invalid duplicate mapping should disable Create');
   assert((await page.locator('#motifSwapError').textContent()).includes('same original'),'Duplicate mapping was not rejected');
   await selectors.nth(1).selectOption(values[1]);
   await page.locator('#motifSwapApply').click();
