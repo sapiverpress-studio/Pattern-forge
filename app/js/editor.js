@@ -3102,9 +3102,15 @@
       throw Error("Choose between one and ten replacements.");
     const allowed=swappableMotifs(),allowedIds=new Set(allowed.map(a=>a.id));
     const validItems=new Map(state.items.map(item=>[String(item.id),String(item.assetId)]));
-    const sourceKeys=mappings.map(row=>row?.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row?.fromAssetId));
+    const fillWholeLayout=mappings.every(row=>row?.fill===true);
+    if(mappings.some(row=>(row?.fill===true)!==fillWholeLayout))
+      throw Error("Choose one replacement method for this design.");
+    if(fillWholeLayout&&mappings.length>state.items.length)
+      throw Error("There are more replacement images than positions in this layout.");
+    const sourceKeys=mappings.map((row,index)=>fillWholeLayout?"fill:"+index:
+      row?.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row?.fromAssetId));
     if(new Set(sourceKeys).size!==sourceKeys.length)throw Error("The same original image or placement was selected more than once.");
-    for(const row of mappings){
+    if(!fillWholeLayout)for(const row of mappings){
       const itemMode=row?.fromItemId!==undefined;
       if(itemMode){
         if(!validItems.has(String(row.fromItemId)))throw Error("One selected image placement is no longer part of this design.");
@@ -3117,7 +3123,7 @@
       const existing=row?.toAssetId!==undefined?state.assets.find(asset=>String(asset.id)===String(row.toAssetId)):null;
       if(existing){
         const sourceAssetId=row.fromItemId!==undefined?validItems.get(String(row.fromItemId)):String(row.fromAssetId);
-        if(sourceAssetId===String(existing.id))throw Error("Choose a different image to replace the original.");
+        if(!fillWholeLayout&&sourceAssetId===String(existing.id))throw Error("Choose a different image to replace the original.");
         continue;
       }
       if(row?.toAssetId!==undefined)throw Error("A replacement image from the library could not be found.");
@@ -3131,16 +3137,18 @@
     // Decode every file before modifying current project. An invalid batch
     // cannot leave a half-replaced design or overwrite the original.
     const decoded=[];
-    for(const row of mappings){
+    for(const [index,row] of mappings.entries()){
+      const sourceKey=fillWholeLayout?"fill:"+index:
+        row.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row.fromAssetId);
       if(row.toAssetId!==undefined){
         const asset=state.assets.find(a=>String(a.id)===String(row.toAssetId));
-        decoded.push({sourceKey:row.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row.fromAssetId),existingId:String(asset.id),w:asset.w,h:asset.h});
+        decoded.push({sourceKey,existingId:String(asset.id),w:asset.w,h:asset.h});
         continue;
       }
       const src=await fileToDataURL(row.file),img=new Image();
       await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
       if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
-      decoded.push({sourceKey:row.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
+      decoded.push({sourceKey,name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
     }
     const original=projectData();
     const copy={...original,
@@ -3163,9 +3171,16 @@
       mappingsById.set(motif.sourceKey,{id,w:motif.w,h:motif.h,asset:motif});
     }
     const sourceById=new Map(original.assets.map(asset=>[String(asset.id),asset]));
+    // Fill new motifs left-to-right across successive layout rows, regardless of
+    // the order in which the original images were imported or placed.
+    const fillOrder=new Map(fillWholeLayout?[...copy.items]
+      .sort((a,b)=>Number(a.y)-Number(b.y)||Number(a.x)-Number(b.x))
+      .map((item,index)=>[String(item.id),index%mappings.length]):[]);
     let swapped=0;
     for(const item of copy.items){
-      const replacement=mappingsById.get("item:"+String(item.id))||mappingsById.get("type:"+String(item.assetId));
+      const replacement=fillWholeLayout
+        ?mappingsById.get("fill:"+fillOrder.get(String(item.id)))
+        :mappingsById.get("item:"+String(item.id))||mappingsById.get("type:"+String(item.assetId));
       if(!replacement)continue;
       const old=sourceById.get(String(item.assetId));
       if(!old)throw Error("Original motif image is missing.");
@@ -3183,11 +3198,14 @@
       item.assetId=replacement.id;swapped++;
     }
     if(!swapped)throw Error("No placed motifs matched.");
+    if(fillWholeLayout&&swapped!==copy.items.length)throw Error("Could not replace every layout position. Original design unchanged.");
     await saveAutosave();
     await restoreProject(copy,{asCopy:true});
     await saveAutosave();
-    setStatus("Created “"+newName+"” as a separate saved design. Replaced "+swapped+
-      " placed image"+(swapped===1?"":"s")+". The original design is saved separately.");
+    setStatus("Created “"+newName+"” as a separate saved design. "+(fillWholeLayout?
+      "Filled all "+swapped+" motif positions with "+mappings.length+" new image"+(mappings.length===1?"":"s"):
+      "Replaced "+swapped+" placed image"+(swapped===1?"":"s"))+
+      ". The original design is saved separately.");
     return {projectId:state.project.id,title:newName,types:mappings.length,placements:swapped};
   }
   window.PatternForgeRemix={sources:swappableMotifs,placements:swappablePlacements,
