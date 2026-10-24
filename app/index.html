@@ -382,6 +382,8 @@
           <label for="motifSwapFiles">Choose replacement images (PNG, JPEG or WebP)</label>
           <input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
           <p id="motifSwapFilesHelp" class="help"></p>
+          <label class="check"><input id="motifSwapRemovePlain" type="checkbox"> Remove detected simple solid backgrounds when creating this copy</label>
+          <p class="help">Only plain backgrounds can be cleaned safely. Your uploaded files remain unchanged. Files with checkerboards baked into the pixels need a genuine transparent PNG from the background remover.</p>
         </div>
         <div id="motifSwapMapping" class="motifSwapMapping"></div>
       </section>
