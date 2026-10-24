@@ -65,6 +65,7 @@ try{
   const files=Array.from({length:10},(_,i)=>({
     name:'replacement-'+String(i+1).padStart(2,'0')+'.png',mimeType:'image/png',buffer:png(32,i+1)
   }));
+  await page.locator('#motifSwapScope').selectOption('type');
   await page.locator('#motifSwapMode').selectOption('upload');
   await page.locator('#motifSwapFiles').setInputFiles(files);
   await page.waitForFunction(()=>document.querySelectorAll('#motifSwapMapping .motifSwapRow').length===10);
