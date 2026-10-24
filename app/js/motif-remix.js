@@ -181,8 +181,9 @@
       const status=$("status");if(status)status.textContent="Add at least one motif to your pattern before creating a copy.";
       return;
     }
-    const title=String(api.projectTitle()||"Pattern").replace(/(?:\s*-\s*Motif Remix)+\s*$/ig,"").trim();
-    name.value=(title+" - Motif Remix").slice(0,80);
+    const originalName=String(api.projectTitle()||"Pattern").trim();
+    const title=originalName.replace(/(?:\s*-\s*(?:Motif Remix|Remix)(?:\s+\d+)?)+\s*$/ig,"").trim()||"Pattern";
+    name.value=(title+(originalName===title?" - Motif Remix":" - Remix 2")).slice(0,80);
     summary.textContent=placements.length+" placed image"+(placements.length===1?"":"s")+
       " · "+sources.length+" motif type"+(sources.length===1?"":"s")+
       " · Exact layout preserved in the new design.";
