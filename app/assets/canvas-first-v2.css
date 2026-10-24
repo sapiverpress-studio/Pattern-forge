@@ -312,7 +312,7 @@ body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
 .ux2-image-count{display:block;font-size:12px;color:#526479;margin:12px 0 8px}
 .ux2-image-grid{display:grid;gap:9px}
 .ux2-image-card{display:grid;grid-template-columns:74px minmax(0,1fr);gap:10px;align-items:center;border:1px solid #d4dce4;border-radius:11px;background:#fff;padding:8px}
-.ux2-image-card>img{display:block;width:74px;height:74px;object-fit:contain;border-radius:7px;background:#f2f4f6}
+.ux2-image-card>img{display:block;width:74px;height:74px;object-fit:contain;border-radius:7px;background-color:#fff;background-image:linear-gradient(45deg,#e1e1e1 25%,transparent 25%),linear-gradient(-45deg,#e1e1e1 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e1e1e1 75%),linear-gradient(-45deg,transparent 75%,#e1e1e1 75%);background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0}
 .ux2-image-details{min-width:0;display:grid;gap:4px}
 .ux2-image-details strong{font-size:11px;color:#253342;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ux2-image-details small{font-size:10px;color:#647487}
@@ -340,3 +340,8 @@ body.doodle-project .ux2-tools #ux2QuickPalette .ux2-quick-swatch{
 .ux2-shape-clean{flex:0 0 auto;white-space:nowrap;border:1px solid #99abbf;background:#e5edf5;color:#34516f;font-weight:850;padding:8px 10px}
 .ux2-shape-clean:hover,.ux2-shape-clean:focus-visible{background:#d1e2f2;outline-color:#42678b}
 @media(max-width:950px){.ux2-shape-clean{font-size:10px;padding:7px 6px}.ux2-top-actions{gap:4px}}
+
+/* Image alpha is measured from pixel data; preview checkerboard is CSS only. */
+.ux2-image-details .ux2-image-alpha{font-weight:800;color:#6d4b23}
+.ux2-image-details .ux2-image-alpha[data-alpha-status="transparent"]{color:#176b53}
+.ux2-image-details .ux2-image-alpha-note{line-height:1.35;color:#875c38}
