@@ -52,7 +52,7 @@ try{
   await page.locator('#motifSwapFiles').setInputFiles(files);
   assert(await page.locator('#motifSwapScope').inputValue()==='placement','Two images for one source motif should switch to per-copy mapping');
   await page.waitForFunction(()=>document.querySelectorAll('#motifSwapMapping .motifSwapRow').length===2);
-  assert((await page.locator('#motifSwapError').textContent()).includes('individual copies'),'Missing clear automatic scope explanation');
+  assert((await page.locator('#motifSwapScopeHelp').textContent()).includes('individual copies'),'Missing clear automatic scope explanation');
   const originals=await page.locator('#motifSwapMapping select').evaluateAll(nodes=>nodes.map(node=>node.value));
   assert(new Set(originals).size===2,'Uploaded files do not map to two unique placements');
   assert(await page.locator('#motifSwapApply').isEnabled(),'User cannot create a mapped copy');
