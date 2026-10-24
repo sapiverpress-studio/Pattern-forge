@@ -1,121 +1,232 @@
-/* Duplicate a seamless layout and replace up to ten placed motif types.
-   Replacement assets may be already imported images or newly uploaded files. */
+/* Copy a pattern layout without touching its source; replace motif types or individual placements. */
 (()=>{
   "use strict";
   const $=id=>document.getElementById(id);
   const dialog=$("motifSwapDialog"),open=$("motifSwapOpen"),close=$("motifSwapClose"),
     cancel=$("motifSwapCancel"),filesInput=$("motifSwapFiles"),
-    mappings=$("motifSwapMapping"),name=$("motifSwapName"),mode=$("motifSwapMode"),
-    librarySection=$("motifSwapLibrarySection"),uploadSection=$("motifSwapUploadSection"),
-    libraryMapping=$("motifSwapLibraryMapping"),addMapping=$("motifSwapAddMapping"),
-    apply=$("motifSwapApply"),error=$("motifSwapError");
-  if(!dialog||!open||!filesInput||!window.PatternForgeRemix||!mode)return;
-  let sources=[],library=[],uploadRows=[],libraryRows=[];
+    uploadMap=$("motifSwapMapping"),name=$("motifSwapName"),mode=$("motifSwapMode"),
+    scope=$("motifSwapScope"),summary=$("motifSwapSummary"),scopeHelp=$("motifSwapScopeHelp"),
+    filesHelp=$("motifSwapFilesHelp"),librarySection=$("motifSwapLibrarySection"),
+    uploadSection=$("motifSwapUploadSection"),libraryMap=$("motifSwapLibraryMapping"),
+    addMapping=$("motifSwapAddMapping"),apply=$("motifSwapApply"),error=$("motifSwapError"),
+    ready=$("motifSwapReady");
+  if(!dialog||!open||!window.PatternForgeRemix?.placements)return;
+  let sources=[],placements=[],library=[],uploadRows=[],libraryRows=[],previewURLs=[],busy=false;
+  const api=window.PatternForgeRemix;
+  const unique=a=>new Set(a).size===a.length;
   function message(value){error.textContent=value||"";}
-  function optionList(select,assets){
-    for(const asset of assets){
-      const option=document.createElement("option");option.value=asset.id;
-      option.textContent=asset.name+(asset.placed!==undefined?" ("+asset.placed+" placed)":"");
-      select.appendChild(option);
+  function clearPreviews(){for(const url of previewURLs)URL.revokeObjectURL(url);previewURLs=[];}
+  function targetList(){return scope.value==="placement"?placements:sources;}
+  function targetName(target){
+    return scope.value==="placement"
+      ?target.name+" · copy "+target.copyNumber+" ("+target.x+"%, "+target.y+"%)"
+      :target.name+" · "+target.placed+" placed";
+  }
+  function options(select,targets){
+    select.replaceChildren();
+    for(const target of targets){
+      const item=document.createElement("option");item.value=target.id;
+      item.textContent=targets===library?target.name:targetName(target);
+      select.appendChild(item);
     }
   }
-  function addLibraryRow(){
-    if(libraryRows.length>=10||libraryRows.length>=sources.length){message("You can replace up to ten distinct motif types in one copy.");return;}
-    const taken=new Set(libraryRows.map(row=>row.from.value));
-    const initial=sources.find(source=>!taken.has(source.id));
-    if(!initial){message("Every motif type is already assigned.");return;}
-    const row=document.createElement("div");row.className="motifSwapRow";
-    const original=document.createElement("img");original.className="motifSwapThumb";original.alt="Original artwork";original.src=initial.src;
-    const fields=document.createElement("div");fields.className="motifSwapFields";
-    const fromLabel=document.createElement("label");fromLabel.textContent="Replace these placed copies";
-    const from=document.createElement("select");from.setAttribute("aria-label","Original placed motif type");
-    optionList(from,sources);from.value=initial.id;fromLabel.appendChild(from);
-    const toLabel=document.createElement("label");toLabel.textContent="With this imported image";
-    const to=document.createElement("select");to.setAttribute("aria-label","Replacement from image library");
-    optionList(to,library);
-    const replacement=library.find(asset=>asset.id!==initial.id);
-    if(replacement)to.value=replacement.id;
-    toLabel.appendChild(to);
-    const thumb=document.createElement("img");thumb.className="motifSwapThumb";thumb.alt="Replacement artwork";thumb.src=library.find(a=>a.id===to.value)?.src||"";
-    const remove=document.createElement("button");remove.type="button";remove.className="btn";remove.textContent="Remove swap";
-    remove.addEventListener("click",()=>{libraryRows=libraryRows.filter(record=>record.row!==row);row.remove();message("");});
-    from.addEventListener("change",()=>{original.src=sources.find(a=>a.id===from.value)?.src||"";});
-    to.addEventListener("change",()=>{thumb.src=library.find(a=>a.id===to.value)?.src||"";});
-    fields.append(fromLabel,toLabel,remove);row.append(original,fields,thumb);
-    libraryMapping.appendChild(row);libraryRows.push({row,from,to});
-    message("");
+  function chosenOriginal(targetId){return targetList().find(t=>t.id===targetId);}
+  function originalAssetId(targetId){
+    const t=chosenOriginal(targetId);return scope.value==="placement"?t?.assetId:t?.id;
   }
-  function renderUploads(){
-    mappings.replaceChildren();uploadRows=[];
-    const files=[...filesInput.files];
-    if(!files.length){message("Choose up to ten replacement images, then match them to originals.");return;}
-    if(files.length>10||files.length>sources.length){message("Select no more than ten images, or the number of motif types in this design.");return;}
-    message("");
+  function chosenReplacement(targetId){return library.find(t=>t.id===targetId);}
+  function image(src,alt){
+    const el=document.createElement("img");el.className="motifSwapThumb";el.src=src||"";el.alt=alt;return el;
+  }
+  function labelFor(text,select){
+    const label=document.createElement("label");
+    label.textContent=text;label.appendChild(select);
+    return label;
+  }
+  function helperMessage(){
+    const count=sources.length,total=placements.length;
+    scopeHelp.textContent=scope.value==="placement"
+      ?"Change selected positions independently. Automatic seamless repeats still follow their source placement."
+      :"Replace every placed copy using a chosen image. Use Individual placed copies to give repetitions different images.";
+    filesHelp.textContent="This design has "+count+" distinct image"+(count===1?"":"s")+" across "+total+
+      " placed cop"+(total===1?"y":"ies")+". You can assign up to "+Math.min(10,targetList().length)+" replacement"+(targetList().length===1?"":"s")+" in this mode.";
+  }
+  function getMappings(){
+    if(mode.value==="upload")return uploadRows.map(row=>scope.value==="placement"
+      ?{fromItemId:row.select.value,file:row.file}
+      :{fromAssetId:row.select.value,file:row.file});
+    return libraryRows.map(row=>scope.value==="placement"
+      ?{fromItemId:row.from.value,toAssetId:row.to.value}
+      :{fromAssetId:row.from.value,toAssetId:row.to.value});
+  }
+  function validation(){
+    const rows=mode.value==="upload"?uploadRows:libraryRows,targets=targetList();
+    if(!rows.length)return mode.value==="upload"
+      ?"Select at least one replacement image."
+      :"Choose another image from your library, or use Upload new images.";
+    if(rows.length>10)return "Choose no more than ten replacement images at once.";
+    if(rows.length>targets.length)return "You selected "+rows.length+" replacements, but this mode has only "+
+      targets.length+" target"+(targets.length===1?"":"s")+". Switch to Individual placed copies or select fewer files.";
+    const mappings=getMappings(),ids=mappings.map(m=>String(m.fromItemId??m.fromAssetId));
+    if(ids.some(id=>!id||!targets.some(t=>t.id===id)))return "Choose a valid original placement for each replacement.";
+    if(!unique(ids))return "The same original image is selected twice. Choose different targets.";
+    if(mode.value==="library"&&mappings.some(m=>String(m.toAssetId)===String(originalAssetId(String(m.fromItemId??m.fromAssetId)))))
+      return "Choose a different replacement image from the original.";
+    if(mode.value==="upload"&&rows.some(row=>!row.file))return "An uploaded image is missing; select it again.";
+    return "";
+  }
+  function updateReady(showError=false){
+    const issue=validation();
+    ready.textContent=issue?"":getMappings().length+" replacement"+(getMappings().length===1?"":"s")+
+      " mapped · Your original design will remain unchanged.";
+    if(showError)message(issue);else if(!issue)message("");
+    apply.disabled=busy||!!issue||!name.value.trim();
+    apply.textContent=busy?"Creating a separate design…":"Create copied design";
+    return issue;
+  }
+  function makeSourceSelect(initialId){
+    const picker=document.createElement("select");
+    picker.setAttribute("aria-label","Original artwork to replace");
+    options(picker,targetList());picker.value=initialId||targetList()[0]?.id||"";
+    return picker;
+  }
+  function renderUploads(note=""){
+    clearPreviews();uploadMap.replaceChildren();uploadRows=[];
+    const files=[...filesInput.files],targets=targetList();
+    if(files.length>10){
+      message("Choose no more than ten files in one batch.");
+      updateReady();return;
+    }
+    // If the source only uses one motif in multiple placements, offering two
+    // replacements must not silently fail or force the user to reselect files.
+    if(scope.value==="type"&&files.length>sources.length&&files.length<=placements.length){
+      scope.value="placement";
+      helperMessage();
+      note="Switched to individual copies so your "+files.length+" images can each replace one position.";
+    }
+    const active=targetList();
     files.forEach((file,index)=>{
+      if(index>=active.length)return;
+      const target=active[index];
       const row=document.createElement("div");row.className="motifSwapRow";
-      const thumb=document.createElement("img");thumb.className="motifSwapThumb";thumb.alt="Original artwork";thumb.src=sources[index].src;
-      const group=document.createElement("div");group.className="motifSwapFields";
-      const label=document.createElement("label");label.textContent="Replace original with "+file.name;
-      const picker=document.createElement("select");picker.setAttribute("aria-label","Original motif replaced by "+file.name);
-      optionList(picker,sources);picker.value=sources[index].id;
-      picker.addEventListener("change",()=>{thumb.src=sources.find(a=>a.id===picker.value)?.src||"";});
-      label.appendChild(picker);group.append(label);
-      const note=document.createElement("span");note.className="motifSwapReplacement";note.textContent="New image: "+file.name;group.append(note);
-      row.append(thumb,group);mappings.appendChild(row);uploadRows.push({file,picker});
+      const original=image(target.src,"Image currently in this position");
+      const fields=document.createElement("div");fields.className="motifSwapFields";
+      const picker=makeSourceSelect(target.id),newPreview=image("","New replacement image");
+      const url=URL.createObjectURL(file);previewURLs.push(url);newPreview.src=url;
+      picker.addEventListener("change",()=>{
+        original.src=chosenOriginal(picker.value)?.src||"";updateReady();
+      });
+      const intro=document.createElement("span");intro.className="motifSwapReplacement";
+      intro.textContent="Replace with: "+file.name;
+      fields.append(labelFor("Replace",picker),intro);
+      row.append(original,fields,newPreview);uploadMap.appendChild(row);
+      uploadRows.push({file,select:picker});
     });
+    if(files.length>active.length)message("You chose "+files.length+" images but there are only "+active.length+
+      " replaceable targets in this mode. Select fewer, or add more copies to your design.");
+    else if(note)message(note);
+    else message("");
+    updateReady();
   }
-  function renderMode(){
+  function renderLibraryRows(count=1){
+    libraryMap.replaceChildren();libraryRows=[];
+    const targets=targetList(),available=library.length>0;
+    for(let index=0;index<Math.min(count,targets.length,10);index++){
+      const row=document.createElement("div");row.className="motifSwapRow";
+      const target=targets[index],original=image(target.src,"Original artwork");
+      const fields=document.createElement("div");fields.className="motifSwapFields";
+      const from=makeSourceSelect(target.id),to=document.createElement("select");
+      to.setAttribute("aria-label","New image from library");
+      options(to,library);
+      const alternative=library.find(a=>a.id!==originalAssetId(target.id));
+      if(alternative)to.value=alternative.id;
+      const replacement=image(chosenReplacement(to.value)?.src||"","Replacement image");
+      from.addEventListener("change",()=>{
+        original.src=chosenOriginal(from.value)?.src||"";
+        if(to.value===originalAssetId(from.value)){
+          to.value=library.find(a=>a.id!==originalAssetId(from.value))?.id||to.value;
+        }
+        replacement.src=chosenReplacement(to.value)?.src||"";
+        updateReady();
+      });
+      to.addEventListener("change",()=>{replacement.src=chosenReplacement(to.value)?.src||"";updateReady();});
+      fields.append(labelFor("Replace",from),labelFor("With",to));
+      const remove=document.createElement("button");remove.type="button";remove.className="motifSwapRemove";
+      remove.textContent="Remove this swap";remove.addEventListener("click",()=>{
+        const countNow=libraryRows.length;
+        libraryRows=libraryRows.filter(r=>r.row!==row);row.remove();
+        if(countNow>0)updateReady(true);
+      });
+      fields.append(remove);row.append(original,fields,replacement);libraryMap.appendChild(row);
+      libraryRows.push({row,from,to});
+    }
+    addMapping.disabled=!available||libraryRows.length>=10||libraryRows.length>=targets.length;
+    updateReady();
+  }
+  function switchScope(){
+    helperMessage();
+    if(mode.value==="library")renderLibraryRows(Math.max(1,Math.min(libraryRows.length,targetList().length)));
+    else renderUploads();
+  }
+  function switchMode(){
     const useLibrary=mode.value==="library";
-    librarySection.hidden=!useLibrary;uploadSection.hidden=useLibrary;message("");
-    if(useLibrary&&!libraryRows.length)addLibraryRow();
-    if(!useLibrary&&filesInput.files.length)renderUploads();
+    librarySection.hidden=!useLibrary;uploadSection.hidden=useLibrary;
+    helperMessage();
+    if(useLibrary)renderLibraryRows(Math.max(1,libraryRows.length));
+    else renderUploads();
   }
   function openDialog(){
-    const api=window.PatternForgeRemix;
-    sources=api.sources();library=api.library();
+    sources=api.sources();placements=api.placements();library=api.library();
     if(!sources.length){
-      const status=$("status");if(status)status.textContent="Place an image in the design before copying its pattern layout.";
+      const status=$("status");if(status)status.textContent="Add at least one motif to your pattern before creating a copy.";
       return;
     }
-    const title=$("projectNameDisplay")?.textContent?.split(" · ")[0]||"Pattern";
+    const title=String(api.projectTitle()||"Pattern").replace(/(?:\s*-\s*Motif Remix)+\s*$/ig,"").trim();
     name.value=(title+" - Motif Remix").slice(0,80);
-    filesInput.value="";mappings.replaceChildren();libraryMapping.replaceChildren();
-    uploadRows=[];libraryRows=[];message("");
-    mode.value=library.some(asset=>sources.some(s=>s.id!==asset.id))?"library":"upload";
-    renderMode();dialog.showModal();
+    summary.textContent=placements.length+" placed image"+(placements.length===1?"":"s")+
+      " · "+sources.length+" motif type"+(sources.length===1?"":"s")+
+      " · Exact layout preserved in the new design.";
+    filesInput.value="";uploadMap.replaceChildren();libraryMap.replaceChildren();
+    uploadRows=[];libraryRows=[];clearPreviews();message("");
+    scope.value="type";
+    mode.value=library.some(a=>sources.some(s=>s.id!==a.id))?"library":"upload";
+    helperMessage();switchMode();dialog.showModal();
   }
   open.addEventListener("click",openDialog);
-  close.addEventListener("click",()=>dialog.close());
-  cancel.addEventListener("click",()=>dialog.close());
-  mode.addEventListener("change",renderMode);
-  filesInput.addEventListener("change",renderUploads);
-  addMapping.addEventListener("click",addLibraryRow);
+  const closeDialog=()=>{dialog.close();clearPreviews();};
+  close.addEventListener("click",closeDialog);
+  cancel.addEventListener("click",closeDialog);
+  dialog.addEventListener("close",clearPreviews);
+  scope.addEventListener("change",switchScope);
+  mode.addEventListener("change",switchMode);
+  filesInput.addEventListener("change",()=>renderUploads());
+  name.addEventListener("input",()=>updateReady());
+  addMapping.addEventListener("click",()=>{
+    const count=libraryRows.length;
+    if(count>=Math.min(targetList().length,10)){updateReady(true);return;}
+    const previous=libraryRows.map(row=>({from:row.from.value,to:row.to.value}));
+    renderLibraryRows(count+1);
+    previous.forEach((values,i)=>{
+      libraryRows[i].from.value=values.from;libraryRows[i].to.value=values.to;
+      libraryRows[i].from.dispatchEvent(new Event("change"));
+      libraryRows[i].to.dispatchEvent(new Event("change"));
+    });
+    updateReady();
+  });
   apply.addEventListener("click",async()=>{
-    if(apply.disabled)return;
+    if(busy)return;
+    const issue=updateReady(true);if(issue)return;
     const title=name.value.trim();
-    if(!title||title.length>80){message("Give the new design a name, maximum 80 characters.");return;}
-    let mappingsToApply=[];
-    if(mode.value==="library"){
-      if(!libraryRows.length){message("Add at least one image swap.");return;}
-      mappingsToApply=libraryRows.map(row=>({fromAssetId:row.from.value,toAssetId:row.to.value}));
-      if(mappingsToApply.some(row=>row.fromAssetId===row.toAssetId)){message("Choose different original and replacement images.");return;}
-    }else{
-      const files=[...filesInput.files];
-      if(!files.length||files.length>10||files.length>sources.length||uploadRows.length!==files.length){
-        message("Choose between one and ten replacement files and review the mapping.");return;
-      }
-      mappingsToApply=uploadRows.map(row=>({fromAssetId:row.picker.value,file:row.file}));
-    }
-    const ids=mappingsToApply.map(row=>row.fromAssetId);
-    if(new Set(ids).size!==ids.length){message("The same original motif has been chosen more than once.");return;}
-    apply.disabled=true;apply.textContent="Creating separate pattern…";message("");
+    if(!title||title.length>80){message("Enter a name for the new design.");return;}
+    const mappings=getMappings();
+    busy=true;updateReady();
     try{
-      await window.PatternForgeRemix.create(title,mappingsToApply);
-      dialog.close();filesInput.value="";
+      await api.create(title,mappings);
+      closeDialog();filesInput.value="";
     }catch(err){
-      message(err?.message||"The pattern copy failed. Your original design is unchanged.");
+      message(err?.message||"Could not create this copy. Your original is unchanged.");
     }finally{
-      apply.disabled=false;apply.textContent="Create separate design";
+      busy=false;updateReady();
     }
   });
 })();
