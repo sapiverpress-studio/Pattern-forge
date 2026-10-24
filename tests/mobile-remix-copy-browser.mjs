@@ -43,40 +43,54 @@ try{
   const originalName=await page.locator('#motifSwapName').inputValue();
   assert(originalName==='Baking - Remix 2','Repeated remix name not cleaned: '+originalName);
   assert((await page.locator('#motifSwapSummary').textContent()).includes('4 placed images'),'Missing placed image count');
-  assert(await page.locator('#motifSwapMode').inputValue()==='upload','Expected upload when only original image available');
-  assert(await page.locator('#motifSwapScope').inputValue()==='type','Expected all-copies mode first');
+  assert(await page.locator('#motifSwapMode').inputValue()==='upload','Expected upload as default');
+  assert(await page.locator('#motifSwapScope').inputValue()==='fill','Entire layout must be the default');
+  assert((await page.locator('#motifSwapScopeHelp').textContent()).includes('No old motifs remain'),'Full pattern result not explained');
   const files=[
     {name:'new-oven.png',mimeType:'image/png',buffer:png(32,1)},
     {name:'new-cake.png',mimeType:'image/png',buffer:png(32,2)}
   ];
   await page.locator('#motifSwapFiles').setInputFiles(files);
-  assert(await page.locator('#motifSwapScope').inputValue()==='placement','Two images for one source motif should switch to per-copy mapping');
   await page.waitForFunction(()=>document.querySelectorAll('#motifSwapMapping .motifSwapRow').length===2);
-  assert((await page.locator('#motifSwapScopeHelp').textContent()).includes('individual copies'),'Missing clear automatic scope explanation');
-  const originals=await page.locator('#motifSwapMapping select').evaluateAll(nodes=>nodes.map(node=>node.value));
-  assert(new Set(originals).size===2,'Uploaded files do not map to two unique placements');
-  assert(await page.locator('#motifSwapApply').isEnabled(),'User cannot create a mapped copy');
+  assert(await page.locator('#motifSwapMapping img').count()===2,'Full-layout mapping should preview both new files once');
+  assert((await page.locator('#motifSwapReady').textContent()).includes('All 4 positions'),'Full layout preview must state all copied positions');
+  assert(await page.locator('#motifSwapApply').isEnabled(),'Whole-layout mapping should be ready');
   const bounds=await page.locator('#motifSwapDialog').boundingBox(),foot=await page.locator('.motifSwapFooter').boundingBox();
   assert(bounds&&foot&&bounds.y>=0&&bounds.y+bounds.height<=845,'Mobile dialog overflowed viewport');
   assert(foot.y>=bounds.y&&foot.y+foot.height<=bounds.y+bounds.height+1,'Footer not visible inside mobile dialog');
-  assert(await page.locator('#motifSwapMapping img').count()===4,'Source and replacement images not previewed');
-  // Intentionally choose the same placement twice: clear, actionable validation.
+  await page.locator('#motifSwapApply').click();
+  await page.locator('#motifSwapDialog').waitFor({state:'hidden',timeout:25000});
+  const filled=await saved();
+  assert(filled.project.id!==original.project.id,'Full remix overwrote original');
+  assert(filled.items.length===4,'Full remix modified placement count');
+  assert(filled.items.every(item=>item.assetId!==original.items[0].assetId),'Chess/original motif remains in new entire layout');
+  const filledAssets=filled.items.map(item=>item.assetId),uniqueFill=new Set(filledAssets);
+  assert(uniqueFill.size===2,'Expected both uploaded images to be used');
+  for(const id of uniqueFill)assert(filledAssets.filter(x=>x===id).length===2,'Replacement files should alternate evenly across four places');
+  filled.items.forEach((item,i)=>{
+    for(const key of ['id','rotation','layerId','flipX','flipY'])assert(item[key]===original.items[i][key],'Filled item '+i+' changed '+key);
+    assert(Math.abs(item.x-original.items[i].x)<.6&&Math.abs(item.y-original.items[i].y)<.6,'Filled item moved '+i);
+  });
+  // The advanced mode remains: change only two individual positions in a copy.
+  await page.locator('#motifSwapOpen').evaluate(el=>el.click());
+  await page.locator('#motifSwapDialog').waitFor({state:'visible'});
+  await page.locator('#motifSwapScope').selectOption('placement');
+  await page.locator('#motifSwapFiles').setInputFiles(files);
+  await page.waitForFunction(()=>document.querySelectorAll('#motifSwapMapping select').length===2);
   const selectors=page.locator('#motifSwapMapping select');
-  await selectors.nth(1).selectOption(originals[0]);
-  assert(await page.locator('#motifSwapApply').isDisabled(),'Invalid duplicate mapping should disable Create');
-  assert((await page.locator('#motifSwapError').textContent()).includes('same original'),'Duplicate placement failed to report a specific issue');
-  await selectors.nth(1).selectOption(originals[1]);
+  const targets=await selectors.evaluateAll(nodes=>nodes.map(n=>n.value));
+  assert(new Set(targets).size===2,'Individual files do not map to unique positions');
+  await selectors.nth(1).selectOption(targets[0]);
+  assert(await page.locator('#motifSwapApply').isDisabled(),'Duplicate placement should disable Create');
+  assert((await page.locator('#motifSwapError').textContent()).includes('same original'),'Duplicate placement must show helpful error');
+  await selectors.nth(1).selectOption(targets[1]);
   await page.locator('#motifSwapApply').click();
   await page.locator('#motifSwapDialog').waitFor({state:'hidden',timeout:20000});
-  const copy=await saved();
-  assert(copy.project.id!==original.project.id,'Copied design overwrote original');
-  assert(copy.items.length===4,'Copy modified placement count');
-  assert(copy.items.filter(item=>item.assetId!==original.items[0].assetId).length===2,'Exactly two selected placements must be replaced');
-  assert(copy.items.filter(item=>item.assetId===original.items[0].assetId).length===2,'Unselected identical copies should be preserved');
-  copy.items.forEach((item,i)=>{
-    for(const key of ['id','rotation','layerId'])assert(item[key]===original.items[i][key],'Copied item '+i+' changed '+key);
-    assert(Math.abs(item.x-original.items[i].x)<.6&&Math.abs(item.y-original.items[i].y)<.6,'Copied item moved unexpectedly '+i);
-  });
+  const selective=await saved();
+  assert(selective.project.id!==filled.project.id,'Selective remix overwrote previous copy');
+  assert(selective.items.length===4,'Selective remix changed placement count');
+  assert(selective.items.filter(item=>!uniqueFill.has(item.assetId)).length===2,'Selective mode must change exactly two individual places');
+  assert(selective.items.filter(item=>uniqueFill.has(item.assetId)).length===2,'Selective mode must leave two other placed images alone');
   assert(errors.length===0,'Page errors: '+errors.join(' | '));
   console.log('PASS: Android-size dialog, unique default name, 2 uploads mapped to 2 of 4 identical copies, duplicate validation, source layout safety and preview.');
 }finally{await browser.close();}
