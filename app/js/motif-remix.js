@@ -124,9 +124,9 @@
     });
     if(files.length>active.length)message("You chose "+files.length+" images but there are only "+active.length+
       " replaceable targets in this mode. Select fewer, or add more copies to your design.");
-    else if(note)message(note);
     else message("");
     updateReady();
+    if(note)scopeHelp.textContent=note+" "+scopeHelp.textContent;
   }
   function renderLibraryRows(count=1){
     libraryMap.replaceChildren();libraryRows=[];
