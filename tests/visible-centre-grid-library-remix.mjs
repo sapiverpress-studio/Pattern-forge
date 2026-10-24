@@ -51,7 +51,9 @@ try{
   const original=await saved();
   await page.locator('#motifSwapOpen').evaluate(el=>el.click());
   await page.locator('#motifSwapDialog').waitFor({state:'visible'});
-  assert(await page.locator('#motifSwapMode').inputValue()==='library','Library swap should be the default with alternative images imported');
+  assert(await page.locator('#motifSwapScope').inputValue()==='fill','Whole-layout remix should be the default');
+  await page.locator('#motifSwapScope').selectOption('type');
+  await page.locator('#motifSwapMode').selectOption('library');
   assert(await page.locator('#motifSwapLibraryMapping select').count()===2,'Expected original and library replacement selectors');
   const from=await page.locator('#motifSwapLibraryMapping select').nth(0).inputValue();
   const to=await page.locator('#motifSwapLibraryMapping select').nth(1).inputValue();
