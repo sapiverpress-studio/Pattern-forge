@@ -347,25 +347,50 @@
   </main>
 
   <dialog id="motifSwapDialog" class="helpDialog motifSwapDialog" aria-labelledby="motifSwapTitle">
-    <div class="helpDialogHead"><h2 id="motifSwapTitle">Duplicate &amp; replace motifs</h2><button id="motifSwapClose" class="btn" type="button">Close</button></div>
-    <div class="helpDialogBody">
-      <p class="help">Copy this exact pattern layout into a new editable project. Choose which original motif to replace, then pick its replacement. Every placed copy of that motif type is swapped; the original pattern is saved separately and untouched.</p>
-      <div class="field"><label for="motifSwapName">New design name</label><input id="motifSwapName" maxlength="80" type="text" required></div>
-      <div class="field"><label for="motifSwapMode">Choose replacement images from</label><select id="motifSwapMode"><option value="library">My already imported images</option><option value="upload">Upload new PNG, JPEG or WebP files</option></select></div>
-      <section id="motifSwapLibrarySection" aria-label="Choose images from your imported library">
-        <p class="help">Choose an original motif and an already imported replacement. Use “Add another swap” for up to ten different types.</p>
+    <header class="helpDialogHead motifSwapHead">
+      <h2 id="motifSwapTitle">Reuse pattern layout</h2>
+      <button id="motifSwapClose" class="btn" type="button" aria-label="Close without making a copy">Close</button>
+    </header>
+    <div class="helpDialogBody motifSwapBody">
+      <p id="motifSwapSummary" class="motifSwapSummary"></p>
+      <div class="field">
+        <label for="motifSwapName">Name your new design</label>
+        <input id="motifSwapName" maxlength="80" type="text" required>
+      </div>
+      <div class="field">
+        <label for="motifSwapScope">What would you like to replace?</label>
+        <select id="motifSwapScope">
+          <option value="type">Every copy of a chosen image</option>
+          <option value="placement">Individual placed copies</option>
+        </select>
+        <p id="motifSwapScopeHelp" class="help"></p>
+      </div>
+      <div class="field">
+        <label for="motifSwapMode">Use replacement images from</label>
+        <select id="motifSwapMode">
+          <option value="library">My image library</option>
+          <option value="upload">Upload new images</option>
+        </select>
+      </div>
+      <section id="motifSwapLibrarySection" aria-label="Reuse images from your library">
         <div id="motifSwapLibraryMapping" class="motifSwapMapping"></div>
-        <button id="motifSwapAddMapping" class="btn" type="button">+ Add another swap</button>
-        <p class="help">Missing a replacement? Add it under Images first, or switch to uploading new files above.</p>
+        <button id="motifSwapAddMapping" class="btn" type="button">+ Replace another image</button>
       </section>
-      <section id="motifSwapUploadSection" aria-label="Upload new replacement images" hidden>
-        <div class="field"><label for="motifSwapFiles">Replacement image files (1–10)</label><input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
+      <section id="motifSwapUploadSection" aria-label="Upload images to replace artwork" hidden>
+        <div class="field">
+          <label for="motifSwapFiles">Choose replacement images (PNG, JPEG or WebP)</label>
+          <input id="motifSwapFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+          <p id="motifSwapFilesHelp" class="help"></p>
+        </div>
         <div id="motifSwapMapping" class="motifSwapMapping"></div>
       </section>
-      <p id="motifSwapError" class="help motifSwapError" role="alert"></p>
-      <p class="help">Motif centres, positions, rotations, layers and repetition stay unchanged. New images fit inside the replaced motif's bounding size to avoid unexpected overlaps. Check the result before export.</p>
-      <div class="btns"><button id="motifSwapApply" type="button" class="btn primary">Create separate design</button><button id="motifSwapCancel" type="button" class="btn">Cancel</button></div>
     </div>
+    <footer class="motifSwapFooter">
+      <p id="motifSwapError" class="motifSwapError" role="alert" aria-live="polite"></p>
+      <p id="motifSwapReady" class="motifSwapReady" aria-live="polite"></p>
+      <button id="motifSwapApply" type="button" class="btn primary">Create copied design</button>
+      <button id="motifSwapCancel" type="button" class="btn">Cancel</button>
+    </footer>
   </dialog>
 
   <dialog id="helpDialog" class="helpDialog" aria-labelledby="helpDialogTitle">
