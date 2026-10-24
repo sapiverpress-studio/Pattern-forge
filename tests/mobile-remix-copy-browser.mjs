@@ -75,7 +75,12 @@ try{
   await page.locator('#motifSwapOpen').evaluate(el=>el.click());
   await page.locator('#motifSwapDialog').waitFor({state:'visible'});
   await page.locator('#motifSwapScope').selectOption('placement');
-  await page.locator('#motifSwapFiles').setInputFiles(files);
+  // Use different artwork from the full-layout copy. The project exporter
+  // intentionally deduplicates identical PNG bytes even when imported again.
+  await page.locator('#motifSwapFiles').setInputFiles([
+    {name:'new-spatula.png',mimeType:'image/png',buffer:png(32,3)},
+    {name:'new-whisk.png',mimeType:'image/png',buffer:png(32,4)}
+  ]);
   await page.waitForFunction(()=>document.querySelectorAll('#motifSwapMapping select').length===2);
   const selectors=page.locator('#motifSwapMapping select');
   const targets=await selectors.evaluateAll(nodes=>nodes.map(n=>n.value));
