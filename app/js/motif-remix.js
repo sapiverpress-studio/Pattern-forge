@@ -72,9 +72,12 @@
     if(!rows.length)return mode.value==="upload"
       ?"Select at least one replacement image."
       :"Choose another image from your library, or use Upload new images.";
+    if(mode.value==="upload"&&filesInput.files.length>10)return "Choose no more than ten replacement images at once.";
+    if(mode.value==="upload"&&filesInput.files.length>targets.length)
+      return "You selected "+filesInput.files.length+" images but this mode has "+targets.length+
+        " targets. Choose Fill the entire pattern to reuse all of them, or select fewer files.";
     if(rows.length>10)return "Choose no more than ten replacement images at once.";
-    if(rows.length>targets.length)return "You selected "+rows.length+" replacements, but this mode has only "+
-      targets.length+" target"+(targets.length===1?"":"s")+". Switch to Individual placed copies or select fewer files.";
+    if(rows.length>targets.length)return "Too many replacement images for this mode.";
     const mappings=getMappings(),ids=mappings.map(m=>String(m.fromItemId??m.fromAssetId));
     if(scope.value==="fill"){
       if(mode.value==="library"&&!unique(mappings.map(m=>String(m.toAssetId))))
