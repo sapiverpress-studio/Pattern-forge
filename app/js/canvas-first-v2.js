@@ -519,7 +519,7 @@
   }
 
   function imagesPanel(){
-    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Your image library</div><button class="ux2-btn primary" id="ux2ImportImages" type="button" style="width:100%">+ Choose images (5 or more at once)</button><p class="ux2-info">Select multiple PNG, JPG, WebP or SVG files in one picker. The first image is placed automatically; add the others from the library below.</p><strong class="ux2-image-count" id="ux2ImageCount" aria-live="polite"></strong><div class="ux2-image-grid" id="ux2ImageLibrary"></div></div><div class="ux2-panel-block"><div class="ux2-panel-label">Keep every imported image</div><button class="ux2-btn" id="ux2BackupImages" type="button" style="width:100%">Back up project + all images</button><p class="ux2-info">Normal compact exports keep only images placed on the canvas. This separate backup also keeps images waiting in your library, for reopening on another device.</p></div>';
+    return '<div class="ux2-panel-block"><div class="ux2-panel-label">Your image library</div><button class="ux2-btn primary" id="ux2ImportImages" type="button" style="width:100%">+ Choose images (5 or more at once)</button><p class="ux2-info">Only genuinely transparent images have no rectangle on the canvas. Files with a white or checkerboard background baked into the pixels are not automatically transparent. The image checkerboard shown below is a preview guide only.</p><strong class="ux2-image-count" id="ux2ImageCount" aria-live="polite"></strong><div class="ux2-image-grid" id="ux2ImageLibrary"></div></div><div class="ux2-panel-block"><div class="ux2-panel-label">Keep every imported image</div><button class="ux2-btn" id="ux2BackupImages" type="button" style="width:100%">Back up project + all images</button><p class="ux2-info">Normal compact exports keep only images placed on the canvas. This separate backup also keeps images waiting in your library, for reopening on another device.</p></div>';
   }
   function renderImageLibrary(){
     const host=$('ux2ImageLibrary'),count=$('ux2ImageCount');if(!host||!count)return;
@@ -535,12 +535,32 @@
       const body=document.createElement('div');body.className='ux2-image-details';
       const name=document.createElement('strong');name.textContent=asset.name;name.title=asset.name;
       const meta=document.createElement('small');meta.textContent=asset.w+' × '+asset.h+' px · '+asset.placed+' on canvas';
+      const alpha=document.createElement('small');alpha.className='ux2-image-alpha';
+      alpha.dataset.alphaStatus=asset.alpha?.type||'unknown';
+      alpha.textContent=asset.alpha?.label||'Transparency not verified';
       const actions=document.createElement('div');actions.className='ux2-image-actions';
       const add=document.createElement('button');add.type='button';add.className='ux2-btn primary';add.textContent='Add to canvas';add.setAttribute('aria-label','Add '+asset.name+' to canvas');
       add.addEventListener('click',()=>{api.place(asset.id);renderImageLibrary()});
       const remove=document.createElement('button');remove.type='button';remove.className='ux2-btn';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+asset.name+' from library');
       remove.addEventListener('click',()=>{api.remove(asset.id);renderImageLibrary()});
-      actions.append(add,remove);body.append(name,meta,actions);card.append(img,body);host.append(card);
+      if(asset.alpha?.canClean){
+        const clean=document.createElement('button');clean.type='button';clean.className='ux2-btn';
+        clean.textContent='Remove solid background';clean.setAttribute('aria-label','Create a transparent copy of '+asset.name);
+        clean.addEventListener('click',async()=>{
+          if(clean.disabled)return;
+          clean.disabled=true;clean.textContent='Removing background…';
+          try{const result=await api.clean(asset.id);if(result)renderImageLibrary();else{clean.disabled=false;clean.textContent='Remove solid background';}}
+          catch(err){alpha.textContent=err?.message||'Could not clean this image';clean.disabled=false;clean.textContent='Remove solid background';}
+        });
+        actions.append(clean);
+      }
+      actions.append(add,remove);body.append(name,meta,alpha,actions);
+      if(!asset.alpha?.transparent&&!asset.alpha?.canClean){
+        const note=document.createElement('small');note.className='ux2-image-alpha-note';
+        note.textContent='For clean cut-outs, export a PNG with transparency (alpha) from your background remover. A JPG or screenshot may contain a baked-in box.';
+        body.append(note);
+      }
+      card.append(img,body);host.append(card);
     }
   }
 
