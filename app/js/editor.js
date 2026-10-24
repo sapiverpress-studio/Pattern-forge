@@ -3083,6 +3083,17 @@
       id:String(asset.id),name:asset.name,src:asset.src,placed:counts.get(String(asset.id))
     }));
   }
+  function swappablePlacements(){
+    const countByAsset=new Map();
+    return state.items.map((item,index)=>{
+      const a=assetOf(item);
+      const next=(countByAsset.get(String(item.assetId))||0)+1;
+      countByAsset.set(String(item.assetId),next);
+      return {id:String(item.id),assetId:String(item.assetId),name:a?.name||"Image",
+        src:a?.src||"",copyNumber:next,sequence:index+1,
+        x:Math.round(item.x/TILE*100),y:Math.round(item.y/TILE*100)};
+    }).filter(item=>item.src);
+  }
   async function duplicateAndReplaceMotifs(name,mappings){
     if(!state.project)throw Error("Open a saved design first.");
     const newName=String(name||"").trim();
@@ -3090,14 +3101,23 @@
     if(!Array.isArray(mappings)||mappings.length<1||mappings.length>10)
       throw Error("Choose between one and ten replacements.");
     const allowed=swappableMotifs(),allowedIds=new Set(allowed.map(a=>a.id));
-    const sourceIds=mappings.map(row=>String(row?.fromAssetId));
-    if(new Set(sourceIds).size!==sourceIds.length)throw Error("Select a different original motif for every replacement.");
-    if(sourceIds.some(id=>!allowedIds.has(id)))throw Error("A chosen original motif is no longer on this design.");
+    const validItems=new Map(state.items.map(item=>[String(item.id),String(item.assetId)]));
+    const sourceKeys=mappings.map(row=>row?.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row?.fromAssetId));
+    if(new Set(sourceKeys).size!==sourceKeys.length)throw Error("The same original image or placement was selected more than once.");
+    for(const row of mappings){
+      const itemMode=row?.fromItemId!==undefined;
+      if(itemMode){
+        if(!validItems.has(String(row.fromItemId)))throw Error("One selected image placement is no longer part of this design.");
+      }else if(!allowedIds.has(String(row?.fromAssetId))){
+        throw Error("A selected motif type is no longer part of this design.");
+      }
+    }
     let totalBytes=0;
     for(const row of mappings){
       const existing=row?.toAssetId!==undefined?state.assets.find(asset=>String(asset.id)===String(row.toAssetId)):null;
       if(existing){
-        if(String(row.fromAssetId)===String(existing.id))throw Error("Choose a different image to replace the original.");
+        const sourceAssetId=row.fromItemId!==undefined?validItems.get(String(row.fromItemId)):String(row.fromAssetId);
+        if(sourceAssetId===String(existing.id))throw Error("Choose a different image to replace the original.");
         continue;
       }
       if(row?.toAssetId!==undefined)throw Error("A replacement image from the library could not be found.");
@@ -3114,13 +3134,13 @@
     for(const row of mappings){
       if(row.toAssetId!==undefined){
         const asset=state.assets.find(a=>String(a.id)===String(row.toAssetId));
-        decoded.push({fromAssetId:String(row.fromAssetId),existingId:String(asset.id),w:asset.w,h:asset.h});
+        decoded.push({sourceKey:row.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row.fromAssetId),existingId:String(asset.id),w:asset.w,h:asset.h});
         continue;
       }
       const src=await fileToDataURL(row.file),img=new Image();
       await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
       if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
-      decoded.push({fromAssetId:String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
+      decoded.push({sourceKey:row.fromItemId!==undefined?"item:"+String(row.fromItemId):"type:"+String(row.fromAssetId),name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
     }
     const original=projectData();
     const copy={...original,
@@ -3134,18 +3154,18 @@
     const mappingsById=new Map();
     for(const motif of decoded){
       if(motif.existingId){
-        mappingsById.set(motif.fromAssetId,{id:motif.existingId,w:motif.w,h:motif.h,asset:state.assets.find(a=>String(a.id)===motif.existingId)});
+        mappingsById.set(motif.sourceKey,{id:motif.existingId,w:motif.w,h:motif.h,asset:state.assets.find(a=>String(a.id)===motif.existingId)});
         continue;
       }
       while(used.has("a"+candidate))candidate++;
       const id="a"+candidate++;used.add(id);
       copy.assets.push({id,name:motif.name,src:motif.src,w:motif.w,h:motif.h,vector:false});
-      mappingsById.set(motif.fromAssetId,{id,w:motif.w,h:motif.h,asset:motif});
+      mappingsById.set(motif.sourceKey,{id,w:motif.w,h:motif.h,asset:motif});
     }
     const sourceById=new Map(original.assets.map(asset=>[String(asset.id),asset]));
     let swapped=0;
     for(const item of copy.items){
-      const replacement=mappingsById.get(String(item.assetId));
+      const replacement=mappingsById.get("item:"+String(item.id))||mappingsById.get("type:"+String(item.assetId));
       if(!replacement)continue;
       const old=sourceById.get(String(item.assetId));
       if(!old)throw Error("Original motif image is missing.");
@@ -3166,11 +3186,13 @@
     await saveAutosave();
     await restoreProject(copy,{asCopy:true});
     await saveAutosave();
-    setStatus("Created “"+newName+"” as a separate saved design. Replaced "+mappings.length+
-      " motif type"+(mappings.length===1?"":"s")+" across "+swapped+" placements. Review before export.");
+    setStatus("Created “"+newName+"” as a separate saved design. Replaced "+swapped+
+      " placed image"+(swapped===1?"":"s")+". The original design is saved separately.");
     return {projectId:state.project.id,title:newName,types:mappings.length,placements:swapped};
   }
-  window.PatternForgeRemix={sources:swappableMotifs,library:()=>state.assets.map(a=>({id:String(a.id),name:a.name,src:a.src})),create:duplicateAndReplaceMotifs};
+  window.PatternForgeRemix={sources:swappableMotifs,placements:swappablePlacements,
+    projectTitle:()=>state.project?.title||"Pattern",
+    library:()=>state.assets.map(a=>({id:String(a.id),name:a.name,src:a.src})),create:duplicateAndReplaceMotifs};
 
   $("saveProject").onclick=()=>{
     downloadBlob(projectBlob(),`${safeName()}-editable-project.json`);
