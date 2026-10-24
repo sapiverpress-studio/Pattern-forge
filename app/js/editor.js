@@ -437,6 +437,7 @@
             img.onload=resolve;img.onerror=()=>reject(new Error("Image could not be decoded"));img.src=src;
           });
           const asset={id:nextAssetId(),name:file.name,src,img,w:img.naturalWidth||1000,h:img.naturalHeight||1000,vector:file.type==="image/svg+xml"||/\.svg$/i.test(file.name)};
+          asset.alphaInfo=window.PatternForgeAlpha?.analyse(img)||null;
           state.assets.push(asset);state.recentAssetIds.unshift(asset.id);successful.push(asset);
         }catch(_){failed.push(file.name);}
       }
@@ -448,9 +449,11 @@
         renderAll();
       }
       const noun=n=>n===1?"image":"images";
+      const opaqueCount=successful.filter(asset=>asset.alphaInfo&&!asset.alphaInfo.transparent).length;
       const summary=successful.length?`Imported ${successful.length} ${noun(successful.length)}. First placed on canvas; ${successful.length-1} more available in Images.`:"No images could be imported.";
+      const opacityWarning=opaqueCount?` ${opaqueCount} image${opaqueCount===1?" is":"s are"} not transparent. Open Images to inspect and clean simple solid backgrounds.`:"";
       const errorCount=failed.length+skipped;
-      setStatus(summary+(errorCount?` ${errorCount} skipped/failed — check file formats.`:""));
+      setStatus(summary+opacityWarning+(errorCount?` ${errorCount} skipped/failed — check file formats.`:""));
       window.dispatchEvent(new CustomEvent("patternforge:images-imported",{detail:{imported:successful.length,failed:errorCount,total:state.assets.length}}));
     }finally{imageImportBusy=false;}
   }
@@ -534,8 +537,37 @@
     else state.tool="select";
     renderAll();
   }
+  function inspectImageAlpha(asset){
+    if(!asset?.img)return {type:"unknown",label:"Transparency unverified",canClean:false,transparent:false};
+    return asset.alphaInfo||(asset.alphaInfo=window.PatternForgeAlpha?.analyse(asset.img))||
+      {type:"unknown",label:"Transparency unverified",canClean:false,transparent:false};
+  }
+  async function cleanImageBackground(id){
+    const asset=state.assets.find(a=>String(a.id)===String(id));
+    if(!asset)throw Error("Image not found in library.");
+    const info=inspectImageAlpha(asset);
+    if(info.transparent)throw Error("This image already has a transparent background.");
+    if(!info.canClean)throw Error("Cannot safely remove this background automatically. Re-export the artwork as a transparent PNG from your background-removal tool.");
+    if(!confirm("Create a transparent copy of “"+asset.name+"” and update its placed copies? The original image stays in your library."))return false;
+    const result=await window.PatternForgeAlpha.removeSolid(asset.img);
+    const image=new Image();
+    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error("Cleaned PNG could not be decoded."));image.src=result.src;});
+    const cleaned={id:nextAssetId(),name:asset.name.replace(/\.[^.]+$/,"")+" - transparent.png",
+      src:result.src,img:image,w:result.w,h:result.h,vector:false};
+    cleaned.alphaInfo=window.PatternForgeAlpha.analyse(image);
+    if(!cleaned.alphaInfo.transparent)throw Error("Cleanup did not result in transparent pixels; original image unchanged.");
+    saveHistory();state.assets.push(cleaned);
+    let replaced=0;
+    for(const item of state.items)if(String(item.assetId)===String(id)){item.assetId=cleaned.id;replaced++;}
+    state.recentAssetIds.unshift(cleaned.id);rebuildAssetGrid();renderAll();
+    setStatus("Created transparent image “"+cleaned.name+"” and replaced "+replaced+" placed cop"+(replaced===1?"y":"ies")+
+      ". Original source remains in Images.");
+    window.dispatchEvent(new Event("patternforge:images-changed"));
+    return {name:cleaned.name,placed:replaced,id:cleaned.id};
+  }
   window.PatternForgeImageLibrary={
-    list:()=>state.assets.map(a=>({id:a.id,name:a.name,src:a.src,w:a.w,h:a.h,vector:!!a.vector,placed:state.items.filter(i=>i.assetId===a.id).length})),
+    list:()=>state.assets.map(a=>({id:a.id,name:a.name,src:a.src,w:a.w,h:a.h,vector:!!a.vector,placed:state.items.filter(i=>i.assetId===a.id).length,alpha:inspectImageAlpha(a)})),
+    clean:cleanImageBackground,
     place:id=>{const asset=state.assets.find(a=>a.id===id);if(!asset)return false;addAssetInstance(asset);setStatus(`Placed “${asset.name}” on canvas. Drag to move it.`);window.dispatchEvent(new Event("patternforge:images-changed"));return true;},
     remove:id=>{const asset=state.assets.find(a=>a.id===id);if(!asset)return false;removeAssetFromLibrary(asset);window.dispatchEvent(new Event("patternforge:images-changed"));return true;},
     backupAll:()=>{if(!state.project)return false;downloadBlob(new Blob([JSON.stringify(projectData())],{type:"application/json"}),`${safeName()}-full-image-library.json`);setStatus("Downloaded full editable project and all imported images.");return true;}
