@@ -63,7 +63,7 @@ try{
   // Intentionally choose the same placement twice: clear, actionable validation.
   const selectors=page.locator('#motifSwapMapping select');
   await selectors.nth(1).selectOption(originals[0]);
-  await page.locator('#motifSwapApply').click();
+  assert(await page.locator('#motifSwapApply').isDisabled(),'Invalid duplicate mapping should disable Create');
   assert((await page.locator('#motifSwapError').textContent()).includes('same original'),'Duplicate placement failed to report a specific issue');
   await selectors.nth(1).selectOption(originals[1]);
   await page.locator('#motifSwapApply').click();
