@@ -75,11 +75,13 @@
     if(mode.value==="upload"&&rows.some(row=>!row.file))return "An uploaded image is missing; select it again.";
     return "";
   }
+  function rowsForCurrentMode(){return mode.value==="upload"?uploadRows:libraryRows;}
   function updateReady(showError=false){
     const issue=validation();
     ready.textContent=issue?"":getMappings().length+" replacement"+(getMappings().length===1?"":"s")+
       " mapped · Your original design will remain unchanged.";
-    if(showError)message(issue);else if(!issue)message("");
+    if(showError||(issue&&rowsForCurrentMode().length>0))message(issue);
+    else if(!issue)message("");
     apply.disabled=busy||!!issue||!name.value.trim();
     apply.textContent=busy?"Creating a separate design…":"Create copied design";
     return issue;
