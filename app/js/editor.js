@@ -3177,10 +3177,21 @@
         decoded.push({sourceKey,existingId:String(asset.id),w:asset.w,h:asset.h});
         continue;
       }
-      const src=await fileToDataURL(row.file),img=new Image();
+      let src=await fileToDataURL(row.file),img=new Image();
       await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Could not decode "+row.file.name));img.src=src;});
       if(!img.naturalWidth||!img.naturalHeight)throw Error("Invalid image dimensions in "+row.file.name);
-      decoded.push({sourceKey,name:row.file.name,src,w:img.naturalWidth,h:img.naturalHeight,img});
+      if(row.cleanBackground&&window.PatternForgeAlpha){
+        const info=window.PatternForgeAlpha.analyse(img);
+        if(!info.transparent){
+          const repaired=await window.PatternForgeAlpha.removeSolid(img);
+          src=repaired.src;
+          const cleanedImage=new Image();
+          await new Promise((resolve,reject)=>{cleanedImage.onload=resolve;cleanedImage.onerror=()=>reject(Error("Cleaned image could not be decoded: "+row.file.name));cleanedImage.src=src;});
+          img=cleanedImage;
+        }
+      }
+      decoded.push({sourceKey,name:row.cleanBackground?row.file.name.replace(/\.[^.]+$/,"")+" - transparent.png":row.file.name,
+        src,w:img.naturalWidth,h:img.naturalHeight,img});
     }
     const original=projectData();
     const copy={...original,
