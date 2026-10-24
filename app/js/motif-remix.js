@@ -16,7 +16,7 @@
   const unique=a=>new Set(a).size===a.length;
   function message(value){error.textContent=value||"";}
   function clearPreviews(){for(const url of previewURLs)URL.revokeObjectURL(url);previewURLs=[];}
-  function targetList(){return scope.value==="placement"?placements:sources;}
+  function targetList(){return scope.value==="type"?sources:placements;}
   function targetName(target){
     return scope.value==="placement"
       ?target.name+" · copy "+target.copyNumber+" ("+target.x+"%, "+target.y+"%)"
@@ -45,17 +45,23 @@
   }
   function helperMessage(){
     const count=sources.length,total=placements.length;
-    scopeHelp.textContent=scope.value==="placement"
+    scopeHelp.textContent=scope.value==="fill"
+      ?"Every existing position will be filled with your new images, repeated evenly in rows. No old motifs remain. All positions, rotations and spacing are kept."
+      :scope.value==="placement"
       ?"Change selected positions independently. Automatic seamless repeats still follow their source placement."
-      :"Replace every placed copy using a chosen image. Use Individual placed copies to give repetitions different images.";
-    filesHelp.textContent="This design has "+count+" distinct image"+(count===1?"":"s")+" across "+total+
+      :"Replace every placed copy using a chosen image. Other motif types remain unchanged.";
+    filesHelp.textContent=scope.value==="fill"
+      ?"Choose 1–"+Math.min(10,total)+" replacement images. They will alternate across all "+total+" positions; none of the originals will be left behind."
+      :"This design has "+count+" distinct image"+(count===1?"":"s")+" across "+total+
       " placed cop"+(total===1?"y":"ies")+". You can assign up to "+Math.min(10,targetList().length)+" replacement"+(targetList().length===1?"":"s")+" in this mode.";
   }
   function getMappings(){
-    if(mode.value==="upload")return uploadRows.map(row=>scope.value==="placement"
+    if(mode.value==="upload")return uploadRows.map(row=>scope.value==="fill"
+      ?{fill:true,file:row.file}:scope.value==="placement"
       ?{fromItemId:row.select.value,file:row.file}
       :{fromAssetId:row.select.value,file:row.file});
-    return libraryRows.map(row=>scope.value==="placement"
+    return libraryRows.map(row=>scope.value==="fill"
+      ?{fill:true,toAssetId:row.to.value}:scope.value==="placement"
       ?{fromItemId:row.from.value,toAssetId:row.to.value}
       :{fromAssetId:row.from.value,toAssetId:row.to.value});
   }
@@ -68,22 +74,29 @@
     if(rows.length>targets.length)return "You selected "+rows.length+" replacements, but this mode has only "+
       targets.length+" target"+(targets.length===1?"":"s")+". Switch to Individual placed copies or select fewer files.";
     const mappings=getMappings(),ids=mappings.map(m=>String(m.fromItemId??m.fromAssetId));
-    if(ids.some(id=>!id||!targets.some(t=>t.id===id)))return "Choose a valid original placement for each replacement.";
-    if(!unique(ids))return "The same original image is selected twice. Choose different targets.";
-    if(mode.value==="library"&&mappings.some(m=>String(m.toAssetId)===String(originalAssetId(String(m.fromItemId??m.fromAssetId)))))
-      return "Choose a different replacement image from the original.";
+    if(scope.value==="fill"){
+      if(mode.value==="library"&&!unique(mappings.map(m=>String(m.toAssetId))))
+        return "Choose each replacement image once; it will repeat automatically across the layout.";
+    }else{
+      if(ids.some(id=>!id||!targets.some(t=>t.id===id)))return "Choose a valid original placement for each replacement.";
+      if(!unique(ids))return "The same original image is selected twice. Choose different targets.";
+      if(mode.value==="library"&&mappings.some(m=>String(m.toAssetId)===String(originalAssetId(String(m.fromItemId??m.fromAssetId)))))
+        return "Choose a different replacement image from the original.";
+    }
     if(mode.value==="upload"&&rows.some(row=>!row.file))return "An uploaded image is missing; select it again.";
     return "";
   }
   function rowsForCurrentMode(){return mode.value==="upload"?uploadRows:libraryRows;}
   function updateReady(showError=false){
     const issue=validation();
-    ready.textContent=issue?"":getMappings().length+" replacement"+(getMappings().length===1?"":"s")+
+    ready.textContent=issue?"":scope.value==="fill"
+      ?"All "+placements.length+" positions will be filled using "+getMappings().length+" image"+(getMappings().length===1?"":"s")+". Original saved separately."
+      :getMappings().length+" replacement"+(getMappings().length===1?"":"s")+
       " mapped · Your original design will remain unchanged.";
     if(showError||(issue&&rowsForCurrentMode().length>0))message(issue);
     else if(!issue)message("");
     apply.disabled=busy||!!issue||!name.value.trim();
-    apply.textContent=busy?"Creating a separate design…":"Create copied design";
+    apply.textContent=busy?"Creating a separate design…":scope.value==="fill"?"Create new full pattern":"Create copied design";
     return issue;
   }
   function makeSourceSelect(initialId){
