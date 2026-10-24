@@ -296,3 +296,8 @@
  .motifSwapRow{grid-template-columns:45px minmax(0,1fr) 45px;gap:7px;padding:8px}
  .motifSwapThumb{width:45px;height:55px}
 }
+
+/* Whole-pattern remixes list new motifs once rather than duplicating every source thumbnail. */
+.motifSwapFillRow{grid-template-columns:60px minmax(0,1fr)}
+.motifSwapFillRow .motifSwapFields strong{font-size:.85rem}
+@media(max-width:480px){.motifSwapFillRow{grid-template-columns:55px minmax(0,1fr)}.motifSwapFillRow .motifSwapThumb{width:55px;height:55px}}
