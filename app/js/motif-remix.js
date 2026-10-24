@@ -17,6 +17,8 @@
   function message(value){error.textContent=value||"";}
   function clearPreviews(){for(const url of previewURLs)URL.revokeObjectURL(url);previewURLs=[];}
   function targetList(){return scope.value==="type"?sources:placements;}
+  function replacementLibrary(){return scope.value==="fill"
+    ?library.filter(asset=>!sources.some(source=>source.id===asset.id)):library;}
   function targetName(target){
     return scope.value==="placement"
       ?target.name+" · copy "+target.copyNumber+" ("+target.x+"%, "+target.y+"%)"
@@ -112,12 +114,24 @@
       message("Choose no more than ten files in one batch.");
       updateReady();return;
     }
-    // If the source only uses one motif in multiple placements, offering two
-    // replacements must not silently fail or force the user to reselect files.
-    if(scope.value==="type"&&files.length>sources.length&&files.length<=placements.length){
-      scope.value="placement";
-      helperMessage();
-      note="Switched to individual copies so your "+files.length+" images can each replace one position.";
+    if(scope.value==="fill"){
+      files.forEach((file,index)=>{
+        if(index>=placements.length)return;
+        const row=document.createElement("div");row.className="motifSwapRow motifSwapFillRow";
+        const url=URL.createObjectURL(file);previewURLs.push(url);
+        const thumb=image(url,"New motif for the entire pattern");
+        const fields=document.createElement("div");fields.className="motifSwapFields";
+        const title=document.createElement("strong");title.textContent="Motif "+(index+1);
+        const label=document.createElement("span");label.className="motifSwapReplacement";
+        label.textContent=file.name+" · Repeats across the pattern";
+        fields.append(title,label);row.append(thumb,fields);uploadMap.appendChild(row);
+        uploadRows.push({file});
+      });
+      if(files.length>placements.length)message("Your layout has only "+placements.length+
+        " positions. Choose up to "+placements.length+" images, or add more positions first.");
+      else message("");
+      updateReady();
+      return;
     }
     const active=targetList();
     files.forEach((file,index)=>{
@@ -145,7 +159,29 @@
   }
   function renderLibraryRows(count=1){
     libraryMap.replaceChildren();libraryRows=[];
-    const targets=targetList(),available=library.length>0;
+    const targets=targetList(),available=scope.value==="fill"?replacementLibrary().length>0:library.length>0;
+    if(scope.value==="fill"){
+      const availableReplacements=replacementLibrary();
+      for(let index=0;index<Math.min(count,placements.length,availableReplacements.length,10);index++){
+        const row=document.createElement("div");row.className="motifSwapRow motifSwapFillRow";
+        const to=document.createElement("select");to.setAttribute("aria-label","Motif for whole pattern");
+        options(to,availableReplacements);
+        to.value=availableReplacements[index].id;
+        const preview=image(chosenReplacement(to.value)?.src||"","New motif");
+        const fields=document.createElement("div");fields.className="motifSwapFields";
+        to.addEventListener("change",()=>{preview.src=chosenReplacement(to.value)?.src||"";updateReady();});
+        fields.append(labelFor("Motif "+(index+1),to));
+        const remove=document.createElement("button");remove.type="button";remove.className="motifSwapRemove";
+        remove.textContent="Remove this image";remove.addEventListener("click",()=>{
+          libraryRows=libraryRows.filter(entry=>entry.row!==row);row.remove();updateReady(true);
+          addMapping.disabled=libraryRows.length>=Math.min(10,placements.length,availableReplacements.length);
+        });
+        fields.append(remove);row.append(preview,fields);libraryMap.appendChild(row);
+        libraryRows.push({row,to});
+      }
+      addMapping.disabled=libraryRows.length>=Math.min(10,placements.length,availableReplacements.length);
+      updateReady();return;
+    }
     for(let index=0;index<Math.min(count,targets.length,10);index++){
       const row=document.createElement("div");row.className="motifSwapRow";
       const target=targets[index],original=image(target.src,"Original artwork");
@@ -204,8 +240,8 @@
       " · Exact layout preserved in the new design.";
     filesInput.value="";uploadMap.replaceChildren();libraryMap.replaceChildren();
     uploadRows=[];libraryRows=[];clearPreviews();message("");
-    scope.value="type";
-    mode.value=library.some(a=>sources.some(s=>s.id!==a.id))?"library":"upload";
+    scope.value="fill";
+    mode.value="upload";
     helperMessage();switchMode();dialog.showModal();
   }
   open.addEventListener("click",openDialog);
@@ -220,11 +256,12 @@
   addMapping.addEventListener("click",()=>{
     const count=libraryRows.length;
     if(count>=Math.min(targetList().length,10)){updateReady(true);return;}
-    const previous=libraryRows.map(row=>({from:row.from.value,to:row.to.value}));
+    const previous=libraryRows.map(row=>({from:row.from?.value,to:row.to.value}));
     renderLibraryRows(count+1);
     previous.forEach((values,i)=>{
-      libraryRows[i].from.value=values.from;libraryRows[i].to.value=values.to;
-      libraryRows[i].from.dispatchEvent(new Event("change"));
+      if(libraryRows[i].from&&values.from!==undefined)libraryRows[i].from.value=values.from;
+      libraryRows[i].to.value=values.to;
+      libraryRows[i].from?.dispatchEvent(new Event("change"));
       libraryRows[i].to.dispatchEvent(new Event("change"));
     });
     updateReady();
