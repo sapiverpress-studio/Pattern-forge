@@ -58,10 +58,13 @@
       " placed cop"+(total===1?"y":"ies")+". You can assign up to "+Math.min(10,targetList().length)+" replacement"+(targetList().length===1?"":"s")+" in this mode.";
   }
   function getMappings(){
-    if(mode.value==="upload")return uploadRows.map(row=>scope.value==="fill"
-      ?{fill:true,file:row.file}:scope.value==="placement"
-      ?{fromItemId:row.select.value,file:row.file}
-      :{fromAssetId:row.select.value,file:row.file});
+    if(mode.value==="upload")return uploadRows.map(row=>{
+      const cleanBackground=!!$("motifSwapRemovePlain")?.checked;
+      return scope.value==="fill"
+        ?{fill:true,file:row.file,cleanBackground}:scope.value==="placement"
+        ?{fromItemId:row.select.value,file:row.file,cleanBackground}
+        :{fromAssetId:row.select.value,file:row.file,cleanBackground};
+    });
     return libraryRows.map(row=>scope.value==="fill"
       ?{fill:true,toAssetId:row.to.value}:scope.value==="placement"
       ?{fromItemId:row.from.value,toAssetId:row.to.value}
@@ -124,10 +127,18 @@
         const url=URL.createObjectURL(file);previewURLs.push(url);
         const thumb=image(url,"New motif for the entire pattern");
         const fields=document.createElement("div");fields.className="motifSwapFields";
+        const alphaHint=document.createElement("span");alphaHint.className="motifSwapReplacement";
+        alphaHint.textContent="Checking transparency…";
+        thumb.addEventListener("load",()=>{
+          const info=window.PatternForgeAlpha?.analyse(thumb);
+          alphaHint.textContent=info?.transparent?"✓ Transparent image":
+            info?.canClean?"⚠ Solid background detected; tick Remove solid backgrounds below":
+            "⚠ Opaque background detected. A genuine transparent PNG may be needed.";
+        },{once:true});
         const title=document.createElement("strong");title.textContent="Motif "+(index+1);
         const label=document.createElement("span");label.className="motifSwapReplacement";
         label.textContent=file.name+" · Repeats across the pattern";
-        fields.append(title,label);row.append(thumb,fields);uploadMap.appendChild(row);
+        fields.append(title,label,alphaHint);row.append(thumb,fields);uploadMap.appendChild(row);
         uploadRows.push({file});
       });
       if(files.length>placements.length)message("Your layout has only "+placements.length+
@@ -145,12 +156,20 @@
       const fields=document.createElement("div");fields.className="motifSwapFields";
       const picker=makeSourceSelect(target.id),newPreview=image("","New replacement image");
       const url=URL.createObjectURL(file);previewURLs.push(url);newPreview.src=url;
+      const alphaHint=document.createElement("span");alphaHint.className="motifSwapReplacement";
+      alphaHint.textContent="Checking transparency…";
+      newPreview.addEventListener("load",()=>{
+        const info=window.PatternForgeAlpha?.analyse(newPreview);
+        alphaHint.textContent=info?.transparent?"✓ Transparent image":
+          info?.canClean?"⚠ Solid background detected; tick Remove solid backgrounds below":
+          "⚠ Opaque background detected. Re-export transparent PNG if you see a rectangle.";
+      },{once:true});
       picker.addEventListener("change",()=>{
         original.src=chosenOriginal(picker.value)?.src||"";updateReady();
       });
       const intro=document.createElement("span");intro.className="motifSwapReplacement";
       intro.textContent="Replace with: "+file.name;
-      fields.append(labelFor("Replace",picker),intro);
+      fields.append(labelFor("Replace",picker),intro,alphaHint);
       row.append(original,fields,newPreview);uploadMap.appendChild(row);
       uploadRows.push({file,select:picker});
     });
@@ -241,7 +260,8 @@
     summary.textContent=placements.length+" placed image"+(placements.length===1?"":"s")+
       " · "+sources.length+" motif type"+(sources.length===1?"":"s")+
       " · Exact layout preserved in the new design.";
-    filesInput.value="";uploadMap.replaceChildren();libraryMap.replaceChildren();
+    filesInput.value="";if($("motifSwapRemovePlain"))$("motifSwapRemovePlain").checked=false;
+    uploadMap.replaceChildren();libraryMap.replaceChildren();
     uploadRows=[];libraryRows=[];clearPreviews();message("");
     scope.value="fill";
     mode.value="upload";
