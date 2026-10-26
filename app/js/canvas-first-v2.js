@@ -72,6 +72,7 @@
   ];
   const favouriteStorageKey='patternForgeUx2FavouriteTools';
   const isDoodle=document.body.classList.contains('doodle-project');
+  let selectedNudgeStep=25; // Fine movement measured in artwork pixels, not screen pixels.
   let favouriteIds=[];
   try{
     const saved=localStorage.getItem(favouriteStorageKey),stored=JSON.parse(saved||'[]');
@@ -222,8 +223,9 @@
       const scale=$('selScale'),rot=$('selRot'),opacity=$('selOpacity'),panel=$('selectedPanel'),selectionCount=Number(panel?.dataset.selectionCount||0),grouped=panel?.dataset.selectionGrouped==='true',addMode=panel?.dataset.selectionAddMode==='true',hasSelection=selectionCount>0;
       context.classList.toggle('ux2-context--empty-selection',tool==='select'&&!hasSelection);
       const selectionControls=`<div class="ux2-context-group"><span class="ux2-label">Selection</span><button class="ux2-chip ${addMode?'active':''}" id="ux2AddSelection">Add</button><button class="ux2-chip" id="ux2SelectAll">All</button>${hasSelection?'<button class="ux2-chip" id="ux2ClearSelection">Clear</button>':''}</div>`;
+      const groupNudgeControls=`<div class="ux2-context-group" role="group" aria-label="Nudge selected artwork together"><span class="ux2-label">Nudge</span><select id="ux2NudgeStep" aria-label="Nudge distance in artwork pixels"><option value="1" ${selectedNudgeStep===1?'selected':''}>1 px</option><option value="10" ${selectedNudgeStep===10?'selected':''}>10 px</option><option value="25" ${selectedNudgeStep===25?'selected':''}>25 px</option><option value="50" ${selectedNudgeStep===50?'selected':''}>50 px</option><option value="100" ${selectedNudgeStep===100?'selected':''}>100 px</option><option value="250" ${selectedNudgeStep===250?'selected':''}>250 px</option></select><button class="ux2-chip" data-ux2-nudge="left" aria-label="Nudge group left">←</button><button class="ux2-chip" data-ux2-nudge="right" aria-label="Nudge group right">→</button><button class="ux2-chip" data-ux2-nudge="up" aria-label="Nudge group up">↑</button><button class="ux2-chip" data-ux2-nudge="down" aria-label="Nudge group down">↓</button></div>`;
       if(selectionCount>1){
-        context.innerHTML=selectionControls+`<div class="ux2-context-group"><strong style="font-size:11px">${selectionCount} selected</strong><label class="ux2-slider">Scale <input id="ux2GroupScale" type="range" min="1" max="600" step="0.1" value="100"><input id="ux2GroupScaleNumber" class="ux2-scale-number" type="number" inputmode="decimal" min="1" max="600" step="0.1" value="100" aria-label="Group scale percentage"><b>%</b></label><label class="ux2-slider">Rotate <input id="ux2GroupRotate" type="range" min="-180" max="180" value="0"><b id="ux2GroupRotateOut">0°</b></label><button class="ux2-chip" id="${grouped?'ux2Ungroup':'ux2Group'}">${grouped?'Ungroup':'Group'}</button><button class="ux2-chip" id="ux2FlipH">Flip H</button><button class="ux2-chip" id="ux2FlipV">Flip V</button><button class="ux2-chip" id="ux2Duplicate">Duplicate</button><button class="ux2-chip" id="ux2Delete">Delete</button><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
+        context.innerHTML=selectionControls+groupNudgeControls+`<div class="ux2-context-group"><strong style="font-size:11px">${selectionCount} selected</strong><label class="ux2-slider">Scale <input id="ux2GroupScale" type="range" min="1" max="600" step="0.1" value="100"><input id="ux2GroupScaleNumber" class="ux2-scale-number" type="number" inputmode="decimal" min="1" max="600" step="0.1" value="100" aria-label="Group scale percentage"><b>%</b></label><label class="ux2-slider">Rotate <input id="ux2GroupRotate" type="range" min="-180" max="180" value="0"><b id="ux2GroupRotateOut">0°</b></label><button class="ux2-chip" id="${grouped?'ux2Ungroup':'ux2Group'}">${grouped?'Ungroup':'Group'}</button><button class="ux2-chip" id="ux2FlipH">Flip H</button><button class="ux2-chip" id="ux2FlipV">Flip V</button><button class="ux2-chip" id="ux2Duplicate">Duplicate</button><button class="ux2-chip" id="ux2Delete">Delete</button><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
       }else if(hasSelection){
         context.innerHTML=selectionControls+`<div class="ux2-context-group"><span class="ux2-label">Transform</span>${scale?`<label class="ux2-slider">Scale <input id="ux2SelScale" type="range" min="${scale.min||1}" max="${scale.max||600}" step="0.1" value="${scale.value}"><input id="ux2ScaleNumber" class="ux2-scale-number" type="number" inputmode="decimal" min="1" max="600" step="0.1" value="${scale.value}" aria-label="Exact motif scale percentage"><b>%</b></label>`:''}${rot?`<label class="ux2-slider">Rotate <input id="ux2SelRot" type="range" min="-180" max="180" value="${rot.value}"><b>${rot.value}°</b></label>`:''}${opacity?`<label class="ux2-slider">Opacity <input id="ux2SelOpacity" type="range" min="5" max="100" value="${opacity.value}"><b>${opacity.value}%</b></label>`:''}</div><div class="ux2-context-group"><button class="ux2-chip" id="ux2FlipH">Flip H</button><button class="ux2-chip" id="ux2FlipV">Flip V</button><button class="ux2-chip" id="ux2Duplicate">Duplicate</button><button class="ux2-chip" id="ux2Delete">Delete</button><button class="ux2-chip" id="ux2Front">Bring front</button><button class="ux2-chip" id="ux2Back">Send back</button><button class="ux2-chip" id="ux2Snap">Snap</button></div>`;
       }else{
@@ -247,6 +249,14 @@
       if($('ux2AddSelection'))$('ux2AddSelection').addEventListener('click',e=>{const active=selectionApi?.toggleAddMode();e.currentTarget.classList.toggle('active',!!active)});
       if($('ux2SelectAll'))$('ux2SelectAll').addEventListener('click',()=>selectionApi?.selectAll());
       if($('ux2ClearSelection'))$('ux2ClearSelection').addEventListener('click',()=>selectionApi?.clear());
+      if($('ux2NudgeStep'))$('ux2NudgeStep').addEventListener('change',e=>{
+        const step=Number(e.target.value);if([1,10,25,50,100,250].includes(step))selectedNudgeStep=step;
+      });
+      context.querySelectorAll('[data-ux2-nudge]').forEach(button=>button.addEventListener('click',()=>{
+        const axis=button.dataset.ux2Nudge;
+        const delta={left:[-selectedNudgeStep,0],right:[selectedNudgeStep,0],up:[0,-selectedNudgeStep],down:[0,selectedNudgeStep]}[axis];
+        if(delta)selectionApi?.nudge(...delta);
+      }));
       if($('ux2Group'))$('ux2Group').addEventListener('click',()=>selectionApi?.group());
       if($('ux2Ungroup'))$('ux2Ungroup').addEventListener('click',()=>selectionApi?.ungroup());
       if($('ux2FlipH'))$('ux2FlipH').addEventListener('click',()=>selectionApi?.flipHorizontal());
