@@ -1582,7 +1582,7 @@
           <div class="mini"><strong>${typeName}</strong> · ${escapeHtml(layer?.name||"Drawing")}</div>
           <p class="help">Drag the mark to move it, use the curved-arrow handle to rotate, or a corner dot to resize. The original stroke points remain intact for seamless wrapping.</p>
         </div>
-        <div class="field"><label for="selScale">Resize <span id="selScaleLabel">${pct}%</span></label><input id="selScale" type="range" min="1" max="600" value="${clamp(pct,1,600)}"></div>
+        <div class="field"><label for="selScale">Resize <span id="selScaleLabel">${pct}%</span></label><input id="selScale" type="range" min="1" max="600" step="0.1" value="${clamp(pct,1,600)}"></div>
         <div class="field"><label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label><input id="selRot" type="range" min="-180" max="180" value="${clamp(deg,-180,180)}"></div>
         <div class="field"><label for="selOpacity">Opacity <span id="selOpacityLabel">${Math.round((mark.opacity??1)*100)}%</span></label><input id="selOpacity" type="range" min="5" max="100" value="${Math.round((mark.opacity??1)*100)}"></div>
         <div class="btns"><button id="duplicateSel" class="btn">Duplicate</button><button id="deleteSel" class="btn danger">Delete</button><button id="frontSel" class="btn">Bring front</button><button id="backSel" class="btn">Send back</button></div>`;
@@ -1607,7 +1607,7 @@
       </div>
       <div class="field">
         <label for="selScale">Resize · drag a corner or use slider <span id="selScaleLabel">${pct}%</span></label>
-        <input id="selScale" type="range" min="1" max="600" value="${clamp(Math.round(item.scale*100),1,600)}">
+        <input id="selScale" type="range" min="1" max="600" step="0.1" value="${clamp(Math.round(item.scale*1000)/10,1,600)}">
       </div>
       <div class="field">
         <label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label>
