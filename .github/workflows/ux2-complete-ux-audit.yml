@@ -2,7 +2,7 @@ name: UX2 complete UX audit
 
 on:
   push:
-    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1]
+    branches: [feature/canvas-first-ux-v2, feature/advanced-editing-v1, feature/manual-motif-scale-20261026]
     paths:
       - index.html
       - assets/**
