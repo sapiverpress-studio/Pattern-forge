@@ -782,6 +782,29 @@ try{
 
     await page.locator('#ux2Group').click();
     await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='true');
+    assert(await page.locator('#selectedPanel').getAttribute('data-selection-add-mode')==='false','Grouping left additive-selection on, preventing a reliable grouped drag');
+    assert(await visible(page,'#ux2NudgeStep'),'Grouped selection nudge-step picker missing');
+    const beforeNudge=await page.evaluate(()=>({
+      items:window.PatternForgeEtsyBridge.state.items.map(item=>({id:item.id,x:item.x,y:item.y})),
+      marks:window.PatternForgeEtsyBridge.state.marks.map(mark=>({id:mark.id,x:Number(mark.transformX)||0,y:Number(mark.transformY)||0}))
+    }));
+    await page.locator('#ux2NudgeStep').selectOption('25');
+    await page.locator('[data-ux2-nudge="right"]').click();
+    const afterNudge=await page.evaluate(()=>({
+      items:window.PatternForgeEtsyBridge.state.items.map(item=>({id:item.id,x:item.x,y:item.y})),
+      marks:window.PatternForgeEtsyBridge.state.marks.map(mark=>({id:mark.id,x:Number(mark.transformX)||0,y:Number(mark.transformY)||0}))
+    }));
+    const wrapDistance=(a,b)=>Math.min(Math.abs(a-b),Math.abs(a-b+4000),Math.abs(a-b-4000));
+    assert(beforeNudge.items.length>0,'Nudge coverage requires placed images');
+    for(const original of beforeNudge.items){
+      const updated=afterNudge.items.find(item=>item.id===original.id);
+      assert(updated&&wrapDistance(updated.x,original.x+25)<.01,'Nudge failed to translate every grouped image equally: '+original.id);
+    }
+    for(const original of beforeNudge.marks){
+      const updated=afterNudge.marks.find(mark=>mark.id===original.id);
+      assert(updated&&Math.abs(updated.x-original.x-25)<.01,'Nudge failed to translate grouped drawn artwork: '+original.id);
+    }
+    assert(await page.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Nudging broke group selection state');
     assert(await visible(page,'#ux2Ungroup'),'Grouped selection did not expose Ungroup');
     assert(await visible(page,'#ux2GroupScale'),'Grouped selection scale control missing');
     assert(await visible(page,'#ux2GroupScaleNumber'),'Grouped selection percentage number field missing');
