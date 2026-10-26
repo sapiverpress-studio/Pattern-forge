@@ -750,9 +750,14 @@ try{
       await page.waitForTimeout(120);
     }
     assert(await visible(page,'#ux2SelScale'),'Selection scale control missing');
+    assert(await visible(page,'#ux2ScaleNumber'),'Exact motif scale number field missing');
+    await page.locator('#ux2ScaleNumber').fill('155.5');
+    await page.locator('#ux2ScaleNumber').press('Enter');
+    assert(Number(await page.locator('#ux2SelScale').inputValue())===155.5,'Typing an exact motif percentage did not update the slider');
     assert(await visible(page,'#ux2SelRot'),'Selection rotate control missing');
     assert(await visible(page,'#ux2SelOpacity'),'Selection opacity control missing');
     await page.locator('#ux2SelScale').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    assert(Number(await page.locator('#ux2ScaleNumber').inputValue())===120,'Slider did not update the exact motif percentage field');
     await page.locator('#ux2SelRot').evaluate(el=>{el.value='18';el.dispatchEvent(new Event('input',{bubbles:true}));});
     await page.locator('#ux2SelOpacity').evaluate(el=>{el.value='82';el.dispatchEvent(new Event('input',{bubbles:true}));});
     const before=await page.locator('#editorCanvas').evaluate(c=>c.toDataURL());
@@ -777,11 +782,39 @@ try{
 
     await page.locator('#ux2Group').click();
     await page.waitForFunction(()=>document.querySelector('#selectedPanel')?.dataset.selectionGrouped==='true');
+    assert(await page.locator('#selectedPanel').getAttribute('data-selection-add-mode')==='false','Grouping left additive-selection on, preventing a reliable grouped drag');
+    assert(await visible(page,'#ux2NudgeStep'),'Grouped selection nudge-step picker missing');
+    const beforeNudge=await page.evaluate(()=>({
+      items:window.PatternForgeEtsyBridge.state.items.map(item=>({id:item.id,x:item.x,y:item.y})),
+      marks:window.PatternForgeEtsyBridge.state.marks.map(mark=>({id:mark.id,x:Number(mark.transformX)||0,y:Number(mark.transformY)||0}))
+    }));
+    await page.locator('#ux2NudgeStep').selectOption('25');
+    await page.locator('[data-ux2-nudge="right"]').click();
+    const afterNudge=await page.evaluate(()=>({
+      items:window.PatternForgeEtsyBridge.state.items.map(item=>({id:item.id,x:item.x,y:item.y})),
+      marks:window.PatternForgeEtsyBridge.state.marks.map(mark=>({id:mark.id,x:Number(mark.transformX)||0,y:Number(mark.transformY)||0}))
+    }));
+    const wrapDistance=(a,b)=>Math.min(Math.abs(a-b),Math.abs(a-b+4000),Math.abs(a-b-4000));
+    assert(beforeNudge.items.length>0,'Nudge coverage requires placed images');
+    for(const original of beforeNudge.items){
+      const updated=afterNudge.items.find(item=>item.id===original.id);
+      assert(updated&&wrapDistance(updated.x,original.x+25)<.01,'Nudge failed to translate every grouped image equally: '+original.id);
+    }
+    for(const original of beforeNudge.marks){
+      const updated=afterNudge.marks.find(mark=>mark.id===original.id);
+      assert(updated&&Math.abs(updated.x-original.x-25)<.01,'Nudge failed to translate grouped drawn artwork: '+original.id);
+    }
+    assert(await page.locator('#selectedPanel').getAttribute('data-selection-grouped')==='true','Nudging broke group selection state');
     assert(await visible(page,'#ux2Ungroup'),'Grouped selection did not expose Ungroup');
     assert(await visible(page,'#ux2GroupScale'),'Grouped selection scale control missing');
+    assert(await visible(page,'#ux2GroupScaleNumber'),'Grouped selection percentage number field missing');
+    await page.locator('#ux2GroupScaleNumber').fill('135.5');
+    await page.locator('#ux2GroupScaleNumber').press('Enter');
+    assert(Number(await page.locator('#ux2GroupScale').inputValue())===135.5,'Typed group scale did not update the grouped slider');
     assert(await visible(page,'#ux2GroupRotate'),'Grouped selection rotate control missing');
     const beforeTransform=await page.locator('#editorCanvas').evaluate(el=>el.toDataURL());
     await page.locator('#ux2GroupScale').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    assert(Number(await page.locator('#ux2GroupScaleNumber').inputValue())===120,'Group slider did not update typed percentage field');
     await page.locator('#ux2GroupRotate').evaluate(el=>{el.value='25';el.dispatchEvent(new Event('input',{bubbles:true}));});
     assert(await visible(page,'#ux2FlipH')&&await visible(page,'#ux2FlipV'),'Group flip controls missing');
     await page.locator('#ux2FlipH').click();await page.locator('#ux2FlipV').click();

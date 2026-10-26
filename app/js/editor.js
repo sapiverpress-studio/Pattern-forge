@@ -689,6 +689,7 @@
   function groupSelectedArtwork(){
     const records=selectedArtwork();if(records.length<2){setStatus("Select two or more artwork items to make a group.");return;}
     saveHistory();const groupId=newGroupId();for(const record of records)record.artwork.groupId=groupId;
+    state.selectionAddMode=false; // Grouping exits additive selection so touching a member moves the whole group.
     setSelection(records.map(record=>record.artwork.id),state.selectedId);renderAll();setStatus("Grouped "+records.length+" artwork items.");
   }
   function ungroupSelectedArtwork(){
@@ -861,6 +862,25 @@
     renderAll();setStatus("Visible artwork centre positioned on the "+$("gridCount").value+"×"+$("gridCount").value+" grid.");
     return true;
   }
+  function nudgeSelectedArtwork(dx,dy){
+    const x=Number(dx),y=Number(dy),selected=selectedArtwork();
+    if(!selected.length||!Number.isFinite(x)||!Number.isFinite(y)||(!x&&!y))return false;
+    if(Math.abs(x)>TILE||Math.abs(y)>TILE)return false;
+    saveHistory();
+    for(const {kind,artwork} of selected){
+      if(kind==="item"){
+        const next={x:(Number(artwork.x)||0)+x,y:(Number(artwork.y)||0)+y};
+        const pos=isDoodleProject()?next:canonicalPoint(next.x,next.y);
+        artwork.x=pos.x;artwork.y=pos.y;delete artwork.scatterGenerated;
+      }else{
+        const current=markTransformValues(artwork);
+        artwork.transformX=current.x+x;artwork.transformY=current.y+y;
+      }
+    }
+    clearSnapGuides();renderAll();
+    setStatus("Nudged "+selected.length+" selected artwork item"+(selected.length===1?"":"s")+" together.");
+    return true;
+  }
   window.PatternForgeSelection={
     get count(){return selectionIds().length;},
     get addMode(){return !!state.selectionAddMode;},
@@ -879,6 +899,7 @@
     align:alignSelectedArtwork,
     gridCentre:()=>moveSelectedToGrid(),
     gridStep:(x,y)=>moveSelectedToGrid(Number(x)||0,Number(y)||0),
+    nudge:(x,y)=>nudgeSelectedArtwork(x,y),
     recolour:recolourSelectedMarks,
     replaceMatching:replaceMatchingMarkColour
   };
@@ -1582,7 +1603,7 @@
           <div class="mini"><strong>${typeName}</strong> · ${escapeHtml(layer?.name||"Drawing")}</div>
           <p class="help">Drag the mark to move it, use the curved-arrow handle to rotate, or a corner dot to resize. The original stroke points remain intact for seamless wrapping.</p>
         </div>
-        <div class="field"><label for="selScale">Resize <span id="selScaleLabel">${pct}%</span></label><input id="selScale" type="range" min="1" max="600" value="${clamp(pct,1,600)}"></div>
+        <div class="field"><label for="selScale">Resize <span id="selScaleLabel">${pct}%</span></label><input id="selScale" type="range" min="1" max="600" step="0.1" value="${clamp(pct,1,600)}"></div>
         <div class="field"><label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label><input id="selRot" type="range" min="-180" max="180" value="${clamp(deg,-180,180)}"></div>
         <div class="field"><label for="selOpacity">Opacity <span id="selOpacityLabel">${Math.round((mark.opacity??1)*100)}%</span></label><input id="selOpacity" type="range" min="5" max="100" value="${Math.round((mark.opacity??1)*100)}"></div>
         <div class="btns"><button id="duplicateSel" class="btn">Duplicate</button><button id="deleteSel" class="btn danger">Delete</button><button id="frontSel" class="btn">Bring front</button><button id="backSel" class="btn">Send back</button></div>`;
@@ -1607,7 +1628,7 @@
       </div>
       <div class="field">
         <label for="selScale">Resize · drag a corner or use slider <span id="selScaleLabel">${pct}%</span></label>
-        <input id="selScale" type="range" min="1" max="600" value="${clamp(Math.round(item.scale*100),1,600)}">
+        <input id="selScale" type="range" min="1" max="600" step="0.1" value="${clamp(Math.round(item.scale*1000)/10,1,600)}">
       </div>
       <div class="field">
         <label for="selRot">Rotation <span id="selRotLabel">${deg}°</span></label>
