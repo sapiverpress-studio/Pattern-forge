@@ -64,8 +64,8 @@ def create_fibres(paths,pitch,radius=.19,quality="preview",seed=3419):
     if quality not in ("preview","balanced","high"):
         raise ValueError("Invalid fibre quality")
     validate(paths,pitch,radius)
-    count={"preview":30,"balanced":60,"high":100}[quality]
-    fly_count={"preview":130,"balanced":300,"high":600}[quality]
+    count={"preview":44,"balanced":72,"high":120}[quality]
+    fly_count={"preview":240,"balanced":480,"high":850}[quality]
     stride={"preview":4,"balanced":3,"high":2}[quality]
     grouped={0:[],1:[],2:[],3:[]}
     flyaways=[]
@@ -81,10 +81,10 @@ def create_fibres(paths,pitch,radius=.19,quality="preview",seed=3419):
             # Distributed around whole surface, with small low-frequency bends
             # and mixed-length slow turns typical of soft lightly spun merino.
             phase=TAU*(strand+.25*rng.random())/count
-            winding=rng.uniform(.65,1.22)
-            wiggle=rng.uniform(.06,.15)
+            winding=rng.uniform(.25,.72)
+            wiggle=rng.uniform(.12,.34)
             salt=rng.uniform(0,TAU)
-            rad_scale=rng.uniform(.99,1.045)
+            rad_scale=rng.uniform(.965,1.025)
             pts=[]
             for i in idxs:
                 _,n,bi=frames[i]
@@ -102,12 +102,18 @@ def create_fibres(paths,pitch,radius=.19,quality="preview",seed=3419):
             angle=rng.uniform(0,TAU)
             radial=unit(plus(times(n,math.cos(angle)),
                              times(bi,math.sin(angle))))
-            start=plus(center,times(radial,radius*.98))
-            length=pitch*rng.uniform(.07,.20)
+            start=plus(center,times(radial,radius*1.008))
+            length=pitch*rng.uniform(.09,.29)
             along=pitch*rng.uniform(-.08,.08)
-            middle=plus(start,plus(times(radial,length*.35),
-                                   times(tangent,along*.48)))
+            sideways=unit(cross(tangent,radial))
+            bend=length*rng.uniform(-.20,.20)
+            q1=plus(start,plus(times(radial,length*.19),
+                               times(tangent,along*.22)))
+            q2=plus(start,plus(times(radial,length*.62),
+                               plus(times(tangent,along*.67),
+                                    times(sideways,bend))))
             tip=plus(start,plus(times(radial,length),
-                                times(tangent,along)))
-            flyaways.append((start,middle,tip))
+                                plus(times(tangent,along),
+                                     times(sideways,bend*.7))))
+            flyaways.append((start,q1,q2,tip))
     return grouped,flyaways
