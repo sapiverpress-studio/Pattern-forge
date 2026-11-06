@@ -40,9 +40,6 @@ jobs:
         with:
           name: knit-visual-qa
           path: |
-            knit-preview-closeup.png
-            knit-preview-repeat.png
-            knit-preview-cable.png
-            knit-preview-fairisle.png
-            knit/textures/*.jpg
+            knit-preview-*.png
+            knit/textures/*.png
           if-no-files-found: ignore
