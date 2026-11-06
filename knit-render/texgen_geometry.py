@@ -91,10 +91,18 @@ def build(wales=8,courses=8,course_overlap=0.27):
                     # are tucked *behind* their neighbours, not drawn as
                     # solid horizontal bars across the knitted fabric.
                     crossover_z = .40*math.sin(math.pi*local_y)-.18
+                    # Gentle reproducible hand-knit variation. The shared
+                    # stitch endpoint stays exact, so the course never breaks.
+                    if k in (0,len(points)-1):
+                        jx=jy=jz=0.
+                    else:
+                        jx=.014*math.sin(row*1.73+col*2.17+k*.61)
+                        jy=.018*math.sin(row*2.11+col*1.39+k*.44)
+                        jz=.014*math.cos(row*1.41+col*1.87+k*.57)
                     course.append([
-                        p[0]+col*dx,
-                        p[1]+row*dy*(1-course_overlap),
-                        p[2]+crossover_z
+                        p[0]+col*dx+jx,
+                        p[1]+row*dy*(1-course_overlap)+jy,
+                        p[2]+crossover_z+jz
                     ])
             result.append(course)
         diagnostics.append({"yarn":idx,"unit_nodes":len(points),
