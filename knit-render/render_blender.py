@@ -209,7 +209,10 @@ def main():
     )
     if scene.render.engine=="CYCLES":
         scene.cycles.samples=args.samples
-        scene.cycles.use_denoising=True
+        # Ubuntu Blender builds can omit OpenImageDenoise; never depend on it.
+        scene.cycles.use_denoising=False
+        for layer in scene.view_layers:
+            layer.cycles.use_denoising=False
         scene.cycles.device="CPU"
     else:
         if hasattr(scene,"eevee") and hasattr(scene.eevee,"taa_render_samples"):
