@@ -18,6 +18,32 @@ try{
   await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(180);
   assert.notEqual(await digest(),before,'changing yarn/style changes fabric pixels');
+  const seams=await page.evaluate(async()=>{
+    const {renderKnit,STYLES,TILE_SIZE}=await import('/knit/engine.mjs');
+    const result=[];
+    for(const style of STYLES){
+      const tile=document.createElement('canvas');
+      renderKnit(tile,{style,gauge:'medium',yarn:'#d7bfa2',contrast:'#9b403b',seed:7});
+      const cx=tile.getContext('2d',{willReadFrequently:true}),pixels=cx.getImageData(0,0,TILE_SIZE,TILE_SIZE).data;
+      let horiz=0,vertical=0;
+      for(let i=0;i<TILE_SIZE;i++){
+        for(let k=0;k<3;k++){
+          horiz+=Math.abs(pixels[(i*TILE_SIZE)*4+k]-pixels[(i*TILE_SIZE+TILE_SIZE-1)*4+k]);
+          vertical+=Math.abs(pixels[i*4+k]-pixels[((TILE_SIZE-1)*TILE_SIZE+i)*4+k]);
+        }
+      }
+      if(pixels[3]!==255)throw new Error('Knitted surface must be opaque');
+      const repeat=document.createElement('canvas');repeat.width=repeat.height=TILE_SIZE*2;
+      const rctx=repeat.getContext('2d',{willReadFrequently:true});
+      rctx.fillStyle=rctx.createPattern(tile,'repeat');rctx.fillRect(0,0,repeat.width,repeat.height);
+      const a=rctx.getImageData(137,211,1,1).data,b=rctx.getImageData(1137,1211,1,1).data;
+      if(!a.every((v,i)=>v===b[i]))throw new Error('Repeat is not pixel-identical');
+      result.push({style,horizontalDelta:horiz/(TILE_SIZE*3),verticalDelta:vertical/(TILE_SIZE*3)});
+    }
+    return result;
+  });
+  assert(seams.every(s=>s.horizontalDelta<15&&s.verticalDelta<15),'tile border continuity: '+JSON.stringify(seams));
+  console.log('Stitch seam checks:',seams);
   await page.locator('#singleView').click();
   assert.equal(await page.locator('#singleView').getAttribute('aria-pressed'),'true');
   await page.locator('#repeatView').click();
