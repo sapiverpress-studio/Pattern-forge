@@ -1,4 +1,4 @@
-name: Deploy one-time knitted-wool preview to separate Netlify site
+name: Prepare one-time verified knit preview assets
 on:
   push:
     branches:
@@ -7,10 +7,10 @@ on:
       - .github/workflows/knit-preview-deploy-once.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   actions: read
 concurrency:
-  group: sapiver-knit-hybrid-preview-deploy
+  group: sapiver-knit-hybrid-preview-assets
   cancel-in-progress: false
 jobs:
   publish-preview:
@@ -68,23 +68,14 @@ jobs:
           print('PASS: 720x720 PNG with 300 DPI, '+str(len(image))+' bytes')
           PY
           test -f knit-preview/index.html
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Publish ONLY to separate preview Netlify site
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      - name: Save validated preview asset to this isolated branch
         run: |
           set -euo pipefail
-          test -n "$NETLIFY_AUTH_TOKEN"
-          npx --yes netlify-cli@latest deploy \
-            --dir knit-preview \
-            --site "$NETLIFY_SITE_ID" \
-            --auth "$NETLIFY_AUTH_TOKEN" \
-            --prod --json > /tmp/knit-preview-deploy.json
-          python3 - <<'PY'
-          import json
-          d=json.load(open('/tmp/knit-preview-deploy.json'))
-          print('Deployed preview site:',d.get('url') or d.get('deploy_url'))
-          print('Deploy id:',d.get('deploy_id'))
-          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knit-preview/assets/knitted-wool-720.png knit-preview/build.json
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "assets(knit-preview): store validated Blender sample for site preview [skip ci]"
+          git push origin HEAD:preview/knit-hybrid-mobile-20261106
+          echo "Validated preview image committed; ready to merge only static viewer."
