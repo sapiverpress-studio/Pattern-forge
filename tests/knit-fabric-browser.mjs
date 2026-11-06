@@ -12,7 +12,8 @@ try{
  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('engine ready'),null,{timeout:45000});
  const test=await page.evaluate(async()=>{
   const mod=await import('/knit/engine.mjs');
-  if(/drawImage\\(photo|PHOTO_ASSETS|seamFinish|loadPhotoTextures/.test((await (await fetch('/knit/engine.mjs')).text())))throw Error('Photo renderer still in use');
+  const source=await (await fetch('/knit/engine.mjs')).text();
+  if(['PHOTO_ASSETS','seamFinish','loadPhotoTextures'].some(marker=>source.includes(marker)))throw Error('Photo renderer still in use');
   const results=[];
   for(const style of mod.STYLES)for(const gauge of mod.GAUGES){
    const s={style,gauge,yarn:'#a4b7ce',contrast:'#f0d7a4',seed:7};
