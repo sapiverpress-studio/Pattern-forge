@@ -17,9 +17,9 @@ class FibreTests(unittest.TestCase):
         b,fly_again=create_fibres(base,1.0,.2,"preview",seed=37)
         self.assertEqual(a,b)
         self.assertEqual(fly,fly_again)
-        self.assertEqual(sum(map(len,a.values())),len(base)*30)
-        self.assertEqual(len(fly),len(base)*130)
-        self.assertEqual(len(fly[0]),3)
+        self.assertEqual(sum(map(len,a.values())),len(base)*44)
+        self.assertEqual(len(fly),len(base)*240)
+        self.assertEqual(len(fly[0]),4)
         self.assertTrue(all(math.isfinite(n) for group in a.values()
                             for strand in group for v in strand for n in v))
         self.assertTrue(all(math.isfinite(n) for strand in fly
@@ -38,7 +38,7 @@ class FibreTests(unittest.TestCase):
         grouped, hairs=create_fibres(yarn(2),1,.18)
         self.assertTrue(all(len(points)>5 for paths in grouped.values()
                             for points in paths))
-        self.assertTrue(all(len(h)==3 for h in hairs))
+        self.assertTrue(all(len(h)==4 for h in hairs))
 
 if __name__=="__main__":
     unittest.main()
