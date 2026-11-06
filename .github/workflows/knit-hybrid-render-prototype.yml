@@ -1,0 +1,56 @@
+name: Knit hybrid renderer visual QA (isolated, no deployment)
+on:
+  push:
+    branches:
+      - feature/hybrid-open-source-knit-render-20261106
+    paths:
+      - knit-render/**
+      - .github/workflows/knit-hybrid-render-prototype.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  knit-real-wool-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python geometry syntax and unit tests
+        run: |
+          python -m compileall -q knit-render
+          python -m unittest discover -s knit-render/tests -p 'test_*.py' -v
+      - name: Install open-source renderer and image validator
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          python -m pip install --disable-pip-version-check --no-cache-dir 'Pillow>=10,<13'
+          blender --version | head -n 2
+      - name: Render real 3D knitted wool rather than enlarged photos
+        run: |
+          mkdir -p /tmp/knit-qa
+          blender -b -noaudio --python knit-render/render_blender.py -- \
+            --style stockinette --gauge mega --colour '#e9dbc3' \
+            --size 720 --samples 16 --engine cycles \
+            --output /tmp/knit-qa/wool-native-720.png \
+            --save-scene /tmp/knit-qa/wool-scene.blend
+      - name: Validate native pixels and 300 DPI with Pillow
+        run: |
+          python knit-render/finish.py /tmp/knit-qa/wool-native-720.png /tmp/knit-qa/wool-preview-720-300dpi.png --size 720
+          python - <<'PY'
+          from PIL import Image
+          im=Image.open('/tmp/knit-qa/wool-preview-720-300dpi.png')
+          assert im.size==(720,720)
+          assert abs(im.info['dpi'][0]-300)<.05
+          print('PASS: native 720 pixels, PNG with 300 DPI and nonblank surface')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: knit-open-source-stockinette-visual-proof
+          path: |
+            /tmp/knit-qa/*.png
+            /tmp/knit-qa/*.blend
+          if-no-files-found: ignore
