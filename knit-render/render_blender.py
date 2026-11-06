@@ -124,7 +124,7 @@ def wool_fibre_material(name,col):
     return m
 
 
-def curve(name,sections,radius,mat,bevel_steps=2):
+def curve(name,sections,radius,mat,bevel_steps=2,radius_variation=0.):
     """Multiple independent splines in one real 3D curve object."""
     data=bpy.data.curves.new(name,"CURVE")
     data.dimensions="3D"
@@ -136,8 +136,14 @@ def curve(name,sections,radius,mat,bevel_steps=2):
         if len(path)<2:continue
         spline=data.splines.new("POLY")
         spline.points.add(len(path)-1)
-        for pt,xyz in zip(spline.points,path):
+        for i,(pt,xyz) in enumerate(zip(spline.points,path)):
             pt.co=(xyz[0],xyz[1],xyz[2],1)
+            if radius_variation:
+                # Hand-spun roving varies in bulk gently along the *one*
+                # connected yarn, not between rectangular photo tiles.
+                pt.radius=max(.76,1+radius_variation*(
+                    .7*math.sin(i*.21+len(path)*.03)
+                    + .3*math.sin(i*.058+len(path)*.17)))
     obj=bpy.data.objects.new(name,data)
     bpy.context.collection.objects.link(obj)
     obj.data.materials.append(mat)
@@ -193,7 +199,7 @@ def main():
     # Outer wool is modelled as real keratin-like filaments with Hair BSDF,
     # not generic Principled shading on a smooth tube.
     fibre_tones=[.80,.88,.96,1.03]
-    dark_mat=material("shadowed fabric beneath loops",tuple(c*.72 for c in col))
+    dark_mat=material("shadowed fabric beneath loops",tuple(c*.84 for c in col))
 
     if args.texgen_json:
         with open(args.texgen_json,encoding="utf8") as datafile:
@@ -230,8 +236,8 @@ def main():
     if args.yarn_type=="roving":
         # Main roving provides dense volume. Thousands of fine physical
         # filaments make the surface scatter light like wool instead of latex.
-        core_radius=pitch*(.205 if args.texgen_json else .174)
-        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5)
+        core_radius=pitch*(.225 if args.texgen_json else .174)
+        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5,radius_variation=.09)
         fibre_groups,flyaways=create_fibres(
             paths,pitch,core_radius,quality=args.fibre_quality,seed=3419)
         for band,filaments in fibre_groups.items():
@@ -253,7 +259,7 @@ def main():
         curve("twist ply A",twisted[0],pitch*.096,main_mat)
         curve("twist ply B",twisted[1],pitch*.096,main_mat)
 
-    bpy.ops.mesh.primitive_plane_add(size=count*1.8,location=(0,0,-pitch*.28))
+    bpy.ops.mesh.primitive_plane_add(size=count*1.8,location=(0,0,-pitch*.23))
     backing=bpy.context.object
     backing.name="wool shadow recesses"
     backing.data.materials.append(dark_mat)
