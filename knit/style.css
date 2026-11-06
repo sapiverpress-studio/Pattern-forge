@@ -18,3 +18,4 @@ button:disabled{opacity:.6;cursor:progress}a:focus-visible,button:focus-visible,
 footer{font-size:.77rem;margin:22px 3px}
 @media(max-width:780px){.top{flex-wrap:wrap}.workspace{grid-template-columns:1fr}.card{padding:15px}.previewHeader{flex-wrap:wrap}.switches{width:100%}.switches button{flex:1}.shell{padding-top:17px}}
 @media(max-width:400px){.colourRow{gap:8px}.top h1{font-size:1.9rem}}
+[hidden]{display:none!important}
