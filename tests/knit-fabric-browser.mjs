@@ -15,7 +15,7 @@ try{
   const digest=()=>page.locator('#preview').evaluate(el=>el.toDataURL().slice(-150));
   const before=await digest();
   await page.locator('#knitStyle').selectOption('fairisle');
-  await page.locator('#yarn').fill('#345678');
+  await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(180);
   assert.notEqual(await digest(),before,'changing yarn/style changes fabric pixels');
   await page.locator('#singleView').click();
