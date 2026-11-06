@@ -33,7 +33,7 @@ jobs:
           mkdir -p /tmp/knit-qa
           blender -b -noaudio --python-exit-code 5 --python knit-render/render_blender.py -- \
             --style stockinette --gauge mega --colour '#e9dbc3' \
-            --size 720 --samples 16 --engine cycles \
+            --size 720 --samples 48 --engine cycles \
             --output /tmp/knit-qa/wool-native-720.png \
             --save-scene /tmp/knit-qa/wool-scene.blend
       - name: Validate native pixels and 300 DPI with Pillow
