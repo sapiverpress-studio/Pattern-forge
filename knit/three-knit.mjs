@@ -40,13 +40,14 @@ async function makeBumpTexture(){
  for(let i=0;i<raw.data.length;i+=4){
   const v=(raw.data[i]+raw.data[i+1]+raw.data[i+2])/3;
   const b=(smooth.data[i]+smooth.data[i+1]+smooth.data[i+2])/3;
-  const f=Math.max(0,Math.min(255,128+(v-b)*2.4));
+  const f=Math.max(0,Math.min(255,228+(v-b)*1.25));
   raw.data[i]=raw.data[i+1]=raw.data[i+2]=f;raw.data[i+3]=255;
  }
  ctx.putImageData(raw,0,0);
  const texture=new THREE.CanvasTexture(source);
  texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
- texture.repeat.set(8,5);
+ texture.repeat.set(9,5);
+ texture.anisotropy=8;
  return texture;
 }
 function mergeGeometries(parts){
@@ -118,7 +119,7 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  for(const [hex,parts] of geos){
   if(!parts.length)continue;
   const geometry=mergeGeometries(parts);
-  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.16});
+  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.97,metalness:0,map:bump,bumpMap:bump,bumpScale:.26});
   const mesh=new THREE.Mesh(geometry,material);
   mesh.castShadow=mesh.receiveShadow=true;scene.add(mesh);
   const strands=fibres.get(hex);
