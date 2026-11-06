@@ -3,7 +3,7 @@
 <h1>True 3D yarn geometry preview</h1><p>Development only. Not part of the live site. MIT Three.js + MIT plain-knit yarn centreline.</p>
 <div class="controls"><label>Style <select id="style"><option value="stockinette">Stockinette</option><option value="rib">Rib</option><option value="seed">Seed</option><option value="cable">Cable</option><option value="fairisle">Fair Isle</option></select></label>
 <label>Size <select id="gauge"><option value="superchunky">Super Chunky</option><option value="chunky">Chunky</option><option value="medium">Medium</option><option value="fine">Fine</option></select></label>
-<label>Face <select id="side"><option value="front">Front</option><option value="back">Back</option></select></label><label>Main <input type="color" id="main" value="#e2d2b7"></label><label>Contrast <input type="color" id="contrast" value="#9b403b"></label><button id="update" type="button">Render</button></div>
+<label>Face <select id="side"><option value="back" selected>Knitted face</option><option value="front">Reverse face</option></select></label><label>Main <input type="color" id="main" value="#e2d2b7"></label><label>Contrast <input type="color" id="contrast" value="#9b403b"></label><button id="update" type="button">Render</button></div>
 <p id="status" role="status">Ready to render</p>
 <canvas id="view" width="720" height="720"></canvas><h2>3 × 3 seam preview</h2><canvas id="repeat" width="720" height="720"></canvas></main>
 <script type="module">
