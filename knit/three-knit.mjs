@@ -22,20 +22,31 @@ function point(style,type,row,col,t){
  }
  return new THREE.Vector3(x,y,z);
 }
-function makeBumpTexture(){
- const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
- const ctx=canvas.getContext('2d'),data=ctx.createImageData(256,256),px=data.data;
- for(let y=0;y<256;y++)for(let x=0;x<256;x++){
-  const phase=x*.21+y*.35+.7*Math.sin(x*.031+y*.06);
-  const ripple=Math.sin(phase)*18+Math.sin(phase*2.4)*8;
-  const random=((Math.imul(x+127,73856093)^Math.imul(y+211,19349663))>>>8)%19-9;
-  const v=Math.round(clamp(128+ripple+random,0,255)),i=(y*256+x)*4;
-  px[i]=px[i+1]=px[i+2]=v;px[i+3]=255;
+async function makeBumpTexture(){
+ // Preserve actual wool micro-fibres, not the macro knitted V shapes from the source.
+ // Bundled CC0 micro-material. Only affects surface roughness/shading of 3D yarn tubes.
+ const image=await new Promise((resolve,reject)=>{
+  const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('CC0 wool fibre source missing'));
+  img.src='/knit/textures/grey-chunky-knit.jpg';
+ });
+ const size=512,source=document.createElement('canvas');source.width=source.height=size;
+ const ctx=source.getContext('2d',{willReadFrequently:true});
+ ctx.drawImage(image,0,0,size,size);
+ const raw=ctx.getImageData(0,0,size,size);
+ const blurCanvas=document.createElement('canvas');blurCanvas.width=blurCanvas.height=size;
+ const bc=blurCanvas.getContext('2d',{willReadFrequently:true});
+ bc.filter='blur(12px)';bc.drawImage(source,0,0);
+ const smooth=bc.getImageData(0,0,size,size);
+ for(let i=0;i<raw.data.length;i+=4){
+  const v=(raw.data[i]+raw.data[i+1]+raw.data[i+2])/3;
+  const b=(smooth.data[i]+smooth.data[i+1]+smooth.data[i+2])/3;
+  const f=Math.max(0,Math.min(255,128+(v-b)*2.4));
+  raw.data[i]=raw.data[i+1]=raw.data[i+2]=f;raw.data[i+3]=255;
  }
- ctx.putImageData(data,0,0);
- const texture=new THREE.CanvasTexture(canvas);
+ ctx.putImageData(raw,0,0);
+ const texture=new THREE.CanvasTexture(source);
  texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
- texture.repeat.set(7,3);
+ texture.repeat.set(8,5);
  return texture;
 }
 function mergeGeometries(parts){
@@ -74,7 +85,7 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  Object.assign(key.shadow.camera,{left:-n*.9,right:n*.9,top:n*.9,bottom:-n*.9,near:.5,far:70});
  key.shadow.bias=-0.00008;key.shadow.radius=3;scene.add(key);
  const fill=new THREE.DirectionalLight(0xc1ddff,.95);fill.position.set(n*1.5,-n*.4,front?n*.7:-n*.7);scene.add(fill);
- const bump=makeBumpTexture();
+ const bump=await makeBumpTexture();
  const geos=new Map([[main,[]],[contrast,[]]]);
  const fibres=new Map([[main,[]],[contrast,[]]]);
  const segments=gauge==='fine'?16:gauge==='medium'?19:gauge==='chunky'?25:32;
@@ -107,7 +118,7 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  for(const [hex,parts] of geos){
   if(!parts.length)continue;
   const geometry=mergeGeometries(parts);
-  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.12});
+  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.16});
   const mesh=new THREE.Mesh(geometry,material);
   mesh.castShadow=mesh.receiveShadow=true;scene.add(mesh);
   const strands=fibres.get(hex);
