@@ -48,7 +48,9 @@ def row_centres(row, columns, pitch=1.0, margin=1):
     if columns < 2 or pitch <= 0 or margin < 0:
         raise ValueError("Invalid knit geometry parameters")
     origin_x = -(columns * pitch) / 2
-    origin_y = row * pitch
+    # Knitted courses physically overlap: the next row passes through the
+    # preceding loop shoulders rather than leaving a disconnected V grid.
+    origin_y = row * pitch * .70
     ctrl = []
     for col in range(-margin, columns + margin):
         ox = origin_x + (col + .5) * pitch
