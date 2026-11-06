@@ -1,3 +1,11 @@
+## 6 November 2026 — Photographic cosy knitted fabric LIVE
+
+**Published:** PR [#16](https://github.com/sapiverpress-studio/Pattern-forge/pull/16) squash-merged to main as `5adcfbeb12c2f86f6792c9f990d7d61cf984c303`. Netlify site `sapiver-pattern-forge`, deploy `6aed9b2936fc8e982250d2d6`, state **ready**, published **2026-11-06T09:17:37Z**, commit exactly `5adcfbeb12c2f86f6792c9f990d7d61cf984c303`. Live location: https://sapiver-pattern-forge.netlify.app/knit/.
+
+**What changed:** Only standalone `knit/` visual renderer, controls and bundled photo texture assets, knit browser tests, feature workflow and this ledger. New Super Chunky gauge and close-up preview; photo-based shading and wool fibres are a closer visual match than the previous detached glyphs. Existing Pattern and Doodle editor code remains untouched. CC0 texture sources listed at `knit/textures/SOURCES.md`.
+
+**Evidence and limitations:** Independent Chromium mobile-viewport run [42193097851](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42193097851) passed: PNG dimensions/metadata, five-style render test, continuity and screenshot capture. Visual close-up/cable images inspected; the knitted photographic result is materially improved, though Fair Isle colouring remains stylistic/blocky, not fully photorealistic. Netlify source and status verified; live interactive Android-device test not performed. This generates printed bitmap fabric textures, not knitting instructions, PES or DST.
+
 ## 6 November 2026 — Photographic yarn texture revision (DEVELOPMENT / NOT LIVE)
 
 User screenshot showed procedural V glyphs; follow-up visual QA of first revised tube renderer still appeared plastic. Do not release those illustrations. Changed isolated `/knit/` module to render **bundled CC0 photographic knitted-fabric textures** (original 2K textures: grey chunky, cream cable and rust-orange knitting), recoloured locally on canvas with square, continuous tiles; Super Chunky / Chunky / Medium / Fine change repeat frequency. App waits for local images before preview/export. Existing Pattern and Doodle remain unchanged. First-pass browser/visual evidence pending for this photographic approach. Exact licence sources: `knit/textures/SOURCES.md`.
