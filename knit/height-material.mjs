@@ -17,7 +17,7 @@ function rgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));}
 const chart=['...##...','..#..#..','.#....#.','#......#','#......#','.#....#.','..#..#..','...##...'];
 function count(gauge,style){
  const num={superchunky:2,chunky:4,medium:7,fine:12}[gauge]||2;
- if(style==='fairisle'){const cols=Math.max(8,Math.ceil(num/8)*8);return [cols,Math.round(cols*1.5)]}
+ if(style==='fairisle'){const map={superchunky:[8,8],chunky:[16,24],medium:[24,32],fine:[32,48]};return map[gauge]||[8,8]}
  return [num,Math.round(num*1.5)];
 }
 function imageArray(image,cols,rows){
