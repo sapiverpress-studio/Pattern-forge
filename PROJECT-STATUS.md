@@ -1,3 +1,7 @@
+## 6 November 2026 — Knit photo-composite refinement (DEVELOPMENT; QA PENDING)
+
+Initial candidate dedicated rib and seed procedural tiles were visually rejected (flat stripes and repeated geometric bumps, not realistic wool). Replaced with an alternative based on existing **CC0 photographed knitted wool**, preserving texture detail: purl-like shaded fibre mounds composited into 2×1 rib columns and checkerboard seed-style stitch cells; Fair Isle now follows V-loop yarn masks. No Pattern/Doodle changes. Still require separate browser, 3×3, visual, and 5000px export checks before release.
+
 ## 6 November 2026 — Knit structure correctness overhaul (DEVELOPMENT / NOT DEPLOYED)
 
 **User requirement:** All five knitting types must show genuinely knitted structure, not flat marks or relabelled textures. Built on separate branch `fix/authentic-knit-stitches-all-styles-20261106`. Changes limited to isolated `/knit/`, its assets, and independent browser checks.
