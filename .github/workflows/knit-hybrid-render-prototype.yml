@@ -26,14 +26,16 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
-          python -m pip install --disable-pip-version-check --no-cache-dir 'Pillow>=10,<13'
+          python -m pip install --disable-pip-version-check --no-cache-dir 'Pillow>=10,<13' 'pytexgen==1.2.1'
           blender --version | head -n 2
       - name: Render real 3D knitted wool rather than enlarged photos
         run: |
           mkdir -p /tmp/knit-qa
+          python knit-render/texgen_geometry.py --wales 8 --courses 8 --output /tmp/knit-qa/texgen-weft.json
           blender -b -noaudio --python-exit-code 5 --python knit-render/render_blender.py -- \
             --style stockinette --gauge mega --colour '#e9dbc3' \
             --size 720 --samples 48 --engine cycles \
+            --texgen-json /tmp/knit-qa/texgen-weft.json \
             --output /tmp/knit-qa/wool-native-720.png \
             --save-scene /tmp/knit-qa/wool-scene.blend
       - name: Validate native pixels and 300 DPI with Pillow
@@ -53,4 +55,5 @@ jobs:
           path: |
             /tmp/knit-qa/*.png
             /tmp/knit-qa/*.blend
+            /tmp/knit-qa/*.json
           if-no-files-found: ignore
