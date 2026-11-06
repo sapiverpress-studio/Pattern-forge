@@ -12,6 +12,7 @@ Run:
 No source photos, bitmap tiling, drawn V overlays, or upscale operations.
 """
 import argparse
+import json
 import math
 import os
 import random
@@ -37,6 +38,7 @@ def parse():
     p.add_argument("--save-scene",default="")
     p.add_argument("--roughness-map",default="",help="Optional PBR roughness image exported from open-source Material Maker")
     p.add_argument("--normal-map",default="",help="Optional PBR normal image exported from open-source Material Maker")
+    p.add_argument("--texgen-json",default="",help="Use specialist TexGen true weft-knit yarn courses instead of the handmade fallback")
     return p.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else [])
 
 def hexrgb(col):
@@ -184,7 +186,30 @@ def main():
     hair_mat=material("wispy merino fibres",tuple(min(1,c*1.09+.012) for c in col))
     dark_mat=material("shadowed fabric beneath loops",tuple(c*.72 for c in col))
 
-    paths=list(frame_geometry(count,count,pitch))
+    if args.texgen_json:
+        with open(args.texgen_json,encoding="utf8") as datafile:
+            data=json.load(datafile)
+        if data.get("format")!="sapiver-texgen-centrelines-v1" or data.get("structure")!="weft-knit":
+            raise ValueError("Incorrect TexGen geometry format")
+        source=data.get("paths",[])
+        if not source or len(source)>48 or any(len(p)<3 or len(p)>10000 for p in source):
+            raise ValueError("Invalid TexGen yarn course count/length")
+        if not all(len(p) >= 3 and len(p[0]) == 3 for p in source):
+            raise ValueError("TexGen geometry must be 3D yarn paths")
+        pts=[p for course in source for p in course]
+        if not all(len(v)==3 and all(math.isfinite(float(a)) for a in v) for v in pts):
+            raise ValueError("Invalid TexGen numeric yarn coordinates")
+        mins=[min(v[i] for v in pts) for i in range(3)]
+        maxes=[max(v[i] for v in pts) for i in range(3)]
+        extent=max(maxes[0]-mins[0], maxes[1]-mins[1])
+        if extent<.001:raise ValueError("Empty TexGen textile")
+        scale=(count*.91)/extent
+        pitch=scale
+        centre=[(mins[i]+maxes[i])/2 for i in range(3)]
+        paths=[[tuple((float(v[i])-centre[i])*scale for i in range(3))
+                for v in course] for course in source]
+    else:
+        paths=list(frame_geometry(count,count,pitch))
     if args.yarn_type=="roving":
         # Oversized blanket yarn is mostly an untwisted volume of soft merino.
         # A thick 3D body and independent wool hairs, never two rope-like plies.
