@@ -34,10 +34,17 @@ export function loadPhotoTextures(){
   }
   return loading;
 }
+function fairIsleStitch(row,col){
+  const r=mod(row,16),c=mod(col,16),dy=Math.abs(r-7.5),dx=Math.abs(c-7.5);
+  // 16 x 16 individual-stitch Nordic snowflake repeat, not large rectangular patches.
+  const axial=((dx===.5&&dy<=6.5)||(dy===.5&&dx<=6.5));
+  const arms=(dx===dy&&dx>=2.5&&dx<=5.5);
+  const hooks=((dx===2.5&&dy===5.5)||(dy===2.5&&dx===5.5));
+  const border=(r===0||r===15)&&(c%4===1);
+  return axial||arms||hooks||border;
+}
 export function selectedYarn(s,row,col){
-  if(s.style!=='fairisle')return s.yarn;
-  const pattern=['...##...','..#..#..','.#....#.','#..##..#','#..##..#','.#....#.','..#..#..','...##...'];
-  return pattern[mod(row,8)][mod(col,8)]==='#'?s.contrast:s.yarn;
+  return s.style==='fairisle'&&fairIsleStitch(row,col)?s.contrast:s.yarn;
 }
 function channel(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
 function finishSeams(ctx,N){
@@ -74,9 +81,11 @@ export function renderKnit(target,raw={}){
   const pixels=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=pixels.data;
   const main=channel(s.yarn),contrast=channel(s.contrast);
   const nativeLight=({stockinette:.55,rib:.55,seed:.40,cable:.73,fairisle:.55})[s.style];
-  const fairPattern=['...##...','..#..#..','.#....#.','#..##..#','#..##..#','.#....#.','..#..#..','...##...'];
+  // Assign a yarn colour to each knitted stitch. Slight row-wise slant follows the V loops.
   for(let y=0;y<TILE_SIZE;y++){
-    const row=mod(Math.floor((y-offsetY+TILE_SIZE)/unit*8),8);
+    const rowPos=mod(y-offsetY,TILE_SIZE)/unit*16;
+    const row=mod(Math.floor(rowPos),16);
+    const tilt=.33*Math.sin(2*Math.PI*(rowPos-Math.floor(rowPos)));
     for(let x=0;x<TILE_SIZE;x++){
       const i=(y*TILE_SIZE+x)*4;
       const luminosity=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
@@ -86,8 +95,8 @@ export function renderKnit(target,raw={}){
         const localX=mod(x-offsetX,unit)/unit;
         factor*=.87+.13*Math.cos(localX*12*Math.PI)**2;
       }
-      const col=mod(Math.floor((x-offsetX+TILE_SIZE)/unit*8),8);
-      const base=s.style==='fairisle'&&fairPattern[row][col]==='#'?contrast:main;
+      const col=mod(Math.floor(mod(x-offsetX,TILE_SIZE)/unit*16+tilt),16);
+      const base=s.style==='fairisle'&&fairIsleStitch(row,col)?contrast:main;
       d[i]=Math.min(255,Math.round(base[0]*factor));
       d[i+1]=Math.min(255,Math.round(base[1]*factor));
       d[i+2]=Math.min(255,Math.round(base[2]*factor));
