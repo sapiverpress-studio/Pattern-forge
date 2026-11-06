@@ -5,6 +5,7 @@ on:
       - feature/knitted-fabric-standalone-20261106
       - fix/realistic-cosy-knitting-20261106
       - fix/authentic-knit-stitches-all-styles-20261106
+      - fix/geometry-knit-without-square-tiles-20261106
     paths:
       - knit/**
       - index.html
@@ -40,6 +41,6 @@ jobs:
         with:
           name: knit-visual-qa
           path: |
-            knit-preview-*.png
+            knit-v4-*.png
             knit/textures/*.png
           if-no-files-found: ignore

@@ -1,0 +1,34 @@
+name: Knit height-map visual QA
+on:
+  push:
+    branches:
+      - fix/geometry-knit-without-square-tiles-20261106
+    paths:
+      - knit/height-material.mjs
+      - knit/preview-height.html
+      - tests/height-preview-qa.mjs
+      - .github/workflows/knit-height-qa.yml
+permissions:
+  contents: read
+jobs:
+  height:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check knit/height-material.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/height-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/height-http.log; exit 1
+      - run: node tests/height-preview-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yarn-height-visual-qa
+          path: height-*.png
+          if-no-files-found: ignore

@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D Knitted yarn material comparison</title>
+<style>body{margin:0;background:#eef1f4;color:#172535;font:16px system-ui;padding:16px}main{max-width:950px;margin:auto}h1{font-size:1.5rem}label{margin-right:10px}select,input{padding:7px}canvas{max-width:100%;height:auto;background:#eee;border-radius:8px}#view{width:min(100%,700px)}#repeat{width:min(100%,360px)}.controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}</style></head><body><main>
+<h1>True 3D yarn geometry preview</h1><p>Development only. Not part of the live site. MIT Three.js + MIT plain-knit yarn centreline.</p>
+<div class="controls"><label>Style <select id="style"><option value="stockinette">Stockinette</option><option value="rib">Rib</option><option value="seed">Seed</option><option value="cable">Cable</option><option value="fairisle">Fair Isle</option></select></label>
+<label>Size <select id="gauge"><option value="superchunky">Super Chunky</option><option value="chunky">Chunky</option><option value="medium">Medium</option><option value="fine">Fine</option></select></label>
+<label>Face <select id="side"><option value="back" selected>Knitted face</option><option value="front">Reverse face</option></select></label><label>Main <input type="color" id="main" value="#e2d2b7"></label><label>Contrast <input type="color" id="contrast" value="#9b403b"></label><button id="update" type="button">Render</button></div>
+<p id="status" role="status">Ready to render</p>
+<canvas id="view" width="720" height="720"></canvas><h2>3 × 3 seam preview</h2><canvas id="repeat" width="720" height="720"></canvas></main>
+<script type="module">
+import {render3d,cleanup} from './three-knit.mjs';
+const by=id=>document.getElementById(id);let active;
+async function draw(){
+ by('update').disabled=true;by('status').textContent='Rendering 3D yarn...';
+ try{const values={style:by('style').value,gauge:by('gauge').value,side:by('side').value,main:by('main').value,contrast:by('contrast').value};
+  if(active){cleanup(active);active=undefined;}
+  active=await render3d(by('view'),values);
+  const ctx=by('repeat').getContext('2d');ctx.clearRect(0,0,720,720);
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)ctx.drawImage(by('view'),c*240,r*240,240,240);
+  by('status').textContent='3D yarn rendered';
+ }catch(e){by('status').textContent='Renderer failed: '+e.message;console.error(e)}
+ finally{by('update').disabled=false;}
+}
+by('update').addEventListener('click',draw);
+draw();
+</script></body></html>

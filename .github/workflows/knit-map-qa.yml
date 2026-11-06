@@ -1,0 +1,19 @@
+name: Yarn map inspection
+on:
+  push:
+    branches:
+      - fix/geometry-knit-without-square-tiles-20261106
+    paths:
+      - .github/workflows/knit-map-qa.yml
+permissions:
+  contents: read
+jobs:
+  artifact:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yarn-map-review
+          path: knit/displacement/*.jpg
+          if-no-files-found: error

@@ -1,3 +1,7 @@
+## 6 November 2026 — TRUE STITCH GEOMETRY / KNITTING V4 (TEST BRANCH ONLY)
+User showed visible square boundaries and colourwork overlays. Previous photo-based approach could not fix this without distortion. New branch `fix/geometry-knit-without-square-tiles-20261106` replaces only `knit/engine.mjs` and corresponding standalone app messaging/tests; does not touch existing Pattern Forge editors. Each stitch now has its own knit/purl operation, a whole-yarn colour, winding Bezier yarn path, shaded tubular fibre simulation, and adjacent stitch connecting course strands. Cable columns follow an 8-row shift rhythm. Fair Isle chooses yarn colours from an 8×8 repeating chart. All coordinates and fibres repeat by periodic stitch index; no source photo or square tiling.
+**Status:** Branch development; final image QA, 3×3 seams, all five styles × four gauges and 5000px export must pass before release. Visual realism not yet accepted as matching user's knitted photographs. Revert available via previous main SHA `3c46bff6b729559dd1f2904d8392bf967738ac22`.
+
 ## 6 November 2026 — Five knitted-fabric style corrections LIVE
 
 **Release:** PR [#17](https://github.com/sapiverpress-studio/Pattern-forge/pull/17), squash-merged to main commit `6aaa2fe26f022d4f6860b1616b7884694a71febb`. Netlify project `sapiver-pattern-forge`, production deploy `6aeda690760cf69b53a862d4` **ready**, published `2026-11-06T10:06:15Z` from the exact matching commit. Live route: https://sapiver-pattern-forge.netlify.app/knit/.

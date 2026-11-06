@@ -1,0 +1,37 @@
+name: One-time pinned Three.js import
+on:
+  push:
+    branches:
+      - fix/geometry-knit-without-square-tiles-20261106
+    paths:
+      - .github/workflows/knit-three-import.yml
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          set -euo pipefail
+          npm pack three@0.187.0 --pack-destination /tmp > /tmp/three-name.txt
+          mkdir -p knit/vendor /tmp/three-pkg
+          tar -xzf "/tmp/$(cat /tmp/three-name.txt)" -C /tmp/three-pkg
+          cp /tmp/three-pkg/package/build/three.core.js knit/vendor/three.core.js
+          cp /tmp/three-pkg/package/build/three.module.js knit/vendor/three.module.js
+          cp /tmp/three-pkg/package/LICENSE knit/vendor/THREE-LICENSE.txt
+          test $(wc -c < knit/vendor/three.module.js) -gt 400000
+          test $(wc -c < knit/vendor/three.core.js) -gt 300000
+          grep -qi 'MIT License' knit/vendor/THREE-LICENSE.txt
+          echo 'three@0.187.0' > knit/vendor/VERSION.txt
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knit/vendor/
+          git diff --cached --quiet && exit 0
+          git commit -m "assets: vendor pinned MIT Three.js renderer for standalone knit QA"
+          git push origin HEAD:fix/geometry-knit-without-square-tiles-20261106
