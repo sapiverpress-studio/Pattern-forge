@@ -1,3 +1,13 @@
+## 6 November 2026 — Single close-up download + Super Mega Cosy Chunky LIVE
+
+**User authorised production deployment:** PR [#21](https://github.com/sapiverpress-studio/Pattern-forge/pull/21) transitioned from draft to ready and was squash-merged into main as `43d8d3d2150467256dc233574ec2d0a8ed36185f`. Production Netlify site `sapiver-pattern-forge`, deploy ID `6aee16eae97944e7f4640a22`, status **ready**, published **2026-11-06T18:05:45Z**, `commit_ref` exactly `43d8d3d2150467256dc233574ec2d0a8ed36185f`, context `production`, branch `main`, no deploy error. Live route: https://sapiver-pattern-forge.netlify.app/knit/. Netlify verification is direct via connected deploy API, not an independent physical-device browser or HTTPS content fetch.
+
+**Shipped:** PNG export creates a **single 5000×5000 image** from the material close-up instead of a 4×4 tile grid, retaining 300 DPI PNG pHYs; new `megachunky` gauge is a 1.7× enlarged source crop and one-tap cosy preset. Repeat preview remains for older gauges, disabled for the non-seamless Mega Chunky crop; existing Pattern Forge editor unchanged.
+
+**Pre-merge QA evidence:** Independent GitHub Actions [42265419768](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42265419768) and enhanced anti-grid test [42265833718](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42265833718) both passed, including five styles × five gauges, mobile-emulated browser, 5000px PNG and DPI metadata. Screenshot review supported the visual preview, but quality remains subjective.
+
+**Limits / next action:** Source photograph is approximately 1250px; the 5000px exported raster is enlarged and does not add genuine photographed detail. The Mega crop is not seamless. Any pre-existing square defect baked into original material remains possible. Live site cannot be independently fetched from this environment, and no real Android device QA was performed. Ask Jim to review the live close-up visually; if the underlying source is still square/blocky, repair material rather than merely repeating an export change. This documentation-only update uses `[skip netlify]` to avoid a redundant build.
+
 ## 6 November 2026 — Single close-up / Mega Chunky independent QA PASS; draft PR #21
 
 **Development branch:** `fix/knit-single-closeup-megachunky-20261106`, isolated changes in `knit/engine.mjs`, `knit/app.mjs`, `knit/index.html`, `tests/knit-fabric-browser.mjs`, independent knit workflow, status ledger. **PR:** [#21](https://github.com/sapiverpress-studio/Pattern-forge/pull/21) created as **DRAFT**, targeting main but NOT merged.
