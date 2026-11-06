@@ -7,6 +7,10 @@ on:
       - knit-render/**
       - .github/workflows/knit-hybrid-render-prototype.yml
   workflow_dispatch:
+# Cancel superseded branch renders to avoid wasting CPU build minutes.
+concurrency:
+  group: knit-hybrid-render-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
