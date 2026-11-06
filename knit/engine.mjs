@@ -12,7 +12,7 @@ export function normalize(raw={}){
     yarn:safeColour(raw.yarn,DEFAULTS.yarn),contrast:safeColour(raw.contrast,DEFAULTS.contrast),
     seed:Number.isInteger(Number(raw.seed))?Math.max(1,Math.min(9999,Number(raw.seed))):DEFAULTS.seed};
 }
-export const stitchCount=(settings)=>settings.style==='fairisle'?({fine:32,medium:24,chunky:16,superchunky:8})[settings.gauge]:STITCH_COUNTS[settings.gauge];
+export const stitchCount=(settings)=>(settings.style==='fairisle'||settings.style==='cable')?({fine:32,medium:24,chunky:16,superchunky:8})[settings.gauge]:STITCH_COUNTS[settings.gauge];
 function rgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));}
 function tone(h,f){return 'rgb('+rgb(h).map(n=>Math.round(Math.max(0,Math.min(255,f>=0?n+(255-n)*f:n*(1+f))))).join(',')+')';}
 function noise(a,b,c){let n=(Math.imul(a+1181,73856093)^Math.imul(b+2221,19349663)^Math.imul(c+731,83492791))|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;}
@@ -114,6 +114,29 @@ function braid(ctx,s,n,w){
     }
   }
 }
+function softenSeams(ctx,size){
+  // Symmetrical edge blend; the first/last texels are identical and adjacent
+  // pixels transition into the interior, preventing a rectangular repeat boundary.
+  const data=ctx.getImageData(0,0,size,size),a=data.data;
+  const width=18,channels=3;
+  for(let y=0;y<size;y++)for(let k=0;k<width;k++){
+    const factor=Math.pow(1-k/width,2)*.5;
+    for(let c=0;c<channels;c++){
+      const li=(y*size+k)*4+c,ri=(y*size+size-1-k)*4+c;
+      const v1=a[li],v2=a[ri];a[li]=Math.round(v1*(1-factor)+v2*factor);
+      a[ri]=Math.round(v2*(1-factor)+v1*factor);
+    }
+  }
+  for(let x=0;x<size;x++)for(let k=0;k<width;k++){
+    const factor=Math.pow(1-k/width,2)*.5;
+    for(let c=0;c<channels;c++){
+      const top=(k*size+x)*4+c,bottom=((size-1-k)*size+x)*4+c;
+      const v1=a[top],v2=a[bottom];a[top]=Math.round(v1*(1-factor)+v2*factor);
+      a[bottom]=Math.round(v2*(1-factor)+v1*factor);
+    }
+  }
+  ctx.putImageData(data,0,0);
+}
 export function renderKnit(canvas,raw={}){
   const s=normalize(raw),n=stitchCount(s),w=TILE_SIZE/n;
   canvas.width=canvas.height=TILE_SIZE;
@@ -124,6 +147,7 @@ export function renderKnit(canvas,raw={}){
   // Include two rows/columns beyond clipping, using periodic keys for exact continuous edges.
   for(let r=-2;r<n+2;r++)for(let c=-2;c<n+2;c++)stitch(ctx,c*w,r*w,w,s,r,c,n);
   if(s.style==='cable')braid(ctx,s,n,w);
+  softenSeams(ctx,TILE_SIZE);
   return canvas;
 }
 export function renderPreview(tile,canvas,repeat=false){
