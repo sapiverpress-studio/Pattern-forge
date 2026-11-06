@@ -13,6 +13,16 @@ try{
  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'),{timeout:30000});
  assert(await page.locator('#preview').evaluate(x=>x.width===720));
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Mobile overflow');
+ for(const style of ['stockinette','rib','seed','cable','fairisle']){
+   await page.locator('#knitStyle').selectOption(style);
+   await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'),null,{timeout:25000});
+   await page.locator('#singleView').click();
+   await page.locator('#preview').screenshot({path:'knit-v5-'+style+'.png'});
+   await page.locator('#repeatView').click();
+   await page.locator('#preview').screenshot({path:'knit-v5-'+style+'-repeat.png'});
+   if(style==='fairisle')assert(await page.locator('#navyWrap').isVisible());
+ }
+
  const {tileResults,seams}=await page.evaluate(async()=>{
    const m=await import('/knit/engine.mjs');
    await m.loadPhotoTextures();
@@ -34,15 +44,6 @@ try{
    return {tileResults:all.length,seams:all};
  });
  console.log('20 seam tests',tileResults,seams);
- for(const style of ['stockinette','rib','seed','cable','fairisle']){
-   await page.locator('#knitStyle').selectOption(style);
-   await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'),null,{timeout:25000});
-   await page.locator('#singleView').click();
-   await page.locator('#preview').screenshot({path:'knit-v5-'+style+'.png'});
-   await page.locator('#repeatView').click();
-   await page.locator('#preview').screenshot({path:'knit-v5-'+style+'-repeat.png'});
-   if(style==='fairisle')assert(await page.locator('#navyWrap').isVisible());
- }
  await page.locator('#knitStyle').selectOption('stockinette');
  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'));
  const before=await page.locator('#preview').evaluate(x=>x.toDataURL().slice(-250));
