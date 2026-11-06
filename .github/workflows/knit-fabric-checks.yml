@@ -41,4 +41,5 @@ jobs:
           path: |
             knit-preview-closeup.png
             knit-preview-repeat.png
+            knit-preview-cable.png
           if-no-files-found: ignore
