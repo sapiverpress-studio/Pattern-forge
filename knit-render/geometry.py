@@ -5,21 +5,22 @@ import math
 # Yarn traverses an entire row as one connected path. Adjacent loop endpoints
 # coincide, including outside the camera crop, so joins cannot expose a square.
 STOCKINETTE = (
-    (-0.50, 0.19, 0.02),
-    (-0.34, 0.38, 0.07),
-    (-0.24, 0.78, 0.15),
-    (-0.13, 0.96, 0.23),
-    (-0.03, 0.94, 0.20),
-    ( 0.05, 0.70, 0.05),
-    (-0.09, 0.35, 0.14),
-    ( 0.00, 0.09, 0.26),
-    ( 0.09, 0.35, 0.15),
-    (-0.05, 0.70, 0.05),
-    ( 0.03, 0.94, 0.20),
-    ( 0.13, 0.96, 0.23),
-    ( 0.24, 0.78, 0.15),
-    ( 0.34, 0.38, 0.07),
-    ( 0.50, 0.19, 0.02),
+    # A continuous yarn course climbs to a back-facing shoulder and drops
+    # through a front-facing U. Successive, overlapping rows interlock.
+    # Simpler physical loops avoid the dense knots of the first prototype.
+    (-0.50, 0.64, 0.01),
+    (-0.36, 0.75, 0.05),
+    (-0.27, 0.88, 0.09),
+    (-0.20, 0.85, 0.15),
+    (-0.19, 0.57, 0.20),
+    (-0.10, 0.30, 0.25),
+    ( 0.00, 0.13, 0.31),
+    ( 0.10, 0.30, 0.25),
+    ( 0.19, 0.57, 0.20),
+    ( 0.20, 0.85, 0.15),
+    ( 0.27, 0.88, 0.09),
+    ( 0.36, 0.75, 0.05),
+    ( 0.50, 0.64, 0.01),
 )
 
 def catmull_rom(points, subdivisions=5):
@@ -50,7 +51,7 @@ def row_centres(row, columns, pitch=1.0, margin=1):
     origin_x = -(columns * pitch) / 2
     # Knitted courses physically overlap: the next row passes through the
     # preceding loop shoulders rather than leaving a disconnected V grid.
-    origin_y = row * pitch * .70
+    origin_y = row * pitch * .60
     ctrl = []
     for col in range(-margin, columns + margin):
         ox = origin_x + (col + .5) * pitch
