@@ -1,0 +1,15 @@
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    blender python3 python3-venv python3-pip ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/sapiver
+COPY knit-service/requirements.txt /tmp/knit-requirements.txt
+RUN python3 -m venv /opt/venv && /opt/venv/bin/python -m pip install --no-cache-dir -r /tmp/knit-requirements.txt
+COPY knit-render/ /opt/sapiver/knit-render/
+COPY knit-service/ /opt/sapiver/knit-service/
+RUN useradd -m -u 10001 wool && mkdir -p /tmp/sapiver-knits && chown -R wool:wool /tmp/sapiver-knits /opt/sapiver
+USER wool
+ENV PATH="/opt/venv/bin:${PATH}" PORT=8080
+EXPOSE 8080
+CMD ["sh","-c","exec uvicorn server:app --app-dir /opt/sapiver/knit-service --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
