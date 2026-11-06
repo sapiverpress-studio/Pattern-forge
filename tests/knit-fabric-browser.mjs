@@ -20,6 +20,12 @@ try{
   await page.locator('#repeatView').click();
   await page.locator('#preview').screenshot({path:'knit-preview-repeat.png'});
   await page.locator('#singleView').click();
+  await page.locator('#knitStyle').selectOption('cable');
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Preview updated'));
+  await page.locator('#preview').screenshot({path:'knit-preview-cable.png'});
+  await page.locator('#knitStyle').selectOption('stockinette');
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Preview updated'));
+  await page.locator('#singleView').click();
   const before=await digest();
   await page.locator('#knitStyle').selectOption('fairisle');
   await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
