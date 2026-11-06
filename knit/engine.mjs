@@ -1,159 +1,121 @@
-// Style-authentic knit surface renderer v3: licensed fabric tiles + stitch-following colourwork.
-// All sources are bundled. The Pattern Forge general editor is never imported or modified.
-export const TILE_SIZE=1000,EXPORT_SIZE=5000;
-export const STITCH_COUNTS=Object.freeze({fine:30,medium:20,chunky:10,superchunky:6});
+// Sapiver Knitted Fabric v5.
+// Each style is made from a real-looking knitted-material source with colour
+// woven into the source artwork. There are no simulated V overlays or inner
+// photograph crops. Sources are periodic-plus-smooth processed, then bundled
+// locally in /knit/materials/. No remote image services at runtime.
+export const TILE_SIZE=1250, EXPORT_SIZE=5000;
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
-export const DEFAULTS=Object.freeze({style:'stockinette',gauge:'superchunky',yarn:'#e2d2b7',contrast:'#9b403b',seed:7});
-export const mod=(n,d)=>((n%d)+d)%d;
-const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
-export function normalize(raw={}){
- const colour=(x,def)=>/^#[0-9a-f]{6}$/i.test(x)?x:def;
- return {
-   style:STYLES.includes(raw.style)?raw.style:DEFAULTS.style,
-   gauge:Object.hasOwn(STITCH_COUNTS,raw.gauge)?raw.gauge:DEFAULTS.gauge,
-   yarn:colour(raw.yarn,DEFAULTS.yarn),contrast:colour(raw.contrast,DEFAULTS.contrast),
-   seed:Number.isInteger(Number(raw.seed))?clamp(Number(raw.seed),1,9999):DEFAULTS.seed
- };
-}
-export const stitchCount=s=>STITCH_COUNTS[s.gauge]??STITCH_COUNTS.superchunky;
-const PHOTO_ASSETS=Object.freeze({
- stockinette:'/knit/textures/grey-chunky-knit.jpg',
- rib:'/knit/textures/grey-chunky-knit.jpg',
- seed:'/knit/textures/grey-chunky-knit.jpg',
- cable:'/knit/textures/cream-cable-knit.jpg',
- fairisle:'/knit/textures/grey-chunky-knit.jpg'
+export const STITCH_COUNTS=Object.freeze({fine:32,medium:24,chunky:16,superchunky:8});
+export const STYLE_COLOURS=Object.freeze({
+  stockinette:['#729ac6','#ead7b4','#24344f'],
+  rib:['#ead2ae','#ad765b','#3c4349'],
+  seed:['#9cb396','#d7d2b2','#4d6254'],
+  cable:['#efdcb8','#c5a584','#56473d'],
+  fairisle:['#88312d','#ebd9b5','#19263d']
 });
-const PURL_ASSET='/knit/textures/rust-orange-knit.jpg';
-const CACHE=Object.create(null);
-let loading;
-export function loadPhotoTextures(){
- if(!loading){
-   loading=Promise.all([...new Set([...Object.values(PHOTO_ASSETS),PURL_ASSET])].map(src=>new Promise((resolve,reject)=>{
-     const img=new Image();
-     img.onload=()=>{if(!img.naturalWidth||!img.naturalHeight)return reject(Error('Empty knit source: '+src));CACHE[src]=img;resolve();}
-     img.onerror=()=>reject(Error('Missing knit source: '+src));
-     img.src=src;
-   })));
- }
- return loading;
+export const DEFAULTS=Object.freeze({style:'stockinette',gauge:'superchunky',
+  yarn:'#729ac6',contrast:'#ead7b4',navy:'#24344f',seed:7});
+const assetPaths=Object.freeze(Object.fromEntries(STYLES.map(s=>[s,'/knit/materials/'+s+'.png'])));
+const loaded=new Map(),pending=new Map();
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const validColour=(v,fallback)=>/^#[0-9a-f]{6}$/i.test(v)?v:fallback;
+const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const srgb=(r,g,b)=>.299*r+.587*g+.114*b;
+const smooth=(lo,hi,v)=>{const t=clamp((v-lo)/(hi-lo),0,1);return t*t*(3-2*t);};
+export function normalize(p={}){
+  const style=STYLES.includes(p.style)?p.style:DEFAULTS.style;
+  const base=STYLE_COLOURS[style];
+  return {style,gauge:Object.hasOwn(STITCH_COUNTS,p.gauge)?p.gauge:DEFAULTS.gauge,
+    yarn:validColour(p.yarn,base[0]),contrast:validColour(p.contrast,base[1]),
+    navy:validColour(p.navy,base[2]),seed:Number.isInteger(Number(p.seed))?
+      clamp(Number(p.seed),1,9999):7};
 }
-function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
-export function fairIsleStitch(row,col){
- // Stitch chart is 18×11, with symmetric Nordic diamonds kept off the tile edges.
- const r=mod(row,11),c=mod(col,18);
- return (Math.abs(c-4)+Math.abs(r-5)===3)||
-        (Math.abs(c-13)+Math.abs(r-5)===3);
+export function stylePalette(style){return STYLE_COLOURS[style]||STYLE_COLOURS.stockinette;}
+export const stitchCount=(s)=>STITCH_COUNTS[s.gauge]||STITCH_COUNTS.superchunky;
+function load(name){
+  if(loaded.has(name))return Promise.resolve(loaded.get(name));
+  if(pending.has(name))return pending.get(name);
+  const work=new Promise((resolve,reject)=>{
+    const img=new Image();img.decoding='async';
+    img.onload=()=>{if(img.naturalWidth<100||img.naturalHeight<100){
+      reject(Error('Empty material source for '+name));return;}
+      loaded.set(name,img);resolve(img);};
+    img.onerror=()=>reject(Error('Cannot load bundled knitted material: '+name));
+    img.src=assetPaths[name];
+  });
+  pending.set(name,work);return work;
 }
-export function selectedYarn(s,row,col){
- return s.style==='fairisle'&&fairIsleStitch(row,col)?s.contrast:s.yarn;
+export function loadPhotoTextures(){return Promise.all(STYLES.map(load));}
+export function loadStyle(style){return load(STYLES.includes(style)?style:'stockinette');}
+function baseMaterial(target,settings,count){
+  const photo=loaded.get(settings.style);
+  if(!photo)throw Error('This knitted style has not loaded yet.');
+  target.width=target.height=TILE_SIZE;
+  const ctx=target.getContext('2d',{alpha:false,willReadFrequently:true});
+  if(!ctx)throw Error('2D canvas unavailable.');
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  // Complete source tile, integer-scaled only. Never centre-crop any photograph.
+  const unit=TILE_SIZE/count;
+  for(let y=0;y<count;y++)for(let x=0;x<count;x++)
+    ctx.drawImage(photo,x*unit,y*unit,unit+.01,unit+.01);
+  return ctx;
 }
-export function fairIsleLoopMask(u,v){
- // Knit loop = two thick slanted wool legs meeting at the bottom.
- // Shade *only the photographed loop*, not a rectangle painted over fabric.
- const left=.12+.39*v,right=.88-.39*v;
- const dist=Math.min(Math.abs(u-left),Math.abs(u-right));
- const t=clamp((.245-dist)/(.245-.105),0,1);
- return t*t*(3-2*t);
-}
-function seamFinish(ctx,size,width){
- const pixel=ctx.getImageData(0,0,size,size),a=pixel.data,edge=width;
- // Equalize opposite edges with a smooth falloff, not a hard rectangular border.
- for(let y=0;y<size;y++)for(let k=0;k<edge;k++){
-   const t=.5*Math.pow(1-k/edge,2);
-   for(let ch=0;ch<3;ch++){
-     const i=(y*size+k)*4+ch,j=(y*size+size-k-1)*4+ch;
-     const l=a[i],r=a[j];a[i]=Math.round(l*(1-t)+r*t);a[j]=Math.round(r*(1-t)+l*t);
-   }
- }
- for(let x=0;x<size;x++)for(let k=0;k<edge;k++){
-   const t=.5*Math.pow(1-k/edge,2);
-   for(let ch=0;ch<3;ch++){
-     const i=(k*size+x)*4+ch,j=((size-k-1)*size+x)*4+ch;
-     const top=a[i],bottom=a[j];a[i]=Math.round(top*(1-t)+bottom*t);
-     a[j]=Math.round(bottom*(1-t)+top*t);
-   }
- }
- ctx.putImageData(pixel,0,0);
-}
-function purlCrop(gauge){
-  return ({superchunky:.27,chunky:.43,medium:.70,fine:1})[gauge];
-}
-// Draw the complete CC0 seamless source, never an arbitrary centre crop. Previously,
-// cropping a photo and repeating its raw rectangle caused the visible square blocks.
-function repeatInto(ctx,photo,count=1){
-  const N=TILE_SIZE,unit=N/count;
-  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  for(let r=0;r<count;r++)for(let c=0;c<count;c++)
-    ctx.drawImage(photo,c*unit,r*unit,unit+.03,unit+.03);
+function applyDye(ctx,s){
+  const frame=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=frame.data;
+  const newMain=rgb(s.yarn),newCream=rgb(s.contrast),newNavy=rgb(s.navy);
+  // Nominal luminance of each captured colour. Preserve the photographed
+  // yarn's lighting and fibres, not a rectangular graphic printed over it.
+  const nominal={stockinette:142,rib:204,seed:169,cable:212};
+  if(s.style!=='fairisle'){
+    const ref=nominal[s.style],lumTarget=srgb(...newMain);
+    const correction=clamp((lumTarget+12)/(ref+12),.35,2.1);
+    for(let i=0;i<d.length;i+=4){
+      const l=srgb(d[i],d[i+1],d[i+2]);
+      // Luminosity mapped across the *entire knitted material*, not per glyph.
+      const shade=clamp((l+18)/(ref+18),.24,1.64);
+      const adjustment=shade*correction;
+      for(let c=0;c<3;c++)d[i+c]=Math.round(clamp(
+        (newMain[c]*.94+ref*.06)*adjustment,0,255));
+      d[i+3]=255;
+    }
+  }else{
+    // Source photograph already depicts knitted-in colourwork. Recolour the
+    // photographed yarn itself by its existing red/cream/navy chromaticity.
+    // Never add newly drawn V symbols or block-colour masks.
+    const colours=[newMain,newCream,newNavy];
+    const targets=[65,205,31];
+    for(let i=0;i<d.length;i+=4){
+      const R=d[i],G=d[i+1],B=d[i+2],L=srgb(R,G,B);
+      const cream=smooth(97,159,L)*smooth(0,17,G-B+10);
+      const navy=(1-cream)*smooth(-10,11,B-R);
+      const weights=[(1-cream)-navy,cream,navy];
+      const out=[0,0,0];
+      for(let k=0;k<3;k++){
+        const shade=clamp((L+10)/(targets[k]+10),.43,1.50);
+        for(let c=0;c<3;c++)out[c]+=colours[k][c]*weights[k]*shade;
+      }
+      d[i]=Math.round(clamp(out[0],0,255));
+      d[i+1]=Math.round(clamp(out[1],0,255));
+      d[i+2]=Math.round(clamp(out[2],0,255));d[i+3]=255;
+    }
+  }
+  ctx.putImageData(frame,0,0);
 }
 export function renderKnit(target,raw={}){
- const s=normalize(raw),photo=CACHE[PHOTO_ASSETS[s.style]];
- if(!photo)throw Error('Knitted material has not loaded.');
- const hasPurl=s.style==='rib'||s.style==='seed';
- const purlPhoto=hasPurl?CACHE[PURL_ASSET]:null;
- if(hasPurl&&!purlPhoto)throw Error('Purl wool material has not loaded.');
- target.width=target.height=TILE_SIZE;
- const ctx=target.getContext('2d',{alpha:false,willReadFrequently:true});
- if(!ctx)throw Error('2D canvas unavailable.');
- const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge];
- const unit=TILE_SIZE/count;
- repeatInto(ctx,photo,count);
- const px=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=px.data;
- let purl;
- if(hasPurl){
-   const purlTile=document.createElement('canvas');
-   purlTile.width=purlTile.height=TILE_SIZE;
-   const pc=purlTile.getContext('2d',{alpha:false,willReadFrequently:true});
-   repeatInto(pc,purlPhoto,count);
-   purl=pc.getImageData(0,0,TILE_SIZE,TILE_SIZE).data;
-   purlTile.width=purlTile.height=0;
- }
- const main=rgb(s.yarn),contrast=rgb(s.contrast);
- // Photographic shading is retained in every option, including the purl stitch areas.
- const nativeLight=s.style==='cable'?.73:.49;
- for(let y=0;y<TILE_SIZE;y++){
-   const phaseY=y/unit,vy=phaseY%1;
-   const row=Math.floor(vy*11),sv=(vy*11)%1;
-   for(let x=0;x<TILE_SIZE;x++){
-     const i=(y*TILE_SIZE+x)*4;
-     const photoLum=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
-     const knitShade=clamp(Math.pow(Math.max(.14,photoLum/nativeLight),.89),.38,1.55);
-     const phaseX=x/unit,ux=phaseX%1;
-     const col=Math.floor(ux*18),su=(ux*18)%1;
-     let shade=knitShade;
-     if(hasPurl){
-       const purlLum=(purl[i]*.299+purl[i+1]*.587+purl[i+2]*.114)/255;
-       const purlShade=clamp(Math.pow(Math.max(.14,purlLum/.35),.89),.38,1.55);
-       let blend=0,relief=1;
-       if(s.style==='rib'){
-         const recessed=col%3===2;
-         if(recessed){
-           blend=.78*Math.pow(Math.sin(Math.PI*su),.3);
-           relief=.86+.06*Math.pow(Math.sin(Math.PI*su),2);
-         }else relief=1+.08*Math.pow(Math.cos((su-.5)*Math.PI),2);
-       }else if((row+col)%2===0){
-         blend=.98*Math.pow(Math.sin(Math.PI*su),.6)*Math.pow(Math.sin(Math.PI*sv),.6);
-       }
-       shade=((1-blend)*knitShade+blend*purlShade)*relief;
-     }
-     let accent=0;
-     if(s.style==='fairisle'&&fairIsleStitch(row,col))
-       accent=fairIsleLoopMask(su,sv);
-     for(let c=0;c<3;c++)
-       d[i+c]=Math.round(clamp((main[c]+(contrast[c]-main[c])*accent)*shade,0,255));
-     d[i+3]=255;
-   }
- }
- ctx.putImageData(px,0,0);
- seamFinish(ctx,TILE_SIZE,5);
- return target;
+  const s=normalize(raw);
+  const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge];
+  const ctx=baseMaterial(target,s,count);
+  applyDye(ctx,s);return target;
 }
 export function renderPreview(tile,canvas,repeat=false){
- const width=720;canvas.width=canvas.height=width;
- const ctx=canvas.getContext('2d',{alpha:false});
- ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- const n=repeat?3:1,cell=width/n;
- for(let y=0;y<n;y++)for(let x=0;x<n;x++)ctx.drawImage(tile,x*cell,y*cell,cell,cell);
+  canvas.width=canvas.height=720;
+  const ctx=canvas.getContext('2d',{alpha:false});
+  if(!ctx)throw Error('Preview canvas not available');
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  const count=repeat?3:1,step=720/count;
+  for(let y=0;y<count;y++)for(let x=0;x<count;x++)
+    ctx.drawImage(tile,x*step,y*step,step,step);
 }
 
 function pngChunk(name,data){

@@ -6,6 +6,7 @@ on:
       - fix/realistic-cosy-knitting-20261106
       - fix/authentic-knit-stitches-all-styles-20261106
       - fix/knit-real-texture-repeat-20261106
+      - fix/knit-photo-materials-v5-20261106
     paths:
       - knit/**
       - index.html
@@ -41,6 +42,5 @@ jobs:
         with:
           name: knit-visual-qa
           path: |
-            knit-preview-*.png
-            knit/textures/*.png
+            knit-v5-*.png
           if-no-files-found: ignore

@@ -17,7 +17,7 @@
 <div class="workspace">
   <section class="card controls" aria-labelledby="settingsTitle">
     <h2 id="settingsTitle">Design your knit</h2>
-    <p class="hint">Real knitted-wool texture with visible yarn fibres. Super Chunky shows the biggest, cosiest loops.</p>
+    <p class="hint">Five photographed knitted constructions with continuous yarn texture. The stitch size changes the scale of the entire fabric, not fake printed symbols.</p>
     <label for="designName">Design name</label><input id="designName" maxlength="70" value="Warm Wool Knit" autocomplete="off">
     <label for="knitStyle">Knitting style</label>
     <select id="knitStyle">
@@ -25,20 +25,21 @@
       <option value="rib">Rib · raised knit and purl columns</option>
       <option value="seed">Seed stitch · alternating knit and purl bumps</option>
       <option value="cable">Cable · crossing raised strands</option>
-      <option value="fairisle">Fair Isle · individual coloured stitches</option>
+      <option value="fairisle">Fair Isle · original knitted-in colourwork</option>
     </select>
     <label for="gauge">Stitch size</label>
     <select id="gauge"><option value="fine">Fine knit</option><option value="medium">Medium knit</option><option value="chunky">Chunky wool</option><option value="superchunky" selected>Super Chunky · cosy oversized stitches</option></select>
     <div class="colourRow">
-      <div><label for="yarn">Main yarn colour</label><input type="color" id="yarn" value="#d7bfa2"></div>
+      <div><label for="yarn">Main yarn colour</label><input type="color" id="yarn" value="#729ac6"></div>
       <div><label for="contrast">Pattern colour</label><input type="color" id="contrast" value="#9b403b"><small>Used in Fair Isle</small></div>
     </div>
+    <div id="navyWrap" hidden><label for="navy">Fair Isle third yarn colour</label><input type="color" id="navy" value="#24344f"></div>
     <div class="paletteRow" aria-label="Quick colour palettes">
       <button type="button" data-palette="cream">Cream</button><button type="button" data-palette="sage">Sage</button>
       <button type="button" data-palette="denim">Denim</button><button type="button" data-palette="berry">Berry</button>
     </div>
     <button type="button" id="cosyPreset" class="primary full">Make a cosy super chunky knit</button>
-    <button type="button" id="variation" class="secondary full">Try another yarn variation</button>
+    <button type="button" id="variation" class="secondary full">Swap yarn colours</button>
     <div class="saveBox">
      <h3>Export your pattern</h3><p>5000 × 5000 pixel seamless PNG, 300 DPI metadata. Opaque fabric texture, ready for pattern merchandise.</p>
      <button id="downloadPng" class="primary full" type="button">Download knitted pattern PNG</button>
@@ -55,7 +56,7 @@
       </div>
     </div>
     <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live knitted fabric preview"></canvas></div>
-    <p class="footnote">Photographic wool fibres with distinct knit constructions: raised rib columns, alternating seed-stitch bumps, crossing cables and Fair Isle colourwork shaped to individual loops. Printed simulation—not an actual knitted fabric or machine stitch file. Exports a printed fabric image, not knitting instructions or embroidery machine files.</p>
+    <p class="footnote">Uses five distinct, internally seamless knitted-fabric references. Fair Isle colours are part of the original knit artwork, not graphics drawn over it. Prints the appearance of fabric; does not generate knitting instructions or embroidery machine files.</p>
   </section>
 </div>
 <footer>Standalone workspace · Your existing Pattern Forge designs and tools are unchanged.</footer>
