@@ -15,6 +15,10 @@ try{
   const digest=()=>page.locator('#preview').evaluate(el=>el.toDataURL().slice(-150));
   assert.equal(await page.locator('#gauge').inputValue(),'superchunky','initial cosy chunky gauge');
   assert.equal(await page.locator('#singleView').getAttribute('aria-pressed'),'true','close-up by default');
+  await page.locator('#preview').screenshot({path:'knit-preview-closeup.png'});
+  await page.locator('#repeatView').click();
+  await page.locator('#preview').screenshot({path:'knit-preview-repeat.png'});
+  await page.locator('#singleView').click();
   const before=await digest();
   await page.locator('#knitStyle').selectOption('fairisle');
   await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
