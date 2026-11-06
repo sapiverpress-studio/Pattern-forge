@@ -44,7 +44,8 @@ function strokeYarn(ctx,points,width,hex,light){
   trace();ctx.lineWidth=width*.19;ctx.strokeStyle='rgba(255,255,255,.19)';ctx.stroke();
 }
 function stitch(ctx,x,y,w,h,hex,row,col,settings){
-  const rnd=noise(row,col,settings.seed);
+  const rKey=mod(row,STITCH_COUNTS[settings.gauge]),cKey=mod(col,STITCH_COUNTS[settings.gauge]);
+  const rnd=noise(rKey,cKey,settings.seed);
   const light=(rnd-.5)*.075 + (settings.style==='rib'?(mod(col,4)<2?.10:-.13):0);
   let shift=0;
   if(settings.style==='cable'){
@@ -71,9 +72,9 @@ function stitch(ctx,x,y,w,h,hex,row,col,settings){
   }
   // Subtle, deterministic fibres. Drawn on the wrap-over cells as well.
   for(let i=0;i<5;i++){
-    const tx=x+w*(.18+.64*noise(row,col,settings.seed+i*13));
-    const ty=y+h*(.12+.78*noise(row,col,settings.seed+i*19+51));
-    const dx=w*(noise(row,col,settings.seed+i*17+91)-.5)*.19;
+    const tx=x+w*(.18+.64*noise(rKey,cKey,settings.seed+i*13));
+    const ty=y+h*(.12+.78*noise(rKey,cKey,settings.seed+i*19+51));
+    const dx=w*(noise(rKey,cKey,settings.seed+i*17+91)-.5)*.19;
     ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+dx,ty-h*.065);
     ctx.strokeStyle=i%2?'rgba(255,255,255,.14)':'rgba(20,12,8,.12)';
     ctx.lineWidth=Math.max(.65,w*.012);ctx.stroke();
