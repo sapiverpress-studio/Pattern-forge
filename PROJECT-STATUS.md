@@ -1,3 +1,9 @@
+## 6 November 2026 — Remove visible internal photo squares (development, review required)
+
+**Root cause confirmed:** old `repeatInto` cropped a non-matching square from the middle of a source photograph, repeated it up to 4×4 within the design, then applied an excessively wide 56px seam blend. This produced rectangular patch artefacts in large repeats. New branch `fix/knit-real-texture-repeat-20261106` draws each source's entire vendor-provided CC0 seamless tile, repeats only by integer counts, removes random offsets and restricts edge antialias correction to 5px. Does not modify original Pattern/Doodle editor.
+
+**Limits:** Source vendor claims tileability; visible 3×3 comparison and full 5000×5000 export must be reviewed. Fair Isle and rib/seed still use the earlier photo-colour composites and are not yet fully authentic constructions. Do not mark the *whole* knitting generator as solved based on this seam fix.
+
 ## 6 November 2026 — Five knitted-fabric style corrections LIVE
 
 **Release:** PR [#17](https://github.com/sapiverpress-studio/Pattern-forge/pull/17), squash-merged to main commit `6aaa2fe26f022d4f6860b1616b7884694a71febb`. Netlify project `sapiver-pattern-forge`, production deploy `6aeda690760cf69b53a862d4` **ready**, published `2026-11-06T10:06:15Z` from the exact matching commit. Live route: https://sapiver-pattern-forge.netlify.app/knit/.

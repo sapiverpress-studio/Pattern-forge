@@ -78,18 +78,13 @@ function seamFinish(ctx,size,width){
 function purlCrop(gauge){
   return ({superchunky:.27,chunky:.43,medium:.70,fine:1})[gauge];
 }
-function repeatInto(ctx,photo,unit,offsetX,offsetY,crop=1){
- const m=document.createElement('canvas');
- m.width=m.height=Math.round(unit);
- const mc=m.getContext('2d',{alpha:false});
- const side=Math.min(photo.naturalWidth,photo.naturalHeight)*crop;
- mc.imageSmoothingEnabled=true;mc.imageSmoothingQuality='high';
- mc.drawImage(photo,(photo.naturalWidth-side)/2,(photo.naturalHeight-side)/2,side,side,0,0,m.width,m.height);
- const pat=ctx.createPattern(m,'repeat');
- if(!pat)throw Error('Cannot build wool repeat tile');
- ctx.save();ctx.translate(offsetX,offsetY);ctx.fillStyle=pat;
- ctx.fillRect(-offsetX,-offsetY,TILE_SIZE,TILE_SIZE);ctx.restore();
- m.width=m.height=0;
+// Draw the complete CC0 seamless source, never an arbitrary centre crop. Previously,
+// cropping a photo and repeating its raw rectangle caused the visible square blocks.
+function repeatInto(ctx,photo,count=1){
+  const N=TILE_SIZE,unit=N/count;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  for(let r=0;r<count;r++)for(let c=0;c<count;c++)
+    ctx.drawImage(photo,c*unit,r*unit,unit+.03,unit+.03);
 }
 export function renderKnit(target,raw={}){
  const s=normalize(raw),photo=CACHE[PHOTO_ASSETS[s.style]];
@@ -100,17 +95,16 @@ export function renderKnit(target,raw={}){
  target.width=target.height=TILE_SIZE;
  const ctx=target.getContext('2d',{alpha:false,willReadFrequently:true});
  if(!ctx)throw Error('2D canvas unavailable.');
- const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge],unit=TILE_SIZE/count;
- const offsetX=s.style==='fairisle'?0:mod(s.seed*37,unit);
- const offsetY=s.style==='fairisle'?0:mod(s.seed*53,unit);
- repeatInto(ctx,photo,unit,offsetX,offsetY);
+ const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge];
+ const unit=TILE_SIZE/count;
+ repeatInto(ctx,photo,count);
  const px=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=px.data;
  let purl;
  if(hasPurl){
    const purlTile=document.createElement('canvas');
    purlTile.width=purlTile.height=TILE_SIZE;
    const pc=purlTile.getContext('2d',{alpha:false,willReadFrequently:true});
-   repeatInto(pc,purlPhoto,unit,offsetX,offsetY,purlCrop(s.gauge));
+   repeatInto(pc,purlPhoto,count);
    purl=pc.getImageData(0,0,TILE_SIZE,TILE_SIZE).data;
    purlTile.width=purlTile.height=0;
  }
@@ -118,13 +112,13 @@ export function renderKnit(target,raw={}){
  // Photographic shading is retained in every option, including the purl stitch areas.
  const nativeLight=s.style==='cable'?.73:.49;
  for(let y=0;y<TILE_SIZE;y++){
-   const phaseY=mod(y-offsetY,TILE_SIZE)/unit,vy=phaseY%1;
+   const phaseY=y/unit,vy=phaseY%1;
    const row=Math.floor(vy*11),sv=(vy*11)%1;
    for(let x=0;x<TILE_SIZE;x++){
      const i=(y*TILE_SIZE+x)*4;
      const photoLum=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
      const knitShade=clamp(Math.pow(Math.max(.14,photoLum/nativeLight),.89),.38,1.55);
-     const phaseX=mod(x-offsetX,TILE_SIZE)/unit,ux=phaseX%1;
+     const phaseX=x/unit,ux=phaseX%1;
      const col=Math.floor(ux*18),su=(ux*18)%1;
      let shade=knitShade;
      if(hasPurl){
@@ -151,7 +145,7 @@ export function renderKnit(target,raw={}){
    }
  }
  ctx.putImageData(px,0,0);
- seamFinish(ctx,TILE_SIZE,hasPurl?56:12);
+ seamFinish(ctx,TILE_SIZE,5);
  return target;
 }
 export function renderPreview(tile,canvas,repeat=false){

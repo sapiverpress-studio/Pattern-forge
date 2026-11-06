@@ -5,6 +5,7 @@ on:
       - feature/knitted-fabric-standalone-20261106
       - fix/realistic-cosy-knitting-20261106
       - fix/authentic-knit-stitches-all-styles-20261106
+      - fix/knit-real-texture-repeat-20261106
     paths:
       - knit/**
       - index.html
