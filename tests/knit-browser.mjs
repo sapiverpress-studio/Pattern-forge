@@ -1,0 +1,23 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:385,height:840}});
+const jsErrors=[];page.on('pageerror',x=>jsErrors.push(x.message));
+await page.goto('http://127.0.0.1:4189/knit-renderer/',{waitUntil:'domcontentloaded'});
+assert.equal(await page.locator('#generate').count(),1);
+await page.route('**/api/knit-render',async route=>route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({id:'a'.repeat(32),status:'queued'})}));
+await page.route('**/api/knit-render/'+ 'a'.repeat(32),async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:'a'.repeat(32),status:'ready',size:5000,download_url:'https://example.org/wool.png'})}));
+await page.locator('#generate').click();
+await page.locator('#download').waitFor({state:'visible',timeout:6000});
+assert.match(await page.locator('#status').innerText(),/5000 × 5000 px render ready/);
+assert.equal(await page.locator('#download').getAttribute('href'),'https://example.org/wool.png');
+assert.equal(jsErrors.length,0,jsErrors.join(' | '));
+await page.screenshot({path:'knit-renderer-browser.png',fullPage:true});
+// Failed backend must show a truthful error, not a fake successful render.
+await page.reload();
+await page.route('**/api/knit-render',async route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'The 3D wool renderer is not yet connected. No image was generated.'})}));
+await page.locator('#generate').click();
+assert.match(await page.locator('#status').innerText(),/not yet connected/);
+assert.equal(await page.locator('#download').isVisible(),false);
+await browser.close();
+console.log('PASS: queued/ready/download UI; fail-closed backend; Android-size viewport');
