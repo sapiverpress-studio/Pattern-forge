@@ -7,6 +7,7 @@ on:
       - fix/authentic-knit-stitches-all-styles-20261106
       - fix/knit-real-texture-repeat-20261106
       - fix/knit-photo-materials-v5-20261106
+      - fix/knit-single-closeup-megachunky-20261106
     paths:
       - knit/**
       - index.html
