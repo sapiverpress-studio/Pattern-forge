@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eae5db">
+<meta name="description" content="Sapiver Pattern Forge realistic knitted-wool rendering prototype, actual Blender/TexGen test output.">
+<title>Knit Lab — Sapiver Pattern Forge</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#252d31;background:#ede8df}
+*{box-sizing:border-box}body{margin:0}main{max-width:1050px;margin:0 auto;padding:clamp(18px,4vw,40px);padding-bottom:80px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}
+a{color:inherit}a:focus-visible{outline:3px solid #ba763c;outline-offset:4px}
+.logo{font-weight:800;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
+.home{font-size:14px;color:#465862;text-decoration:none;border:1px solid #c9c0b1;border-radius:30px;padding:10px 17px}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.13em;color:#795f48;text-transform:uppercase}
+h1{font-family:Georgia,serif;font-size:clamp(35px,6vw,62px);line-height:1.08;letter-spacing:-.03em;margin:10px 0 12px}
+.intro{font-size:clamp(16px,2vw,19px);line-height:1.6;color:#495558;max-width:650px;margin:0 0 24px}
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:20px;align-items:start}
+.card{background:#fffefa;border:1px solid #d9d1c5;border-radius:24px;overflow:hidden;box-shadow:0 10px 30px #42382e13}
+.previewHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px}
+.previewHead h2{font-size:17px;margin:0}.tiny{color:#626b6b;font-size:12px}
+.wool{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ded1bc;image-rendering:auto}
+.details{padding:22px}.details h2{font-family:Georgia,serif;font-size:24px;margin:0 0 12px}
+.details p{font-size:15px;line-height:1.55;color:#4d5757}
+.tag{font-size:12px;display:inline-flex;padding:6px 11px;border-radius:20px;background:#f0e7d9;color:#64543e;font-weight:700}
+.action{display:block;text-decoration:none;border-radius:13px;padding:15px 16px;text-align:center;font-weight:700;margin:12px 0;background:#486b7b;color:#fff}
+.action.secondary{border:1px solid #aeb9bc;background:transparent;color:#304b57}
+dl{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:14px;margin:24px 0}dt{color:#5a6363}dd{font-weight:700;margin:0}
+.notice{font-size:13px;line-height:1.6;color:#5c5550;padding:15px;background:#f5eee6;border-radius:12px}
+footer{font-size:13px;color:#616967;margin-top:26px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}header{margin-bottom:17px}.details{padding:19px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">Sapiver Press · Pattern Forge</div><a class="home" href="https://sapiver-pattern-forge.netlify.app/knit/">Current knitting tool</a></header>
+<div class="eyebrow">Experimental knit lab · real 3D rendering</div>
+<h1>Can we make it look like real wool?</h1>
+<p class="intro">This is an actual test render from the new open-source textile pipeline, not the old photograph enlarged or repeated in squares. The engine is still being refined.</p>
+<div class="layout">
+<section class="card" aria-label="Actual rendered wool artwork">
+  <div class="previewHead"><h2>Super mega chunky · stockinette</h2><span class="tiny">Sample 01</span></div>
+  <img class="wool" src="./assets/knitted-wool-720.png" alt="Experimental cream knitted wool sample: 3D interlocking stitches with digitally modelled fibres" width="720" height="720">
+</section>
+<aside class="card details">
+  <span class="tag">Visual prototype — not final</span>
+  <h2>Actual Blender output</h2>
+  <p>Built using <strong>TexGen</strong> for knitted yarn geometry, <strong>Blender</strong> for physical yarn and lighting, and <strong>Pillow</strong> for PNG validation. It is a test of structure and material realism.</p>
+  <dl><dt>Sample dimensions</dt><dd>720 × 720 px</dd><dt>Resolution metadata</dt><dd>300 DPI</dd><dt>Material</dt><dd>Merino roving simulation</dd><dt>Current status</dt><dd>Under visual review</dd></dl>
+  <a class="action" href="./assets/knitted-wool-720.png" download="sapiver-knit-lab-sample-720.png">Download this 720 px sample</a>
+  <a class="action secondary" href="./assets/knitted-wool-720.png" target="_blank" rel="noopener">Open image full size</a>
+  <p class="notice">This is a <strong>preview of one rendered sample</strong>, not a working 5000 px on-demand generator. The wool still needs quality improvements; no live settings, paid downloads, or render service are enabled here.</p>
+</aside>
+</div>
+<footer>Separate preview site. Your existing Pattern Forge editor and designs are not changed.</footer>
+</main>
+</body>
+</html>
