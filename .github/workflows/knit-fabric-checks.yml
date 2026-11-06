@@ -41,6 +41,6 @@ jobs:
         with:
           name: knit-visual-qa
           path: |
-            knit-preview-*.png
+            knit-v4-*.png
             knit/textures/*.png
           if-no-files-found: ignore
