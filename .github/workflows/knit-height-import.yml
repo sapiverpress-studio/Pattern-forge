@@ -20,6 +20,7 @@ jobs:
           mkdir -p knit/displacement
           curl --fail --location --retry 3 --max-time 90 'https://raw.githubusercontent.com/keenancrane/plain-knit-yarn/main/displacement-maps/YarnTile-1528x1094-displacement.jpg' -o knit/displacement/front-height.jpg
           curl --fail --location --retry 3 --max-time 90 'https://raw.githubusercontent.com/keenancrane/plain-knit-yarn/main/displacement-maps/YarnTile-1528x1094-alpha.jpg' -o knit/displacement/front-alpha.jpg
+          curl --fail --location --retry 3 --max-time 90 'https://raw.githubusercontent.com/keenancrane/plain-knit-yarn/main/displacement-maps/YarnTile-1528x1094-displacement-back.jpg' -o knit/displacement/back-height.jpg
           python3 - <<'PY'
           from pathlib import Path
           for f in Path('knit/displacement').glob('*.jpg'):
