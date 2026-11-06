@@ -1,0 +1,9 @@
+{
+  "sample": "actual tested TexGen + Blender + Pillow PNG",
+  "sample_size": "720 x 720",
+  "dpi": 300,
+  "original_github_actions_run": 42286153930,
+  "original_github_artifact_id": 13538435032,
+  "site_git_commit": "626515510f180da4cdd37871bc272673717ed0b6",
+  "status": "visual QA preview; NOT a live rendering service"
+}
