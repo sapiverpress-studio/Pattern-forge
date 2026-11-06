@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Knitting height-map comparison · development only</title>
+<style>body{font:16px system-ui;background:#eff1f4;color:#1a2532;margin:0;padding:14px}main{max-width:1150px;margin:auto}.controls{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}label{font-weight:650}select,input{padding:8px}canvas{width:min(100%,480px);height:auto;display:block;background:#ddd}section{display:flex;flex-wrap:wrap;gap:16px}article{background:white;border:1px solid #cad0d7;border-radius:10px;padding:10px;flex:1;min-width:240px}small{color:#556}h1{font-size:1.35rem}</style></head><body><main>
+<h1>Yarn displacement preview · development build</h1><p>Isolated test, not part of the live customer interface. Based on Keenan Crane's yarn geometry maps (CC BY 4.0).</p>
+<div class="controls"><label>Style <select id="kind"><option value="stockinette">Stockinette</option><option value="rib">Rib</option><option value="seed">Seed stitch</option><option value="cable">Cable-inspired</option><option value="fairisle">Fair Isle</option></select></label>
+<label>Size <select id="size"><option value="superchunky">Super Chunky</option><option value="chunky">Chunky</option><option value="medium">Medium</option><option value="fine">Fine</option></select></label><label>Yarn <input type="color" id="main" value="#e2d2b7"></label><label>Contrast <input type="color" id="contrast" value="#9b403b"></label></div>
+<p id="status" role="status">Loading yarn material...</p>
+<section><article><h2>Stitch close-up</h2><canvas id="tile" width="1000" height="1000"></canvas></article><article><h2>3 × 3 repeat</h2><canvas id="repeat" width="720" height="720"></canvas></article></section>
+</main><script type="module">import {initialise,render,repeat} from './height-material.mjs';
+const by=id=>document.getElementById(id),status=by('status');
+function paint(){render(by('tile'),{style:by('kind').value,gauge:by('size').value,main:by('main').value,contrast:by('contrast').value});repeat(by('tile'),by('repeat'));status.textContent='Material preview updated';}
+initialise().then(()=>{paint();for(const id of ['kind','size','main','contrast'])by(id).addEventListener('input',paint)}).catch(e=>{status.textContent='Source error: '+e.message});</script></body></html>
