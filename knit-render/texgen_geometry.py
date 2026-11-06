@@ -64,8 +64,27 @@ def build(wales=8,courses=8):
     diagnostics=[]
     for idx,yarn in enumerate(yarns):
         points,method=nodes_for_yarn(yarn)
-        result.append(points)
-        diagnostics.append({"yarn":idx,"nodes":len(points),"source":method})
+        # TexGen describes a knit as a master stitch with repeat vectors.
+        # Expand its actual master path into connected course strands instead
+        # of returning only the source unit cell or stamping a square image.
+        dx=points[-1][0]-points[0][0]
+        ymin=min(p[1] for p in points)
+        ymax=max(p[1] for p in points)
+        dy=ymax-ymin
+        if dx<=0 or dy<=0:
+            raise RuntimeError("TexGen unit cell must advance in X and Y")
+        for row in range(courses):
+            course=[]
+            for col in range(wales):
+                for k,p in enumerate(points):
+                    if col and k==0:continue
+                    course.append([p[0]+col*dx,p[1]+row*dy,p[2]])
+            result.append(course)
+        diagnostics.append({"yarn":idx,"unit_nodes":len(points),
+                            "expanded_courses":courses,
+                            "wales_per_course":wales,
+                            "nodes_per_course":len(result[0]),
+                            "source":method})
     if not result:
         raise RuntimeError("TexGen generated zero yarns")
     return {"format":"sapiver-texgen-centrelines-v1",
