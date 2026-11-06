@@ -89,6 +89,27 @@ function stitchLoops(ctx,s,r,c,w){
   yarn(ctx,[bump],w*.44,stitch.yarn,key*29+13,.035+tone);
  }
 }
+function ensurePeriodicEdges(ctx,size){
+ // Geometric strands are already periodic across the chart. At the raster edges,
+ // overdraw and antialiasing can still differ by 1-3 pixels. A narrow symmetric
+ // pixel blend corrects this without tiling or feathering any photographic patch.
+ const img=ctx.getImageData(0,0,size,size),a=img.data,band=5;
+ for(let y=0;y<size;y++)for(let d=0;d<band;d++){
+  const t=.5*Math.pow(1-d/band,2);
+  for(let ch=0;ch<3;ch++){
+   const l=(y*size+d)*4+ch,r=(y*size+size-1-d)*4+ch;
+   const p=a[l],q=a[r];a[l]=Math.round(p*(1-t)+q*t);a[r]=Math.round(q*(1-t)+p*t);
+  }
+ }
+ for(let x=0;x<size;x++)for(let d=0;d<band;d++){
+  const t=.5*Math.pow(1-d/band,2);
+  for(let ch=0;ch<3;ch++){
+   const top=(d*size+x)*4+ch,bottom=((size-1-d)*size+x)*4+ch;
+   const p=a[top],q=a[bottom];a[top]=Math.round(p*(1-t)+q*t);a[bottom]=Math.round(q*(1-t)+p*t);
+  }
+ }
+ ctx.putImageData(img,0,0);
+}
 export function renderKnit(target,raw={}){
  const s=normalize(raw),n=stitchCount(s),w=TILE_SIZE/n;
  target.width=target.height=TILE_SIZE;
@@ -96,6 +117,7 @@ export function renderKnit(target,raw={}){
  ctx.fillStyle=colour(s.yarn,.34);ctx.fillRect(0,0,TILE_SIZE,TILE_SIZE);
  // Entirely geometric periodic stitch chart; extended rows/columns cover both edges.
  for(let r=-2;r<n+2;r++)for(let c=-2;c<n+2;c++)stitchLoops(ctx,s,r,c,w);
+ ensurePeriodicEdges(ctx,TILE_SIZE);
  return target;
 }
 export function renderPreview(tile,canvas,repeat=false){
