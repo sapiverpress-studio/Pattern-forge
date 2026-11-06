@@ -58,7 +58,16 @@ def row_centres(row, columns, pitch=1.0, margin=1):
         for i, (x, y, z) in enumerate(STOCKINETTE):
             if col > -margin and i == 0:
                 continue
-            ctrl.append((ox+x*pitch, origin_y+y*pitch, z*pitch))
+            # Tiny deterministic stitch-to-stitch irregularities prevent the
+            # perfect manufactured copy/paste appearance. Keep connection
+            # endpoints exact so yarn courses stay continuous.
+            if 0 < i < len(STOCKINETTE)-1:
+                dx=.018 * math.sin(col*11.23+row*4.71+i*.59)
+                dy=.020 * math.cos(col*7.13+row*8.21+i*.83)
+                dz=.026 * math.sin(col*2.63+row*3.94+i*.41)
+            else:
+                dx=dy=dz=0
+            ctrl.append((ox+(x+dx)*pitch, origin_y+(y+dy)*pitch, (z+dz)*pitch))
     return catmull_rom(ctrl, 6)
 
 def frame_geometry(rows=8, columns=8, pitch=1.0):
