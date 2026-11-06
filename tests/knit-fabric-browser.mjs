@@ -19,6 +19,30 @@ try{
   await page.locator('#preview').screenshot({path:'knit-preview-closeup.png'});
   await page.locator('#repeatView').click();
   await page.locator('#preview').screenshot({path:'knit-preview-repeat.png'});
+  const structure=await page.evaluate(async()=>{
+     const {STYLES,renderKnit,loadPhotoTextures,fairIsleLoopMask,fairIsleStitch}=await import('/knit/engine.mjs');
+     await loadPhotoTextures();
+     const fingerprints=[];
+     for(const style of STYLES){
+       const c=document.createElement('canvas');
+       renderKnit(c,{style,gauge:'superchunky'});
+       const d=c.getContext('2d').getImageData(0,0,1000,1000).data;
+       let signature=2166136261;
+       for(let i=0;i<d.length;i+=991){signature=Math.imul(signature^d[i],16777619)>>>0;}
+       fingerprints.push(signature);
+     }
+     if(new Set(fingerprints).size!==STYLES.length)throw new Error('At least two styles produce identical fabric pixels.');
+     if(!fairIsleStitch(2,4)||fairIsleStitch(0,0))throw new Error('Fair Isle chart incorrect');
+     if(fairIsleLoopMask(.12,.0)<.85||fairIsleLoopMask(.5,.0)>.1)throw new Error('Not a V-shaped yarn mask');
+     return fingerprints;
+  });
+  console.log('Distinct knit structure fingerprints',structure);
+  for(const style of ['stockinette','rib','seed','cable','fairisle']){
+    await page.locator('#knitStyle').selectOption(style);
+    await page.waitForTimeout(170);
+    await page.locator('#preview').screenshot({path:'knit-preview-'+style+'.png'});
+  }
+
   await page.locator('#singleView').click();
   await page.locator('#knitStyle').selectOption('cable');
   await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Preview updated'));

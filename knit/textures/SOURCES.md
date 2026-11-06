@@ -1,10 +1,12 @@
-# Bundled photographic knitting texture sources
+# Knitted Fabric licensed texture sources
+The `/knit/` workspace bundles source textures locally; there are no runtime calls to third-party sites.
 
-Textures are downloaded and stored locally in this folder. The user-facing `/knit/` workspace does not fetch from third-party servers at runtime.
+| Asset | Used for | Source and licence |
+|---|---|---|
+| `grey-chunky-knit.jpg` | Stockinette; Fair Isle texture underneath true loop mask | Meshy [Grey chunky knit](https://www.meshy.ai/textures/fabric/grey-chunky-knit), 2K JPG, CC0, AI-generated according to source |
+| `cream-cable-knit.jpg` | Actual crossed cable-knit structure | Meshy [Cream cable knit](https://www.meshy.ai/textures/fabric/cream-cable-knit), 2K JPG, CC0, AI-generated |
+| `rib-knit-authentic.png` | Dedicated genuine rib construction | ProcTexture [Rib Knit](https://proctexture.com/textures/fabric/quilt-knit/rib-knit), 1K base color from CC0 PBR pack |
+| `seed-stitch-authentic.png` | Dedicated alternating knit/purl seed geometry | Texturize [Seed Stitch Knit](https://texturize.app/texture/knit-seed-stitch), 2K original PNG, royalty-free commercial use allowed; redistribution as a standalone texture pack prohibited |
+| `rust-orange-knit.jpg` | Legacy asset not used by v3 knit style mapping | Meshy [Rust orange knit](https://www.meshy.ai/textures/fabric/rust-orange-knit), CC0 |
 
-- `grey-chunky-knit.jpg`: Meshy, [Grey chunky knit](https://www.meshy.ai/textures/fabric/grey-chunky-knit). Meshy-generated, 2K JPG, CC0 according to its source page (checked 6 November 2026).
-- `cream-cable-knit.jpg`: Meshy, [Cream cable knit](https://www.meshy.ai/textures/fabric/cream-cable-knit). Meshy-generated, 2K JPG, CC0 according to its source page (checked 6 November 2026).
-- `rust-orange-knit.jpg`: Meshy, [Rust orange knit](https://www.meshy.ai/textures/fabric/rust-orange-knit). ambientCG-based, distributed under CC0 according to its Meshy source page (checked 6 November 2026).
-
-The app recolours and tiles these raster materials. This is not a new original knitted photograph and not a machine-knitting file. The fact these textures are CC0 does not make derivative patterns commercially exclusive.
-
+All output is printed bitmap simulation of knitted fabric. Source material licenses do not guarantee exclusive design ownership or that a flat print is physically knitted. A user's colourway is recolouring of the source material, not new mechanical knitting instructions.
