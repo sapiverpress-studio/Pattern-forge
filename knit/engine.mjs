@@ -31,44 +31,51 @@ function trace(ctx,pts,ox=0,oy=0){
  ctx.beginPath();ctx.moveTo(pts[0].x+ox,pts[0].y+oy);
  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x+ox,pts[i].y+oy);
 }
-function drawLoop(ctx,s,row,col,pitch){
- const spec=stitchAt(s,row,col),w=pitch*.31;
- const samples=s.gauge==='fine'?23:35,points=[];
- for(let i=0;i<=samples;i++)points.push(stitchPoint(row,col,i*TAU/samples,pitch,s.style,spec.type));
+function drawLoopPass(ctx,s,row,col,pitch,pass){
+ const stitch=stitchAt(s,row,col);
+ const w=pitch*.36;
+ const samples=s.gauge==='fine'?20:s.gauge==='medium'?28:s.gauge==='chunky'?36:52;
+ const points=[];
+ for(let i=0;i<=samples;i++)points.push(stitchPoint(row,col,i*TAU/samples,pitch,s.style,stitch.type));
  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
- ctx.shadowColor='rgba(10,8,6,.5)';ctx.shadowBlur=w*.24;ctx.shadowOffsetY=w*.16;
- trace(ctx,points);ctx.strokeStyle=tint(spec.yarn,.34);ctx.lineWidth=w*1.25;ctx.stroke();
- ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
- for(const [mult,light] of [[1.01,.64],[.83,.89],[.56,1.10],[.29,1.22]]){
-   trace(ctx,points);ctx.lineWidth=w*mult;ctx.strokeStyle=tint(spec.yarn,light);ctx.globalAlpha=mult===.29?.7:1;ctx.stroke();
- }
- ctx.globalAlpha=1;
- // Individual twisted fibre strands follow the entire 3D yarn path and cross
- // each other continuously rather than repeating a stamped V-shaped sprite.
- for(let strand=0;strand<7;strand++){
-   const phi=strand*TAU/7,curve=[];
-   for(let i=0;i<=samples;i++){
-     const t=i*TAU/samples,p=points[i];
-     const f=numericTangent(row,col,t,pitch,s.style,spec.type);
-     const twist=6.2*t+phi+((spec.type==='purl')?Math.PI/5:0);
-     const edge=Math.sin(twist)*w*.38;
-     curve.push({x:p.x+f.nx*edge,y:p.y+f.ny*edge,z:p.z});
+ for(let i=0;i<samples;i++){
+  const a=points[i],b=points[i+1],depth=(a.z+b.z)/2;
+  const group=depth<-.24?0:depth<.34?1:2;
+  if(group!==pass)continue;
+  const shade=clamp(.94+depth*.115+(noise(mod(row,stitchCount(s)),mod(col,stitchCount(s)),s.seed)-.5)*.045,.74,1.16);
+  // Draw occluding front fibres after the back fibres from every other stitch.
+  // Crucial: the same depth ordering applies across cell and tile boundaries.
+  const widths=[[1.19,.40],[.93,.69],[.70,.93],[.41,1.14],[.17,1.23]];
+  for(const [thick,light] of widths){
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+    ctx.lineWidth=w*thick;ctx.strokeStyle=tint(stitch.yarn,light*shade);ctx.stroke();
+  }
+  if(pass===2||pass===1){
+   const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1;
+   const nx=-dy/L,ny=dx/L;
+   const phase=i*TAU/samples;
+   for(let j=0;j<4;j++){
+    const p1=Math.sin(phase*7+j*TAU/4)*w*.23;
+    const p2=Math.sin((phase+TAU/samples)*7+j*TAU/4)*w*.23;
+    ctx.beginPath();
+    ctx.moveTo(a.x+nx*p1,a.y+ny*p1);
+    ctx.lineTo(b.x+nx*p2,b.y+ny*p2);
+    ctx.lineWidth=clamp(w*.018,.56,1.45);
+    ctx.strokeStyle=j===0?'rgba(255,251,238,.30)':j===2?'rgba(24,14,10,.17)':'rgba(255,241,218,.16)';
+    ctx.stroke();
    }
-   trace(ctx,curve);ctx.lineWidth=clamp(w*.033,.75,2.8);
-   ctx.strokeStyle=strand%3===0?'rgba(255,250,234,.30)':'rgba(31,18,12,.16)';ctx.stroke();
+  }
  }
- // Occasional short wool flyaways; loop-index randomness is periodic.
- for(let i=0;i<samples;i+=2){
-   if(noise(mod(row,stitchCount(s)),mod(col,stitchCount(s)),i+s.seed)>.64){
-     const t=(i+.4)*TAU/samples,p=stitchPoint(row,col,t,pitch,s.style,spec.type);
-     const f=numericTangent(row,col,t,pitch,s.style,spec.type);
-     const side=noise(row,col,i+s.seed+200)>.5?1:-1;
-     ctx.beginPath();
-     ctx.moveTo(p.x+f.nx*side*w*.43,p.y+f.ny*side*w*.43);
-     ctx.lineTo(p.x+f.nx*side*w*.65+f.tx*w*.12,p.y+f.ny*side*w*.65+f.ty*w*.12);
-     ctx.lineWidth=clamp(w*.012,.6,1.15);
-     ctx.strokeStyle='rgba(245,234,213,.24)';ctx.stroke();
-   }
+ // sparse short fibres; not separate graphic shapes or square texture stamps
+ if(pass===2){
+  for(let k=1;k<samples;k+=4){
+   const p=points[k],z=p.z;if(z<.34)continue;
+   const vec=numericTangent(row,col,k*TAU/samples,pitch,s.style,stitch.type);
+   const sign=noise(mod(row,stitchCount(s)),mod(col,stitchCount(s)),k+s.seed)>.5?1:-1;
+   ctx.beginPath();ctx.moveTo(p.x+sign*vec.nx*w*.43,p.y+sign*vec.ny*w*.43);
+   ctx.lineTo(p.x+sign*vec.nx*w*.61+vec.tx*w*.085,p.y+sign*vec.ny*w*.61+vec.ty*w*.085);
+   ctx.lineWidth=clamp(w*.011,.55,1.1);ctx.strokeStyle='rgba(248,237,217,.22)';ctx.stroke();
+  }
  }
  ctx.restore();
 }
@@ -92,7 +99,7 @@ export function renderKnit(canvas,raw={}){
  const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});
  if(!ctx)throw Error('Canvas 2D unavailable');
  ctx.fillStyle=tint(s.yarn,.27);ctx.fillRect(0,0,TILE_SIZE,TILE_SIZE);
- for(let row=-2;row<n+2;row++)for(let col=-2;col<n+2;col++)drawLoop(ctx,s,row,col,pitch);
+ for(let layer=0;layer<3;layer++)for(let row=-2;row<n+2;row++)for(let col=-2;col<n+2;col++)drawLoopPass(ctx,s,row,col,pitch,layer);
  joinEdges(ctx,TILE_SIZE);
  return canvas;
 }
