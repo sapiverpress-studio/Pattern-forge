@@ -40,7 +40,10 @@ def parse():
 def hexrgb(col):
     if len(col)!=7 or not col.startswith("#"):
         raise ValueError("Expected six-digit #RRGGBB yarn colour")
-    try:return tuple(int(col[i:i+2],16)/255.0 for i in (1,3,5))
+    def srgb_to_linear(ch):
+        x=int(ch,16)/255.0
+        return x/12.92 if x<=.04045 else ((x+.055)/1.055)**2.4
+    try:return tuple(srgb_to_linear(col[i:i+2]) for i in (1,3,5))
     except ValueError as ex:raise ValueError("Invalid yarn colour") from ex
 
 def material(name,col,roughness_map="",normal_map=""):
@@ -126,7 +129,7 @@ def loose_fibres(paths,rng,pitch):
     splines=[]
     # Sparse, physically separate 3D fibre hairs following their parent yarn.
     for path in paths:
-        count=min(280,max(60,len(path)//4))
+        count=min(560,max(120,len(path)//3))
         for _ in range(count):
             i=rng.randrange(4,len(path)-4)
             center=Vector(path[i])
@@ -169,14 +172,14 @@ def main():
     dark_mat=material("shadowed fabric beneath loops",tuple(c*.50 for c in col))
 
     paths=list(frame_geometry(count,count,pitch))
-    curve("physically connected knitted yarn courses",paths,pitch*.115,core_mat)
+    curve("physically connected knitted yarn courses",paths,pitch*.095,core_mat)
     twisted=[[],[]]
     for row in paths:
         lengths=cumulative_length(row)
         for ply in range(2):
             twisted[ply].append(twisted_ply(row,lengths,ply,pitch))
-    curve("twist ply A",twisted[0],pitch*.070,main_mat)
-    curve("twist ply B",twisted[1],pitch*.070,main_mat)
+    curve("twist ply A",twisted[0],pitch*.096,main_mat)
+    curve("twist ply B",twisted[1],pitch*.096,main_mat)
     rng=random.Random(347)
     curve("independent fine wool fibres",loose_fibres(paths,rng,pitch),pitch*.0065,hair_mat)
 
@@ -189,10 +192,10 @@ def main():
     camera=bpy.context.object
     camera.rotation_euler=(0,0,0)
     camera.data.type="ORTHO"
-    camera.data.ortho_scale=count*.97
+    camera.data.ortho_scale=count*.82
     scene.camera=camera
-    area_light("large diffused softbox",(-count*.7,count*.65,count*.95),900*count/6,count*1.5,(1.0,.94,.86))
-    area_light("subtle cool fill",(count*.65,-count*.5,count*.8),340*count/6,count,(.80,.87,1.0))
+    area_light("large diffused softbox",(-count*.7,count*.65,count*.95),165*count/6,count*1.5,(1.0,.94,.86))
+    area_light("subtle cool fill",(count*.65,-count*.5,count*.8),65*count/6,count,(.80,.87,1.0))
 
     if scene.world is None:
         scene.world=bpy.data.worlds.new('neutral wool studio')
