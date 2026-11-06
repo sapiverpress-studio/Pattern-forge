@@ -17,7 +17,7 @@
 <div class="workspace">
   <section class="card controls" aria-labelledby="settingsTitle">
     <h2 id="settingsTitle">Design your knit</h2>
-    <p class="hint">Choose a stitch, a yarn colour and a size. Your changes preview automatically.</p>
+    <p class="hint">Real knitted-wool texture with visible yarn fibres. Super Chunky shows the biggest, cosiest loops.</p>
     <label for="designName">Design name</label><input id="designName" maxlength="70" value="Warm Wool Knit" autocomplete="off">
     <label for="knitStyle">Knitting style</label>
     <select id="knitStyle">
@@ -28,7 +28,7 @@
       <option value="fairisle">Fair Isle-style · two-colour motifs</option>
     </select>
     <label for="gauge">Stitch size</label>
-    <select id="gauge"><option value="fine">Fine knit</option><option value="medium" selected>Medium knit</option><option value="chunky">Chunky knit</option></select>
+    <select id="gauge"><option value="fine">Fine knit</option><option value="medium">Medium knit</option><option value="chunky">Chunky wool</option><option value="superchunky" selected>Super Chunky · cosy oversized stitches</option></select>
     <div class="colourRow">
       <div><label for="yarn">Main yarn colour</label><input type="color" id="yarn" value="#d7bfa2"></div>
       <div><label for="contrast">Pattern colour</label><input type="color" id="contrast" value="#9b403b"><small>Used in Fair Isle</small></div>
@@ -37,6 +37,7 @@
       <button type="button" data-palette="cream">Cream</button><button type="button" data-palette="sage">Sage</button>
       <button type="button" data-palette="denim">Denim</button><button type="button" data-palette="berry">Berry</button>
     </div>
+    <button type="button" id="cosyPreset" class="primary full">Make a cosy super chunky knit</button>
     <button type="button" id="variation" class="secondary full">Try another yarn variation</button>
     <div class="saveBox">
      <h3>Export your pattern</h3><p>5000 × 5000 pixel seamless PNG, 300 DPI metadata. Opaque fabric texture, ready for pattern merchandise.</p>
@@ -47,14 +48,14 @@
     </div>
   </section>
   <section class="card visual" aria-labelledby="previewTitle">
-    <div class="previewHeader"><div><h2 id="previewTitle">Live fabric preview</h2><p>See how the stitches connect.</p></div>
+    <div class="previewHeader"><div><h2 id="previewTitle">Live fabric preview</h2><p>Inspect the wool strands close up, then check the repeat.</p></div>
       <div class="switches" role="group" aria-label="Preview type">
-      <button id="repeatView" aria-pressed="true" type="button">3 × 3 repeat</button>
-      <button id="singleView" aria-pressed="false" type="button">Single tile</button>
+      <button id="repeatView" aria-pressed="false" type="button">3 × 3 repeat</button>
+      <button id="singleView" aria-pressed="true" type="button">Fabric close-up</button>
       </div>
     </div>
     <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live knitted fabric preview"></canvas></div>
-    <p class="footnote">Procedurally drawn wool-like texture. This exports a printed image of knitting, not an actual machine-knit or embroidery stitch file.</p>
+    <p class="footnote">High-detail fabric images based on commercially reusable CC0 knitted textures, with adjustable colours and seamless repeats. Exports a printed fabric image, not knitting instructions or embroidery machine files.</p>
   </section>
 </div>
 <footer>Standalone workspace · Your existing Pattern Forge designs and tools are unchanged.</footer>

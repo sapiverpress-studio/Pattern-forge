@@ -1,8 +1,8 @@
-import {DEFAULTS,normalize,renderKnit,renderPreview,exportPng} from './engine.mjs';
+import {DEFAULTS,normalize,renderKnit,renderPreview,exportPng,loadPhotoTextures} from './engine.mjs';
 const $=id=>document.getElementById(id), tile=document.createElement('canvas'), preview=$('preview');
-const STORAGE='sapiver-knitted-fabric-settings-v1';
-const palettes={cream:['#d7bfa2','#9b403b'],sage:['#809b85','#f2e2c3'],denim:['#506f91','#edcaa7'],berry:['#7a3748','#f2d9bc']};
-let repeat=true,waiting=false;
+const STORAGE='sapiver-knitted-fabric-settings-v2';
+const palettes={cream:['#e2d2b7','#9b403b'],sage:['#809b85','#f2e2c3'],denim:['#506f91','#edcaa7'],berry:['#7a3748','#f2d9bc']};
+let repeat=false,waiting=false;
 let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE)||'{}')||{}}catch{}
 const settings=normalize({...DEFAULTS,...saved});
 function controlsFromState(){
@@ -21,10 +21,15 @@ function paint(){
 let scheduled=false;
 function schedule(){
   if(scheduled)return;scheduled=true;
-  requestAnimationFrame(()=>{scheduled=false;try{paint();status('Preview updated. The texture repeats seamlessly.')}catch(e){status('Cannot render: '+e.message)}});
+  requestAnimationFrame(async()=>{scheduled=false;try{await photosReady;paint();status('Preview updated. Photograph-like wool texture repeats seamlessly.')}catch(e){status('Cannot render: '+e.message)}});
 }
-controlsFromState();paint();
+controlsFromState();
+const photosReady=loadPhotoTextures().then(()=>{paint();status('Ready. Real wool texture loaded.');}).catch(e=>status('Texture load failed: '+e.message));
 for(const key of ['knitStyle','gauge','yarn','contrast','designName'])$(key).addEventListener('input',schedule);
+$('cosyPreset').addEventListener('click',()=>{
+  Object.assign(settings,{style:'stockinette',gauge:'superchunky',yarn:'#e2d2b7',contrast:'#9b403b'});
+  controlsFromState();setRepeat(false);schedule();status('Cosy super chunky wool selected.');
+});
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>{
   const colours=palettes[b.dataset.palette];$('yarn').value=colours[0];$('contrast').value=colours[1];schedule();
 }));
@@ -44,6 +49,7 @@ $('downloadPng').addEventListener('click',async()=>{
   try{
     // yield once to paint the progress message before a large export
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+    await photosReady;
     const blob=await exportPng(tile);
     download(blob,filename($('designName').value,'.png'));
     status('PNG prepared: 5000 × 5000 px with 300 DPI metadata.');

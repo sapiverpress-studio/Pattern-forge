@@ -12,14 +12,29 @@ try{
   await page.goto(BASE+'/knit/',{waitUntil:'networkidle'});
   assert(await page.getByRole('heading',{name:'Knitted Fabric'}).isVisible());
   assert(await page.locator('#preview').evaluate(el=>el.width===720&&el.height===720));
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Real wool texture loaded'),{timeout:20000});
   const digest=()=>page.locator('#preview').evaluate(el=>el.toDataURL().slice(-150));
+  assert.equal(await page.locator('#gauge').inputValue(),'superchunky','initial cosy chunky gauge');
+  assert.equal(await page.locator('#singleView').getAttribute('aria-pressed'),'true','close-up by default');
+  await page.locator('#preview').screenshot({path:'knit-preview-closeup.png'});
+  await page.locator('#repeatView').click();
+  await page.locator('#preview').screenshot({path:'knit-preview-repeat.png'});
+  await page.locator('#singleView').click();
+  await page.locator('#knitStyle').selectOption('cable');
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Preview updated'));
+  await page.locator('#preview').screenshot({path:'knit-preview-cable.png'});
+  await page.locator('#knitStyle').selectOption('stockinette');
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Preview updated'));
+  await page.locator('#singleView').click();
   const before=await digest();
   await page.locator('#knitStyle').selectOption('fairisle');
   await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(180);
   assert.notEqual(await digest(),before,'changing yarn/style changes fabric pixels');
+  await page.locator('#preview').screenshot({path:'knit-preview-fairisle.png'});
   const seams=await page.evaluate(async()=>{
-    const {renderKnit,STYLES,TILE_SIZE}=await import('/knit/engine.mjs');
+    const {renderKnit,STYLES,TILE_SIZE,stitchCount,loadPhotoTextures}=await import('/knit/engine.mjs');
+    await loadPhotoTextures();
     const result=[];
     for(const style of STYLES){
       const tile=document.createElement('canvas');
@@ -40,10 +55,15 @@ try{
       if(!a.every((v,i)=>v===b[i]))throw new Error('Repeat is not pixel-identical');
       result.push({style,horizontalDelta:horiz/(TILE_SIZE*3),verticalDelta:vertical/(TILE_SIZE*3)});
     }
+    const chunky=document.createElement('canvas');renderKnit(chunky,{style:'stockinette',gauge:'superchunky'});
+    if(stitchCount({style:'stockinette',gauge:'superchunky'})>=stitchCount({style:'stockinette',gauge:'chunky'}))throw new Error('Super Chunky must contain fewer, larger loops');
     return result;
   });
   assert(seams.every(s=>s.horizontalDelta<15&&s.verticalDelta<15),'tile border continuity: '+JSON.stringify(seams));
   console.log('Stitch seam checks:',seams);
+  await page.locator('#cosyPreset').click();
+  assert.equal(await page.locator('#gauge').inputValue(),'superchunky');
+  assert.equal(await page.locator('#knitStyle').inputValue(),'stockinette');
   await page.locator('#singleView').click();
   assert.equal(await page.locator('#singleView').getAttribute('aria-pressed'),'true');
   await page.locator('#repeatView').click();

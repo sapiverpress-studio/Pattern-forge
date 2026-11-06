@@ -1,109 +1,121 @@
-// Standalone procedural knitted-fabric renderer. No dependency on the Pattern Forge editor.
-export const TILE_SIZE = 1000;
-export const EXPORT_SIZE = 5000;
-export const STITCH_COUNTS = Object.freeze({fine:32,medium:24,chunky:16});
-export const STYLES = Object.freeze(['stockinette','rib','seed','cable','fairisle']);
-export const DEFAULTS = Object.freeze({style:'stockinette',gauge:'medium',yarn:'#d7bfa2',contrast:'#9b403b',seed:7});
+// Photographic wool surface renderer. The base photos are bundled locally under CC0.
+// No images are fetched from third parties at runtime; all exports are browser-local.
+export const TILE_SIZE=1000,EXPORT_SIZE=5000;
+export const STITCH_COUNTS=Object.freeze({fine:30,medium:20,chunky:10,superchunky:6});
+export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
+export const DEFAULTS=Object.freeze({style:'stockinette',gauge:'superchunky',yarn:'#e2d2b7',contrast:'#9b403b',seed:7});
 export const mod=(n,d)=>((n%d)+d)%d;
-export function normalize(input={}){
-  return {
-    style:STYLES.includes(input.style)?input.style:DEFAULTS.style,
-    gauge:Object.hasOwn(STITCH_COUNTS,input.gauge)?input.gauge:DEFAULTS.gauge,
-    yarn:/^#[0-9a-f]{6}$/i.test(input.yarn)?input.yarn:DEFAULTS.yarn,
-    contrast:/^#[0-9a-f]{6}$/i.test(input.contrast)?input.contrast:DEFAULTS.contrast,
-    seed:Number.isInteger(Number(input.seed))?Math.max(1,Math.min(9999,Number(input.seed))):DEFAULTS.seed
-  };
+export function normalize(raw={}){
+  const colour=(x,fallback)=>/^#[0-9a-f]{6}$/i.test(x)?x:fallback;
+  return {style:STYLES.includes(raw.style)?raw.style:DEFAULTS.style,
+    gauge:Object.hasOwn(STITCH_COUNTS,raw.gauge)?raw.gauge:DEFAULTS.gauge,
+    yarn:colour(raw.yarn,DEFAULTS.yarn),contrast:colour(raw.contrast,DEFAULTS.contrast),
+    seed:Number.isInteger(Number(raw.seed))?Math.max(1,Math.min(9999,Number(raw.seed))):DEFAULTS.seed};
 }
-function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
-function colour(hex,factor){
-  const a=rgb(hex), f=Math.max(-1,Math.min(1,factor));
-  return 'rgb('+a.map(v=>Math.round(f>=0?v+(255-v)*f:v*(1+f))).join(',')+')';
+export const stitchCount=s=>STITCH_COUNTS[s.gauge]??STITCH_COUNTS.superchunky;
+const PHOTO_ASSETS=Object.freeze({
+  stockinette:'/knit/textures/grey-chunky-knit.jpg',
+  rib:'/knit/textures/grey-chunky-knit.jpg',
+  seed:'/knit/textures/rust-orange-knit.jpg',
+  cable:'/knit/textures/cream-cable-knit.jpg',
+  fairisle:'/knit/textures/grey-chunky-knit.jpg'
+});
+const CACHE={};
+let loading=null;
+export function loadPhotoTextures(){
+  if(!loading){
+    const paths=[...new Set(Object.values(PHOTO_ASSETS))];
+    loading=Promise.all(paths.map(src=>new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>{if(!img.naturalWidth||!img.naturalHeight){reject(Error('Invalid image: '+src));return;}CACHE[src]=img;resolve();}
+      img.onerror=()=>reject(Error('Could not load bundled wool texture: '+src));
+      img.src=src;
+    })));
+  }
+  return loading;
 }
-function noise(a,b,c){let n=(Math.imul(a+1181,73856093)^Math.imul(b+2221,19349663)^Math.imul(c+731,83492791))|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;}
-export function selectedYarn(settings,row,col){
-  const r=mod(row,8), c=mod(col,8);
-  if(settings.style==='fairisle'){
-    const diamond=Math.abs(c-3.5)+Math.abs(r-3.5)<3.6;
-    const band=r===0 || r===7;
-    const dot=(r===2||r===5)&&(c===0||c===7);
-    return (diamond||band||dot)?settings.contrast:settings.yarn;
-  }
-  return settings.yarn;
+function fairIsleStitch(row,col){
+  const r=mod(row,16),c=mod(col,16),dy=Math.abs(r-7.5),dx=Math.abs(c-7.5);
+  // Small, sparse Nordic colourwork points. No large flat colour rectangles.
+  const core=(dx===.5&&dy===.5);
+  const diagonal=(dx===dy&&dx>=1.5&&dx<=4.5);
+  const tips=(dx===.5&&dy===5.5)||(dy===.5&&dx===5.5);
+  const dots=(dx===1.5&&dy===6.5)||(dy===1.5&&dx===6.5);
+  return core||diagonal||tips||dots;
 }
-function strokeYarn(ctx,points,width,hex,light){
-  const grad=ctx.createLinearGradient(points[0][0]-width,points[0][1],points[points.length-1][0]+width,points[points.length-1][1]);
-  grad.addColorStop(0,colour(hex,-.40));grad.addColorStop(.24,colour(hex,.04+light));
-  grad.addColorStop(.55,colour(hex,.28+light));grad.addColorStop(.78,colour(hex,-.08+light));grad.addColorStop(1,colour(hex,-.38));
-  function trace(){
-    ctx.beginPath();ctx.moveTo(...points[0]);
-    for(let i=1;i<points.length;i+=3)ctx.bezierCurveTo(...points[i],...points[i+1],...points[i+2]);
-  }
-  ctx.lineCap='round';ctx.lineJoin='round';
-  trace();ctx.lineWidth=width*1.22;ctx.strokeStyle=colour(hex,-.55);ctx.stroke();
-  trace();ctx.lineWidth=width;ctx.strokeStyle=grad;ctx.stroke();
-  trace();ctx.lineWidth=width*.19;ctx.strokeStyle='rgba(255,255,255,.19)';ctx.stroke();
+export function selectedYarn(s,row,col){
+  return s.style==='fairisle'&&fairIsleStitch(row,col)?s.contrast:s.yarn;
 }
-function stitch(ctx,x,y,w,h,hex,row,col,settings){
-  const rKey=mod(row,STITCH_COUNTS[settings.gauge]),cKey=mod(col,STITCH_COUNTS[settings.gauge]);
-  const rnd=noise(rKey,cKey,settings.seed);
-  const light=(rnd-.5)*.075 + (settings.style==='rib'?(mod(col,4)<2?.10:-.13):0);
-  let shift=0;
-  if(settings.style==='cable'){
-    const phase=(mod(row,8)/8)*Math.PI*2;
-    const strand=mod(col,8);
-    if(strand===2)shift=Math.sin(phase)*w*.26;
-    if(strand===3)shift=-Math.sin(phase)*w*.26;
-    if(strand===4)shift=Math.sin(phase)*w*.26;
-    if(strand===5)shift=-Math.sin(phase)*w*.26;
+function channel(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
+function finishSeams(ctx,N){
+  const img=ctx.getImageData(0,0,N,N),data=img.data,edge=12;
+  for(let y=0;y<N;y++)for(let k=0;k<edge;k++)for(let ch=0;ch<3;ch++){
+    const f=.5*Math.pow(1-k/edge,2),i=(y*N+k)*4+ch,j=(y*N+N-1-k)*4+ch;
+    const a=data[i],b=data[j];data[i]=Math.round(a*(1-f)+b*f);data[j]=Math.round(b*(1-f)+a*f);
   }
-  x+=shift;
-  const thickness=w*(settings.style==='rib'?.26:.235);
-  const purl=settings.style==='seed'&&mod(row+col,2)===0;
-  if(purl){
-    const g=ctx.createRadialGradient(x+w*.38,y+h*.40,w*.03,x+w*.50,y+h*.48,w*.43);
-    g.addColorStop(0,colour(hex,.36+light));g.addColorStop(.44,colour(hex,.08+light));g.addColorStop(1,colour(hex,-.52));
-    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(x+w*.5,y+h*.48,w*.41,h*.29,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=colour(hex,-.3);ctx.lineWidth=w*.08;ctx.stroke();
-  } else {
-    const left=[[x+w*.17,y-h*.15],[x+w*.12,y+h*.25],[x+w*.33,y+h*.70],[x+w*.51,y+h*.80]];
-    const right=[[x+w*.83,y-h*.15],[x+w*.88,y+h*.25],[x+w*.68,y+h*.71],[x+w*.51,y+h*.80]];
-    strokeYarn(ctx,left,thickness,hex,light);
-    strokeYarn(ctx,right,thickness,hex,light);
+  for(let x=0;x<N;x++)for(let k=0;k<edge;k++)for(let ch=0;ch<3;ch++){
+    const f=.5*Math.pow(1-k/edge,2),i=(k*N+x)*4+ch,j=((N-1-k)*N+x)*4+ch;
+    const a=data[i],b=data[j];data[i]=Math.round(a*(1-f)+b*f);data[j]=Math.round(b*(1-f)+a*f);
   }
-  // Subtle, deterministic fibres. Drawn on the wrap-over cells as well.
-  for(let i=0;i<5;i++){
-    const tx=x+w*(.18+.64*noise(rKey,cKey,settings.seed+i*13));
-    const ty=y+h*(.12+.78*noise(rKey,cKey,settings.seed+i*19+51));
-    const dx=w*(noise(rKey,cKey,settings.seed+i*17+91)-.5)*.19;
-    ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+dx,ty-h*.065);
-    ctx.strokeStyle=i%2?'rgba(255,255,255,.14)':'rgba(20,12,8,.12)';
-    ctx.lineWidth=Math.max(.65,w*.012);ctx.stroke();
-  }
+  ctx.putImageData(img,0,0);
 }
 export function renderKnit(target,raw={}){
-  const settings=normalize(raw), n=STITCH_COUNTS[settings.gauge];
+  const s=normalize(raw),photo=CACHE[PHOTO_ASSETS[s.style]];
+  if(!photo)throw Error('Real knitted-wool textures are still loading.');
   target.width=target.height=TILE_SIZE;
-  const ctx=target.getContext('2d',{alpha:false});
-  if(!ctx)throw new Error('Canvas 2D is not available.');
-  const cell=TILE_SIZE/n;
-  // A uniform ground colour prevents holes between the loops.
-  ctx.fillStyle=colour(settings.yarn,-.50);ctx.fillRect(0,0,TILE_SIZE,TILE_SIZE);
-  // These indices include overdraw beyond the tile, making wrapped stitches align.
-  for(let r=-2;r<n+2;r++){
-    for(let c=-2;c<n+2;c++){
-      const hex=selectedYarn(settings,r,c);
-      stitch(ctx,c*cell,r*cell,cell,cell,hex,r,c,settings);
+  const ctx=target.getContext('2d',{alpha:false,willReadFrequently:true});
+  if(!ctx)throw Error('Canvas 2D unavailable');
+  const repeatCount=({fine:5,medium:4,chunky:2,superchunky:1})[s.gauge];
+  const unit=TILE_SIZE/repeatCount;
+  const motif=document.createElement('canvas');
+  motif.width=motif.height=unit;
+  const mctx=motif.getContext('2d',{alpha:false});
+  mctx.imageSmoothingEnabled=true;mctx.imageSmoothingQuality='high';
+  mctx.drawImage(photo,0,0,unit,unit);
+  const pat=ctx.createPattern(motif,'repeat');
+  if(!pat)throw Error('Cannot make photographic knit pattern');
+  const offsetX=mod(s.seed*37,unit),offsetY=mod(s.seed*53,unit);
+  ctx.save();ctx.translate(offsetX,offsetY);ctx.fillStyle=pat;
+  ctx.fillRect(-offsetX,-offsetY,TILE_SIZE,TILE_SIZE);ctx.restore();
+  // Retain true photographic surface structure, tinting colour without erasing yarn fibres.
+  const pixels=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=pixels.data;
+  const main=channel(s.yarn),contrast=channel(s.contrast);
+  const nativeLight=({stockinette:.55,rib:.55,seed:.40,cable:.73,fairisle:.55})[s.style];
+  // Assign a yarn colour to each knitted stitch. Slight row-wise slant follows the V loops.
+  for(let y=0;y<TILE_SIZE;y++){
+    const rowPos=mod(y-offsetY,TILE_SIZE)/unit*16;
+    const row=mod(Math.floor(rowPos),16);
+    const tilt=.33*Math.sin(2*Math.PI*(rowPos-Math.floor(rowPos)));
+    for(let x=0;x<TILE_SIZE;x++){
+      const i=(y*TILE_SIZE+x)*4;
+      const luminosity=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
+      let factor=Math.pow(Math.max(.16,luminosity/nativeLight),.92);
+      factor=Math.max(.40,Math.min(1.56,factor));
+      if(s.style==='rib'){
+        const localX=mod(x-offsetX,unit)/unit;
+        factor*=.87+.13*Math.cos(localX*12*Math.PI)**2;
+      }
+      const col=mod(Math.floor(mod(x-offsetX,TILE_SIZE)/unit*16+tilt),16);
+      const base=s.style==='fairisle'&&fairIsleStitch(row,col)?contrast:main;
+      d[i]=Math.min(255,Math.round(base[0]*factor));
+      d[i+1]=Math.min(255,Math.round(base[1]*factor));
+      d[i+2]=Math.min(255,Math.round(base[2]*factor));
+      d[i+3]=255;
     }
   }
+  ctx.putImageData(pixels,0,0);
+  finishSeams(ctx,TILE_SIZE);
+  motif.width=motif.height=0;
   return target;
 }
-export function renderPreview(tile,canvas,repeat=true){
-  const width=720;canvas.width=canvas.height=width;
+export function renderPreview(tile,canvas,repeat=false){
+  const side=720;canvas.width=canvas.height=side;
   const ctx=canvas.getContext('2d',{alpha:false});
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  const count=repeat?3:1,cell=width/count;
-  for(let y=0;y<count;y++)for(let x=0;x<count;x++)ctx.drawImage(tile,x*cell,y*cell,cell,cell);
+  const n=repeat?3:1,w=side/n;
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++)ctx.drawImage(tile,x*w,y*w,w,w);
 }
+
 function pngChunk(name,data){
   const bytes=new Uint8Array(12+data.length),v=new DataView(bytes.buffer);
   v.setUint32(0,data.length);for(let i=0;i<4;i++)bytes[4+i]=name.charCodeAt(i);

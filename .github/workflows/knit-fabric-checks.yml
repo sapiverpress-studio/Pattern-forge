@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/knitted-fabric-standalone-20261106
+      - fix/realistic-cosy-knitting-20261106
     paths:
       - knit/**
       - index.html
@@ -33,3 +34,13 @@ jobs:
           done
           cat /tmp/knit-http.log; exit 1
       - run: node tests/knit-fabric-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: knit-visual-qa
+          path: |
+            knit-preview-closeup.png
+            knit-preview-repeat.png
+            knit-preview-cable.png
+            knit-preview-fairisle.png
+          if-no-files-found: ignore
