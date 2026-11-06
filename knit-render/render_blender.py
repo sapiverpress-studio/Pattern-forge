@@ -194,6 +194,8 @@ def main():
     area_light("large diffused softbox",(-count*.7,count*.65,count*.95),900*count/6,count*1.5,(1.0,.94,.86))
     area_light("subtle cool fill",(count*.65,-count*.5,count*.8),340*count/6,count,(.80,.87,1.0))
 
+    if scene.world is None:
+        scene.world=bpy.data.worlds.new('neutral wool studio')
     scene.world.color=(.42,.42,.42)
     scene.render.resolution_x=args.size
     scene.render.resolution_y=args.size
