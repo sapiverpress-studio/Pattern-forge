@@ -22,7 +22,7 @@ import bpy
 from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(__file__))
-from geometry import frame_geometry, cumulative_length
+from geometry import frame_geometry, cumulative_length, catmull_rom
 
 def parse():
     p=argparse.ArgumentParser()
@@ -152,7 +152,7 @@ def loose_fibres(paths,rng,pitch):
             angle=rng.uniform(0,math.tau)
             outward=math.cos(angle)*n+math.sin(angle)*bi
             axis=(Vector(path[i+1])-Vector(path[i-1])).normalized()
-            start=center + outward*(pitch*.179)
+            start=center + outward*(pitch*.19)
             mid=start+outward*pitch*rng.uniform(.016,.034)+axis*pitch*rng.uniform(-.018,.018)
             end=mid+outward*pitch*rng.uniform(.025,.065)+axis*pitch*rng.uniform(-.045,.045)
             splines.append((tuple(start),tuple(mid),tuple(end)))
@@ -206,14 +206,22 @@ def main():
         scale=(count*.91)/extent
         pitch=scale
         centre=[(mins[i]+maxes[i])/2 for i in range(3)]
-        paths=[[tuple((float(v[i])-centre[i])*scale for i in range(3))
-                for v in course] for course in source]
+        # TexGen emits sparse control points. Interpolate the physical yarn
+        # centreline, rather than rendering each straight segment as a sharp
+        # plastic-looking edge.  Preserve course continuity.
+        # This 0.68 course compression is a visual knit-gauge adjustment; we
+        # do not claim it reproduces the original TexGen physical dimensions.
+        compacted=[[((float(v[0])-centre[0])*scale,
+                     (float(v[1])-centre[1])*scale*.68,
+                     (float(v[2])-centre[2])*scale)
+                    for v in course] for course in source]
+        paths=[catmull_rom(course,8) for course in compacted]
     else:
         paths=list(frame_geometry(count,count,pitch))
     if args.yarn_type=="roving":
         # Oversized blanket yarn is mostly an untwisted volume of soft merino.
         # A thick 3D body and independent wool hairs, never two rope-like plies.
-        curve("soft single-roving knitted yarn",paths,pitch*.174,main_mat)
+        curve("soft single-roving knitted yarn",paths,pitch*(.235 if args.texgen_json else .174),main_mat)
     else:
         curve("physically connected knitted yarn courses",paths,pitch*.095,core_mat)
         twisted=[[],[]]
