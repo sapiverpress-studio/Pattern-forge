@@ -1,0 +1,38 @@
+name: One-time verified parametric knit displacement import
+on:
+  push:
+    branches:
+      - fix/geometry-knit-without-square-tiles-20261106
+    paths:
+      - .github/workflows/knit-height-import.yml
+permissions:
+  contents: write
+jobs:
+  download:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch tiling maps from original CC BY 4.0 source
+        run: |
+          set -euo pipefail
+          mkdir -p knit/displacement
+          curl --fail --location --retry 3 --max-time 90 'https://raw.githubusercontent.com/keenancrane/plain-knit-yarn/main/displacement-maps/YarnTile-1528x1094-displacement.jpg' -o knit/displacement/front-height.jpg
+          curl --fail --location --retry 3 --max-time 90 'https://raw.githubusercontent.com/keenancrane/plain-knit-yarn/main/displacement-maps/YarnTile-1528x1094-alpha.jpg' -o knit/displacement/front-alpha.jpg
+          python3 - <<'PY'
+          from pathlib import Path
+          for f in Path('knit/displacement').glob('*.jpg'):
+            b=f.read_bytes()
+            assert b[:3]==bytes.fromhex('ffd8ff') and b[-2:]==bytes.fromhex('ffd9')
+            assert 10000<len(b)<1000000
+            print(f,len(b))
+          PY
+      - name: Commit source maps only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knit/displacement/*.jpg
+          git diff --cached --quiet && exit 0
+          git commit -m "assets: add CC BY 4.0 tileable parametric yarn displacement maps"
+          git push origin HEAD:fix/geometry-knit-without-square-tiles-20261106
