@@ -28,7 +28,8 @@ jobs:
           python - <<'PY'
           import json,math
           d=json.load(open('/tmp/texgen-weft.json'))
-          assert d['structure']=='weft-knit' and len(d['paths'])>=1
+          assert d['structure']=='weft-knit' and len(d['paths'])==d['courses']
+          assert all(len(p)>4*d['wales'] for p in d['paths'])
           assert all(len(p)>=2 for p in d['paths'])
           assert all(math.isfinite(v) for p in d['paths'] for xyz in p for v in xyz)
           print('PASS specialist TexGen knit geometry exported',len(d['paths']),'yarns')
