@@ -1,3 +1,14 @@
+## 6 November 2026 — Real generator full integration CI PASS, production **NOT CONNECTED**
+
+**Run:** [GitHub Actions 42294409523](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42294409523) **both jobs PASSED** on isolated `feature/knit-render-service-20261106` branch:
+- Docker image built with actual Blender / PyTexGen / Pillow; authenticated job via FastAPI generated native **256x256** wool image, returned signed PNG link and validated dimensions/pHYs metadata. This is a real end-to-end backend job, not a static image and not the 5000px acceptance test.
+- Python API auth/input/quota/signed-link/fail-closed tests PASSED. Playwright checked Android-width generator UI with simulated 202→ready job, download button, and truthful error on absent service. Fixed hidden-link CSS and async test waiting.
+- [Draft PR #24](https://github.com/sapiverpress-studio/Pattern-forge/pull/24) carries actual server, Dockerfile, mobile UI, secret-only Netlify gateway, docs and tests. Base is the still-draft TexGen/Blender PR #22, neither is merged into main.
+
+**Unmet requirements:** No hosted renderer service or Netlify Functions-scope credentials. The existing Netlify project has no per-site or team-level variables, so the generator gateway intentionally returns HTTP 503 when unconfigured. 5000x5000 native render duration/memory/quality is **unverified** and could exceed CPU timeout. The prior static sample URL still exists separately; it is not a generator. Blender renders remain visually insufficient as commercial knitted-wool photography. Do not claim the live website has a working generator.
+
+**Release plan:** Connect a container rendering host with user-authorized plan/budget; GPU-capable hosting may be needed for 5000 px. Deploy Docker service, configure token/signing keys and Netlify gateway securely, test public job (submit→poll→actual 5000px PNG) on Android, and release gated UI only on success. Preserve original Pattern Forge projects, do not replace existing `/knit/` prematurely.
+
 ## 6 November 2026 — Functional TexGen → Blender → Pillow **API** and true generator UI (isolated, NOT LIVE)
 
 **User correction:** Explicitly rejected publishing a static preview; requested a real working generator. The prior static `/knit-preview/` in production does **not** meet the request.
