@@ -32,6 +32,12 @@ jobs:
           assert all(len(p)>4*d['wales'] for p in d['paths'])
           assert all(len(p)>=2 for p in d['paths'])
           assert all(math.isfinite(v) for p in d['paths'] for xyz in p for v in xyz)
+          assert .20 <= d['course_overlap'] <= .40
+          # Successive courses physically overlap in projection.
+          first,second=d['paths'][0],d['paths'][1]
+          assert min(p[1] for p in second) < max(p[1] for p in first)
+          # Knit legs must sit in front of the crown/connecting yarn.
+          assert max(p[2] for p in first)-min(p[2] for p in first)>.15
           print('PASS specialist TexGen knit geometry exported',len(d['paths']),'yarns')
           PY
       - uses: actions/upload-artifact@v4
