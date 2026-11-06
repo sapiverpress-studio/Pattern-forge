@@ -12,6 +12,7 @@ try{
   await page.goto(BASE+'/knit/',{waitUntil:'networkidle'});
   assert(await page.getByRole('heading',{name:'Knitted Fabric'}).isVisible());
   assert(await page.locator('#preview').evaluate(el=>el.width===720&&el.height===720));
+  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Real wool texture loaded'),{timeout:20000});
   const digest=()=>page.locator('#preview').evaluate(el=>el.toDataURL().slice(-150));
   assert.equal(await page.locator('#gauge').inputValue(),'superchunky','initial cosy chunky gauge');
   assert.equal(await page.locator('#singleView').getAttribute('aria-pressed'),'true','close-up by default');
@@ -25,7 +26,8 @@ try{
   await page.waitForTimeout(180);
   assert.notEqual(await digest(),before,'changing yarn/style changes fabric pixels');
   const seams=await page.evaluate(async()=>{
-    const {renderKnit,STYLES,TILE_SIZE,stitchCount}=await import('/knit/engine.mjs');
+    const {renderKnit,STYLES,TILE_SIZE,stitchCount,loadPhotoTextures}=await import('/knit/engine.mjs');
+    await loadPhotoTextures();
     const result=[];
     for(const style of STYLES){
       const tile=document.createElement('canvas');

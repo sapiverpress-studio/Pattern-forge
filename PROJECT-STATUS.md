@@ -1,3 +1,7 @@
+## 6 November 2026 — Photographic yarn texture revision (DEVELOPMENT / NOT LIVE)
+
+User screenshot showed procedural V glyphs; follow-up visual QA of first revised tube renderer still appeared plastic. Do not release those illustrations. Changed isolated `/knit/` module to render **bundled CC0 photographic knitted-fabric textures** (original 2K textures: grey chunky, cream cable and rust-orange knitting), recoloured locally on canvas with square, continuous tiles; Super Chunky / Chunky / Medium / Fine change repeat frequency. App waits for local images before preview/export. Existing Pattern and Doodle remain unchanged. First-pass browser/visual evidence pending for this photographic approach. Exact licence sources: `knit/textures/SOURCES.md`.
+
 ## 6 November 2026 — Cosy knitted realism correction (DEVELOPMENT / NOT YET PUBLISHED)
 
 **User feedback:** Current knit generator looks like disconnected V glyphs, not a photo-like continuous wool fabric. Requested visibly connected realistic yarn and super-chunky cosy texture. Source branch `fix/realistic-cosy-knitting-20261106` from `main` at `3c7f719b50e6aad2437539809532b4f863a3f578`.
