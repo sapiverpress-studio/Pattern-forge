@@ -1,0 +1,71 @@
+name: Import five source-knit textures (one time)
+on:
+  push:
+    branches: [fix/knit-photo-materials-v5-20261106]
+    paths:
+      - .github/workflows/knit-v5-import.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check Pillow numpy scipy
+      - name: Import supplied user-approved wool texture references
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/knit-import knit/materials
+          curl --fail --location --retry 3 --max-time 120 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-a008-81f4-9a4d-ac11f088dbc3/raw?se=2026-11-06T14%3A39%3A48Z&sp=r&sv=2026-02-06&sr=b&scid=adb2bc13-9401-52bf-8fa4-01ce14323690&skoid=1d6acb5b-b3f4-43ec-a5ec-b05c4a7708c8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T08%3A07%3A18Z&ske=2026-11-07T08%3A07%3A18Z&sks=b&skv=2026-02-06&sig=YlVMqtiyhRjVy0fJWyT1b3o7fWpot0hHnlI8OhZjJKM%3D' -o /tmp/knit-import/stockinette.png
+          curl --fail --location --retry 3 --max-time 120 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-b5e8-81f4-b100-d8dbbdc1453a/raw?se=2026-11-06T14%3A39%3A49Z&sp=r&sv=2026-02-06&sr=b&scid=8e175f6f-58a6-5a07-89da-145699219f5b&skoid=1d6acb5b-b3f4-43ec-a5ec-b05c4a7708c8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T09%3A00%3A21Z&ske=2026-11-07T09%3A00%3A21Z&sks=b&skv=2026-02-06&sig=1O/VBkNa6Vkfr20Wg52gFP7mZoRSVBJf3IkBsvoKtSw%3D' -o /tmp/knit-import/rib.png
+          curl --fail --location --retry 3 --max-time 120 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-8d90-81f4-a938-1c8c082571f3/raw?se=2026-11-06T14%3A39%3A49Z&sp=r&sv=2026-02-06&sr=b&scid=09d98fec-82cc-55ef-9b10-f91f144812b8&skoid=1d6acb5b-b3f4-43ec-a5ec-b05c4a7708c8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T09%3A01%3A23Z&ske=2026-11-07T09%3A01%3A23Z&sks=b&skv=2026-02-06&sig=17eExoGwSlc7N8WXf2ujngIrioQ9ByRK9vlXxckQS7w%3D' -o /tmp/knit-import/seed.png
+          curl --fail --location --retry 3 --max-time 120 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-92a8-81f4-bd2d-f6ad92030a92/raw?se=2026-11-06T14%3A39%3A49Z&sp=r&sv=2026-02-06&sr=b&scid=b1d3fc96-78d5-5b0e-899c-dd62b7f0f998&skoid=1d6acb5b-b3f4-43ec-a5ec-b05c4a7708c8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T09%3A32%3A26Z&ske=2026-11-07T09%3A32%3A26Z&sks=b&skv=2026-02-06&sig=1ySxthf%2Bda6mx9HCVEPLtOiVZWi2P0rwyCCYA8FsU/A%3D' -o /tmp/knit-import/cable.png
+          curl --fail --location --retry 3 --max-time 120 'https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-8c18-820a-84cc-72f4a95a149f/raw?se=2026-11-06T14%3A39%3A48Z&sp=r&sv=2026-02-06&sr=b&scid=f36a6791-7d5e-57ef-a6b8-071200328ee3&skoid=1d6acb5b-b3f4-43ec-a5ec-b05c4a7708c8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T07%3A28%3A20Z&ske=2026-11-07T07%3A28%3A20Z&sks=b&skv=2026-02-06&sig=yzIJ3COBBvZhh9Rtyxn9YArflemSNXKhjK%2B3MioN1Nw%3D' -o /tmp/knit-import/fairisle.png
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import numpy as np
+          names=['stockinette','rib','seed','cable','fairisle']
+          for name in names:
+            src=Path('/tmp/knit-import')/(name+'.png')
+            with Image.open(src) as f:
+              assert f.size[0]>=1000 and f.size[1]>=1000
+              im=np.array(f.convert('RGB'),dtype=np.float32)
+            H,W,_=im.shape
+            y=np.arange(H)[:,None]
+            x=np.arange(W)[None,:]
+            denom=2*np.cos(2*np.pi*y/H)+2*np.cos(2*np.pi*x/W)-4
+            denom[0,0]=1
+            out=np.empty_like(im)
+            for c in range(3):
+              a=im[:,:,c]
+              boundary=np.zeros((H,W),dtype=np.float32)
+              boundary[0,:]+=a[0,:]-a[-1,:]
+              boundary[-1,:]-=a[0,:]-a[-1,:]
+              boundary[:,0]+=a[:,0]-a[:,-1]
+              boundary[:,-1]-=a[:,0]-a[:,-1]
+              v=np.fft.fft2(boundary)/denom
+              v[0,0]=0
+              out[:,:,c]=a+np.fft.ifft2(v).real
+            out=np.clip(out,0,255).astype('uint8')
+            edgeH=float(np.abs(out[:,0].astype(float)-out[:,-1].astype(float)).mean())
+            edgeV=float(np.abs(out[0].astype(float)-out[-1].astype(float)).mean())
+            assert edgeH<9 and edgeV<9, (name,edgeH,edgeV)
+            result=Image.fromarray(out,'RGB')
+            path=Path('knit/materials')/(name+'.png')
+            result.save(path,format='PNG',compress_level=5)
+            print(name,edgeH,edgeV,path.stat().st_size)
+          PY
+      - name: Commit only validated material images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knit/materials/*.png
+          git diff --cached --quiet && exit 0
+          git commit -m "assets: add five seamless high-detail wool fabric sources"
+          git push origin HEAD:fix/knit-photo-materials-v5-20261106
