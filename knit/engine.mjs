@@ -36,12 +36,12 @@ export function loadPhotoTextures(){
 }
 function fairIsleStitch(row,col){
   const r=mod(row,16),c=mod(col,16),dy=Math.abs(r-7.5),dx=Math.abs(c-7.5);
-  // 16 x 16 individual-stitch Nordic snowflake repeat, not large rectangular patches.
-  const axial=((dx===.5&&dy<=6.5)||(dy===.5&&dx<=6.5));
-  const arms=(dx===dy&&dx>=2.5&&dx<=5.5);
-  const hooks=((dx===2.5&&dy===5.5)||(dy===2.5&&dx===5.5));
-  const border=(r===0||r===15)&&(c%4===1);
-  return axial||arms||hooks||border;
+  // Small, sparse Nordic colourwork points. No large flat colour rectangles.
+  const core=(dx===.5&&dy===.5);
+  const diagonal=(dx===dy&&dx>=1.5&&dx<=4.5);
+  const tips=(dx===.5&&dy===5.5)||(dy===.5&&dx===5.5);
+  const dots=(dx===1.5&&dy===6.5)||(dy===1.5&&dx===6.5);
+  return core||diagonal||tips||dots;
 }
 export function selectedYarn(s,row,col){
   return s.style==='fairisle'&&fairIsleStitch(row,col)?s.contrast:s.yarn;
