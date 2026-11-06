@@ -43,10 +43,12 @@ def nodes_for_yarn(yarn):
             errors.append(f"{method}: {exc}")
     raise RuntimeError(f"No readable yarn geometry from {type(yarn)}: {errors}")
 
-def build(wales=8,courses=8):
+def build(wales=8,courses=8,course_overlap=0.32):
     import pytexgen as tg
     if not 2<=wales<=24 or not 2<=courses<=24:
         raise ValueError("wales/courses must each be 2..24")
+    if not 0 <= course_overlap <= .45 or not math.isfinite(course_overlap):
+        raise ValueError("course_overlap must be finite and between 0 and .45")
     if not hasattr(tg,"CTextileWeftKnit"):
         raise RuntimeError("PyTexGen build does not expose CTextileWeftKnit")
     # From the documented TexGen WeftKnitClass example:
@@ -78,7 +80,18 @@ def build(wales=8,courses=8):
             for col in range(wales):
                 for k,p in enumerate(points):
                     if col and k==0:continue
-                    course.append([p[0]+col*dx,p[1]+row*dy,p[2]])
+                    local_y=(p[1]-ymin)/dy
+                    # Physically separate TexGen yarn courses need projected
+                    # overlap: neighbouring courses pass through preceding loops,
+                    # not merely touch at a horizontal join. Lower crossovers
+                    # are tucked behind upper ones in Z for over/under shading.
+                    # This is a render-oriented layout, not a knitting CAM plan.
+                    crossover_z = .18*(2*local_y-1)
+                    course.append([
+                        p[0]+col*dx,
+                        p[1]+row*dy*(1-course_overlap),
+                        p[2]+crossover_z
+                    ])
             result.append(course)
         diagnostics.append({"yarn":idx,"unit_nodes":len(points),
                             "expanded_courses":courses,
@@ -91,15 +104,18 @@ def build(wales=8,courses=8):
             "engine":"PyTexGen GPL-2.0-or-later",
             "structure":"weft-knit",
             "wales":wales,"courses":courses,
+            "course_overlap":course_overlap,
             "paths":result,"diagnostics":diagnostics}
 
 if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--wales",type=int,default=8)
     p.add_argument("--courses",type=int,default=8)
+    p.add_argument("--course-overlap",type=float,default=.32,
+                   help="Fraction of loop height adjacent projected yarn courses overlap")
     p.add_argument("--output",required=True)
     args=p.parse_args()
-    result=build(args.wales,args.courses)
+    result=build(args.wales,args.courses,args.course_overlap)
     dest=Path(args.output)
     dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(result,separators=(",",":")),encoding="utf8")
