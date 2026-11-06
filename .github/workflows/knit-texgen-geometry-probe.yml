@@ -1,0 +1,48 @@
+name: TexGen real weft-knit geometry independent probe
+on:
+  push:
+    branches:
+      - feature/hybrid-open-source-knit-render-20261106
+    paths:
+      - knit-render/texgen_geometry.py
+      - .github/workflows/knit-texgen-geometry-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  texgen-knit-geometry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install open-source TexGen Python bindings
+        run: python -m pip install --no-cache-dir pytexgen==1.2.1
+      - name: Generate actual knit yarn centrelines
+        run: |
+          python -m compileall -q knit-render/texgen_geometry.py
+          python knit-render/texgen_geometry.py \
+            --wales 8 --courses 8 --output /tmp/texgen-weft.json
+          python - <<'PY'
+          import json,math
+          d=json.load(open('/tmp/texgen-weft.json'))
+          assert d['structure']=='weft-knit' and len(d['paths'])==d['courses']
+          assert all(len(p)>4*d['wales'] for p in d['paths'])
+          assert all(len(p)>=2 for p in d['paths'])
+          assert all(math.isfinite(v) for p in d['paths'] for xyz in p for v in xyz)
+          assert .20 <= d['course_overlap'] <= .40
+          # Successive courses physically overlap in projection.
+          first,second=d['paths'][0],d['paths'][1]
+          assert min(p[1] for p in second) < max(p[1] for p in first)
+          # Knit legs must sit in front of the crown/connecting yarn.
+          assert max(p[2] for p in first)-min(p[2] for p in first)>.15
+          print('PASS specialist TexGen knit geometry exported',len(d['paths']),'yarns')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: texgen-weft-knit-centrelines
+          path: /tmp/texgen-weft.json
+          if-no-files-found: ignore
