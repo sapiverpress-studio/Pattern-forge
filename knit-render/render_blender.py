@@ -23,6 +23,7 @@ from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(__file__))
 from geometry import frame_geometry, cumulative_length, catmull_rom
+from fibre_geometry import create_fibres
 
 def parse():
     p=argparse.ArgumentParser()
@@ -39,6 +40,8 @@ def parse():
     p.add_argument("--roughness-map",default="",help="Optional PBR roughness image exported from open-source Material Maker")
     p.add_argument("--normal-map",default="",help="Optional PBR normal image exported from open-source Material Maker")
     p.add_argument("--texgen-json",default="",help="Use specialist TexGen true weft-knit yarn courses instead of the handmade fallback")
+    p.add_argument("--fibre-quality",choices=["preview","balanced","high"],default="preview",
+                   help="Real surface-filament count (not bitmap output scaling)")
     return p.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else [])
 
 def hexrgb(col):
@@ -99,13 +102,35 @@ def material(name,col,roughness_map="",normal_map=""):
         links.new(normal.outputs["Normal"],bump.inputs["Normal"])
     return mat
 
-def curve(name,sections,radius,mat):
+def wool_fibre_material(name,col):
+    """Cycles Principled Hair BSDF: individual keratin fibres scatter light.
+
+    This is not the same as a noise texture on the smooth yarn cylinder.
+    """
+    m=bpy.data.materials.new(name)
+    m.use_nodes=True
+    nodes=m.node_tree.nodes
+    nodes.clear()
+    surface=nodes.new("ShaderNodeOutputMaterial")
+    hair=nodes.new("ShaderNodeBsdfHairPrincipled")
+    hair.parametrization="COLOR"
+    hair.inputs["Color"].default_value=(*col,1)
+    hair.inputs["Roughness"].default_value=.78
+    if "Radial Roughness" in hair.inputs:
+        hair.inputs["Radial Roughness"].default_value=.87
+    if "Random Color" in hair.inputs:
+        hair.inputs["Random Color"].default_value=.08
+    m.node_tree.links.new(hair.outputs["BSDF"],surface.inputs["Surface"])
+    return m
+
+
+def curve(name,sections,radius,mat,bevel_steps=2):
     """Multiple independent splines in one real 3D curve object."""
     data=bpy.data.curves.new(name,"CURVE")
     data.dimensions="3D"
     data.resolution_u=3
     data.bevel_depth=radius
-    data.bevel_resolution=3
+    data.bevel_resolution=bevel_steps
     data.resolution_u=2
     for path in sections:
         if len(path)<2:continue
@@ -140,24 +165,6 @@ def twisted_ply(points,distances,which,pitch):
         out.append(tuple(q))
     return out
 
-def loose_fibres(paths,rng,pitch):
-    splines=[]
-    # Sparse, physically separate 3D fibre hairs following their parent yarn.
-    for path in paths:
-        count=min(1650,max(400,len(path)))
-        for _ in range(count):
-            i=rng.randrange(4,len(path)-4)
-            center=Vector(path[i])
-            n,bi=tangent_frame(path,i)
-            angle=rng.uniform(0,math.tau)
-            outward=math.cos(angle)*n+math.sin(angle)*bi
-            axis=(Vector(path[i+1])-Vector(path[i-1])).normalized()
-            start=center + outward*(pitch*.19)
-            mid=start+outward*pitch*rng.uniform(.016,.034)+axis*pitch*rng.uniform(-.018,.018)
-            end=mid+outward*pitch*rng.uniform(.025,.065)+axis*pitch*rng.uniform(-.045,.045)
-            splines.append((tuple(start),tuple(mid),tuple(end)))
-    return splines
-
 def area_light(name,at,power,size,temperature_colour):
     data=bpy.data.lights.new(name,"AREA")
     obj=bpy.data.objects.new(name,data)
@@ -183,7 +190,9 @@ def main():
     main_mat=material("2-ply matte merino yarn",col,args.roughness_map,args.normal_map)
     main_mat.diffuse_color=(*col,1)
     core_mat=material("inner wool yarn",tuple(max(0,c*.85) for c in col))
-    hair_mat=material("wispy merino fibres",tuple(min(1,c*1.09+.012) for c in col))
+    # Outer wool is modelled as real keratin-like filaments with Hair BSDF,
+    # not generic Principled shading on a smooth tube.
+    fibre_tones=[.86,.95,1.025,1.095]
     dark_mat=material("shadowed fabric beneath loops",tuple(c*.72 for c in col))
 
     if args.texgen_json:
@@ -219,9 +228,21 @@ def main():
     else:
         paths=list(frame_geometry(count,count,pitch))
     if args.yarn_type=="roving":
-        # Oversized blanket yarn is mostly an untwisted volume of soft merino.
-        # A thick 3D body and independent wool hairs, never two rope-like plies.
-        curve("soft single-roving knitted yarn",paths,pitch*(.235 if args.texgen_json else .174),main_mat)
+        # Main roving provides dense volume. Thousands of fine physical
+        # filaments make the surface scatter light like wool instead of latex.
+        core_radius=pitch*(.235 if args.texgen_json else .174)
+        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,4)
+        fibre_groups,flyaways=create_fibres(
+            paths,pitch,core_radius,quality=args.fibre_quality,seed=3419)
+        for band,filaments in fibre_groups.items():
+            tone=fibre_tones[band]
+            shade=tuple(min(.99,c*tone) for c in col)
+            mat=wool_fibre_material("wool microfilaments %d"%band,shade)
+            curve("fibre bundles %d"%band,filaments,pitch*.0065,mat,1)
+        halo=wool_fibre_material("loose merino fuzz",
+                                tuple(min(.99,c*1.07) for c in col))
+        curve("individually curved flyaway merino hairs",
+              flyaways,pitch*.0034,halo,1)
     else:
         curve("physically connected knitted yarn courses",paths,pitch*.095,core_mat)
         twisted=[[],[]]
@@ -231,8 +252,6 @@ def main():
                 twisted[ply].append(twisted_ply(row,lengths,ply,pitch))
         curve("twist ply A",twisted[0],pitch*.096,main_mat)
         curve("twist ply B",twisted[1],pitch*.096,main_mat)
-    rng=random.Random(347)
-    curve("independent fine wool fibres",loose_fibres(paths,rng,pitch),pitch*.0038,hair_mat)
 
     bpy.ops.mesh.primitive_plane_add(size=count*1.8,location=(0,0,-pitch*.28))
     backing=bpy.context.object
@@ -280,7 +299,7 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(args.save_scene)),exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(args.save_scene))
     os.makedirs(os.path.dirname(scene.render.filepath),exist_ok=True)
-    print(f"Rendering {args.size}x{args.size} {args.gauge} {args.yarn_type} {args.style}: {len(paths)} true yarn courses")
+    print(f"Rendering {args.size}x{args.size} {args.gauge} {args.yarn_type} {args.style}: {len(paths)} true yarn courses, {args.fibre_quality} fibres")
     bpy.ops.render.render(write_still=True)
     if not os.path.isfile(scene.render.filepath):
         raise RuntimeError("Blender did not produce the PNG")
