@@ -124,7 +124,7 @@ def wool_fibre_material(name,col):
     return m
 
 
-def curve(name,sections,radius,mat,bevel_steps=2,radius_variation=0.):
+def curve(name,sections,radius,mat,bevel_steps=2):
     """Multiple independent splines in one real 3D curve object."""
     data=bpy.data.curves.new(name,"CURVE")
     data.dimensions="3D"
@@ -136,14 +136,8 @@ def curve(name,sections,radius,mat,bevel_steps=2,radius_variation=0.):
         if len(path)<2:continue
         spline=data.splines.new("POLY")
         spline.points.add(len(path)-1)
-        for i,(pt,xyz) in enumerate(zip(spline.points,path)):
+        for pt,xyz in zip(spline.points,path):
             pt.co=(xyz[0],xyz[1],xyz[2],1)
-            if radius_variation:
-                # Hand-spun roving varies in bulk gently along the *one*
-                # connected yarn, not between rectangular photo tiles.
-                pt.radius=max(.76,1+radius_variation*(
-                    .7*math.sin(i*.21+len(path)*.03)
-                    + .3*math.sin(i*.058+len(path)*.17)))
     obj=bpy.data.objects.new(name,data)
     bpy.context.collection.objects.link(obj)
     obj.data.materials.append(mat)
@@ -237,7 +231,7 @@ def main():
         # Main roving provides dense volume. Thousands of fine physical
         # filaments make the surface scatter light like wool instead of latex.
         core_radius=pitch*(.225 if args.texgen_json else .174)
-        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5,radius_variation=.09)
+        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5)
         fibre_groups,flyaways=create_fibres(
             paths,pitch,core_radius,quality=args.fibre_quality,seed=3419)
         for band,filaments in fibre_groups.items():
