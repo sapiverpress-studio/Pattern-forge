@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#526d8f">
+<title>Knitted Fabric | Sapiver Pattern Forge</title>
+<meta name="description" content="Create seamless knitted fabric prints with realistic wool stitches.">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="shell">
+<header class="top">
+ <div><p class="eyebrow">Sapiver Press · Pattern Forge</p><h1>Knitted Fabric</h1><p class="intro">Create a realistic-looking knitted texture that repeats without visible joins.</p></div>
+ <a class="home" href="/">← New design</a>
+</header>
+<div class="workspace">
+  <section class="card controls" aria-labelledby="settingsTitle">
+    <h2 id="settingsTitle">Design your knit</h2>
+    <p class="hint">Choose a stitch, a yarn colour and a size. Your changes preview automatically.</p>
+    <label for="designName">Design name</label><input id="designName" maxlength="70" value="Warm Wool Knit" autocomplete="off">
+    <label for="knitStyle">Knitting style</label>
+    <select id="knitStyle">
+      <option value="stockinette">Stockinette · classic V stitches</option>
+      <option value="rib">Ribbed · raised columns</option>
+      <option value="seed">Seed stitch · textured bumps</option>
+      <option value="cable">Cable-style · twisted columns</option>
+      <option value="fairisle">Fair Isle-style · two-colour motifs</option>
+    </select>
+    <label for="gauge">Stitch size</label>
+    <select id="gauge"><option value="fine">Fine knit</option><option value="medium" selected>Medium knit</option><option value="chunky">Chunky knit</option></select>
+    <div class="colourRow">
+      <div><label for="yarn">Main yarn colour</label><input type="color" id="yarn" value="#d7bfa2"></div>
+      <div><label for="contrast">Pattern colour</label><input type="color" id="contrast" value="#9b403b"><small>Used in Fair Isle</small></div>
+    </div>
+    <div class="paletteRow" aria-label="Quick colour palettes">
+      <button type="button" data-palette="cream">Cream</button><button type="button" data-palette="sage">Sage</button>
+      <button type="button" data-palette="denim">Denim</button><button type="button" data-palette="berry">Berry</button>
+    </div>
+    <button type="button" id="variation" class="secondary full">Try another yarn variation</button>
+    <div class="saveBox">
+     <h3>Export your pattern</h3><p>5000 × 5000 pixel seamless PNG, 300 DPI metadata. Opaque fabric texture, ready for pattern merchandise.</p>
+     <button id="downloadPng" class="primary full" type="button">Download knitted pattern PNG</button>
+     <button id="saveSettings" class="secondary full" type="button">Download editable settings</button>
+     <label class="fileAction" for="loadSettings">Load saved settings JSON</label><input id="loadSettings" type="file" accept=".json,application/json">
+     <p id="message" role="status" aria-live="polite">Ready. Adjust the stitch settings to begin.</p>
+    </div>
+  </section>
+  <section class="card visual" aria-labelledby="previewTitle">
+    <div class="previewHeader"><div><h2 id="previewTitle">Live fabric preview</h2><p>See how the stitches connect.</p></div>
+      <div class="switches" role="group" aria-label="Preview type">
+      <button id="repeatView" aria-pressed="true" type="button">3 × 3 repeat</button>
+      <button id="singleView" aria-pressed="false" type="button">Single tile</button>
+      </div>
+    </div>
+    <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live knitted fabric preview"></canvas></div>
+    <p class="footnote">Procedurally drawn wool-like texture. This exports a printed image of knitting, not an actual machine-knit or embroidery stitch file.</p>
+  </section>
+</div>
+<footer>Standalone workspace · Your existing Pattern Forge designs and tools are unchanged.</footer>
+</main>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>

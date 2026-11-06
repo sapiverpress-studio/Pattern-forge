@@ -1,3 +1,10 @@
+## 6 November 2026 — Knitted Fabric standalone module (development, NOT published)
+**Scope:** Add standalone `/knit/` with its own HTML/CSS/ES modules for procedural knitted fabric textures. Features: stockinette, rib, seed, cable-style, Fair Isle-style; 3x3 seam preview; colour/gauge controls; PNG 5000x5000 with 300 DPI pHYs; editable JSON settings. Adds launch links only to `index.html` start menu and `app/index.html` new-project overlay. Existing editor JS/CSS, project storage, motifs, exports, workflows, and live site remain untouched.
+**Branch:** `feature/knitted-fabric-standalone-20261106` based on main `c1e728a5cd58a9541d4c86d7eb954853a1c64aa6`.
+**Checks:** New independent Playwright check in `tests/knit-fabric-browser.mjs`, workflow `knit-fabric-checks.yml`. Pending GitHub Actions verification; do not claim completion yet.
+**Release:** Not merged to main or deployed; staging / production need separate decision. This is a printed image of simulated wool, not a real knitting pattern instruction, PES or embroidery stitch file.
+**Feature location:** New Design → Knitted Fabric → `/knit/` (source branch only).
+
 ## 22 October 2026 — Nested ZIP motif folders and global search LIVE and verified
 
 **Released:** The source branch `feature/nested-motif-search-20261022` was promoted to `main` by safe fast-forward from `8e68ad564bc0df156e090c11dc2cabcb3d8082cd` to `6010a23823bfc2ba7bd07fde418e642eb3958f4d`. Netlify **production**, site `sapiver-pattern-forge`, published deployment `6ad9b1dae5eaf60ece65ce4d` as **ready**, commit `6010a23823bfc2ba7bd07fde418e642eb3958f4d`, on 2026-10-22T06:49:04Z. Published URL: https://sapiver-pattern-forge.netlify.app/. No staging or Android APK/AAB build was modified.

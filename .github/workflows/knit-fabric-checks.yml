@@ -1,0 +1,35 @@
+name: Knitted Fabric independent checks
+on:
+  push:
+    branches:
+      - feature/knitted-fabric-standalone-20261106
+    paths:
+      - knit/**
+      - index.html
+      - app/index.html
+      - tests/knit-fabric-browser.mjs
+      - .github/workflows/knit-fabric-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  knit-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check knit/engine.mjs
+          node --check knit/app.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/knit-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/knit-http.log; exit 1
+      - run: node tests/knit-fabric-browser.mjs
