@@ -1,3 +1,11 @@
+## 6 November 2026 — Single close-up / Mega Chunky independent QA PASS; draft PR #21
+
+**Development branch:** `fix/knit-single-closeup-megachunky-20261106`, isolated changes in `knit/engine.mjs`, `knit/app.mjs`, `knit/index.html`, `tests/knit-fabric-browser.mjs`, independent knit workflow, status ledger. **PR:** [#21](https://github.com/sapiverpress-studio/Pattern-forge/pull/21) created as **DRAFT**, targeting main but NOT merged.
+
+**Automated evidence:** Independent GitHub Action run [42265419768](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42265419768) PASSED 5 knit styles × 5 gauges, 5000px PNG and 300 DPI metadata, Mega Chunky controls and mobile-emulated viewport. Strengthened rerun [42265833718](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42265833718) also PASSED; additionally synthesises a two-colour source and confirms the 5000px export runs from left colour through right colour rather than repeating tile colours. Visual screenshot artefacts were downloaded and inspected, including `knit-v5-megachunky.png`: amplified wool loops visible without a 3×3 grid in single close-up preview.
+
+**Limits and next stage:** Visual acceptance by Jim, physical Android testing, quality of original 1250px photographed source and any pre-existing artefacts remain unverified. Mega crop is intentionally non-seamless. No production or staging deploy. No merges to main. Next: only after explicit release approval, merge/deploy and verify actual production URL and screenshot/download on mobile.
+
 ## 6 November 2026 — Single close-up 5000px export + Super Mega Cosy Chunky (development; NOT LIVE)
 
 **Request:** The knitted download still displayed a square grid. Jim requested downloading only the close-up at exactly 5000 × 5000 px / 300 DPI and an even larger cosy chunky setting.
