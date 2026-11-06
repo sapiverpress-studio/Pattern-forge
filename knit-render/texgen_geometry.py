@@ -43,7 +43,7 @@ def nodes_for_yarn(yarn):
             errors.append(f"{method}: {exc}")
     raise RuntimeError(f"No readable yarn geometry from {type(yarn)}: {errors}")
 
-def build(wales=8,courses=8,course_overlap=0.32):
+def build(wales=8,courses=8,course_overlap=0.27):
     import pytexgen as tg
     if not 2<=wales<=24 or not 2<=courses<=24:
         raise ValueError("wales/courses must each be 2..24")
@@ -86,7 +86,11 @@ def build(wales=8,courses=8,course_overlap=0.32):
                     # not merely touch at a horizontal join. Lower crossovers
                     # are tucked behind upper ones in Z for over/under shading.
                     # This is a render-oriented layout, not a knitting CAM plan.
-                    crossover_z = .18*(2*local_y-1)
+                    # Stockinette's descending/ascending legs catch light
+                    # in front; the rounded upper crown and lower connectors
+                    # are tucked *behind* their neighbours, not drawn as
+                    # solid horizontal bars across the knitted fabric.
+                    crossover_z = .40*math.sin(math.pi*local_y)-.18
                     course.append([
                         p[0]+col*dx,
                         p[1]+row*dy*(1-course_overlap),
@@ -111,7 +115,7 @@ if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--wales",type=int,default=8)
     p.add_argument("--courses",type=int,default=8)
-    p.add_argument("--course-overlap",type=float,default=.32,
+    p.add_argument("--course-overlap",type=float,default=.27,
                    help="Fraction of loop height adjacent projected yarn courses overlap")
     p.add_argument("--output",required=True)
     args=p.parse_args()
