@@ -22,7 +22,7 @@ export function stitchAt(s,r,c){
  let type='knit';
  if(s.style==='rib'&&mod(C,4)>=2)type='purl';
  if(s.style==='seed'&&mod(R+C,2)===1)type='purl';
- const yarn=s.style==='fairisle'&&FAIR_ISLE[mod(R,8)][mod(C,8)]==='#'?s.contrast:s.yarn;
+ const yarn=s.style==='fairisle'&&FAIR_ISLE[mod(R,8)][mod(C,8)]==='#'?(s.contrast||DEFAULTS.contrast):(s.yarn||DEFAULTS.yarn);
  return {type,yarn,cable:s.style==='cable'&&mod(C,8)>=2&&mod(C,8)<=5};
 }
 function bez(p,t){
