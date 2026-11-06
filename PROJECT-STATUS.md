@@ -1,3 +1,13 @@
+## 6 November 2026 — Hybrid open-source knit prototype QA update (NOT LIVE)
+
+**Independent render milestones:** Blender 4.0.2 on GitHub Actions, with Python/Pillow processing. First render failed due to distro-specific missing World / OpenImageDenoise; those compatibility errors were repaired, and nonzero Blender script errors now fail CI. Real Blender render / Pillow native-resolution validation both passed in [42274805910](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42274805910), [42275309057](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42275309057) and [42275897600](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42275897600). All are 720x720 native renders, PNG with 300 DPI. The Blender .blend and PNG previews are saved as workflow artefacts.
+
+**Actual visual QA (important):** Initial proof rendered oversaturated regular V-strands and was rejected; second proof rendered twisted rope-like yarn with knots and was rejected; third merino-roving proof had recognizable interlocking structure but plastic/smooth fibre surfaces and was NOT accepted for publication. Newest revision adds matte physically based microfibre shading, more natural stitch irregularity, and additional fine hair; [v4 run 42276392929](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42276392929) pending visual review at this checkpoint. It would be misleading to call this photorealistic wool before that review.
+
+**Scope and safety:** Only isolated knit-render/ pipeline, independent workflow, and this status ledger changed. The live knit generator and all Pattern/Doodle editor code remain untouched. Material Maker may optionally supply PBR roughness/normal maps; its actual app has NOT been run in CI. No true full-resolution 5000x5000 render or performance-cost measurement yet. No Cloud Run or Netlify service integration has been deployed.
+
+**Next:** Review v4 screenshot, then design a commercially reasonable and secure on-demand rendering backend before any website link can be enabled. Do not publish visually rejected knit outputs.
+
 ## 6 November 2026 — Hybrid open-source wool-rendering experiment (isolated branch)
 
 **Source branch:** feature/hybrid-open-source-knit-render-20261106 created from main at 7d388820f81904f1721cd8240f61a0fb6d0940e9. This is deliberately separate from the existing live Knitted Fabric UI and Pattern/Doodle editor.
