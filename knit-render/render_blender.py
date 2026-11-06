@@ -115,11 +115,11 @@ def wool_fibre_material(name,col):
     hair=nodes.new("ShaderNodeBsdfHairPrincipled")
     hair.parametrization="COLOR"
     hair.inputs["Color"].default_value=(*col,1)
-    hair.inputs["Roughness"].default_value=.78
+    hair.inputs["Roughness"].default_value=.92
     if "Radial Roughness" in hair.inputs:
-        hair.inputs["Radial Roughness"].default_value=.87
+        hair.inputs["Radial Roughness"].default_value=.96
     if "Random Color" in hair.inputs:
-        hair.inputs["Random Color"].default_value=.08
+        hair.inputs["Random Color"].default_value=.04
     m.node_tree.links.new(hair.outputs["BSDF"],surface.inputs["Surface"])
     return m
 
@@ -192,7 +192,7 @@ def main():
     core_mat=material("inner wool yarn",tuple(max(0,c*.85) for c in col))
     # Outer wool is modelled as real keratin-like filaments with Hair BSDF,
     # not generic Principled shading on a smooth tube.
-    fibre_tones=[.86,.95,1.025,1.095]
+    fibre_tones=[.80,.88,.96,1.03]
     dark_mat=material("shadowed fabric beneath loops",tuple(c*.72 for c in col))
 
     if args.texgen_json:
@@ -230,7 +230,7 @@ def main():
     if args.yarn_type=="roving":
         # Main roving provides dense volume. Thousands of fine physical
         # filaments make the surface scatter light like wool instead of latex.
-        core_radius=pitch*(.182 if args.texgen_json else .174)
+        core_radius=pitch*(.205 if args.texgen_json else .174)
         curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5)
         fibre_groups,flyaways=create_fibres(
             paths,pitch,core_radius,quality=args.fibre_quality,seed=3419)
@@ -262,7 +262,7 @@ def main():
     camera=bpy.context.object
     camera.rotation_euler=(0,0,0)
     camera.data.type="ORTHO"
-    camera.data.ortho_scale=count*.82
+    camera.data.ortho_scale=count*.69
     scene.camera=camera
     area_light("large diffused softbox",(-count*.7,count*.65,count*.95),165*count/6,count*1.5,(1.0,.94,.86))
     area_light("subtle cool fill",(count*.65,-count*.5,count*.8),65*count/6,count,(.80,.87,1.0))
