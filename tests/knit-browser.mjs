@@ -1,6 +1,8 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
-const browser=await chromium.launch({headless:true});
+import fs from 'node:fs';
+const preferred=['/usr/bin/google-chrome','/usr/bin/chromium'].find(p=>fs.existsSync(p));
+const browser=await chromium.launch({headless:true,...(preferred?{executablePath:preferred}:{})});
 const page=await browser.newPage({viewport:{width:385,height:840}});
 const jsErrors=[];page.on('pageerror',x=>jsErrors.push(x.message));
 await page.goto('http://127.0.0.1:4189/knit-renderer/',{waitUntil:'domcontentloaded'});
