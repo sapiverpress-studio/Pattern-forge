@@ -36,10 +36,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Chromium for real mobile browser checks
+      - name: Use preinstalled runner Chrome for Android-sized browser checks
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            npx playwright install chromium
+          fi
       - name: Test frontend with real browser and mocked job transport
         run: |
           python -m http.server 4189 --bind 127.0.0.1 --directory . >/tmp/knit-http.log 2>&1 &
