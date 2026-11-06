@@ -53,7 +53,7 @@ function mergeGeometries(parts){
  result.setIndex(idx);
  return result;
 }
-export async function render3d(canvas,{style='stockinette',gauge='superchunky',main='#e2d2b7',contrast='#9b403b'}={}){
+export async function render3d(canvas,{style='stockinette',gauge='superchunky',main='#e2d2b7',contrast='#9b403b',side='front'}={}){
  if(!styles.includes(style))style='stockinette';
  const n=gauges[gauge]||8;
  const scene=new THREE.Scene();
@@ -62,18 +62,18 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  renderer.outputColorSpace=THREE.SRGBColorSpace;
  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.28;
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
- const camera=new THREE.OrthographicCamera(0,n,n,0,.1,100);
- camera.position.set(n/2,n/2,40);camera.lookAt(n/2,n/2,0);
+ const camera=new THREE.OrthographicCamera(-n/2,n/2,n/2,-n/2,.1,100);
+ const front=side!=='back';camera.position.set(n/2,n/2,front?40:-40);camera.lookAt(n/2,n/2,0);
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(n+6,n+6),
    new THREE.MeshStandardMaterial({color:new THREE.Color(main).multiplyScalar(.29),roughness:1}));
- ground.position.set(n/2,n/2,-1.15);ground.receiveShadow=true;scene.add(ground);
+ ground.position.set(n/2,n/2,front?-1.15:1.15);ground.receiveShadow=true;scene.add(ground);
  scene.add(new THREE.HemisphereLight(0xffffff,0x584b47,1.7));
  const key=new THREE.DirectionalLight(0xfff2e1,4.0);
- key.position.set(-n*.45,n*.85,n*.95);
+ key.position.set(-n*.45,n*.85,front?n*.95:-n*.95);
  key.castShadow=true;key.shadow.mapSize.set(2048,2048);
  Object.assign(key.shadow.camera,{left:-n*.9,right:n*.9,top:n*.9,bottom:-n*.9,near:.5,far:70});
  key.shadow.bias=-0.00008;key.shadow.radius=3;scene.add(key);
- const fill=new THREE.DirectionalLight(0xc1ddff,1.7);fill.position.set(n*1.5,-n*.4,n*.7);scene.add(fill);
+ const fill=new THREE.DirectionalLight(0xc1ddff,1.7);fill.position.set(n*1.5,-n*.4,front?n*.7:-n*.7);scene.add(fill);
  const bump=makeBumpTexture();
  const geos=new Map([[main,[]],[contrast,[]]]);
  const segments=gauge==='fine'?16:gauge==='medium'?19:gauge==='chunky'?25:32;
