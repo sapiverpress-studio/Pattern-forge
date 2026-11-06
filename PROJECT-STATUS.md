@@ -1,3 +1,13 @@
+## 6 November 2026 — Hybrid open-source wool-rendering experiment (isolated branch)
+
+**Source branch:** feature/hybrid-open-source-knit-render-20261106 created from main at 7d388820f81904f1721cd8240f61a0fb6d0940e9. This is deliberately separate from the existing live Knitted Fabric UI and Pattern/Doodle editor.
+
+**Goal:** Replace blurred photograph enlargement with *physically modelled* knit yarn. Built Blender 3D stockinette prototype, including continuous course centre-lines, twin twisted plies, several hundred true fibre-hair strands, wool PBR material and softbox lighting. Optional Material Maker PBR normal/roughness-map inputs are supported. Pillow postprocessing refuses to upscale a small source and writes validated PNG + 300 DPI metadata. Geometry is independently unit-tested without Blender. All new code is under knit-render/ plus one standalone nondeploying GitHub Actions workflow, no live application code changed.
+
+**Current evidence:** The first branch CI geometry syntax/unit test stage passed; Blender installation and image render are pending in independent runner 42274393842. No claim of photographic quality, seamlessness or live availability. The 720px CI sample is only for visual quality checks; the generator can accept 5000px but that native-size path has not yet been measured. Four other stitch types need separate geometric construction, not recoloured copies.
+
+**Next:** Verify real Blender engine output, inspect image for convincingly knitted wool, measure native 5000px rendering and only then design/authorize a secure backend interface and mobile website integration. No production deploy or deployment automation has been initiated.
+
 ## 6 November 2026 — Single close-up download + Super Mega Cosy Chunky LIVE
 
 **User authorised production deployment:** PR [#21](https://github.com/sapiverpress-studio/Pattern-forge/pull/21) transitioned from draft to ready and was squash-merged into main as `43d8d3d2150467256dc233574ec2d0a8ed36185f`. Production Netlify site `sapiver-pattern-forge`, deploy ID `6aee16eae97944e7f4640a22`, status **ready**, published **2026-11-06T18:05:45Z**, `commit_ref` exactly `43d8d3d2150467256dc233574ec2d0a8ed36185f`, context `production`, branch `main`, no deploy error. Live route: https://sapiver-pattern-forge.netlify.app/knit/. Netlify verification is direct via connected deploy API, not an independent physical-device browser or HTTPS content fetch.
