@@ -42,4 +42,5 @@ jobs:
             knit-preview-closeup.png
             knit-preview-repeat.png
             knit-preview-cable.png
+            knit-preview-fairisle.png
           if-no-files-found: ignore
