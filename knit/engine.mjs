@@ -5,7 +5,7 @@
 // locally in /knit/materials/. No remote image services at runtime.
 export const TILE_SIZE=1250, EXPORT_SIZE=5000;
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
-export const STITCH_COUNTS=Object.freeze({fine:32,medium:24,chunky:16,superchunky:8});
+export const STITCH_COUNTS=Object.freeze({fine:32,medium:24,chunky:16,superchunky:8,megachunky:5});
 export const STYLE_COLOURS=Object.freeze({
   stockinette:['#729ac6','#ead7b4','#24344f'],
   rib:['#ead2ae','#ad765b','#3c4349'],
@@ -129,16 +129,29 @@ function alignRasterEdges(ctx){
 }
 export function renderKnit(target,raw={}){
   const s=normalize(raw);
-  const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge];
+  const count=({megachunky:1,superchunky:1,chunky:2,medium:3,fine:4})[s.gauge];
   const ctx=baseMaterial(target,s,count);
   applyDye(ctx,s);alignRasterEdges(ctx);return target;
 }
-export function renderPreview(tile,canvas,repeat=false){
+// Use the same close-up framing for preview and final PNG. Mega Chunky
+// enlarges the centre of the photographed knit; it is intentionally NOT a
+// seamlessly repeatable tile. Other gauges use the full, single material tile.
+function drawCloseUp(ctx,tile,side,gauge){
+  const zoom=gauge==='megachunky'?1.7:1;
+  const source=tile.width/zoom;
+  const left=(tile.width-source)/2,top=(tile.height-source)/2;
+  ctx.drawImage(tile,left,top,source,source,0,0,side,side);
+}
+export function renderPreview(tile,canvas,repeat=false,gauge='superchunky'){
   canvas.width=canvas.height=720;
   const ctx=canvas.getContext('2d',{alpha:false});
   if(!ctx)throw Error('Preview canvas not available');
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  const count=repeat?3:1,step=720/count;
+  if(!repeat){
+    drawCloseUp(ctx,tile,720,gauge);
+    return;
+  }
+  const count=3,step=720/count;
   for(let y=0;y<count;y++)for(let x=0;x<count;x++)
     ctx.drawImage(tile,x*step,y*step,step,step);
 }
@@ -170,15 +183,17 @@ export function add300DpiPngMetadata(input){
   if(!hasIHDR||!hasIEND||pos!==a.length)throw new Error('Incomplete PNG');
   return new Blob(parts,{type:'image/png'});
 }
-export async function exportPng(tile){
+// Export the actual single close-up shown to the user, not a 4×4 grid of
+// 1250px tiles. 5000px raster dimensions and PNG 300 DPI pHYs are retained.
+// Source detail remains limited by the original photographed material.
+export async function exportPng(tile,gauge='superchunky'){
   const canvas=document.createElement('canvas');
   canvas.width=canvas.height=EXPORT_SIZE;
   const ctx=canvas.getContext('2d',{alpha:false});
   if(!ctx)throw new Error('Cannot create export canvas');
-  ctx.imageSmoothingEnabled=false;
-  const pattern=ctx.createPattern(tile,'repeat');
-  if(!pattern)throw new Error('Cannot create seamless repeat');
-  ctx.fillStyle=pattern;ctx.fillRect(0,0,EXPORT_SIZE,EXPORT_SIZE);
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  drawCloseUp(ctx,tile,EXPORT_SIZE,gauge);
   const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG export failed')),'image/png'));
   const bytes=await blob.arrayBuffer();
   canvas.width=canvas.height=0;

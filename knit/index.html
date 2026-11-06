@@ -28,7 +28,7 @@
       <option value="fairisle">Fair Isle · original knitted-in colourwork</option>
     </select>
     <label for="gauge">Stitch size</label>
-    <select id="gauge"><option value="fine">Fine knit</option><option value="medium">Medium knit</option><option value="chunky">Chunky wool</option><option value="superchunky" selected>Super Chunky · cosy oversized stitches</option></select>
+    <select id="gauge"><option value="fine">Fine knit</option><option value="medium">Medium knit</option><option value="chunky">Chunky wool</option><option value="superchunky" selected>Super Chunky · cosy oversized stitches</option><option value="megachunky">Super Mega Cosy Chunky · extra oversized wool</option></select>
     <div class="colourRow">
       <div><label for="yarn">Main yarn colour</label><input type="color" id="yarn" value="#729ac6"></div>
       <div><label for="contrast">Pattern colour</label><input type="color" id="contrast" value="#9b403b"><small>Used in Fair Isle</small></div>
@@ -39,24 +39,25 @@
       <button type="button" data-palette="denim">Denim</button><button type="button" data-palette="berry">Berry</button>
     </div>
     <button type="button" id="cosyPreset" class="primary full">Make a cosy super chunky knit</button>
+    <button type="button" id="megaPreset" class="primary full">Make a super mega cosy chunky knit</button>
     <button type="button" id="variation" class="secondary full">Swap yarn colours</button>
     <div class="saveBox">
-     <h3>Export your pattern</h3><p>5000 × 5000 pixel seamless PNG, 300 DPI metadata. Opaque fabric texture, ready for pattern merchandise.</p>
-     <button id="downloadPng" class="primary full" type="button">Download knitted pattern PNG</button>
+     <h3>Export your close-up</h3><p>One close-up image only, not a tiled grid. PNG 5000 × 5000 pixels with 300 DPI metadata. Mega Chunky is deliberately magnified and is not seamless.</p>
+     <button id="downloadPng" class="primary full" type="button">Download close-up PNG · 5000 px</button>
      <button id="saveSettings" class="secondary full" type="button">Download editable settings</button>
      <label class="fileAction" for="loadSettings">Load saved settings JSON</label><input id="loadSettings" type="file" accept=".json,application/json">
      <p id="message" role="status" aria-live="polite">Ready. Adjust the stitch settings to begin.</p>
     </div>
   </section>
   <section class="card visual" aria-labelledby="previewTitle">
-    <div class="previewHeader"><div><h2 id="previewTitle">Live fabric preview</h2><p>Inspect the wool strands close up, then check the repeat.</p></div>
+    <div class="previewHeader"><div><h2 id="previewTitle">Live fabric preview</h2><p>Your download uses this fabric close-up, never the tiled repeat. Mega Chunky zooms in further.</p></div>
       <div class="switches" role="group" aria-label="Preview type">
       <button id="repeatView" aria-pressed="false" type="button">3 × 3 repeat</button>
       <button id="singleView" aria-pressed="true" type="button">Fabric close-up</button>
       </div>
     </div>
     <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live knitted fabric preview"></canvas></div>
-    <p class="footnote">Uses five distinct, internally seamless knitted-fabric references. Fair Isle colours are part of the original knit artwork, not graphics drawn over it. Prints the appearance of fabric; does not generate knitting instructions or embroidery machine files.</p>
+    <p class="footnote">Five knitted-fabric material references. The export enlarges a source image, so 5000 px is the file size, not 5000 px of original photographic detail. Mega Chunky close-ups do not tile seamlessly. Prints the appearance of fabric; no knitting instructions or embroidery files.</p>
   </section>
 </div>
 <footer>Standalone workspace · Your existing Pattern Forge designs and tools are unchanged.</footer>

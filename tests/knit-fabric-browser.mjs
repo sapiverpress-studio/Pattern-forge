@@ -27,7 +27,7 @@ try{
    const m=await import('/knit/engine.mjs');
    await m.loadPhotoTextures();
    const all=[],seams=[];
-   for(const style of m.STYLES)for(const gauge of ['superchunky','chunky','medium','fine']){
+   for(const style of m.STYLES)for(const gauge of ['megachunky','superchunky','chunky','medium','fine']){
      const c=document.createElement('canvas');
      m.renderKnit(c,{style,gauge,yarn:'#a4b7cc',contrast:'#efd0a5',navy:'#25385b'});
      const ctx=c.getContext('2d',{willReadFrequently:true}),a=ctx.getImageData(0,0,m.TILE_SIZE,m.TILE_SIZE).data;
@@ -43,9 +43,21 @@ try{
    }
    return {tileResults:all.length,seams:all};
  });
- console.log('20 seam tests',tileResults,seams);
+ assert.equal(tileResults,25);
+ console.log('25 source-tile seam tests',tileResults,seams);
  await page.locator('#knitStyle').selectOption('stockinette');
  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'));
+ // Mega Chunky magnifies the actual source and cannot be tiled seamlessly.
+ await page.locator('#gauge').selectOption('megachunky');
+ await page.waitForFunction(()=>document.querySelector('#message')?.textContent.startsWith('Mega Chunky close-up ready'));
+ assert(await page.locator('#repeatView').isDisabled(),'Mega Chunky repeat must be disabled');
+ const mega=await page.locator('#preview').evaluate(x=>x.toDataURL().slice(-300));
+ await page.locator('#preview').screenshot({path:'knit-v5-megachunky.png'});
+ await page.locator('#gauge').selectOption('superchunky');
+ await page.waitForFunction(()=>document.querySelector('#message')?.textContent.startsWith('Material ready'));
+ assert(!(await page.locator('#repeatView').isDisabled()),'Normal repeat remains available');
+ const regular=await page.locator('#preview').evaluate(x=>x.toDataURL().slice(-300));
+ assert.notEqual(mega,regular,'Mega Chunky must magnify the close-up');
  const before=await page.locator('#preview').evaluate(x=>x.toDataURL().slice(-250));
  await page.locator('#yarn').evaluate(x=>{x.value='#a05588';x.dispatchEvent(new Event('input',{bubbles:true}));});
  await page.waitForFunction(()=>document.querySelector('#message')?.textContent.includes('Material ready'));
@@ -62,6 +74,29 @@ try{
    offset+=length+12;if(type==='IEND')break;
  }
  assert(phys&&offset===bin.length,'PNG complete with DPI metadata');
+ // A synthetic two-colour material must fill one enlarged close-up, not
+ // repeat as a periodic square grid every 1250 pixels.
+ const closeupSamples=await page.evaluate(async()=>{
+   const m=await import('/knit/engine.mjs');
+   const source=document.createElement('canvas');
+   source.width=source.height=250;
+   const ctx=source.getContext('2d');
+   ctx.fillStyle='#f00000';ctx.fillRect(0,0,125,250);
+   ctx.fillStyle='#0000f0';ctx.fillRect(125,0,125,250);
+   const bitmap=await createImageBitmap(await m.exportPng(source,'superchunky'));
+   const sample=x=>{
+     const c=document.createElement('canvas');
+     c.width=c.height=1;
+     const g=c.getContext('2d');
+     g.drawImage(bitmap,x,200,1,1,0,0,1,1);
+     return [...g.getImageData(0,0,1,1).data];
+   };
+   const first=sample(250),last=sample(4750);
+   bitmap.close();
+   return {first,last};
+ });
+ assert(closeupSamples.first[0]>210&&closeupSamples.first[2]<40,'Single close-up starts with left yarn');
+ assert(closeupSamples.last[2]>210&&closeupSamples.last[0]<40,'Single close-up ends with right yarn, not a repeat');
  assert.deepEqual(errors,[],'No JS page errors');
- console.log('PASS 5 styles x 4 gauges / mobile / 5000 PNG / DPI');
+ console.log('PASS 5 styles x 5 gauges / Mega Chunky UI / mobile / 5000 close-up PNG / DPI');
 }finally{await browser.close()}

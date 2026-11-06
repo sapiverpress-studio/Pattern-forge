@@ -17,7 +17,8 @@ function paint(){
   loadError=null;
   Object.assign(settings,stateFromControls());
   renderKnit(tile,settings);
-  renderPreview(tile,preview,repeat);
+  updateRepeatAvailability();
+  renderPreview(tile,preview,repeat,settings.gauge);
   try{localStorage.setItem(STORAGE,JSON.stringify({...settings,name:$('designName').value}))}catch{}
 }
 let scheduled=false,sequence=0,photosReady=Promise.resolve();
@@ -29,7 +30,7 @@ async function draw(){
     await photosReady;
     if(current!==sequence)return;
     paint();
-    status('Material ready — inspect the close-up and 3 × 3 repeat.');
+    status(settings.gauge==='megachunky'?'Mega Chunky close-up ready — no tiled grid in download.':'Material ready — download exports the single close-up, not the 3 × 3 repeat.');
   }catch(e){if(current===sequence){loadError=e;status('Material error: '+e.message);}}
 }
 function schedule(){if(scheduled)return;scheduled=true;
@@ -50,6 +51,10 @@ $('cosyPreset').addEventListener('click',()=>{
   Object.assign(settings,{style:'stockinette',gauge:'superchunky',yarn:'#e9d7b6',contrast:'#9b403b',navy:'#27394c'});
   controlsFromState();$('navyWrap').hidden=true;setRepeat(false);schedule();
 });
+$('megaPreset').addEventListener('click',()=>{
+  Object.assign(settings,{style:'stockinette',gauge:'megachunky',yarn:'#e9d7b6',contrast:'#9b403b',navy:'#27394c'});
+  controlsFromState();$('navyWrap').hidden=true;setRepeat(false);schedule();
+});
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>{
   const vals=palettes[b.dataset.palette];
   $('yarn').value=vals[0];$('contrast').value=vals[1];$('navy').value=vals[2];schedule();
@@ -60,9 +65,19 @@ $('variation').addEventListener('click',()=>{
   $('yarn').value=n;$('contrast').value=c;
   schedule();status('Yarn colours exchanged.');
 });
+function updateRepeatAvailability(){
+  const mega=settings.gauge==='megachunky';
+  $('repeatView').disabled=mega;
+  $('repeatView').title=mega?'Mega Chunky is a magnified close-up, not a repeatable tile.':'';
+  if(mega)repeat=false;
+  $('repeatView').setAttribute('aria-pressed',String(repeat));
+  $('singleView').setAttribute('aria-pressed',String(!repeat));
+}
 function setRepeat(next){
-  repeat=next;$('repeatView').setAttribute('aria-pressed',String(next));$('singleView').setAttribute('aria-pressed',String(!next));
-  renderPreview(tile,preview,repeat);
+  if(next&&$('gauge').value==='megachunky')return;
+  repeat=next;
+  updateRepeatAvailability();
+  renderPreview(tile,preview,repeat,$('gauge').value);
 }
 $('repeatView').addEventListener('click',()=>setRepeat(true));
 $('singleView').addEventListener('click',()=>setRepeat(false));
@@ -77,9 +92,9 @@ $('downloadPng').addEventListener('click',async()=>{
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
     await photosReady;
     paint();
-    const blob=await exportPng(tile);
+    const blob=await exportPng(tile,settings.gauge);
     download(blob,filename($('designName').value,'.png'));
-    status('PNG prepared: 5000 × 5000 px with 300 DPI metadata.');
+    status('Single close-up PNG prepared: 5000 × 5000 px, 300 DPI metadata.');
   }catch(e){status('Export failed: '+e.message)}
   finally{waiting=false;button.disabled=false}
 });
