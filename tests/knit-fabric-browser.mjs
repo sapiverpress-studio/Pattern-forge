@@ -31,6 +31,7 @@ try{
   await page.locator('#yarn').evaluate(el=>{el.value='#345678';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(180);
   assert.notEqual(await digest(),before,'changing yarn/style changes fabric pixels');
+  await page.locator('#preview').screenshot({path:'knit-preview-fairisle.png'});
   const seams=await page.evaluate(async()=>{
     const {renderKnit,STYLES,TILE_SIZE,stitchCount,loadPhotoTextures}=await import('/knit/engine.mjs');
     await loadPhotoTextures();
