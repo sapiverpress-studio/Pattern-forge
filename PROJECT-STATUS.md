@@ -1,3 +1,13 @@
+## 6 November 2026 — Knit photo-composite refinement (DEVELOPMENT; QA PENDING)
+
+Initial candidate dedicated rib and seed procedural tiles were visually rejected (flat stripes and repeated geometric bumps, not realistic wool). Replaced with an alternative based on existing **CC0 photographed knitted wool**, preserving texture detail: purl-like shaded fibre mounds composited into 2×1 rib columns and checkerboard seed-style stitch cells; Fair Isle now follows V-loop yarn masks. No Pattern/Doodle changes. Still require separate browser, 3×3, visual, and 5000px export checks before release.
+
+## 6 November 2026 — Knit structure correctness overhaul (DEVELOPMENT / NOT DEPLOYED)
+
+**User requirement:** All five knitting types must show genuinely knitted structure, not flat marks or relabelled textures. Built on separate branch `fix/authentic-knit-stitches-all-styles-20261106`. Changes limited to isolated `/knit/`, its assets, and independent browser checks.
+**Approach:** Stockinette and cable retain commercial-use CC0 photo sources; rib now uses dedicated CC0 rib structure, seed uses royalty-free alternating knit/purl source; Fair Isle recolours V-shaped photographed yarn loops using explicit 18×11 stitch chart, without flat red polygon overlays. Super Chunky source cropping for finer stitch materials and seam feathering. Material licences: `knit/textures/SOURCES.md`.
+**Testing:** Pending independent Chromium browser rendering, PNG export, mobile viewport and visual QA per style. Release to main only if accepted. Existing Pattern/Doodle unchanged.
+
 ## 6 November 2026 — Photographic cosy knitted fabric LIVE
 
 **Published:** PR [#16](https://github.com/sapiverpress-studio/Pattern-forge/pull/16) squash-merged to main as `5adcfbeb12c2f86f6792c9f990d7d61cf984c303`. Netlify site `sapiver-pattern-forge`, deploy `6aed9b2936fc8e982250d2d6`, state **ready**, published **2026-11-06T09:17:37Z**, commit exactly `5adcfbeb12c2f86f6792c9f990d7d61cf984c303`. Live location: https://sapiver-pattern-forge.netlify.app/knit/.

@@ -4,6 +4,7 @@ on:
     branches:
       - feature/knitted-fabric-standalone-20261106
       - fix/realistic-cosy-knitting-20261106
+      - fix/authentic-knit-stitches-all-styles-20261106
     paths:
       - knit/**
       - index.html
@@ -39,8 +40,6 @@ jobs:
         with:
           name: knit-visual-qa
           path: |
-            knit-preview-closeup.png
-            knit-preview-repeat.png
-            knit-preview-cable.png
-            knit-preview-fairisle.png
+            knit-preview-*.png
+            knit/textures/*.png
           if-no-files-found: ignore
