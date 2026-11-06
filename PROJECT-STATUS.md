@@ -1,3 +1,15 @@
+## 6 November 2026 — Five knitted-fabric style corrections LIVE
+
+**Release:** PR [#17](https://github.com/sapiverpress-studio/Pattern-forge/pull/17), squash-merged to main commit `6aaa2fe26f022d4f6860b1616b7884694a71febb`. Netlify project `sapiver-pattern-forge`, production deploy `6aeda690760cf69b53a862d4` **ready**, published `2026-11-06T10:06:15Z` from the exact matching commit. Live route: https://sapiver-pattern-forge.netlify.app/knit/.
+
+**Design fixes:** All five original modes are now photo-textured knit simulations. Stockinette keeps the V-loop wool photo, cable keeps the raised crossing-cable photo, rib uses a photo-composite of knit columns and purl-like relief, seed uses alternating knit and purl-like shaded bumps, Fair Isle dyes *the V loop shapes* rather than overlaying flat coloured blocks. Fine, medium, chunky and superchunky gauge, close-up and 3x3 modes remain. Importantly this is a visual simulator, not an executable knitting/embroidery stitch plan.
+
+**Safety scope:** Only standalone `knit/` source and its material sources, independent test/workflow and this release ledger were changed. The Pattern/Doodle/editor application code, saved projects and starter pages were not modified in PR #17. Redundant imported procedural images (visually rejected) and one-time importer were deleted before merge.
+
+**Verification:** Independent Chromium/mobile emulated branch run [42199394938](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42199394938) passed style-distinctness, pixel seam continuity, controls, 5000x5000 PNG export and 300 DPI. Screenshots for the knitted styles visually inspected. PR final commit `8646a303` changed only the test's close-up screenshot sequence; CI run [42199721101](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42199721101) was still processing when published; the previous same-engine run passed. No real Android device browser test, nor consumer-level subjective acceptance. Netlify exact-commit deployment readiness verified.
+
+**External material licences:** 3 bundled commercially usable CC0 photographed knitted textures, documented at `knit/textures/SOURCES.md`.
+
 ## 6 November 2026 — Knit photo-composite refinement (DEVELOPMENT; QA PENDING)
 
 Initial candidate dedicated rib and seed procedural tiles were visually rejected (flat stripes and repeated geometric bumps, not realistic wool). Replaced with an alternative based on existing **CC0 photographed knitted wool**, preserving texture detail: purl-like shaded fibre mounds composited into 2×1 rib columns and checkerboard seed-style stitch cells; Fair Isle now follows V-loop yarn masks. No Pattern/Doodle changes. Still require separate browser, 3×3, visual, and 5000px export checks before release.
