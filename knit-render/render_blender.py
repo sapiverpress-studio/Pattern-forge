@@ -55,19 +55,30 @@ def material(name,col,roughness_map="",normal_map=""):
     links=mat.node_tree.links
     bsdf=nodes.get("Principled BSDF")
     bsdf.inputs["Base Color"].default_value=(*col,1)
-    bsdf.inputs["Roughness"].default_value=.88
-    if "Sheen Weight" in bsdf.inputs: bsdf.inputs["Sheen Weight"].default_value=.38
+    bsdf.inputs["Roughness"].default_value=.96
+    if "Specular IOR Level" in bsdf.inputs: bsdf.inputs["Specular IOR Level"].default_value=.14
+    if "Subsurface Weight" in bsdf.inputs: bsdf.inputs["Subsurface Weight"].default_value=.055
+    if "Sheen Weight" in bsdf.inputs: bsdf.inputs["Sheen Weight"].default_value=.52
     elif "Sheen" in bsdf.inputs: bsdf.inputs["Sheen"].default_value=.38
 
     noise=nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value=115
+    noise.inputs["Scale"].default_value=22
     noise.inputs["Detail"].default_value=3.0
     noise.inputs["Roughness"].default_value=.75
     bump=nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value=.38
-    bump.inputs["Distance"].default_value=.013
+    bump.inputs["Strength"].default_value=.48
+    bump.inputs["Distance"].default_value=.055
     links.new(noise.outputs["Fac"],bump.inputs["Height"])
-    links.new(bump.outputs["Normal"],bsdf.inputs["Normal"])
+    # Independent microscopic fibre relief above the broad wool-clump relief.
+    fib_noise=nodes.new("ShaderNodeTexNoise")
+    fib_noise.inputs["Scale"].default_value=250
+    fib_noise.inputs["Detail"].default_value=3
+    fib_bump=nodes.new("ShaderNodeBump")
+    fib_bump.inputs["Strength"].default_value=.26
+    fib_bump.inputs["Distance"].default_value=.016
+    links.new(fib_noise.outputs["Fac"],fib_bump.inputs["Height"])
+    links.new(bump.outputs["Normal"],fib_bump.inputs["Normal"])
+    links.new(fib_bump.outputs["Normal"],bsdf.inputs["Normal"])
 
     if roughness_map:
         img=bpy.data.images.load(os.path.abspath(roughness_map),check_existing=True)
@@ -131,7 +142,7 @@ def loose_fibres(paths,rng,pitch):
     splines=[]
     # Sparse, physically separate 3D fibre hairs following their parent yarn.
     for path in paths:
-        count=min(850,max(220,len(path)//2))
+        count=min(1650,max(400,len(path)))
         for _ in range(count):
             i=rng.randrange(4,len(path)-4)
             center=Vector(path[i])
@@ -188,7 +199,7 @@ def main():
         curve("twist ply A",twisted[0],pitch*.096,main_mat)
         curve("twist ply B",twisted[1],pitch*.096,main_mat)
     rng=random.Random(347)
-    curve("independent fine wool fibres",loose_fibres(paths,rng,pitch),pitch*.0065,hair_mat)
+    curve("independent fine wool fibres",loose_fibres(paths,rng,pitch),pitch*.0038,hair_mat)
 
     bpy.ops.mesh.primitive_plane_add(size=count*1.8,location=(0,0,-pitch*.28))
     backing=bpy.context.object
