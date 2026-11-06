@@ -31,7 +31,7 @@ jobs:
       - name: Render real 3D knitted wool rather than enlarged photos
         run: |
           mkdir -p /tmp/knit-qa
-          blender -b -noaudio --python knit-render/render_blender.py -- \
+          blender -b -noaudio --python-exit-code 5 --python knit-render/render_blender.py -- \
             --style stockinette --gauge mega --colour '#e9dbc3' \
             --size 720 --samples 16 --engine cycles \
             --output /tmp/knit-qa/wool-native-720.png \
