@@ -1,7 +1,7 @@
 ## 6 November 2026 — Knitted Fabric standalone module (development, NOT published)
 **Scope:** Add standalone `/knit/` with its own HTML/CSS/ES modules for procedural knitted fabric textures. Features: stockinette, rib, seed, cable-style, Fair Isle-style; 3x3 seam preview; colour/gauge controls; PNG 5000x5000 with 300 DPI pHYs; editable JSON settings. Adds launch links only to `index.html` start menu and `app/index.html` new-project overlay. Existing editor JS/CSS, project storage, motifs, exports, workflows, and live site remain untouched.
 **Branch:** `feature/knitted-fabric-standalone-20261106` based on main `c1e728a5cd58a9541d4c86d7eb954853a1c64aa6`.
-**Checks:** New independent Playwright check in `tests/knit-fabric-browser.mjs`, workflow `knit-fabric-checks.yml`. Pending GitHub Actions verification; do not claim completion yet.
+**Checks:** Independent Chromium / mobile-emulated Playwright check [run 42188445520](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42188445520) **SUCCESS**: launch link, style/colour controls, 3×3 preview, pixel-by-pixel tiling, all five styles boundary comparisons, 5000×5000 PNG, exactly one 300 DPI pHYs chunk. Existing PR checks: motif alpha, mobile remix, transparent master export passed on branch SHA `738ee963`; unrelated magnetic workflow failed **before browser tests** because its Playwright installer does not support the GitHub ubuntu-26.04 runner. No physical Android testing completed.
 **Release:** Not merged to main or deployed; staging / production need separate decision. This is a printed image of simulated wool, not a real knitting pattern instruction, PES or embroidery stitch file.
 **Feature location:** New Design → Knitted Fabric → `/knit/` (source branch only).
 
@@ -198,6 +198,7 @@ Availability is different from physical Android validation.
 
 | Feature | Where the user finds it | Source / browser status |
 | --- | --- | --- |
+| Knitted Fabric (standalone) | Home → New Knitted Fabric, editor's New Design → Knitted Fabric, `/knit/` | New independent module on `feature/knitted-fabric-standalone-20261106`; Chromium seam + export test passed, production release pending |
 | Consistent saved favourite tools | Tools menu; choose quick tools | Implemented; reload and workspace-switch coverage |
 | Imported image drag and selection | Import image or add another from library → automatically Select; drag image body or Move handle | **New fix on `feature/responsive-image-drag-20261012`; tested 7/7 browser flows + 31/31 regression, NOT deployed** |
 | Multi-image batch library | Images → Choose images (5 or more at once) → gallery / Add / full backup | Tested 3/3 batch import and 31/31 existing; **not deployed** |
