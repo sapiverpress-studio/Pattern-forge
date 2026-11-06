@@ -1,8 +1,8 @@
 import {DEFAULTS,normalize,renderKnit,renderPreview,exportPng} from './engine.mjs';
 const $=id=>document.getElementById(id), tile=document.createElement('canvas'), preview=$('preview');
-const STORAGE='sapiver-knitted-fabric-settings-v1';
-const palettes={cream:['#d7bfa2','#9b403b'],sage:['#809b85','#f2e2c3'],denim:['#506f91','#edcaa7'],berry:['#7a3748','#f2d9bc']};
-let repeat=true,waiting=false;
+const STORAGE='sapiver-knitted-fabric-settings-v2';
+const palettes={cream:['#e2d2b7','#9b403b'],sage:['#809b85','#f2e2c3'],denim:['#506f91','#edcaa7'],berry:['#7a3748','#f2d9bc']};
+let repeat=false,waiting=false;
 let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE)||'{}')||{}}catch{}
 const settings=normalize({...DEFAULTS,...saved});
 function controlsFromState(){
@@ -25,6 +25,10 @@ function schedule(){
 }
 controlsFromState();paint();
 for(const key of ['knitStyle','gauge','yarn','contrast','designName'])$(key).addEventListener('input',schedule);
+$('cosyPreset').addEventListener('click',()=>{
+  Object.assign(settings,{style:'stockinette',gauge:'superchunky',yarn:'#e2d2b7',contrast:'#9b403b'});
+  controlsFromState();setRepeat(false);schedule();status('Cosy super chunky wool selected.');
+});
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>{
   const colours=palettes[b.dataset.palette];$('yarn').value=colours[0];$('contrast').value=colours[1];schedule();
 }));

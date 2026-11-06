@@ -1,3 +1,10 @@
+## 6 November 2026 — Cosy knitted realism correction (DEVELOPMENT / NOT YET PUBLISHED)
+
+**User feedback:** Current knit generator looks like disconnected V glyphs, not a photo-like continuous wool fabric. Requested visibly connected realistic yarn and super-chunky cosy texture. Source branch `fix/realistic-cosy-knitting-20261106` from `main` at `3c7f719b50e6aad2437539809532b4f863a3f578`.
+**Changes:** Only standalone `/knit/` module and its tests: shadowed thick overlapping knit loops, yarn-following fibres and twists, real cable crossing overlays, periodic Fair Isle motifs, fine/medium/chunky/**superchunky** gauge and close-up-first preview. Existing Pattern/Doodle source and home remain unchanged. v2 local settings key leaves prior v1 saved presets untouched; JSON compatible.
+**Tests:** Pending browser run, seam pixel check and 5000px PNG export verification; no visual quality acceptance proof yet, physical Android still untested.
+**Release:** Development only pending test/visual review. Do not mark live before matching Netlify commit is verified.
+
 ## 6 November 2026 — Knitted Fabric standalone module LIVE
 
 **Production source:** PR [#15](https://github.com/sapiverpress-studio/Pattern-forge/pull/15) merged to `main` in commit `9f6cf781618dd5cbc065528bce9d154f009d8229`. Netlify project `sapiver-pattern-forge`, production deploy `6aed914ed3bff45cbb040fd8`, **ready** and published 2026-11-06T08:35:34Z from that exact commit; new site route: https://sapiver-pattern-forge.netlify.app/knit/. Only `index.html` new-design choice and `app/index.html` new-project setup link were touched outside the new module, tests, workflow and this release ledger. Existing editor code and browser storage unchanged.
