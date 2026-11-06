@@ -19,6 +19,7 @@ await page.screenshot({path:'knit-renderer-browser.png',fullPage:true});
 await page.reload();
 await page.route('**/api/knit-render',async route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'The 3D wool renderer is not yet connected. No image was generated.'})}));
 await page.locator('#generate').click();
+await page.waitForFunction(() => document.querySelector('#status')?.textContent.includes('not yet connected'),null,{timeout:8000});
 assert.match(await page.locator('#status').innerText(),/not yet connected/);
 assert.equal(await page.locator('#download').isVisible(),false);
 await browser.close();
