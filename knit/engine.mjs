@@ -1,205 +1,138 @@
-// Style-authentic knit surface renderer v3: licensed fabric tiles + stitch-following colourwork.
-// All sources are bundled. The Pattern Forge general editor is never imported or modified.
+// Knitted fabric from interlocking stitch geometry. No tiled photographs or overlays.
+// Independent of Pattern Forge's existing motif/doodle editors.
 export const TILE_SIZE=1000,EXPORT_SIZE=5000;
-export const STITCH_COUNTS=Object.freeze({fine:30,medium:20,chunky:10,superchunky:6});
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
+export const GAUGES=Object.freeze(['fine','medium','chunky','superchunky']);
+export const STITCH_COUNTS=Object.freeze({fine:32,medium:24,chunky:16,superchunky:8});
 export const DEFAULTS=Object.freeze({style:'stockinette',gauge:'superchunky',yarn:'#e2d2b7',contrast:'#9b403b',seed:7});
-export const mod=(n,d)=>((n%d)+d)%d;
-const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
-export function normalize(raw={}){
- const colour=(x,def)=>/^#[0-9a-f]{6}$/i.test(x)?x:def;
- return {
-   style:STYLES.includes(raw.style)?raw.style:DEFAULTS.style,
-   gauge:Object.hasOwn(STITCH_COUNTS,raw.gauge)?raw.gauge:DEFAULTS.gauge,
-   yarn:colour(raw.yarn,DEFAULTS.yarn),contrast:colour(raw.contrast,DEFAULTS.contrast),
-   seed:Number.isInteger(Number(raw.seed))?clamp(Number(raw.seed),1,9999):DEFAULTS.seed
- };
-}
-export const stitchCount=s=>STITCH_COUNTS[s.gauge]??STITCH_COUNTS.superchunky;
-const PHOTO_ASSETS=Object.freeze({
- stockinette:'/knit/textures/grey-chunky-knit.jpg',
- rib:'/knit/textures/grey-chunky-knit.jpg',
- seed:'/knit/textures/grey-chunky-knit.jpg',
- cable:'/knit/textures/cream-cable-knit.jpg',
- fairisle:'/knit/textures/grey-chunky-knit.jpg'
-});
-const PURL_ASSET='/knit/textures/rust-orange-knit.jpg';
-const CACHE=Object.create(null);
-let loading;
-export function loadPhotoTextures(){
- if(!loading){
-   loading=Promise.all([...new Set([...Object.values(PHOTO_ASSETS),PURL_ASSET])].map(src=>new Promise((resolve,reject)=>{
-     const img=new Image();
-     img.onload=()=>{if(!img.naturalWidth||!img.naturalHeight)return reject(Error('Empty knit source: '+src));CACHE[src]=img;resolve();}
-     img.onerror=()=>reject(Error('Missing knit source: '+src));
-     img.src=src;
-   })));
- }
- return loading;
-}
+export const mod=(v,n)=>((v%n)+n)%n;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function noise(a,b,c){let x=Math.imul(a+683,73856093)^Math.imul(b+233,19349663)^Math.imul(c+719,83492791);x=Math.imul(x^(x>>>13),1274126177);return ((x^(x>>>16))>>>0)/4294967296;}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
-export function fairIsleStitch(row,col){
- // Stitch chart is 18×11, with symmetric Nordic diamonds kept off the tile edges.
- const r=mod(row,11),c=mod(col,18);
- return (Math.abs(c-4)+Math.abs(r-5)===3)||
-        (Math.abs(c-13)+Math.abs(r-5)===3);
+function colour(hex,mult=1){return 'rgb('+rgb(hex).map(v=>Math.round(clamp(v*mult,0,255))).join(',')+')';}
+export function normalize(input={}){
+ return {style:STYLES.includes(input.style)?input.style:DEFAULTS.style,gauge:GAUGES.includes(input.gauge)?input.gauge:DEFAULTS.gauge,
+ yarn:/^#[0-9a-f]{6}$/i.test(input.yarn)?input.yarn:DEFAULTS.yarn,contrast:/^#[0-9a-f]{6}$/i.test(input.contrast)?input.contrast:DEFAULTS.contrast,
+ seed:Number.isInteger(Number(input.seed))?clamp(Number(input.seed),1,9999):DEFAULTS.seed};
 }
-export function selectedYarn(s,row,col){
- return s.style==='fairisle'&&fairIsleStitch(row,col)?s.contrast:s.yarn;
+export const stitchCount=s=>STITCH_COUNTS[s.gauge]??8;
+const FAIR_ISLE=['...##...','..#..#..','.#....#.','#......#','#......#','.#....#.','..#..#..','...##...'];
+export function stitchAt(s,r,c){
+ const n=stitchCount(s),R=mod(r,n),C=mod(c,n);
+ let type='knit';
+ if(s.style==='rib'&&mod(C,4)>=2)type='purl';
+ if(s.style==='seed'&&mod(R+C,2)===1)type='purl';
+ const yarn=s.style==='fairisle'&&FAIR_ISLE[mod(R,8)][mod(C,8)]==='#'?s.contrast:s.yarn;
+ return {type,yarn,cable:s.style==='cable'&&mod(C,8)>=2&&mod(C,8)<=5};
 }
-export function fairIsleLoopMask(u,v){
- // Knit loop = two thick slanted wool legs meeting at the bottom.
- // Shade *only the photographed loop*, not a rectangle painted over fabric.
- const left=.12+.39*v,right=.88-.39*v;
- const dist=Math.min(Math.abs(u-left),Math.abs(u-right));
- const t=clamp((.245-dist)/(.245-.105),0,1);
- return t*t*(3-2*t);
+function bez(p,t){
+ const q=1-t,x=q*q*q*p[0]+3*q*q*t*p[2]+3*q*t*t*p[4]+t*t*t*p[6],
+ y=q*q*q*p[1]+3*q*q*t*p[3]+3*q*t*t*p[5]+t*t*t*p[7],
+ dx=3*q*q*(p[2]-p[0])+6*q*t*(p[4]-p[2])+3*t*t*(p[6]-p[4]),
+ dy=3*q*q*(p[3]-p[1])+6*q*t*(p[5]-p[3])+3*t*t*(p[7]-p[5]),
+ len=Math.hypot(dx,dy)||1;
+ return [x,y,dx/len,dy/len,-dy/len,dx/len];
 }
-function seamFinish(ctx,size,width){
- const pixel=ctx.getImageData(0,0,size,size),a=pixel.data,edge=width;
- // Equalize opposite edges with a smooth falloff, not a hard rectangular border.
- for(let y=0;y<size;y++)for(let k=0;k<edge;k++){
-   const t=.5*Math.pow(1-k/edge,2);
-   for(let ch=0;ch<3;ch++){
-     const i=(y*size+k)*4+ch,j=(y*size+size-k-1)*4+ch;
-     const l=a[i],r=a[j];a[i]=Math.round(l*(1-t)+r*t);a[j]=Math.round(r*(1-t)+l*t);
+function path(ctx,segments){
+ ctx.beginPath();const a=segments[0];ctx.moveTo(a[0],a[1]);ctx.bezierCurveTo(a[2],a[3],a[4],a[5],a[6],a[7]);
+ for(let i=1;i<segments.length;i++){const p=segments[i];ctx.bezierCurveTo(p[2],p[3],p[4],p[5],p[6],p[7]);}
+}
+function yarn(ctx,segments,w,hex,key,light=0){
+ ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.shadowColor='rgba(18,13,10,.48)';ctx.shadowOffsetY=w*.16;ctx.shadowBlur=w*.25;
+ path(ctx,segments);ctx.lineWidth=w*1.19;ctx.strokeStyle=colour(hex,.40+light);ctx.stroke();
+ ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+ const layers=[[1,.70],[.78,.95],[.50,1.13],[.25,1.24]];
+ for(const [radius,brightness] of layers){path(ctx,segments);ctx.lineWidth=w*radius;ctx.strokeStyle=colour(hex,brightness+light);ctx.globalAlpha=radius===.25?.6:1;ctx.stroke();}
+ ctx.globalAlpha=1;
+ const amount=clamp(Math.round(w*1.35),30,140);
+ for(let j=0;j<segments.length;j++){
+  const seg=segments[j];
+  for(let i=0;i<amount;i++){
+   const t=(i+.25+.40*noise(key,j,i))/amount,[x,y,tx,ty,nx,ny]=bez(seg,t);
+   const q=noise(key+i*17,j,31),radius=(q-.5)*w*.95;
+   const len=(.06+.12*noise(key,i,j+100))*w;
+   const fx=x+nx*radius,fy=y+ny*radius;
+   ctx.beginPath();ctx.moveTo(fx-tx*len*.45,fy-ty*len*.45);
+   ctx.lineTo(fx+tx*len*.55+nx*w*.035,fy+ty*len*.55+ny*w*.035);
+   ctx.strokeStyle=q>.6?'rgba(255,252,244,.22)':'rgba(30,19,13,.13)';
+   ctx.lineWidth=clamp(w*.011,.65,1.7);ctx.stroke();
+   if(i%9===0){const sign=q>.5?1:-1;
+    ctx.beginPath();ctx.moveTo(x+nx*sign*w*.44,y+ny*sign*w*.44);
+    ctx.lineTo(x+nx*sign*w*(.54+q*.09)+tx*w*.07,y+ny*sign*w*(.54+q*.09)+ty*w*.07);
+    ctx.lineWidth=.8;ctx.strokeStyle='rgba(233,218,193,.23)';ctx.stroke();
    }
+  }
  }
- for(let x=0;x<size;x++)for(let k=0;k<edge;k++){
-   const t=.5*Math.pow(1-k/edge,2);
-   for(let ch=0;ch<3;ch++){
-     const i=(k*size+x)*4+ch,j=((size-k-1)*size+x)*4+ch;
-     const top=a[i],bottom=a[j];a[i]=Math.round(top*(1-t)+bottom*t);
-     a[j]=Math.round(bottom*(1-t)+top*t);
-   }
+ ctx.restore();
+}
+function cableShift(s,r,c,w){
+ if(s.style!=='cable')return 0;
+ const k=mod(c,8);if(k<2||k>5)return 0;
+ return (k<=3?1:-1)*Math.sin(2*Math.PI*(mod(r,8)+.5)/8)*w*.58;
+}
+function stitchLoops(ctx,s,r,c,w){
+ const n=stitchCount(s),R=mod(r,n),C=mod(c,n),stitch=stitchAt(s,r,c),key=R*n+C;
+ const x=c*w+cableShift(s,r,c,w),y=r*w;
+ const tone=(noise(R,C,s.seed)-.5)*.06+(stitch.cable?.10:stitch.type==='purl'?-0.08:0);
+ if(stitch.type==='knit'){
+  const back=[x+w*.88,y-w*.24,x+w*.95,y-w*.15,x+w*1.06,y-w*.15,x+w*1.12,y-w*.24];
+  yarn(ctx,[back],w*.235,stitch.yarn,key*23+5,-.16);
+  const left=[x+w*.13,y-w*.18,x+w*.00,y+w*.18,x+w*.30,y+w*.73,x+w*.50,y+w*.86];
+  const right=[x+w*.50,y+w*.86,x+w*.72,y+w*.72,x+w*1.00,y+w*.18,x+w*.87,y-w*.18];
+  yarn(ctx,[left,right],w*.27,stitch.yarn,key*31+3,tone);
+ }else{
+  const left=[x+w*.12,y-w*.18,x+w*.11,y+w*.35,x+w*.33,y+w*.69,x+w*.48,y+w*.81];
+  const right=[x+w*.48,y+w*.81,x+w*.68,y+w*.69,x+w*.88,y+w*.34,x+w*.88,y-w*.18];
+  yarn(ctx,[left,right],w*.26,stitch.yarn,key*29+3,-.25+tone);
+  const bump=[x+w*.16,y+w*.43,x+w*.37,y+w*.20,x+w*.63,y+w*.20,x+w*.84,y+w*.43];
+  yarn(ctx,[bump],w*.44,stitch.yarn,key*29+13,.035+tone);
  }
- ctx.putImageData(pixel,0,0);
-}
-function purlCrop(gauge){
-  return ({superchunky:.27,chunky:.43,medium:.70,fine:1})[gauge];
-}
-function repeatInto(ctx,photo,unit,offsetX,offsetY,crop=1){
- const m=document.createElement('canvas');
- m.width=m.height=Math.round(unit);
- const mc=m.getContext('2d',{alpha:false});
- const side=Math.min(photo.naturalWidth,photo.naturalHeight)*crop;
- mc.imageSmoothingEnabled=true;mc.imageSmoothingQuality='high';
- mc.drawImage(photo,(photo.naturalWidth-side)/2,(photo.naturalHeight-side)/2,side,side,0,0,m.width,m.height);
- const pat=ctx.createPattern(m,'repeat');
- if(!pat)throw Error('Cannot build wool repeat tile');
- ctx.save();ctx.translate(offsetX,offsetY);ctx.fillStyle=pat;
- ctx.fillRect(-offsetX,-offsetY,TILE_SIZE,TILE_SIZE);ctx.restore();
- m.width=m.height=0;
 }
 export function renderKnit(target,raw={}){
- const s=normalize(raw),photo=CACHE[PHOTO_ASSETS[s.style]];
- if(!photo)throw Error('Knitted material has not loaded.');
- const hasPurl=s.style==='rib'||s.style==='seed';
- const purlPhoto=hasPurl?CACHE[PURL_ASSET]:null;
- if(hasPurl&&!purlPhoto)throw Error('Purl wool material has not loaded.');
+ const s=normalize(raw),n=stitchCount(s),w=TILE_SIZE/n;
  target.width=target.height=TILE_SIZE;
- const ctx=target.getContext('2d',{alpha:false,willReadFrequently:true});
- if(!ctx)throw Error('2D canvas unavailable.');
- const count=({superchunky:1,chunky:2,medium:3,fine:4})[s.gauge],unit=TILE_SIZE/count;
- const offsetX=s.style==='fairisle'?0:mod(s.seed*37,unit);
- const offsetY=s.style==='fairisle'?0:mod(s.seed*53,unit);
- repeatInto(ctx,photo,unit,offsetX,offsetY);
- const px=ctx.getImageData(0,0,TILE_SIZE,TILE_SIZE),d=px.data;
- let purl;
- if(hasPurl){
-   const purlTile=document.createElement('canvas');
-   purlTile.width=purlTile.height=TILE_SIZE;
-   const pc=purlTile.getContext('2d',{alpha:false,willReadFrequently:true});
-   repeatInto(pc,purlPhoto,unit,offsetX,offsetY,purlCrop(s.gauge));
-   purl=pc.getImageData(0,0,TILE_SIZE,TILE_SIZE).data;
-   purlTile.width=purlTile.height=0;
- }
- const main=rgb(s.yarn),contrast=rgb(s.contrast);
- // Photographic shading is retained in every option, including the purl stitch areas.
- const nativeLight=s.style==='cable'?.73:.49;
- for(let y=0;y<TILE_SIZE;y++){
-   const phaseY=mod(y-offsetY,TILE_SIZE)/unit,vy=phaseY%1;
-   const row=Math.floor(vy*11),sv=(vy*11)%1;
-   for(let x=0;x<TILE_SIZE;x++){
-     const i=(y*TILE_SIZE+x)*4;
-     const photoLum=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
-     const knitShade=clamp(Math.pow(Math.max(.14,photoLum/nativeLight),.89),.38,1.55);
-     const phaseX=mod(x-offsetX,TILE_SIZE)/unit,ux=phaseX%1;
-     const col=Math.floor(ux*18),su=(ux*18)%1;
-     let shade=knitShade;
-     if(hasPurl){
-       const purlLum=(purl[i]*.299+purl[i+1]*.587+purl[i+2]*.114)/255;
-       const purlShade=clamp(Math.pow(Math.max(.14,purlLum/.35),.89),.38,1.55);
-       let blend=0,relief=1;
-       if(s.style==='rib'){
-         const recessed=col%3===2;
-         if(recessed){
-           blend=.78*Math.pow(Math.sin(Math.PI*su),.3);
-           relief=.86+.06*Math.pow(Math.sin(Math.PI*su),2);
-         }else relief=1+.08*Math.pow(Math.cos((su-.5)*Math.PI),2);
-       }else if((row+col)%2===0){
-         blend=.98*Math.pow(Math.sin(Math.PI*su),.6)*Math.pow(Math.sin(Math.PI*sv),.6);
-       }
-       shade=((1-blend)*knitShade+blend*purlShade)*relief;
-     }
-     let accent=0;
-     if(s.style==='fairisle'&&fairIsleStitch(row,col))
-       accent=fairIsleLoopMask(su,sv);
-     for(let c=0;c<3;c++)
-       d[i+c]=Math.round(clamp((main[c]+(contrast[c]-main[c])*accent)*shade,0,255));
-     d[i+3]=255;
-   }
- }
- ctx.putImageData(px,0,0);
- seamFinish(ctx,TILE_SIZE,hasPurl?56:12);
+ const ctx=target.getContext('2d',{alpha:false});if(!ctx)throw Error('Canvas 2D unavailable');
+ ctx.fillStyle=colour(s.yarn,.34);ctx.fillRect(0,0,TILE_SIZE,TILE_SIZE);
+ // Entirely geometric periodic stitch chart; extended rows/columns cover both edges.
+ for(let r=-2;r<n+2;r++)for(let c=-2;c<n+2;c++)stitchLoops(ctx,s,r,c,w);
  return target;
 }
 export function renderPreview(tile,canvas,repeat=false){
- const width=720;canvas.width=canvas.height=width;
- const ctx=canvas.getContext('2d',{alpha:false});
- ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- const n=repeat?3:1,cell=width/n;
- for(let y=0;y<n;y++)for(let x=0;x<n;x++)ctx.drawImage(tile,x*cell,y*cell,cell,cell);
+ const side=720;canvas.width=canvas.height=side;const ctx=canvas.getContext('2d',{alpha:false});
+ ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';const n=repeat?3:1,w=side/n;
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++)ctx.drawImage(tile,x*w,y*w,w,w);
 }
-
 function pngChunk(name,data){
-  const bytes=new Uint8Array(12+data.length),v=new DataView(bytes.buffer);
-  v.setUint32(0,data.length);for(let i=0;i<4;i++)bytes[4+i]=name.charCodeAt(i);
-  bytes.set(data,8);let crc=0xffffffff;
-  for(let i=4;i<8+data.length;i++){crc^=bytes[i];for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}
-  v.setUint32(8+data.length,(crc^0xffffffff)>>>0);return bytes;
+ const bytes=new Uint8Array(12+data.length),v=new DataView(bytes.buffer);
+ v.setUint32(0,data.length);for(let i=0;i<4;i++)bytes[4+i]=name.charCodeAt(i);
+ bytes.set(data,8);let crc=0xffffffff;
+ for(let i=4;i<8+data.length;i++){crc^=bytes[i];for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}
+ v.setUint32(8+data.length,(crc^0xffffffff)>>>0);return bytes;
 }
 export function add300DpiPngMetadata(input){
-  const signature=[137,80,78,71,13,10,26,10],a=new Uint8Array(input);
-  if(a.length<45||!signature.every((n,i)=>a[i]===n))throw new Error('Not a valid PNG');
-  const parts=[a.slice(0,8)],view=new DataView(a.buffer,a.byteOffset,a.byteLength);
-  const phy=new Uint8Array(9),pv=new DataView(phy.buffer);
-  pv.setUint32(0,11811);pv.setUint32(4,11811);phy[8]=1;
-  let pos=8,hasIHDR=false,hasIEND=false;
-  while(pos<a.length){
-    if(pos+12>a.length)throw new Error('Invalid PNG chunk');
-    const n=view.getUint32(pos),end=pos+12+n;
-    if(n>100000000||end>a.length)throw new Error('Invalid PNG length');
-    const name=String.fromCharCode(...a.slice(pos+4,pos+8));
-    if(name!=='pHYs')parts.push(a.slice(pos,end));
-    if(name==='IHDR'){hasIHDR=true;parts.push(pngChunk('pHYs',phy));}
-    pos=end;
-    if(name==='IEND'){hasIEND=true;break;}
-  }
-  if(!hasIHDR||!hasIEND||pos!==a.length)throw new Error('Incomplete PNG');
-  return new Blob(parts,{type:'image/png'});
+ const signature=[137,80,78,71,13,10,26,10],a=new Uint8Array(input);
+ if(a.length<45||!signature.every((n,i)=>a[i]===n))throw Error('Not a valid PNG');
+ const parts=[a.slice(0,8)],view=new DataView(a.buffer,a.byteOffset,a.byteLength);
+ const phy=new Uint8Array(9),pv=new DataView(phy.buffer);pv.setUint32(0,11811);pv.setUint32(4,11811);phy[8]=1;
+ let pos=8,hasIHDR=false,hasIEND=false;
+ while(pos<a.length){
+  if(pos+12>a.length)throw Error('Invalid PNG chunk');
+  const n=view.getUint32(pos),end=pos+12+n;
+  if(n>100000000||end>a.length)throw Error('Invalid PNG length');
+  const name=String.fromCharCode(...a.slice(pos+4,pos+8));
+  if(name!=='pHYs')parts.push(a.slice(pos,end));
+  if(name==='IHDR'){hasIHDR=true;parts.push(pngChunk('pHYs',phy));}
+  pos=end;if(name==='IEND'){hasIEND=true;break;}
+ }
+ if(!hasIHDR||!hasIEND||pos!==a.length)throw Error('Incomplete PNG');
+ return new Blob(parts,{type:'image/png'});
 }
 export async function exportPng(tile){
-  const canvas=document.createElement('canvas');
-  canvas.width=canvas.height=EXPORT_SIZE;
-  const ctx=canvas.getContext('2d',{alpha:false});
-  if(!ctx)throw new Error('Cannot create export canvas');
-  ctx.imageSmoothingEnabled=false;
-  const pattern=ctx.createPattern(tile,'repeat');
-  if(!pattern)throw new Error('Cannot create seamless repeat');
-  ctx.fillStyle=pattern;ctx.fillRect(0,0,EXPORT_SIZE,EXPORT_SIZE);
-  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG export failed')),'image/png'));
-  const bytes=await blob.arrayBuffer();
-  canvas.width=canvas.height=0;
-  return add300DpiPngMetadata(bytes);
+ const canvas=document.createElement('canvas');canvas.width=canvas.height=EXPORT_SIZE;
+ const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Export canvas unavailable');
+ ctx.imageSmoothingEnabled=false;const p=ctx.createPattern(tile,'repeat');if(!p)throw Error('Cannot repeat tile');
+ ctx.fillStyle=p;ctx.fillRect(0,0,EXPORT_SIZE,EXPORT_SIZE);
+ const b=await new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('PNG export failed')),'image/png'));
+ const result=await add300DpiPngMetadata(await b.arrayBuffer());canvas.width=canvas.height=0;return result;
 }
