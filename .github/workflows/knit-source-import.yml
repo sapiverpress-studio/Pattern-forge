@@ -1,0 +1,56 @@
+name: Import licensed dedicated rib and seed knit sources
+on:
+  push:
+    branches:
+      - fix/authentic-knit-stitches-all-styles-20261106
+    paths:
+      - .github/workflows/knit-source-import.yml
+permissions:
+  contents: write
+jobs:
+  import-assets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Import dedicated CC0 rib and royalty-free seed stitch texture
+        run: |
+          set -euo pipefail
+          mkdir -p knit/textures /tmp/knit
+          curl --fail --location --retry 3 --max-time 120 'https://proctexture.com/pbr-packs/fabric/rib-knit.zip' -o /tmp/knit/rib.zip
+          unzip -Z1 /tmp/knit/rib.zip > /tmp/knit/files.txt
+          cat /tmp/knit/files.txt
+          python3 - <<'PY'
+          import zipfile, pathlib
+          z=zipfile.ZipFile('/tmp/knit/rib.zip')
+          images=[n for n in z.namelist() if n.lower().endswith(('.png','.jpg','.jpeg'))]
+          images.sort(key=lambda n: (('base' not in n.lower()) and ('albedo' not in n.lower()) and ('color' not in n.lower()),len(n)))
+          print("Candidates:",images)
+          assert images,"No images in rib source ZIP"
+          source=images[0]
+          path=pathlib.Path('knit/textures/rib-knit-authentic.png')
+          path.write_bytes(z.read(source))
+          assert path.read_bytes()[:8]==bytes.fromhex('89504e470d0a1a0a'),"Expected PNG"
+          print("Rib imported:",source,path.stat().st_size)
+          PY
+          curl --fail --location --retry 3 --max-time 120 'https://cdn.texturize.app/textures/knit-seed-stitch/knit-seed-stitch.png' -o knit/textures/seed-stitch-authentic.png
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ['rib-knit-authentic.png','seed-stitch-authentic.png']:
+            p=Path('knit/textures')/name
+            assert p.stat().st_size>10000
+            b=p.read_bytes()
+            assert b[:8]==bytes.fromhex('89504e470d0a1a0a'),(name,b[:8])
+            w=int.from_bytes(b[16:20],'big');h=int.from_bytes(b[20:24],'big')
+            assert w>=512 and h>=512,(name,w,h)
+            print(name,w,h,p.stat().st_size)
+          PY
+      - name: Commit only the added texture files to fix branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knit/textures/rib-knit-authentic.png knit/textures/seed-stitch-authentic.png
+          git diff --cached --quiet && exit 0
+          git commit -m "assets: import individually licensed rib and seed stitch fabric textures"
+          git push origin HEAD:fix/authentic-knit-stitches-all-styles-20261106
