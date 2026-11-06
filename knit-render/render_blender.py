@@ -218,10 +218,10 @@ def main():
         # TexGen emits sparse control points. Interpolate the physical yarn
         # centreline, rather than rendering each straight segment as a sharp
         # plastic-looking edge.  Preserve course continuity.
-        # This 0.68 course compression is a visual knit-gauge adjustment; we
+        # This 0.88 course compression is a visual knit-gauge adjustment; we
         # do not claim it reproduces the original TexGen physical dimensions.
         compacted=[[((float(v[0])-centre[0])*scale,
-                     (float(v[1])-centre[1])*scale*.68,
+                     (float(v[1])-centre[1])*scale*.88,
                      (float(v[2])-centre[2])*scale)
                     for v in course] for course in source]
         paths=[catmull_rom(course,8) for course in compacted]
@@ -230,8 +230,8 @@ def main():
     if args.yarn_type=="roving":
         # Main roving provides dense volume. Thousands of fine physical
         # filaments make the surface scatter light like wool instead of latex.
-        core_radius=pitch*(.235 if args.texgen_json else .174)
-        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,4)
+        core_radius=pitch*(.182 if args.texgen_json else .174)
+        curve("soft single-roving knitted yarn",paths,core_radius,main_mat,5)
         fibre_groups,flyaways=create_fibres(
             paths,pitch,core_radius,quality=args.fibre_quality,seed=3419)
         for band,filaments in fibre_groups.items():
