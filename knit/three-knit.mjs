@@ -76,6 +76,7 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  const fill=new THREE.DirectionalLight(0xc1ddff,.95);fill.position.set(n*1.5,-n*.4,front?n*.7:-n*.7);scene.add(fill);
  const bump=makeBumpTexture();
  const geos=new Map([[main,[]],[contrast,[]]]);
+ const fibres=new Map([[main,[]],[contrast,[]]]);
  const segments=gauge==='fine'?16:gauge==='medium'?19:gauge==='chunky'?25:32;
  const radius=gauge==='superchunky'?.225:.195;
  for(let row=-2;row<n+2;row++)for(let col=-2;col<n+2;col++){
@@ -85,6 +86,23 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
   const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal',.45);
   const geo=new THREE.TubeGeometry(curve,segments,radius,gauge==='fine'?6:9,false);
   geos.get(colour).push(geo);
+  // Three very thin plies twist continuously around the surface of each yarn.
+  // Unlike stamped bitmap fibres, these strands follow the actual 3D loops.
+  const plyCount=gauge==='fine'?1:gauge==='medium'?2:3;
+  for(let ply=0;ply<plyCount;ply++){
+    const strand=[];
+    for(let k=0;k<=segments;k++){
+      const here=pts[k],prev=pts[Math.max(k-1,0)],next=pts[Math.min(k+1,segments)];
+      const T=next.clone().sub(prev).normalize();
+      const B=new THREE.Vector3(-T.y,T.x,0).normalize();
+      if(B.lengthSq()<.5)B.set(1,0,0);
+      const N=T.clone().cross(B).normalize();
+      const angle=6*TAU*k/segments+ply*TAU/plyCount;
+      strand.push(here.clone().addScaledVector(B,radius*.94*Math.cos(angle)).addScaledVector(N,radius*.94*Math.sin(angle)));
+    }
+    const thin=new THREE.CatmullRomCurve3(strand,false,'centripetal',.3);
+    fibres.get(colour).push(new THREE.TubeGeometry(thin,segments,gauge==='fine'?.009:.014,3,false));
+  }
  }
  for(const [hex,parts] of geos){
   if(!parts.length)continue;
@@ -92,6 +110,12 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
   const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.12});
   const mesh=new THREE.Mesh(geometry,material);
   mesh.castShadow=mesh.receiveShadow=true;scene.add(mesh);
+  const strands=fibres.get(hex);
+  if(strands?.length){
+    const fibreMesh=new THREE.Mesh(mergeGeometries(strands),
+       new THREE.MeshStandardMaterial({color:new THREE.Color(hex).multiplyScalar(1.07),roughness:1,metalness:0}));
+    fibreMesh.castShadow=false;fibreMesh.receiveShadow=false;scene.add(fibreMesh);
+  }
  }
  renderer.render(scene,camera);
  const output=canvas;
