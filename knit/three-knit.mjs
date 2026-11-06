@@ -53,31 +53,31 @@ function mergeGeometries(parts){
  result.setIndex(idx);
  return result;
 }
-export async function render3d(canvas,{style='stockinette',gauge='superchunky',main='#e2d2b7',contrast='#9b403b',side='front'}={}){
+export async function render3d(canvas,{style='stockinette',gauge='superchunky',main='#e2d2b7',contrast='#9b403b',side='back'}={}){
  if(!styles.includes(style))style='stockinette';
  const n=gauges[gauge]||8;
  const scene=new THREE.Scene();
  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true,alpha:false,powerPreference:'default'});
  renderer.setPixelRatio(1);renderer.setSize(720,720,false);
  renderer.outputColorSpace=THREE.SRGBColorSpace;
- renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.28;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.98;
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
  const camera=new THREE.OrthographicCamera(-n/2,n/2,n/2,-n/2,.1,100);
  const front=side!=='back';camera.position.set(n/2,n/2,front?40:-40);camera.lookAt(n/2,n/2,0);
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(n+6,n+6),
-   new THREE.MeshStandardMaterial({color:new THREE.Color(main).multiplyScalar(.29),roughness:1}));
+   new THREE.MeshStandardMaterial({color:new THREE.Color(main).multiplyScalar(.54),emissive:new THREE.Color(main).multiplyScalar(.10),roughness:1}));
  ground.position.set(n/2,n/2,front?-1.15:1.15);ground.receiveShadow=true;scene.add(ground);
- scene.add(new THREE.HemisphereLight(0xffffff,0x584b47,1.7));
- const key=new THREE.DirectionalLight(0xfff2e1,4.0);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x584b47,1.10));
+ const key=new THREE.DirectionalLight(0xfff2e1,2.7);
  key.position.set(-n*.45,n*.85,front?n*.95:-n*.95);
  key.castShadow=true;key.shadow.mapSize.set(2048,2048);
  Object.assign(key.shadow.camera,{left:-n*.9,right:n*.9,top:n*.9,bottom:-n*.9,near:.5,far:70});
  key.shadow.bias=-0.00008;key.shadow.radius=3;scene.add(key);
- const fill=new THREE.DirectionalLight(0xc1ddff,1.7);fill.position.set(n*1.5,-n*.4,front?n*.7:-n*.7);scene.add(fill);
+ const fill=new THREE.DirectionalLight(0xc1ddff,.95);fill.position.set(n*1.5,-n*.4,front?n*.7:-n*.7);scene.add(fill);
  const bump=makeBumpTexture();
  const geos=new Map([[main,[]],[contrast,[]]]);
  const segments=gauge==='fine'?16:gauge==='medium'?19:gauge==='chunky'?25:32;
- const radius=gauge==='superchunky'?.18:.16;
+ const radius=gauge==='superchunky'?.225:.195;
  for(let row=-2;row<n+2;row++)for(let col=-2;col<n+2;col++){
   const type=typeFor(style,row,col),colour=yarnFor(style,row,col,main,contrast);
   const pts=[];
@@ -89,7 +89,7 @@ export async function render3d(canvas,{style='stockinette',gauge='superchunky',m
  for(const [hex,parts] of geos){
   if(!parts.length)continue;
   const geometry=mergeGeometries(parts);
-  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.035});
+  const material=new THREE.MeshStandardMaterial({color:hex,roughness:.92,metalness:0,bumpMap:bump,bumpScale:.12});
   const mesh=new THREE.Mesh(geometry,material);
   mesh.castShadow=mesh.receiveShadow=true;scene.add(mesh);
  }
