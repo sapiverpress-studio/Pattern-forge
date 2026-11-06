@@ -37,11 +37,13 @@ try{
      return fingerprints;
   });
   console.log('Distinct knit structure fingerprints',structure);
+  await page.locator('#singleView').click();
   for(const style of ['stockinette','rib','seed','cable','fairisle']){
     await page.locator('#knitStyle').selectOption(style);
     await page.waitForTimeout(170);
     await page.locator('#preview').screenshot({path:'knit-preview-'+style+'.png'});
   }
+  await page.locator('#repeatView').click();
 
   await page.locator('#singleView').click();
   await page.locator('#knitStyle').selectOption('cable');
