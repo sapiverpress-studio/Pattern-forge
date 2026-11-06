@@ -32,7 +32,7 @@ class FibreTests(unittest.TestCase):
         self.assertGreater(len(heavy),len(short))
         for kwargs in ({"quality":"ultra"},{"pitch":0},{"radius":5}):
             with self.assertRaises(ValueError):
-                create_fibres(baseline,1,.18,**kwargs)
+                create_fibres(baseline,**{"pitch":1,"radius":.18,"quality":"preview",**kwargs})
     def test_no_repeated_square_image(self):
         # Paths are actual independent 3D curves, not image-backed bitmap tiles.
         grouped, hairs=create_fibres(yarn(2),1,.18)
