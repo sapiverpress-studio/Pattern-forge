@@ -87,7 +87,7 @@ const own=await page.evaluate(async()=>{
  };
  return {size:m.width,cols:m.cols,rows:m.rows,low:sampleCol(10),mid:sampleCol(105),high:sampleCol(190)};
 });
-assert.equal(own.size,256);assert.equal(own.cols,16);
+assert.equal(own.size,512);assert.equal(own.cols,16);
 assert.notDeepEqual(own.low,own.mid,'Stitch boundaries must follow real yarn grooves rather than rectangular columns');
 // Saved JSON preserves opt-in and all coloured cells.
 const downloadJson=page.waitForEvent('download');
