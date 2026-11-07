@@ -121,11 +121,42 @@ async function makeRenderer(){
     }
     if(size>1024)await new Promise(resolve=>requestAnimationFrame(resolve));
    }
+   sealOuterEdges(ctx,size);
    return target;
   },
   dispose(){gl.deleteTexture(texture);gl.deleteProgram(prg);}
  };
 }
+// Edge-only colour reconciliation. The existing wool photographs are almost
+// periodic, but fine fibre grain and sampling leave a 1-pixel join. Only the
+// outer 0.4% of the tile is blended with its opposite edge. No photo squares
+// are stamped into the middle and the full knitted structure remains intact.
+function sealOuterEdges(ctx,size){
+ const w=Math.max(3,Math.min(24,Math.round(size*.004)));
+ const left=ctx.getImageData(0,0,w,size),right=ctx.getImageData(size-w,0,w,size);
+ const a=left.data,b=right.data;
+ for(let y=0;y<size;y++)for(let k=0;k<w;k++){
+  const fade=.5*Math.pow((w-k)/w,2),p=(y*w+k)*4,q=(y*w+w-1-k)*4;
+  for(let ch=0;ch<3;ch++){
+   const x=a[p+ch],z=b[q+ch];
+   a[p+ch]=Math.round(x*(1-fade)+z*fade);
+   b[q+ch]=Math.round(z*(1-fade)+x*fade);
+  }
+ }
+ ctx.putImageData(left,0,0);ctx.putImageData(right,size-w,0);
+ const top=ctx.getImageData(0,0,size,w),bottom=ctx.getImageData(0,size-w,size,w);
+ const t=top.data,d=bottom.data;
+ for(let x=0;x<size;x++)for(let k=0;k<w;k++){
+  const fade=.5*Math.pow((w-k)/w,2),p=(k*size+x)*4,q=((w-1-k)*size+x)*4;
+  for(let ch=0;ch<3;ch++){
+   const u=t[p+ch],v=d[q+ch];
+   t[p+ch]=Math.round(u*(1-fade)+v*fade);
+   d[q+ch]=Math.round(v*(1-fade)+u*fade);
+  }
+ }
+ ctx.putImageData(top,0,0);ctx.putImageData(bottom,0,size-w);
+}
+
 let rendererPromise=null;
 export function getRenderer(){
  if(!rendererPromise)rendererPromise=makeRenderer().catch(e=>{rendererPromise=null;throw e;});
