@@ -1,0 +1,71 @@
+name: Verify original knit stitch editor and real 5000px seamless export
+on:
+  push:
+    branches: [feature/original-knit-motif-editor-20261107]
+    paths:
+      - knit-studio/**
+      - tests/knit-original-motif-browser.mjs
+      - .github/workflows/knit-original-motif-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: original-knit-stitch-qa
+  cancel-in-progress: true
+jobs:
+  draw-and-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate JavaScript syntax and install Chromium
+        run: |
+          node --check knit-studio/engine.mjs
+          node --check knit-studio/app.mjs
+          node --check knit-studio/motif-chart.mjs
+          node --check tests/knit-original-motif-browser.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          python -m pip install --no-cache-dir 'pillow>=10,<13' 'numpy>=1.26,<3'
+      - name: Serve app with existing live wool source images
+        run: |
+          python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/knit-http.log 2>&1 &
+          for i in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4185/knit-studio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/knit-http.log; exit 1
+      - name: Draw unique patterns with touch, edit, save, reload and export a genuine PNG
+        run: node tests/knit-original-motif-browser.mjs
+      - name: Verify own artwork is a seamless 5000px 300DPI tile
+        run: |
+          python3 - <<'PY'
+          import numpy as np
+          from PIL import Image
+          with Image.open('knit-own-pattern-5000.png') as img:
+              assert img.size==(5000,5000),img.size
+              assert abs(img.info['dpi'][0]-300)<.3,img.info
+              arr=np.asarray(img.convert('RGB'),dtype=np.int16)
+          left=float(np.mean(abs(arr[:,0]-arr[:,-1])))
+          top=float(np.mean(abs(arr[0]-arr[-1])))
+          assert left<=.01 and top<=.01,(left,top)
+          assert np.std(arr)>12,'Output is blank'
+          print('PASS: real user-edited pattern, 5000x5000 300 DPI; seam MAE:',left,top)
+          with Image.open('knit-own-pattern-5000.png') as img:
+              img.convert('RGB').resize((1150,1150),Image.Resampling.LANCZOS).save('knit-original-motif-overview.jpg',quality=91)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-stitch-pattern-visual-proof
+          path: |
+            knit-original-motif-mobile.png
+            knit-original-motif-single.png
+            knit-original-motif-overview.jpg
+          if-no-files-found: ignore

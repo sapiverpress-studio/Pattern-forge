@@ -3,6 +3,7 @@
  * full-size pixel-periodic variation and fine fibre texture. No backend needed.
  * Source photographic resolution is 1254px, an explicit quality limitation.
  */
+import {normalizeChart,chartTextureData} from './motif-chart.mjs';
 export const EXPORT_SIZE=5000;
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
 export const GAUGES=Object.freeze({mega:1,super:1,chunky:2,medium:3,fine:4});
@@ -13,13 +14,15 @@ export const PALETTES=Object.freeze({
  berry:['#88312d','#ebd9b5','#172a42']
 });
 export const DEFAULTS=Object.freeze({
- style:'cable',gauge:'mega',colour:'#e9d7b6',contrast:'#ebd9b5',
- third:'#24344f',variation:32,fibres:55,angle:0,name:'Cosy Cable Wool'
+ style:'stockinette',gauge:'mega',colour:'#e9d7b6',contrast:'#234872',
+ third:'#b33d41',variation:32,fibres:55,angle:0,name:'My Original Wool Pattern',
+ motifActive:true,chartCols:16,chartCells:Array(256).fill(0)
 });
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const colour=(c,f)=>/^#[0-9a-f]{6}$/i.test(c||'')?c:f;
 const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
 export function normalize(x={}){
+ const chart=normalizeChart({cols:x.chartCols,cells:x.chartCells});
  return {
   style:STYLES.includes(x.style)?x.style:DEFAULTS.style,
   gauge:Object.hasOwn(GAUGES,x.gauge)?x.gauge:DEFAULTS.gauge,
@@ -29,7 +32,8 @@ export function normalize(x={}){
   variation:clamp(Number(x.variation)||0,0,100),
   fibres:clamp(Number(x.fibres)||0,0,100),
   angle:[0,90,180,270].includes(Number(x.angle))?Number(x.angle):0,
-  name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name
+  name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name,
+  motifActive:x.motifActive===true,chartCols:chart.cols,chartCells:chart.cells
  };
 }
 const vertex='#version 300 es\nin vec2 position;\nvoid main(){gl_Position=vec4(position,0.0,1.0);}';
@@ -72,21 +76,40 @@ async function makeRenderer(){
  gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
  const loc=n=>gl.getUniformLocation(prg,n);
  gl.uniform1i(loc('materialPhoto'),0);
+ gl.uniform1i(loc('motifChart'),1);
  const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
- let current=null;
+ const chartTexture=gl.createTexture();
+ gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,chartTexture);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ gl.activeTexture(gl.TEXTURE0);
+ let current=null,chartKey=null;
  async function block(settings,x,y,w,h,size){
   const s=normalize(settings);
-  if(s.style!==current){
-   const image=await loadPhoto(s.style);
+  // An original colour chart must not inherit the *preset* Fair Isle motif.
+  // Start with a neutral knitted surface and apply only user-painted stitches.
+  const materialStyle=s.motifActive&&s.style==='fairisle'?'stockinette':s.style;
+  if(materialStyle!==current){
+   const image=await loadPhoto(materialStyle);
    gl.bindTexture(gl.TEXTURE_2D,texture);
    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,image);
    gl.generateMipmap(gl.TEXTURE_2D);
-   current=s.style;
+   current=materialStyle;
+  }
+  const chartSignature=s.chartCols+':'+s.chartCells.join('');
+  if(chartSignature!==chartKey){
+   const chart=chartTextureData({cols:s.chartCols,cells:s.chartCells});
+   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,chartTexture);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,chart.cols,chart.rows,0,gl.RGBA,gl.UNSIGNED_BYTE,chart.data);
+   gl.activeTexture(gl.TEXTURE0);chartKey=chartSignature;
   }
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
   gl.viewport(0,0,w,h);gl.useProgram(prg);
@@ -99,6 +122,8 @@ async function makeRenderer(){
   gl.uniform3fv(loc('contrastYarn'),rgb(s.contrast));
   gl.uniform3fv(loc('darkYarn'),rgb(s.third));
   gl.uniform1i(loc('stitchStyle'),STYLES.indexOf(s.style));
+  gl.uniform1f(loc('motifEnabled'),s.motifActive?1:0);
+  gl.uniform2f(loc('motifGrid'),s.chartCols,s.chartCols);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   if(gl.getError()!==gl.NO_ERROR)throw Error('Wool GPU render error.');
   return canvas;
@@ -124,7 +149,7 @@ async function makeRenderer(){
    sealOuterEdges(ctx,size);
    return target;
   },
-  dispose(){gl.deleteTexture(texture);gl.deleteProgram(prg);}
+  dispose(){gl.deleteTexture(texture);gl.deleteTexture(chartTexture);gl.deleteProgram(prg);}
  };
 }
 // Edge-only colour reconciliation. The existing wool photographs are almost

@@ -1,6 +1,9 @@
 #version 300 es
 precision highp float;
 uniform sampler2D materialPhoto;
+uniform sampler2D motifChart;
+uniform vec2 motifGrid;
+uniform float motifEnabled;
 uniform vec2 origin;
 uniform float fullSize;
 uniform float stitchFrequency;
@@ -33,7 +36,23 @@ void main(){
  vec3 wool=texture(materialPhoto,fract(lookup)).rgb;
  float L=luminance(wool);
  vec3 colour;
- if(stitchStyle==4){
+ if(motifEnabled>.5){
+    // Each edited chart cell dyes a knitted stitch region, rather than
+    // drawing a flat motif image on top of a finished fabric photograph.
+    // A small periodic course offset makes transitions follow stitch rhythm.
+    vec2 stitch=uv*motifGrid;
+    vec2 shapeShift=vec2(.025*sin(TAU*stitch.y),.017*sin(TAU*stitch.x));
+    vec2 chUV=fract((stitch+shapeShift)/motifGrid);
+    float dye=texture(motifChart,vec2(chUV.x,1.0-chUV.y)).r;
+    vec3 yarn=dye<.24?mainYarn:(dye<.74?contrastYarn:darkYarn);
+    float shade=clamp((L+.065)/(.58+.065),.27,1.66);
+    // Keep the knitted gaps in the background wool colour.
+    // Dye the raised loop/fibre highlights so individual chart cells
+    // resemble yarn-colour changes, not coloured square photo patches.
+    float yarnSurface=smoothstep(.40,.69,L);
+    colour=mix(mainYarn*shade,yarn*shade,yarnSurface);
+    colour+=vec3(.036)*max(0.,L-.57);
+ }else if(stitchStyle==4){
     // The source photograph contains the Fair Isle yarn colours.
     float cream=smoothstep(.36,.59,L);
     float navy=(1.0-cream)*smoothstep(-.035,.10,wool.b-wool.r);

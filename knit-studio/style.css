@@ -36,3 +36,18 @@ button:disabled{opacity:.55;cursor:wait}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #da9a33;outline-offset:2px}
 @media(max-width:790px){.top{flex-wrap:wrap}.workspace{display:flex;flex-direction:column}.visual{order:-1;width:100%}.controls{width:100%}.card{padding:15px}.views{width:100%}.views button{flex:1;padding:8px 4px}.mini{position:sticky;top:7px;background:#faf9f5;z-index:2;box-shadow:0 6px 18px #121f2e10}.shell{padding-top:15px}}
 [hidden]{display:none!important}
+
+/* True mobile stitch-chart authoring, separate from the rendered wool texture. */
+.motifEditor{margin-top:16px;padding:13px;border:1px solid #bfcfdd;border-radius:14px;background:#f8fafb}
+.motifEditor h3{font-size:1.05rem;margin:0 0 5px}
+.motifEditor p.hint{font-size:.8rem;line-height:1.5;margin:6px 0 12px}
+.controls label.motifSwitch{display:flex;align-items:center;justify-content:flex-start;margin:8px 0 13px;gap:9px;font-weight:750}
+.motifSwitch input,.mirrorSwitch input{width:19px;height:19px;accent-color:var(--accent)}
+#motifCanvas{display:block;width:100%;height:auto;aspect-ratio:1;max-height:390px;background:#f3e6cd;border:1px solid #b7c1cc;border-radius:9px;touch-action:none;cursor:crosshair}
+.brushes{display:flex;gap:5px;margin-top:12px}
+.brushes button{flex:1;padding:9px 3px;font-size:.77rem;min-width:0;white-space:normal}
+.brushes button[aria-pressed=true]{background:#526d8f;color:white;border-color:#526d8f}
+.motifActions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.motifActions button{flex:1;min-width:65px}
+.controls label.mirrorSwitch{display:flex;align-items:center;justify-content:center;gap:5px;margin:0;font-size:.79rem;flex:1;min-width:100px}
+#paintStatus{min-height:20px}
