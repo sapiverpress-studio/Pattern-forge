@@ -69,6 +69,10 @@ jobs:
             wool-three-layer-mobile.png
             wool-three-layer-tile.png
             wool-three-layer-repeat.png
+            wool-layered-rib.png
+            wool-layered-seed.png
+            wool-layered-cable.png
+            wool-layered-fairisle.png
             wool-layered-5k-overview.jpg
             wool-layered-native-crop.png
           if-no-files-found: ignore
