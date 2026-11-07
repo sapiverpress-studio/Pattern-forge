@@ -1,0 +1,70 @@
+{
+  "created_for": "Pattern Forge original shader integration",
+  "source": "original user-supplied .blend files",
+  "inspected_without_blender_runtime": true,
+  "entries": [
+    {
+      "file": "2_79-Knittr v0.1.blend",
+      "blender_version": "2.79",
+      "size_bytes": 1166968,
+      "sha256": "10cabd0c195adfa07689a664d8bce3fcfae2ec2087939cbb1afcc485e2d74a6c",
+      "materials": [
+        "Knittr - Example 1",
+        "Knittr - Example 2",
+        "Knittr - Example 3",
+        "Material"
+      ],
+      "node_groups": [
+        "Fluff",
+        "Knittr v0.1"
+      ],
+      "role": "legacy-fallback"
+    },
+    {
+      "file": "Knittr v0.1.blend",
+      "blender_version": "2.80",
+      "size_bytes": 1004180,
+      "sha256": "995495aaa4ab0476e7cd251bc0d5e50957e9aa64dbe04a340bde5404f0764bb5",
+      "materials": [
+        "Knittr - Example 1",
+        "Knittr - Example 2",
+        "Knittr - Example 3"
+      ],
+      "node_groups": [
+        "Fluff",
+        "Knittr v0.1"
+      ],
+      "role": "knitted-wool-primary"
+    },
+    {
+      "file": "Weavr-v1_0.blend",
+      "blender_version": "2.81",
+      "size_bytes": 2297968,
+      "sha256": "8a033fa066668ac9295b8b803492af2bb3b39409f3b3ddee124258a327dd724f",
+      "materials": [
+        "01 Weavr",
+        "02 Weavr",
+        "03 Weavr",
+        "04 Weavr",
+        "05 Weavr"
+      ],
+      "node_groups": [
+        "Weavr-v1_0"
+      ],
+      "role": "woven-fabrics-optional"
+    },
+    {
+      "file": "B'rn_v0.1-1.blend",
+      "blender_version": "2.80",
+      "size_bytes": 614880,
+      "sha256": "c7413b4547faeb720955170df2f1b54c15550bacc572cebcf6f32b6f19cb19cb",
+      "materials": [
+        "B'rn_v0.1"
+      ],
+      "node_groups": [
+        "B'rn_v0.1"
+      ],
+      "role": "fire-effects-excluded-from-knit"
+    }
+  ]
+}
