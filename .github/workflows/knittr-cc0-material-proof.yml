@@ -1,0 +1,92 @@
+name: Knittr-derived CC0 wool PBR in Blender (isolated visual QA)
+on:
+  push:
+    branches: [feature/knittr-cc0-blender-proof-20261107]
+    paths:
+      - knit-open-source/**
+      - .github/workflows/knittr-cc0-material-proof.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: knittr-cc0-material-proof
+  cancel-in-progress: true
+jobs:
+  real-material-blender:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install licensed Blender / Pillow analysis tools
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          python -m pip install --no-cache-dir 'Pillow>=10,<13' 'numpy>=1.26,<3'
+          blender --version | head -n 2
+      - name: Get CC0 Knittr-derived maps from exact public GitHub commit
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wool-material
+          BASE="https://raw.githubusercontent.com/CJT-Jackton/URP-Knitwear-Shader-Example/efa6f0d91be64ca0decb1500e1855dcab19b1bbc/Assets/Knitwear%20Shader/Textures"
+          for f in Knitwear_Diffuse.png Knitwear_Normal.png Knitwear_Occulsion.png; do
+            curl --fail --location --retry 3 --silent --show-error "$BASE/$f" -o "/tmp/wool-material/$f"
+          done
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          for path in sorted(Path('/tmp/wool-material').glob('*.png')):
+              with Image.open(path) as image:
+                  image.verify()
+              print('Verified third-party CC0 PBR source map',path.name,path.stat().st_size)
+          assert len(list(Path('/tmp/wool-material').glob('*.png')))==3
+          PY
+      - name: Render actual external procedural-material-derived knit PBR (no photo stamping)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wool-proof
+          blender -b -noaudio --python-exit-code 5 \
+            --python knit-open-source/render_material.py -- \
+            --mode baked-cc0 --source-dir /tmp/wool-material \
+            --size 720 --samples 20 \
+            --output /tmp/wool-proof/wool-render-raw.png \
+            --save-scene /tmp/wool-proof/knittr-derived-material.blend
+      - name: Validate correct 720px native PNG, 300DPI, and exact seamless edges
+        run: |
+          python knit-open-source/finish.py \
+            /tmp/wool-proof/wool-render-raw.png \
+            /tmp/wool-proof/knittr-derived-720-300dpi.png \
+            --size 720 --report /tmp/wool-proof/audit.json
+          python - <<'PY'
+          from PIL import Image
+          im=Image.open('/tmp/wool-proof/knittr-derived-720-300dpi.png').convert('RGB')
+          big=Image.new('RGB',(1080,1080))
+          for y in range(3):
+              for x in range(3):
+                  big.paste(im.resize((360,360),Image.Resampling.LANCZOS),(x*360,y*360))
+          big.save('/tmp/wool-proof/three-by-three-repeat.png')
+          PY
+      - name: Explicitly prove external original .blend is NOT silently substituted
+        run: |
+          set +e
+          blender -b -noaudio --python-exit-code 5 \
+            --python knit-open-source/render_material.py -- \
+            --mode knittr-original --knittr-blend /tmp/not-supplied.blend \
+            --size 256 --samples 4 --output /tmp/should-not-exist.png \
+            > /tmp/wool-proof/original-missing.log 2>&1
+          code=$?
+          test "$code" -ne 0 || { echo "ERROR: missing Knittr asset silently accepted"; exit 1; }
+          grep -q "original Knittr .blend has not been supplied" /tmp/wool-proof/original-missing.log
+          test ! -f /tmp/should-not-exist.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verified-blender-wool-material-experiment
+          path: |
+            /tmp/wool-proof/*.png
+            /tmp/wool-proof/*.blend
+            /tmp/wool-proof/*.json
+            /tmp/wool-proof/*.log
+          if-no-files-found: ignore
