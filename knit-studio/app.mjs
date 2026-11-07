@@ -16,7 +16,7 @@ function updateChartView(){
  drawChart(chartCanvas,chart,[$('colour').value,$('contrast').value,$('third').value],activeInk,mirrored);
  updatePaintStatus();
 }
-function saveUndo(){undoStack.push(chart.cells.slice());if(undoStack.length>35)undoStack.shift();}
+function saveUndo(){undoStack.push({cols:chart.cols,cells:chart.cells.slice()});if(undoStack.length>35)undoStack.shift();}
 function setInk(value){
  activeInk=Number(value);
  document.querySelectorAll('[data-ink]').forEach(b=>
@@ -30,7 +30,7 @@ $('chartCols').addEventListener('change',()=>{
 });
 $('undoMotif').addEventListener('click',()=>{
  if(!undoStack.length){status('Nothing to undo.');return;}
- chart.cells=undoStack.pop();changed();
+ chart=normalizeChart(undoStack.pop());$('chartCols').value=String(chart.cols);changed();
 });
 $('clearMotif').addEventListener('click',()=>{
  saveUndo();chart.cells.fill(0);changed();
