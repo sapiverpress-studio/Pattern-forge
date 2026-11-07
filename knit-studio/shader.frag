@@ -3,6 +3,7 @@ precision highp float;
 uniform sampler2D materialPhoto;
 uniform sampler2D motifChart;
 uniform sampler2D ownershipMap;
+uniform sampler2D ownershipBlend;
 uniform vec2 sourceGrid;
 uniform float layeredYarn;
 uniform vec2 motifGrid;
@@ -52,7 +53,7 @@ void main(){
     float dye=texture(motifChart,vec2(chartUV.x,1.0-chartUV.y)).r;
     float second=step(.24,dye)*(1.0-step(.74,dye));
     float third=step(.74,dye);
-    float alpha=clamp(owned.b,0.0,1.0);
+    float alpha=clamp(texture(ownershipBlend,fract(lookup)).b,0.0,1.0);
     float reference=stitchStyle==0?.50:(stitchStyle==1?.68:(stitchStyle==2?.60:.75));
     if(stitchStyle==4)reference=.50; // Fair Isle colourwork uses stockinette base.
     float shade=clamp((L+.065)/(reference+.065),.22,1.74);
