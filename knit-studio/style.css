@@ -51,3 +51,18 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 .motifActions button{flex:1;min-width:65px}
 .controls label.mirrorSwitch{display:flex;align-items:center;justify-content:center;gap:5px;margin:0;font-size:.79rem;flex:1;min-width:100px}
 #paintStatus{min-height:20px}
+
+/* Mobile-first pattern randomiser & reliable touch controls. */
+.randomPanel{margin:12px 0 16px;padding:12px;background:#eef3f9;border:1px solid #cbd9e9;border-radius:12px}
+.controls .randomPanel label{margin:0 0 6px;display:block;font-size:.85rem}
+.randomActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.randomActions button{min-height:48px;font-size:.84rem}
+.randomPanel .hint{margin-bottom:0!important}
+.brushes button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:62px}
+.yarnSwatch{display:block;width:24px;height:24px;border-radius:50%;background:var(--brush-yarn,#e9d7b6);border:2px solid #fff;box-shadow:0 0 0 1px #8090a1}
+.motifActions button{min-height:48px}
+button{min-height:44px;transition:background-color .12s ease,border-color .12s ease}
+button:active:not(:disabled){transform:translateY(1px);filter:brightness(.95)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.editNotice{margin:9px 0 0;padding:9px 10px;background:#eaf1f7;color:#315470;border-radius:9px;font-size:.79rem;font-weight:650;line-height:1.4;min-height:38px}
+@media(max-width:420px){.randomActions{grid-template-columns:1fr 1fr}.randomActions button{font-size:.79rem;padding:10px 7px}.motifActions button{padding:11px 7px}.brushes button{font-size:.74rem}}

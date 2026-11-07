@@ -1,5 +1,6 @@
 import {STYLES,PALETTES,DEFAULTS,normalize,getRenderer,exportPng} from './engine.mjs';
 import {normalizeChart,blankChart,resizeChart,paintCell,drawChart,cellFromPointer} from './motif-chart.mjs';
+import {randomiseKnitChart,makeSeed} from './pattern-randomiser.mjs';
 const $=id=>document.getElementById(id);
 const STORAGE='sapiver-wool-seamless-settings-v1';
 const tile=document.createElement('canvas');
@@ -7,33 +8,94 @@ const canvas=$('preview'),ctx=canvas.getContext('2d',{alpha:false});
 const mini=$('miniPreview').getContext('2d',{alpha:false});
 let view='tile',renderer=null,scheduleId=0,requestId=0,exporting=false;
 let chart=blankChart(16),activeInk=1,mirrored=false,painting=false;
-const undoStack=[],chartCanvas=$('motifCanvas');
+const undoStack=[],redoStack=[],chartCanvas=$('motifCanvas');
+let lastGeneratedSignature=null;
+function announce(message){$('editNotice').textContent=message;}
+function snapshot(){return {cols:chart.cols,cells:chart.cells.slice(),motifActive:$('motifActive').checked};}
+function updateActionButtons(){
+ $('undoMotif').disabled=undoStack.length===0;
+ $('redoMotif').disabled=redoStack.length===0;
+ $('clearMotif').disabled=!chart.cells.some(v=>v!==0);
+}
+function restoreSnapshot(x){
+ chart=normalizeChart(x);
+ $('chartCols').value=String(chart.cols);
+ $('motifActive').checked=x.motifActive;
+}
+function useRandomiser(){
+ const selected=$('randomStyle').value;
+ const old=chart.cells.join(',');
+ let generated;
+ // Discard a duplicate reroll; otherwise every press creates a fresh design.
+ for(let attempt=0;attempt<10;attempt++){
+  generated=randomiseKnitChart(chart.cols,selected,makeSeed());
+  if(generated.signature!==lastGeneratedSignature&&generated.cells.join(',')!==old)break;
+ }
+ if(generated.cells.join(',')===old){announce('Try another pattern family for a different look.');return;}
+ saveUndo();
+ chart=normalizeChart(generated);
+ $('motifActive').checked=true;
+ lastGeneratedSignature=generated.signature;
+ changed();
+ const type=generated.style==='checker'?'Geometric checks':generated.style==='snowflakes'?'Snowflake motifs':
+  generated.style==='chevrons'?'Zigzags':generated.style==='diamonds'?'Diamonds':'Stripes and borders';
+ announce(type+' created. Edit any stitch, or press Another version.');
+}
+$('randomiseMotif').addEventListener('click',useRandomiser);
+$('rerollMotif').addEventListener('click',useRandomiser);
+$('randomStyle').addEventListener('change',()=>announce('Ready to generate '+$('randomStyle').selectedOptions[0].text.toLowerCase()+'.'));
+
 function updatePaintStatus(){
  const used=chart.cells.filter(n=>n!==0).length;
- $('paintStatus').textContent=used?used+' edited stitches in this repeat.':'Blank chart — draw your own motif or stripes.';
+ $('paintStatus').textContent=used?used+' coloured stitches in this repeat.':'Blank chart — draw or randomise a motif.';
 }
 function updateChartView(){
- drawChart(chartCanvas,chart,[$('colour').value,$('contrast').value,$('third').value],activeInk,mirrored);
+ const colours=[$('colour').value,$('contrast').value,$('third').value];
+ drawChart(chartCanvas,chart,colours,activeInk,mirrored);
+ document.querySelectorAll('[data-ink]').forEach(b=>{
+  b.style.setProperty('--brush-yarn',colours[Number(b.dataset.ink)]);
+ });
  updatePaintStatus();
+ updateActionButtons();
 }
-function saveUndo(){undoStack.push({cols:chart.cols,cells:chart.cells.slice()});if(undoStack.length>35)undoStack.shift();}
+function saveUndo(){
+ undoStack.push(snapshot());
+ if(undoStack.length>40)undoStack.shift();
+ redoStack.length=0;
+ updateActionButtons();
+}
 function setInk(value){
  activeInk=Number(value);
  document.querySelectorAll('[data-ink]').forEach(b=>
   b.setAttribute('aria-pressed',String(Number(b.dataset.ink)===activeInk)));
+ announce('Painting with '+['main wool','second wool','third wool'][activeInk]+'. Drag across the chart to draw.');
 }
 document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>setInk(b.dataset.ink)));
-$('mirrorMotif').addEventListener('change',e=>{mirrored=e.target.checked;updateChartView();});
-$('motifActive').addEventListener('change',changed);
+$('mirrorMotif').addEventListener('change',e=>{
+ mirrored=e.target.checked;updateChartView();
+ announce(mirrored?'Mirrored drawing on — both sides change together.':'Mirrored drawing off.');
+});
+$('motifActive').addEventListener('change',()=>{
+ changed();announce($('motifActive').checked?'Your original stitch pattern is on.':'Your stitch pattern is hidden. Tick the box to show it again.');
+});
 $('chartCols').addEventListener('change',()=>{
- saveUndo();chart=resizeChart(chart,Number($('chartCols').value));changed();
+ const next=Number($('chartCols').value);
+ if(next===chart.cols)return;
+ saveUndo();chart=resizeChart(chart,next);changed();
+ announce('Grid changed to '+next+' × '+next+'. Use Undo to restore the previous grid.');
 });
 $('undoMotif').addEventListener('click',()=>{
- if(!undoStack.length){status('Nothing to undo.');return;}
- chart=normalizeChart(undoStack.pop());$('chartCols').value=String(chart.cols);changed();
+ if(!undoStack.length){announce('Nothing to undo.');return;}
+ redoStack.push(snapshot());restoreSnapshot(undoStack.pop());changed();announce('Undone. Use Redo to bring it back.');
+});
+$('redoMotif').addEventListener('click',()=>{
+ if(!redoStack.length){announce('Nothing to redo.');return;}
+ undoStack.push(snapshot());restoreSnapshot(redoStack.pop());changed();announce('Redone.');
 });
 $('clearMotif').addEventListener('click',()=>{
+ if(!chart.cells.some(n=>n!==0)){announce('The stitch chart is already blank.');return;}
  saveUndo();chart.cells.fill(0);changed();
+ announce('Chart cleared. Undo will restore your design.');
 });
 function paintPointer(e){
  const {x,y}=cellFromPointer(chartCanvas,e,chart.cols);
@@ -42,6 +104,7 @@ function paintPointer(e){
  if(changedCell){
   $('motifActive').checked=true;
   changed();
+  announce('Stitch painted. Drag to draw; Undo is available.');
  }
 }
 chartCanvas.addEventListener('pointerdown',e=>{
@@ -55,24 +118,27 @@ chartCanvas.addEventListener('pointermove',e=>{
 function endPaint(){painting=false;}
 chartCanvas.addEventListener('pointerup',endPaint);
 chartCanvas.addEventListener('pointercancel',endPaint);
+chartCanvas.addEventListener('lostpointercapture',endPaint);
 const labels={tile:'Single tile',repeat:'3 × 3 repeat',close:'Wool close-up'};
 function read(){return normalize({
  name:$('designName').value,style:$('style').value,gauge:$('gauge').value,
  colour:$('colour').value,contrast:$('contrast').value,third:$('third').value,
  variation:Number($('variation').value),fibres:Number($('fibres').value),
+ accentStrength:Number($('accentStrength').value),
  angle:Number($('angle').value),
  motifActive:$('motifActive').checked,chartCols:chart.cols,chartCells:chart.cells.slice()
 });}
-function setInputs(s){
+function setInputs(s,preserveUndo=false){
  const x=normalize(s);
  $('designName').value=x.name;$('style').value=x.style;$('gauge').value=x.gauge;
  $('colour').value=x.colour;$('contrast').value=x.contrast;$('third').value=x.third;
  $('variation').value=String(x.variation);$('fibres').value=String(x.fibres);
+ $('accentStrength').value=String(x.accentStrength);
  $('angle').value=String(x.angle);
  $('motifActive').checked=x.motifActive;
  chart=normalizeChart({cols:x.chartCols,cells:x.chartCells});
  $('chartCols').value=String(chart.cols);
- undoStack.length=0;
+ if(!preserveUndo){undoStack.length=0;redoStack.length=0;}
  changed();
 }
 function status(s){$('status').textContent=s;}
@@ -81,6 +147,7 @@ function updateVisibility(){
  $('contrastWrap').hidden=!fair;$('thirdWrap').hidden=!fair;
  $('variationValue').textContent=$('variation').value+'%';
  $('fibresValue').textContent=$('fibres').value+'%';
+ $('accentStrengthValue').textContent=$('accentStrength').value+'%';
  $('motifCanvas').setAttribute('aria-label','Edit your original '+chart.cols+' × '+chart.rows+' knitted stitch chart');
 }
 function paintView(){
@@ -128,7 +195,7 @@ function selectView(next){
  paintView();
 }
 for(const v of ['tile','repeat','close'])$(v+'View').addEventListener('click',()=>selectView(v));
-for(const id of ['style','gauge','colour','contrast','third','variation','fibres','angle','designName'])
+for(const id of ['style','gauge','colour','contrast','third','variation','fibres','accentStrength','angle','designName'])
  $(id).addEventListener(id==='designName'?'change':'input',()=>{
   if(id==='style'){
     const p={stockinette:'denim',rib:'cream',seed:'sage',cable:'cream',fairisle:'berry'}[$('style').value];
@@ -141,7 +208,10 @@ document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click
  const x=PALETTES[b.dataset.palette];
  $('colour').value=x[0];$('contrast').value=x[1];$('third').value=x[2];changed();
 }));
-$('reset').addEventListener('click',()=>setInputs(DEFAULTS));
+$('reset').addEventListener('click',()=>{
+ saveUndo();setInputs(DEFAULTS,true);
+ announce('Design reset to blank. Undo restores your previous stitch chart.');
+});
 function filename(name,ext){
  const clean=(name||'wool-pattern').trim().replace(/[^a-z0-9 -]/gi,'')
   .replace(/\s+/g,'-').toLowerCase().slice(0,64);
@@ -157,6 +227,7 @@ $('saveSettings').addEventListener('click',()=>{
  const file=new Blob([JSON.stringify({format:'sapiver-wool-stitch-chart-v2',...s},null,2)],{type:'application/json'});
  download(file,filename(s.name,'.wool.json'));
  status('Editable wool design saved.');
+ announce('Saved your editable stitch pattern as JSON.');
 });
 $('loadSettings').addEventListener('change',async e=>{
  const f=e.target.files?.[0];if(!f)return;
@@ -169,6 +240,7 @@ $('loadSettings').addEventListener('change',async e=>{
   }else if(data.format==='sapiver-wool-seamless-v1'||data.format==='sapiver-wool-stitch-chart-v2')setInputs(data);
   else throw Error('Unrecognised wool settings file.');
   status('Saved design loaded — edit or inspect its repeat.');
+  announce('Saved chart loaded — all stitches remain editable.');
  }catch(err){status('Could not load: '+err.message);}
  finally{e.target.value='';}
 });
@@ -176,6 +248,7 @@ $('downloadPng').addEventListener('click',async()=>{
  if(exporting||!renderer)return;
  exporting=true;++requestId;
  const button=$('downloadPng');button.disabled=true;
+ const originalLabel=button.textContent;button.textContent='Rendering PNG…';
  const settings=read();
  status('Rendering genuine 5000 × 5000 seamless tile… 0%');
  try{
@@ -187,7 +260,7 @@ $('downloadPng').addEventListener('click',async()=>{
   status('Downloaded one 5000 × 5000 px seamless PNG tile (300 DPI).');
  }catch(e){status('Export failed: '+e.message);}
  finally{
-  exporting=false;button.disabled=false;
+  exporting=false;button.disabled=false;button.textContent=originalLabel;
   // Do not replace the genuine download/error status with a preview status.
   // Only re-render if the user changed controls during the long export.
   if(JSON.stringify(read())!==JSON.stringify(settings)){

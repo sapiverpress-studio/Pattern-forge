@@ -1,0 +1,118 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
+const page=await browser.newPage({viewport:{width:385,height:840},acceptDownloads:true,hasTouch:true,isMobile:true});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4185/knit-studio/',{waitUntil:'load',timeout:30000});
+await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:45000});
+const picture=()=>page.locator('#motifCanvas').evaluate(el=>el.toDataURL());
+const awaitChanged=previous=>page.waitForFunction(old=>document.querySelector('#motifCanvas')?.toDataURL()!==old,previous,{timeout:30000});
+assert.equal(await page.locator('#undoMotif').isDisabled(),true);
+assert.equal(await page.locator('#redoMotif').isDisabled(),true);
+assert.equal(await page.locator('#clearMotif').isDisabled(),true);
+assert.equal(await page.locator('#randomStyle').count(),1);
+const blank=await picture();
+await page.locator('#randomStyle').selectOption('diamonds');
+await page.locator('#randomiseMotif').click();
+await awaitChanged(blank);
+const first=await picture();
+assert.notEqual(blank,first);
+assert.equal(await page.locator('#undoMotif').isDisabled(),false);
+assert.equal(await page.locator('#clearMotif').isDisabled(),false);
+assert.match(await page.locator('#editNotice').innerText(),/Diamonds created/);
+await page.locator('#rerollMotif').click();
+await awaitChanged(first);
+const second=await picture();
+assert.notEqual(first,second,'Another version must actually change the editable chart');
+await page.locator('#undoMotif').click();
+assert.equal(await picture(),first,'Undo must restore previous randomised chart');
+assert.equal(await page.locator('#redoMotif').isDisabled(),false);
+await page.locator('#redoMotif').click();
+assert.equal(await picture(),second,'Redo must restore latest randomised chart');
+await page.locator('#clearMotif').click();
+assert.equal(await picture(),blank,'Clear must remove chart data');
+assert.equal(await page.locator('#clearMotif').isDisabled(),true);
+await page.locator('#undoMotif').click();
+assert.equal(await picture(),second,'Clear must be undoable');
+await page.locator('[data-ink="2"]').click();
+assert.equal(await page.locator('[data-ink="2"]').getAttribute('aria-pressed'),'true');
+assert.match(await page.locator('#editNotice').innerText(),/third wool/);
+const beforeDraw=await picture();
+await page.locator('#motifCanvas').click({position:{x:10,y:11}});
+await awaitChanged(beforeDraw);
+assert.equal(await page.locator('#redoMotif').isDisabled(),true,'New drawing clears redo history');
+for(const style of ['chevrons','stripes','snowflakes','checker','surprise']){
+ await page.locator('#randomStyle').selectOption(style);
+ const last=await picture();
+ await page.locator('#randomiseMotif').click();
+ await awaitChanged(last);
+ assert.equal(await page.locator('#clearMotif').isDisabled(),false);
+}
+// Bright contrast colours should visibly cover whole stitches, not just highlights.
+await page.locator('#randomStyle').selectOption('checker');
+await page.locator('#randomiseMotif').click();
+await page.locator('#colour').fill('#dddddd');
+await page.locator('#contrast').fill('#ed0924');
+await page.locator('#third').fill('#0649f5');
+await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:30000});
+const stats=await page.locator('#preview').evaluate(el=>{
+ const data=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
+ let red=0,blue=0;
+ for(let k=0;k<data.length;k+=4){
+  const [r,g,b]=[data[k],data[k+1],data[k+2]];
+  if(r>90&&r>g*1.5&&r>b*1.35)red++;
+  if(b>95&&b>r*1.48&&b>g*1.3)blue++;
+ }
+ return {red,blue};
+});
+assert.ok(stats.red>1000,'Second wool must be clearly visible in preview: '+JSON.stringify(stats));
+assert.ok(stats.blue>1000,'Third wool must be clearly visible in preview: '+JSON.stringify(stats));
+const beforeStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
+await page.locator('#accentStrength').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));});
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,beforeStrength,{timeout:30000});
+const lowStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
+await page.locator('#accentStrength').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));});
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,lowStrength,{timeout:30000});
+assert.equal(await page.locator('#accentStrengthValue').innerText(),'100%');
+await page.locator('#accentStrength').evaluate(el=>{el.value='70';el.dispatchEvent(new Event('input',{bubbles:true}));});
+// Softer product-ready sample: retains realistic fibres instead of neon test inks.
+await page.locator('#colour').fill('#9cb396');
+await page.locator('#contrast').fill('#f0ddba');
+await page.locator('#third').fill('#d9c3d0');
+await page.locator('#randomStyle').selectOption('diamonds');
+await page.locator('#randomiseMotif').click();
+await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:30000});
+
+for(const id of ['tileView','repeatView','closeView']){
+ await page.locator('#'+id).click();
+ assert.equal(await page.locator('#'+id).getAttribute('aria-pressed'),'true');
+}
+await page.locator('#repeatView').click();
+await page.screenshot({path:'knit-randomiser-mobile.png',fullPage:true});
+await page.locator('#tileView').click();
+await page.screenshot({path:'knit-randomiser-tile.png',fullPage:true});
+const downloadSettings=page.waitForEvent('download');
+await page.locator('#saveSettings').click();
+const saved=JSON.parse(await fs.readFile(await (await downloadSettings).path(),'utf8'));
+assert.equal(saved.format,'sapiver-wool-stitch-chart-v2');
+assert.equal(saved.chartCells.length,256);
+assert.ok(new Set(saved.chartCells).size===3);
+assert.equal(saved.accentStrength,70,'Colour strength must be saved with the design');
+await page.locator('#clearMotif').click();
+await page.locator('#loadSettings').setInputFiles({name:'my-design.wool.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});
+await page.waitForFunction(()=>document.querySelector('#paintStatus')?.textContent.includes('coloured stitches'),null,{timeout:15000});
+assert.equal(await page.locator('#colour').inputValue(),'#9cb396');
+assert.equal(await page.locator('#contrast').inputValue(),'#f0ddba');
+assert.equal(await page.locator('#third').inputValue(),'#d9c3d0');
+assert.equal(await page.locator('#accentStrength').inputValue(),'70');
+const big=page.waitForEvent('download',{timeout:180000});
+await page.locator('#downloadPng').click();
+const file=await big;
+assert.match(file.suggestedFilename(),/5000px-300dpi\.png$/);
+await fs.copyFile(await file.path(),'knit-randomised-5000.png');
+await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Downloaded one 5000'),null,{timeout:45000});
+assert.equal(await page.locator('#downloadPng').isDisabled(),false);
+assert.equal(errors.length,0,errors.join(' | '));
+await browser.close();
+console.log('PASS: controls, structured randomisation, stronger colour '+JSON.stringify(stats)+', undo/redo/clear, saved editable chart, 5K PNG');

@@ -19,15 +19,32 @@
     <h3 id="motifHeading">Draw your own knitted pattern</h3>
     <p class="hint">Paint stitches with your finger. Your design becomes a repeating knitted colour pattern — not a stock print.</p>
     <label class="motifSwitch" for="motifActive"><input id="motifActive" type="checkbox" checked> Use my stitch design</label>
+    <section class="randomPanel" aria-label="Pattern randomiser">
+      <label for="randomStyle">Create an editable pattern</label>
+      <select id="randomStyle">
+        <option value="surprise">Surprise me</option>
+        <option value="diamonds">Diamonds</option>
+        <option value="chevrons">Zigzags</option>
+        <option value="stripes">Stripes &amp; borders</option>
+        <option value="snowflakes">Snowflake motifs</option>
+        <option value="checker">Geometric checks</option>
+      </select>
+      <div class="randomActions">
+        <button id="randomiseMotif" type="button" class="primary">Randomise pattern</button>
+        <button id="rerollMotif" type="button">Another version</button>
+      </div>
+      <p class="hint">Every result is editable. You can change individual stitches, colours and repeat size afterward.</p>
+    </section>
     <canvas id="motifCanvas" width="384" height="384" aria-label="Touch-editable knitting stitch grid: paint rows and columns to create your motif"></canvas>
     <div class="brushes" role="group" aria-label="Choose yarn for drawing">
-      <button type="button" data-ink="0" aria-pressed="false">Main wool</button>
-      <button type="button" data-ink="1" aria-pressed="true">Second wool</button>
-      <button type="button" data-ink="2" aria-pressed="false">Third wool</button>
+      <button type="button" data-ink="0" aria-pressed="false"><span class="yarnSwatch" aria-hidden="true"></span>Main wool</button>
+      <button type="button" data-ink="1" aria-pressed="true"><span class="yarnSwatch" aria-hidden="true"></span>Second wool</button>
+      <button type="button" data-ink="2" aria-pressed="false"><span class="yarnSwatch" aria-hidden="true"></span>Third wool</button>
     </div>
     <div class="motifActions">
-      <button id="undoMotif" type="button">Undo</button>
-      <button id="clearMotif" type="button">Clear chart</button>
+      <button id="undoMotif" type="button" disabled>Undo</button>
+      <button id="redoMotif" type="button" disabled>Redo</button>
+      <button id="clearMotif" type="button" disabled>Clear</button>
       <label class="mirrorSwitch" for="mirrorMotif"><input type="checkbox" id="mirrorMotif"> Mirror drawing</label>
     </div>
     <label for="chartCols">Stitches across each repeat</label>
@@ -37,7 +54,8 @@
       <option value="24">24 × 24 — fine motifs</option>
       <option value="32">32 × 32 — detailed</option>
     </select>
-    <p id="paintStatus" class="hint" aria-live="polite">Blank chart — draw an original motif or stripe.</p>
+    <p id="paintStatus" class="hint" aria-live="polite">Blank chart — draw or randomise a motif.</p>
+    <p id="editNotice" class="editNotice" role="status" aria-live="polite">Choose a colour and paint, or press Randomise pattern.</p>
   </section>
   <div class="mini"><canvas id="miniPreview" width="120" height="120" aria-label="Current knitted pattern miniature"></canvas><div><strong>Current design</strong><p>Changes update immediately.</p></div></div>
   <label for="designName">Design name</label>
@@ -60,8 +78,8 @@
   </select>
   <div class="colourRow">
     <div><label for="colour">Wool colour</label><input type="color" id="colour" value="#e9d7b6"></div>
-    <div id="contrastWrap" hidden><label for="contrast">Fair Isle second</label><input type="color" id="contrast" value="#ebd9b5"></div>
-    <div id="thirdWrap" hidden><label for="third">Fair Isle third</label><input type="color" id="third" value="#24344f"></div>
+    <div id="contrastWrap" hidden><label for="contrast">Second wool</label><input type="color" id="contrast" value="#ebd9b5"></div>
+    <div id="thirdWrap" hidden><label for="third">Third wool</label><input type="color" id="third" value="#24344f"></div>
   </div>
   <div class="palette" role="group" aria-label="Suggested wool colours">
     <button type="button" data-palette="cream">Cream</button>
@@ -71,6 +89,9 @@
   </div>
   <label for="variation">Natural stitch variation <output id="variationValue">32%</output></label>
   <input id="variation" type="range" min="0" max="100" step="1" value="32">
+  <label for="accentStrength">Second/third colour strength <output id="accentStrengthValue">70%</output></label>
+  <input id="accentStrength" type="range" min="0" max="100" step="5" value="70">
+  <p class="hint">Increase for stronger coloured stitches. Reduce to keep more of the original wool shading.</p>
   <label for="fibres">Wool fibre definition <output id="fibresValue">55%</output></label>
   <input id="fibres" type="range" min="0" max="100" step="1" value="55">
   <label for="angle">Pattern direction</label>
