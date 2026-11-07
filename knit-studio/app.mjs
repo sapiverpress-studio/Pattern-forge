@@ -55,6 +55,9 @@ function updateChartView(){
  document.querySelectorAll('[data-ink]').forEach(b=>{
   b.style.setProperty('--brush-yarn',colours[Number(b.dataset.ink)]);
  });
+ document.querySelectorAll('[data-preview-ink]').forEach(b=>{
+  b.style.setProperty('--brush-yarn',colours[Number(b.dataset.previewInk)]);
+ });
  updatePaintStatus();
  updateActionButtons();
 }
@@ -68,9 +71,13 @@ function setInk(value){
  activeInk=Number(value);
  document.querySelectorAll('[data-ink]').forEach(b=>
   b.setAttribute('aria-pressed',String(Number(b.dataset.ink)===activeInk)));
- announce('Painting with '+['main wool','second wool','third wool'][activeInk]+'. Drag across the chart to draw.');
+ document.querySelectorAll('[data-preview-ink]').forEach(b=>
+  b.setAttribute('aria-pressed',String(Number(b.dataset.previewInk)===activeInk)));
+ announce('Painting with '+['main wool','second wool','third wool'][activeInk]+'. Drag across the chart or knitted fabric.');
+ $('directWoolNotice').textContent='Selected '+['main wool','second wool','third wool'][activeInk]+'. Tap a knitted loop to colour it.';
 }
 document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>setInk(b.dataset.ink)));
+document.querySelectorAll('[data-preview-ink]').forEach(b=>b.addEventListener('click',()=>setInk(b.dataset.previewInk)));
 $('mirrorMotif').addEventListener('change',e=>{
  mirrored=e.target.checked;updateChartView();
  announce(mirrored?'Mirrored drawing on — both sides change together.':'Mirrored drawing off.');
@@ -125,6 +132,7 @@ function read(){return normalize({
  colour:$('colour').value,contrast:$('contrast').value,third:$('third').value,
  variation:Number($('variation').value),fibres:Number($('fibres').value),
  subtleColours:$('subtleColours').checked,
+ layeredYarn:$('layeredYarn').checked,
  angle:Number($('angle').value),
  motifActive:$('motifActive').checked,chartCols:chart.cols,chartCells:chart.cells.slice()
 });}
@@ -134,6 +142,7 @@ function setInputs(s,preserveUndo=false){
  $('colour').value=x.colour;$('contrast').value=x.contrast;$('third').value=x.third;
  $('variation').value=String(x.variation);$('fibres').value=String(x.fibres);
  $('subtleColours').checked=x.subtleColours;
+ $('layeredYarn').checked=x.layeredYarn;
  $('angle').value=String(x.angle);
  $('motifActive').checked=x.motifActive;
  chart=normalizeChart({cols:x.chartCols,cells:x.chartCells});
@@ -143,6 +152,9 @@ function setInputs(s,preserveUndo=false){
 }
 function status(s){$('status').textContent=s;}
 function updateVisibility(){
+ const layered=$('layeredYarn').checked;
+ $('directWoolTools').hidden=!layered;
+ canvas.classList.toggle('wool-paint-active',layered&&$('paintOnWool').checked&&view==='tile');
  const fair=$('style').value==='fairisle'||$('motifActive').checked;
  $('contrastWrap').hidden=!fair;$('thirdWrap').hidden=!fair;
  $('variationValue').textContent=$('variation').value+'%';
@@ -190,11 +202,56 @@ function changed(){
 }
 function selectView(next){
  view=next;
+ updateVisibility();
+ if($('layeredYarn').checked&&next!=='tile')
+  $('directWoolNotice').textContent='Select Single tile to paint directly on knitted stitches.';
  for(const v of ['tile','repeat','close'])
   $(v+'View').setAttribute('aria-pressed',String(v===view));
  paintView();
 }
 for(const v of ['tile','repeat','close'])$(v+'View').addEventListener('click',()=>selectView(v));
+let woolPointerDown=false;
+function paintWoolAtPointer(event){
+ if(!$('layeredYarn').checked||!$('paintOnWool').checked)return;
+ if(view!=='tile'){
+  $('directWoolNotice').textContent='Select Single tile to paint directly on wool.';
+  return;
+ }
+ if(!renderer)return;
+ const box=canvas.getBoundingClientRect();
+ const u=(event.clientX-box.left)/box.width;
+ const v=1-(event.clientY-box.top)/box.height;
+ if(u<0||u>=1||v<0||v>=1)return;
+ const selected=renderer.pickStitch(u,v,read());
+ if(!selected){
+  $('directWoolNotice').textContent='Stitch map not ready. Select the layer mode and try again.';
+  return;
+ }
+ if(paintCell(chart,selected.x,selected.y,activeInk,mirrored)){
+  $('motifActive').checked=true;
+  changed();
+  $('directWoolNotice').textContent=
+   'Coloured stitch '+(selected.x+1)+', '+(selected.y+1)+'. Undo is available below.';
+ }
+}
+canvas.addEventListener('pointerdown',event=>{
+ if(!$('layeredYarn').checked||!$('paintOnWool').checked)return;
+ if(view!=='tile'){
+  $('directWoolNotice').textContent='Select Single tile to paint directly on wool.';
+  return;
+ }
+ if(event.pointerType==='mouse'&&event.button!==0)return;
+ event.preventDefault();canvas.setPointerCapture(event.pointerId);
+ woolPointerDown=true;saveUndo();paintWoolAtPointer(event);
+});
+canvas.addEventListener('pointermove',event=>{
+ if(woolPointerDown&&event.isPrimary){
+  event.preventDefault();paintWoolAtPointer(event);
+ }
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])
+ canvas.addEventListener(type,()=>{woolPointerDown=false;});
+
 for(const id of ['style','gauge','colour','contrast','third','variation','fibres','angle','designName'])
  $(id).addEventListener(id==='designName'?'change':'input',()=>{
   if(id==='style'){
@@ -208,6 +265,23 @@ $('subtleColours').addEventListener('change',()=>{
  changed();
  announce($('subtleColours').checked?'Subtle yarn colours on — original knit texture preserved.':'Original wool colour appearance restored.');
 });
+$('layeredYarn').addEventListener('change',()=>{
+ if($('layeredYarn').checked)$('motifActive').checked=true;
+ changed();
+ const message=$('layeredYarn').checked?
+  'Three-layer yarn experiment on. Tap the preview to recolour stitches, or use the grid below.':
+  'Original wool rendering restored.';
+ announce(message);
+ $('directWoolNotice').textContent=message;
+});
+$('paintOnWool').addEventListener('change',()=>{
+ updateVisibility();
+ const active=$('paintOnWool').checked;
+ $('directWoolNotice').textContent=active?
+  'Direct painting enabled. Use Single tile and tap a knitted stitch.':
+  'Direct painting is off; use the editable stitch chart below.';
+});
+
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>{
  const x=PALETTES[b.dataset.palette];
  $('colour').value=x[0];$('contrast').value=x[1];$('third').value=x[2];changed();
