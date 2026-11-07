@@ -41,12 +41,16 @@ void main(){
     // drawing a flat motif image on top of a finished fabric photograph.
     // A small periodic course offset makes transitions follow stitch rhythm.
     vec2 stitch=uv*motifGrid;
-    vec2 shapeShift=vec2(.10*sin(TAU*stitch.y),.075*sin(TAU*stitch.x));
+    vec2 shapeShift=vec2(.025*sin(TAU*stitch.y),.017*sin(TAU*stitch.x));
     vec2 chUV=fract((stitch+shapeShift)/motifGrid);
     float dye=texture(motifChart,vec2(chUV.x,1.0-chUV.y)).r;
     vec3 yarn=dye<.24?mainYarn:(dye<.74?contrastYarn:darkYarn);
     float shade=clamp((L+.065)/(.58+.065),.27,1.66);
-    colour=yarn*shade;
+    // Keep the knitted gaps in the background wool colour.
+    // Dye the raised loop/fibre highlights so individual chart cells
+    // resemble yarn-colour changes, not coloured square photo patches.
+    float yarnSurface=smoothstep(.40,.69,L);
+    colour=mix(mainYarn*shade,yarn*shade,yarnSurface);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
     // The source photograph contains the Fair Isle yarn colours.
