@@ -4,6 +4,7 @@
  * Source photographic resolution is 1254px, an explicit quality limitation.
  */
 import {normalizeChart,chartTextureData} from './motif-chart.mjs';
+import {buildStitchOwnership,pickLayeredChartCell} from './stitch-ownership.mjs';
 export const EXPORT_SIZE=5000;
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
 export const GAUGES=Object.freeze({mega:1,super:1,chunky:2,medium:3,fine:4});
@@ -32,6 +33,7 @@ export function normalize(x={}){
   variation:clamp(Number(x.variation)||0,0,100),
   fibres:clamp(Number(x.fibres)||0,0,100),
   subtleColours:x.subtleColours===true,
+  layeredYarn:x.layeredYarn===true,
   angle:[0,90,180,270].includes(Number(x.angle))?Number(x.angle):0,
   name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name,
   motifActive:x.motifActive===true,chartCols:chart.cols,chartCells:chart.cells
@@ -78,6 +80,7 @@ async function makeRenderer(){
  const loc=n=>gl.getUniformLocation(prg,n);
  gl.uniform1i(loc('materialPhoto'),0);
  gl.uniform1i(loc('motifChart'),1);
+ gl.uniform1i(loc('ownershipMap'),2);
  const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
@@ -89,8 +92,15 @@ async function makeRenderer(){
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ const ownershipTexture=gl.createTexture();
+ gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,ownershipTexture);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
  gl.activeTexture(gl.TEXTURE0);
- let current=null,chartKey=null;
+ const ownershipCache=new Map();
+ let current=null,chartKey=null,currentOwnership=null,currentOwnerStyle=null;
  async function block(settings,x,y,w,h,size){
   const s=normalize(settings);
   // An original colour chart must not inherit the *preset* Fair Isle motif.
@@ -103,6 +113,18 @@ async function makeRenderer(){
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,image);
    gl.generateMipmap(gl.TEXTURE_2D);
    current=materialStyle;
+  }
+  if(s.motifActive&&s.layeredYarn&&currentOwnerStyle!==materialStyle){
+   let owned=ownershipCache.get(materialStyle);
+   if(!owned){
+    owned=buildStitchOwnership(await loadPhoto(materialStyle),materialStyle);
+    ownershipCache.set(materialStyle,owned);
+   }
+   gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,ownershipTexture);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,owned.width,owned.height,0,gl.RGBA,gl.UNSIGNED_BYTE,owned.data);
+   gl.activeTexture(gl.TEXTURE0);
+   currentOwnerStyle=materialStyle;currentOwnership=owned;
   }
   const chartSignature=s.chartCols+':'+s.chartCells.join('');
   if(chartSignature!==chartKey){
@@ -125,7 +147,9 @@ async function makeRenderer(){
   gl.uniform3fv(loc('darkYarn'),rgb(s.third));
   gl.uniform1i(loc('stitchStyle'),STYLES.indexOf(s.style));
   gl.uniform1f(loc('motifEnabled'),s.motifActive?1:0);
+  gl.uniform1f(loc('layeredYarn'),s.motifActive&&s.layeredYarn?1:0);
   gl.uniform2f(loc('motifGrid'),s.chartCols,s.chartCols);
+  gl.uniform2f(loc('sourceGrid'),currentOwnership?.cols||16,currentOwnership?.rows||11);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   if(gl.getError()!==gl.NO_ERROR)throw Error('Wool GPU render error.');
   return canvas;
@@ -151,7 +175,19 @@ async function makeRenderer(){
    sealOuterEdges(ctx,size);
    return target;
   },
-  dispose(){gl.deleteTexture(texture);gl.deleteTexture(chartTexture);gl.deleteProgram(prg);}
+  pickStitch(uvX,uvY,settings){
+   const state=normalize(settings);
+   if(!state.layeredYarn||!state.motifActive)return null;
+   const style=state.style==='fairisle'?'stockinette':state.style;
+   const owned=ownershipCache.get(style);
+   return owned?pickLayeredChartCell(uvX,uvY,state,owned):null;
+  },
+  dispose(){
+   gl.deleteTexture(texture);
+   gl.deleteTexture(chartTexture);
+   gl.deleteTexture(ownershipTexture);
+   gl.deleteProgram(prg);
+  }
  };
 }
 // Edge-only colour reconciliation. The existing wool photographs are almost
