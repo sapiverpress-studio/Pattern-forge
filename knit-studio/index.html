@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf0f1">
+<meta name="description" content="Make editable photoreal-style knitted-wool repeat patterns and download one seamless 5000px PNG tile at 300 DPI.">
+<title>Seamless Wool Pattern Studio | Sapiver Pattern Forge</title>
+<link rel="stylesheet" href="./style.css"></head>
+<body><main class="shell">
+<header class="top">
+  <div><p class="eyebrow">Sapiver Press · Pattern Forge</p>
+  <h1>Wool Pattern Studio</h1>
+  <p class="intro">Make a knitted-wool design, see it repeat, change its look and download one seamless tile.</p></div>
+  <a class="home" href="/">All Pattern Forge tools</a>
+</header>
+<div class="workspace">
+<section class="card controls" aria-labelledby="controlsTitle">
+  <h2 id="controlsTitle">Create your wool pattern</h2>
+  <div class="mini"><canvas id="miniPreview" width="120" height="120" aria-label="Current knitted pattern miniature"></canvas><div><strong>Current design</strong><p>Changes update immediately.</p></div></div>
+  <label for="designName">Design name</label>
+  <input id="designName" value="Cosy Cable Wool" maxlength="70" autocomplete="off">
+  <label for="style">Knitting style</label>
+  <select id="style">
+    <option value="stockinette">Stockinette · knitted V stitches</option>
+    <option value="rib">Rib knit · raised rows</option>
+    <option value="seed">Seed stitch · textured bumps</option>
+    <option value="cable" selected>Cable knit · intertwined wool</option>
+    <option value="fairisle">Fair Isle · coloured knitted yarn</option>
+  </select>
+  <label for="gauge">Stitch size</label>
+  <select id="gauge">
+    <option value="mega" selected>Super Mega Chunky</option>
+    <option value="super">Super Chunky</option>
+    <option value="chunky">Chunky</option>
+    <option value="medium">Medium</option>
+    <option value="fine">Fine knit</option>
+  </select>
+  <div class="colourRow">
+    <div><label for="colour">Wool colour</label><input type="color" id="colour" value="#e9d7b6"></div>
+    <div id="contrastWrap" hidden><label for="contrast">Fair Isle second</label><input type="color" id="contrast" value="#ebd9b5"></div>
+    <div id="thirdWrap" hidden><label for="third">Fair Isle third</label><input type="color" id="third" value="#24344f"></div>
+  </div>
+  <div class="palette" role="group" aria-label="Suggested wool colours">
+    <button type="button" data-palette="cream">Cream</button>
+    <button type="button" data-palette="sage">Sage</button>
+    <button type="button" data-palette="denim">Denim</button>
+    <button type="button" data-palette="berry">Berry</button>
+  </div>
+  <label for="variation">Natural stitch variation <output id="variationValue">32%</output></label>
+  <input id="variation" type="range" min="0" max="100" step="1" value="32">
+  <label for="fibres">Wool fibre definition <output id="fibresValue">55%</output></label>
+  <input id="fibres" type="range" min="0" max="100" step="1" value="55">
+  <label for="angle">Pattern direction</label>
+  <select id="angle"><option value="0">Upright knit</option><option value="90">Turn right</option><option value="180">Upside down</option><option value="270">Turn left</option></select>
+  <div class="saveBox">
+    <button id="saveSettings" class="secondary full" type="button">Save editable pattern JSON</button>
+    <label class="fileAction" for="loadSettings">Open saved pattern JSON</label>
+    <input id="loadSettings" type="file" accept=".json,application/json">
+    <button id="reset" class="plain full" type="button">Reset pattern</button>
+  </div>
+  <div class="saveBox">
+    <h3>Download your repeating pattern</h3>
+    <p>One seamless tile — 5000 × 5000 px, PNG, 300 DPI. Not a repeated grid or cropped close-up.</p>
+    <button id="downloadPng" type="button" class="primary full">Download seamless 5000 px PNG</button>
+    <p id="status" role="status" aria-live="polite">Loading knitted wool materials…</p>
+  </div>
+</section>
+<section class="card visual" aria-labelledby="previewTitle">
+  <div class="previewHeader">
+    <div><h2 id="previewTitle">Live knitted pattern</h2><p>Check the edges before downloading.</p></div>
+    <div class="views" role="group" aria-label="Pattern preview mode">
+      <button type="button" id="tileView" aria-pressed="true">Single tile</button>
+      <button type="button" id="repeatView" aria-pressed="false">3 × 3 repeat</button>
+      <button type="button" id="closeView" aria-pressed="false">Wool close-up</button>
+    </div>
+  </div>
+  <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live seamless knitted-wool pattern"></canvas></div>
+  <p class="footnote">The downloadable tile is exactly the same repeat structure and colour as this preview. Close-up changes only what you see, not the file. Original wool photo sources are about 1254px; 5000px export adds generated fibre grain but not new 5000px photographic detail.</p>
+</section>
+</div>
+<footer>Personal design workspace · Your existing Pattern Forge projects remain unchanged.</footer>
+</main><script type="module" src="./app.mjs"></script></body></html>

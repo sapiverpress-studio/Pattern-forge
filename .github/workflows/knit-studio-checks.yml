@@ -1,0 +1,71 @@
+name: Wool Seamless Pattern Studio independent quality checks
+on:
+  push:
+    branches: [feature/seamless-real-wool-studio-20261107]
+    paths:
+      - knit-studio/**
+      - .github/workflows/knit-studio-checks.yml
+      - tests/knit-studio-browser.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: seamless-knitted-wool-tests
+  cancel-in-progress: true
+jobs:
+  mobile-and-seamless:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Validate syntax and install browser QA
+        run: |
+          node --check knit-studio/app.mjs
+          node --check knit-studio/engine.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          python -m pip install --no-cache-dir pillow numpy
+      - name: Serve repository root and assets locally
+        run: |
+          python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/knit-studio-http.log 2>&1 &
+          for i in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4185/knit-studio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/knit-studio-http.log; exit 1
+      - name: Test Android-size wool design studio and actual 5000px download
+        run: node tests/knit-studio-browser.mjs
+      - name: Quantify 5000px seams and inspect visual resolution
+        run: |
+          python3 - <<'PY'
+          import numpy as np
+          from PIL import Image
+          im=Image.open('knit-studio-check-5000.png')
+          assert im.size==(5000,5000),im.size
+          assert abs(im.info['dpi'][0]-300)<.1,im.info
+          arr=np.asarray(im.convert('RGB'),dtype=np.float32)
+          x=float(np.mean(abs(arr[:,0]-arr[:,-1])))
+          y=float(np.mean(abs(arr[0]-arr[-1])))
+          nx=float(np.mean(abs(arr[:,1]-arr[:,0])))
+          ny=float(np.mean(abs(arr[1]-arr[0])))
+          assert x < max(8, nx*2+3),(x,nx)
+          assert y < max(8, ny*2+3),(y,ny)
+          assert np.std(arr)>12,'Export seems blank'
+          print('PASS 5000x5000 300DPI. Seams X:',round(x,2),'Y:',round(y,2),'natural neighbours:',round(nx,2),round(ny,2))
+          im.convert('RGB').resize((1150,1150),Image.Resampling.LANCZOS).save('knit-studio-5000-overview.jpg',quality=92)
+          im.crop((1800,1800,3200,3200)).save('knit-studio-5000-native-crop.png')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wool-studio-seam-visual-qa
+          path: |
+            knit-studio-mobile-repeat.png
+            knit-studio-mobile-single.png
+            knit-studio-5000-overview.jpg
+            knit-studio-5000-native-crop.png
+          if-no-files-found: ignore
