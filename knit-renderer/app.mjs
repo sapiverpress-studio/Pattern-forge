@@ -41,6 +41,8 @@ function drawPreview(){
  const zoom={chunky:1,super:1.27,mega:1.63}[s.gauge],crop=buffer.width/zoom,origin=(buffer.width-crop)/2;
  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  ctx.drawImage(buffer,origin,origin,crop,crop,0,0,side,side);
+ const quick=$('quickPreview'),mini=quick?.getContext('2d',{alpha:false});
+ if(mini){mini.clearRect(0,0,quick.width,quick.height);mini.drawImage(canvas,0,0,quick.width,quick.height);}
 }
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
 let saved=defaults;try{saved=normalize({...defaults,...JSON.parse(localStorage.getItem(STORAGE)||'{}')})}catch{}
@@ -58,7 +60,13 @@ $('saveSettings').addEventListener('click',()=>{
 $('loadSettings').addEventListener('change',async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{if(file.size>32768)throw Error('File is too large');const json=JSON.parse(await file.text());
- if(json.format!=='sapiver-real-knit-design-v1')throw Error('Unsupported design settings');
+ if(json.format==='sapiver-knit-v1'){
+   if(json.style!=='stockinette')throw Error('That knit style is currently supported in the existing /knit/ studio, not the 3D renderer.');
+   json.gauge=json.gauge==='megachunky'?'mega':json.gauge==='superchunky'?'super':'chunky';
+   json.colour=json.yarn;
+   json.yarn_type='roving';
+   json.size=5000;
+ }else if(json.format!=='sapiver-real-knit-design-v1')throw Error('Unsupported design settings');
  apply(json);$('status').textContent='Design settings loaded. Edit and inspect your preview.';}
  catch(err){$('status').textContent='Could not open design: '+err.message;}finally{e.target.value='';}
 });
