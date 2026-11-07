@@ -1,2 +1,65 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#eae5dc"><title>Real Knitted Wool Generator | Sapiver Pattern Forge</title><link rel="stylesheet" href="./style.css"></head><body><main class="wrap"><header><div class="eyebrow">Sapiver Press · Pattern Forge</div><h1>Render knitted wool</h1><p>Choose yarn settings, generate new 3D knitted geometry using TexGen and Blender, then download the original 300 DPI artwork.</p><a href="/knit/">Previous knitting tool</a></header>
-<div class="layout"><section class="card"><h2>Your wool settings</h2><label for="gauge">Chunkiness</label><select id="gauge"><option value="mega">Super Mega Cosy Chunky</option><option value="super">Super Chunky</option><option value="chunky">Chunky</option></select><label for="colour">Yarn colour</label><input type="color" id="colour" value="#ead7b6"><label for="yarnType">Yarn structure</label><select id="yarnType"><option value="roving">Soft Merino Roving</option><option value="twisted">Twisted Ply Yarn</option></select><label for="size">Download size</label><select id="size"><option value="5000">5000 × 5000 px / 300 DPI</option><option value="1500">1500 × 1500 px / 300 DPI</option><option value="720">720 × 720 px / 300 DPI</option></select><button type="button" id="generate">Generate actual 3D wool</button><p id="status" role="status" aria-live="polite">No render requested yet.</p><a id="download" hidden>Download completed PNG</a><p class="minor">The rendered image is built from knitted yarn geometry, not photo tiles or enlarged thumbnails. High-resolution rendering may take considerable time.</p></section><section class="card visual"><h2>Newly generated artwork</h2><div class="frame"><p id="empty">Your new knitted fabric will appear here after rendering.</p><img id="artwork" alt="Newly rendered stockinette wool" hidden></div><p class="minor">Only stockinette is enabled until its wool realism is satisfactory. Rib, seed, cable and Fair Isle need separate stitch geometry.</p></section></div><footer>Experimental 3D renderer · Real TexGen, Blender Cycles and Pillow · Your existing designs are unchanged</footer></main><script type="module" src="./app.mjs"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#526d8f">
+<title>Knitted Fabric Design Studio | Sapiver Pattern Forge</title>
+<meta name="description" content="Design and adjust knitted wool visually, then request a genuine 3D Blender render.">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <div><p class="eyebrow">Sapiver Press · Pattern Forge</p>
+    <h1>Knitted Fabric Studio</h1>
+    <p class="intro">See your design as you change it. When it looks right, render a new image with TexGen and Blender.</p></div>
+    <a class="home" href="/knit/">Existing knit designs</a>
+  </header>
+  <div class="workspace">
+    <section class="card controls" aria-labelledby="designHeading">
+      <h2 id="designHeading">Design your wool</h2>
+      <label for="designName">Design name</label><input id="designName" maxlength="70" value="Cosy Wool Knit" autocomplete="off">
+      <label for="style">Knitting pattern</label>
+      <select id="style"><option value="stockinette">Stockinette · interlocking V stitches</option></select>
+      <p class="micro">This 3D engine currently supports stockinette. <a href="/knit/">Rib, seed, cable and Fair Isle remain in the existing studio</a>.</p>
+      <label for="gauge">Stitch size</label>
+      <select id="gauge"><option value="chunky">Chunky</option><option value="super">Super Chunky</option><option value="mega" selected>Super Mega Cosy Chunky</option></select>
+      <label for="colour">Wool colour</label><input type="color" id="colour" value="#ead7b6">
+      <div class="palette" role="group" aria-label="Quick wool colours">
+        <button type="button" data-colour="#ead7b6">Cream</button>
+        <button type="button" data-colour="#9cb396">Sage</button>
+        <button type="button" data-colour="#729ac6">Denim</button>
+        <button type="button" data-colour="#88312d">Berry</button>
+      </div>
+      <label for="yarnType">Yarn structure</label>
+      <select id="yarnType"><option value="roving">Soft merino roving</option><option value="twisted">Twisted ply wool</option></select>
+      <p class="micro" id="yarnPreviewNote">The live colour/size preview uses a real roving render. A fresh 3D render is needed to inspect twisted-ply detail.</p>
+      <div class="saveBox">
+        <button type="button" id="saveSettings">Save editable design</button>
+        <label class="fileAction" for="loadSettings">Open a saved design JSON</label><input id="loadSettings" type="file" accept=".json,application/json">
+        <button type="button" id="resetDesign" class="plain">Reset to cream mega chunky</button>
+      </div>
+      <div class="renderBox">
+        <h3>Render finished artwork</h3>
+        <label for="size">Final PNG size</label>
+        <select id="size"><option value="5000" selected>5000 × 5000 px · 300 DPI</option><option value="1500">1500 × 1500 px · 300 DPI</option><option value="720">720 × 720 px · 300 DPI</option></select>
+        <button id="generate" class="primary" type="button">Render my current design in 3D</button>
+        <p id="status" role="status" aria-live="polite">Adjust the design and inspect it before rendering.</p>
+        <p class="micro">The final render requires a connected Blender worker. If it is offline, you'll see an error rather than a false download.</p>
+      </div>
+    </section>
+    <section class="card visual" aria-labelledby="previewHeading">
+      <div class="previewHeader"><div><h2 id="previewHeading">Your live design</h2><p>Colour and size update as you make changes.</p></div><span class="labelPill" id="previewBadge">Design preview</span></div>
+      <div class="previewFrame"><canvas id="livePreview" width="720" height="720" aria-label="Interactive knitted wool design preview"></canvas><p id="previewError" class="micro" hidden></p></div>
+      <p class="micro">This preview recolours and crops an actual small Blender wool render for fast editing. It is <strong>not</strong> the final quality or a 5000 px image. A new render uses your selected settings and is shown separately below.</p>
+      <section id="renderedPanel" class="rendered" hidden>
+        <div class="previewHeader"><div><h2>Your last finished 3D render</h2><p id="renderNote">Generated from your selected settings.</p></div><span class="labelPill">Blender result</span></div>
+        <div class="previewFrame"><img id="artwork" alt="Actual knitted wool render generated from the chosen settings" hidden><p id="empty">The finished 3D render will appear here.</p></div>
+        <a id="download" class="download" hidden>Download completed PNG</a>
+      </section>
+    </section>
+  </div>
+  <footer>Private-use workflow · Your existing Pattern Forge designs are unchanged</footer>
+</main>
+<script type="module" src="./app.mjs"></script>
+</body></html>
