@@ -84,6 +84,34 @@ jobs:
           test "$code" -ne 0 || { echo "ERROR: missing Knittr asset silently accepted"; exit 1; }
           grep -q "original Knittr .blend has not been supplied" /tmp/wool-proof/original-missing.log
           test ! -f /tmp/should-not-exist.png
+      - name: Retrieve genuine CC0 native Blender wool material library (pinned)
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://raw.githubusercontent.com/wirehead/blender-shader-lib/72eb89e80e2349f97163abadd6cdf41e172ff579/cycles-principled-dielectric-fabric.blend" \
+            -o /tmp/wool-proof/cc0-fabric-library.blend
+          test "$(wc -c < /tmp/wool-proof/cc0-fabric-library.blend)" -gt 100000
+      - name: Render CC0 Blender-authored wool node material directly
+        run: |
+          blender -b -noaudio --python-exit-code 5 \
+            --python knit-open-source/render_material.py -- \
+            --mode wool-library-cc0 \
+            --library-blend /tmp/wool-proof/cc0-fabric-library.blend \
+            --size 720 --samples 20 \
+            --output /tmp/wool-proof/native-cc0-wool-raw.png \
+            --save-scene /tmp/wool-proof/native-cc0-wool-editable.blend
+          python knit-open-source/finish.py \
+            /tmp/wool-proof/native-cc0-wool-raw.png \
+            /tmp/wool-proof/native-cc0-wool-720-300dpi.png --size 720 \
+            --report /tmp/wool-proof/native-wool-audit.json
+          python - <<'PY'
+          from PIL import Image
+          im=Image.open('/tmp/wool-proof/native-cc0-wool-720-300dpi.png').convert('RGB')
+          tiled=Image.new('RGB',(1080,1080))
+          for y in range(3):
+              for x in range(3):
+                  tiled.paste(im.resize((360,360)),(x*360,y*360))
+          tiled.save('/tmp/wool-proof/native-cc0-wool-3x3.png')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
