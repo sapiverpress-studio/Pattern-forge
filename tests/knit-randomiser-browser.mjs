@@ -68,6 +68,22 @@ const stats=await page.locator('#preview').evaluate(el=>{
 });
 assert.ok(stats.red>1000,'Second wool must be clearly visible in preview: '+JSON.stringify(stats));
 assert.ok(stats.blue>1000,'Third wool must be clearly visible in preview: '+JSON.stringify(stats));
+const beforeStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
+await page.locator('#accentStrength').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));});
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,beforeStrength,{timeout:30000});
+const lowStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
+await page.locator('#accentStrength').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));});
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,lowStrength,{timeout:30000});
+assert.equal(await page.locator('#accentStrengthValue').innerText(),'100%');
+await page.locator('#accentStrength').evaluate(el=>{el.value='70';el.dispatchEvent(new Event('input',{bubbles:true}));});
+// Softer product-ready sample: retains realistic fibres instead of neon test inks.
+await page.locator('#colour').fill('#9cb396');
+await page.locator('#contrast').fill('#f0ddba');
+await page.locator('#third').fill('#d9c3d0');
+await page.locator('#randomStyle').selectOption('diamonds');
+await page.locator('#randomiseMotif').click();
+await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:30000});
+
 for(const id of ['tileView','repeatView','closeView']){
  await page.locator('#'+id).click();
  assert.equal(await page.locator('#'+id).getAttribute('aria-pressed'),'true');
@@ -82,12 +98,14 @@ const saved=JSON.parse(await fs.readFile(await (await downloadSettings).path(),'
 assert.equal(saved.format,'sapiver-wool-stitch-chart-v2');
 assert.equal(saved.chartCells.length,256);
 assert.ok(new Set(saved.chartCells).size===3);
+assert.equal(saved.accentStrength,70,'Colour strength must be saved with the design');
 await page.locator('#clearMotif').click();
 await page.locator('#loadSettings').setInputFiles({name:'my-design.wool.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});
 await page.waitForFunction(()=>document.querySelector('#paintStatus')?.textContent.includes('coloured stitches'),null,{timeout:15000});
-assert.equal(await page.locator('#colour').inputValue(),'#dddddd');
-assert.equal(await page.locator('#contrast').inputValue(),'#ed0924');
-assert.equal(await page.locator('#third').inputValue(),'#0649f5');
+assert.equal(await page.locator('#colour').inputValue(),'#9cb396');
+assert.equal(await page.locator('#contrast').inputValue(),'#f0ddba');
+assert.equal(await page.locator('#third').inputValue(),'#d9c3d0');
+assert.equal(await page.locator('#accentStrength').inputValue(),'70');
 const big=page.waitForEvent('download',{timeout:180000});
 await page.locator('#downloadPng').click();
 const file=await big;
