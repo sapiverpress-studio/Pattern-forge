@@ -32,7 +32,11 @@ void main(){
     .085*sin(TAU*uv.y)*cos(TAU*(2.0*uv.x+uv.y)),
     .078*sin(TAU*uv.x)*cos(TAU*(uv.x+2.0*uv.y))
  );
- vec2 lookup=uv*stitchFrequency+warp;
+ // Align the photographic knitted repeat with the editable stitch chart.
+ // Mega uses one source period for preset modes, but original colourwork
+ // needs more source knit stitches so one chart cell controls one wool loop.
+ float motifRepeats=motifEnabled>.5?max(1.0,floor(motifGrid.x/8.0+.5)):1.0;
+ vec2 lookup=uv*stitchFrequency*motifRepeats+warp;
  vec3 wool=texture(materialPhoto,fract(lookup)).rgb;
  float L=luminance(wool);
  vec3 colour;
@@ -49,16 +53,11 @@ void main(){
     // Keep the knitted gaps in the background wool colour.
     // Dye the raised loop/fibre highlights so individual chart cells
     // resemble yarn-colour changes, not coloured square photo patches.
-    // Colour a complete raised yarn loop rather than the whole RECTANGULAR
-    // chart cell. The photo supplies all actual fibre/detail shading; this
-    // periodic V-shaped coverage mask only determines which yarn is dyed.
-    // It leaves its interlocking neighbours in the main wool so Fair Isle
-    // reads as knitted stitches, not a printed checkerboard overlay.
-    vec2 stitchUV=fract(stitch+shapeShift);
-    float loopY=.21+1.05*abs(stitchUV.x-.5);
-    float yarnLoop=1.0-smoothstep(.115,.235,abs(stitchUV.y-loopY));
-    float raisedFibre=smoothstep(.20,.48,L);
-    float dyeCoverage=yarnLoop*(.72+.28*raisedFibre);
+    // Use REAL photographed raised yarn fibres to decide coverage;
+    // no artificial V/chevron overlay or filled cell rectangles.
+    // The material repeat has been scaled to the user chart above.
+    float raisedWool=smoothstep(.24,.51,L);
+    float dyeCoverage=pow(raisedWool,.65);
     colour=mix(mainYarn*shade,yarn*shade,dyeCoverage);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
