@@ -117,8 +117,27 @@
       <button type="button" id="closeView" aria-pressed="false">Wool close-up</button>
     </div>
   </div>
+  <div class="layeredPanel">
+    <label for="layeredYarn" class="layerSwitch">
+      <input id="layeredYarn" type="checkbox">
+      <strong>Try three-layer knitted yarn</strong>
+    </label>
+    <p class="hint">Experimental: one wool texture in three colours, with each colour revealed using the photographed stitch boundaries. Switch off for your current rendering.</p>
+    <div id="directWoolTools" hidden>
+      <label for="paintOnWool" class="layerSwitch">
+        <input id="paintOnWool" type="checkbox" checked>
+        Paint directly on the wool
+      </label>
+      <div class="brushes previewBrushes" role="group" aria-label="Select wool painting colour">
+        <button type="button" data-preview-ink="0" aria-pressed="false"><span class="yarnSwatch"></span>Main</button>
+        <button type="button" data-preview-ink="1" aria-pressed="true"><span class="yarnSwatch"></span>Second</button>
+        <button type="button" data-preview-ink="2" aria-pressed="false"><span class="yarnSwatch"></span>Third</button>
+      </div>
+      <p id="directWoolNotice" class="hint">Use Single tile, then tap a knitted loop to colour it. Undo and Redo are in the stitch editor below.</p>
+    </div>
+  </div>
   <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live seamless knitted-wool pattern"></canvas></div>
-  <p class="footnote">Your stitch chart and colour choices make the design; the underlying wool imagery supplies fabric texture. The 3 × 3 display is not downloaded. Export is one seamless 5000px tile with 300 DPI metadata. The source texture is lower-resolution than 5000px and does not create physically modelled yarn.</p>
+  <p class="footnote">Your stitch chart and yarn colours make the design; the wool photograph supplies the fibre texture. Three-layer mode is an experiment and does not physically reconstruct yarn. The 3 × 3 display is not downloaded. Export is one seamless 5000px tile with 300 DPI metadata. The source texture is lower-resolution than 5000px and does not create physically modelled yarn.</p>
 </section>
 </div>
 <footer>Personal design workspace · Your existing Pattern Forge projects remain unchanged.</footer>
