@@ -49,7 +49,10 @@ void main(){
     // Keep the knitted gaps in the background wool colour.
     // Dye the raised loop/fibre highlights so individual chart cells
     // resemble yarn-colour changes, not coloured square photo patches.
-    float yarnSurface=smoothstep(.40,.69,L);
+    // Dye nearly the full face of each raised knitted stitch; preserve
+    // darker interloop crevices for believable fabric depth. The earlier
+    // .40-.69 threshold left secondary yarns as barely visible highlights.
+    float yarnSurface=smoothstep(.19,.44,L);
     colour=mix(mainYarn*shade,yarn*shade,yarnSurface);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
