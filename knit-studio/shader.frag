@@ -24,7 +24,7 @@ void main(){
  vec2 uv=(origin+gl_FragCoord.xy)/fullSize;
  uv=rotateTile(uv);
  // Every frequency is integer-periodic across the output tile.
- float v=variation*.01;
+ float v=variation; // uniform is already scaled to [0,1] by the editor
  vec2 warp=v*vec2(
     .085*sin(TAU*uv.y)*cos(TAU*(2.0*uv.x+uv.y)),
     .078*sin(TAU*uv.x)*cos(TAU*(uv.x+2.0*uv.y))
