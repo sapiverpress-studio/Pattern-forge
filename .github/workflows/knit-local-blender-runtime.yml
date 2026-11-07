@@ -1,0 +1,48 @@
+name: One-time Linux Blender binary for testing user's real attached shaders
+on:
+  push:
+    branches: [feature/knittr-cc0-blender-proof-20261107]
+    paths:
+      - .github/workflows/knit-local-blender-runtime.yml
+permissions:
+  contents: read
+jobs:
+  export-portable-blender-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Install Ubuntu Blender package
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          blender --version | head -3
+      - name: Bundle a minimal portable headless Blender and required libraries
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/blender-local/bin /tmp/blender-local/lib /tmp/blender-local/share
+          cp -L "$(command -v blender)" /tmp/blender-local/bin/blender
+          if [ -d /usr/share/blender ]; then cp -a /usr/share/blender /tmp/blender-local/share/; fi
+          if [ -d /usr/lib/blender ]; then cp -a /usr/lib/blender /tmp/blender-local/lib/; fi
+          ldd "$(command -v blender)" | awk '/=> \//{print $3}' | sort -u | while read -r lib; do
+            test -f "$lib" || continue
+            cp -L "$lib" "/tmp/blender-local/lib/$(basename "$lib")"
+          done
+          cat > /tmp/blender-local/blender-headless.sh <<'SH'
+          #!/bin/sh
+          here="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+          export LD_LIBRARY_PATH="$here/lib:$LD_LIBRARY_PATH"
+          export BLENDER_SYSTEM_SCRIPTS="$here/share/blender/4.0/scripts"
+          exec "$here/bin/blender" "$@"
+          SH
+          chmod +x /tmp/blender-local/blender-headless.sh
+          /tmp/blender-local/blender-headless.sh -b -noaudio -t 2 \
+            --python-expr "import bpy;print('PORTABLE_BLENDER_OK',bpy.app.version_string)"
+          tar -czf /tmp/blender-local-runtime.tar.gz -C /tmp blender-local
+          du -h /tmp/blender-local-runtime.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: headless-blender-ubuntu-libraries
+          path: /tmp/blender-local-runtime.tar.gz
+          compression-level: 0
+          retention-days: 2
+          if-no-files-found: error
