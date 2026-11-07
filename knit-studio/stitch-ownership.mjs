@@ -7,7 +7,7 @@
  * Precomputation: 256x256, performed once per wool material in the browser.
  * The three identical yarn materials are composed by shader.frag.
  */
-export const OWNER_SIZE=256;
+export const OWNER_SIZE=512;
 export const NATIVE_STITCHES=Object.freeze({
  stockinette:[16,11],
  rib:[11,12],
@@ -117,7 +117,7 @@ export function buildStitchOwnership(image,materialStyle='stockinette'){
    dy=Math.min(dy,distance,side-distance);
   }
   const fiber=clamp((gray[y*side+x]-low)/(high-low),0,1);
-  const seamFade=clamp(Math.min(dx,dy)/3,0,1);
+  const seamFade=clamp(Math.min(dx,dy)/6,0,1);
   const opacity=seamFade*(.25+.75*fiber);
   const p=(y*side+x)*4;
   data[p]=Math.round((ix+.5)/cols*255);
