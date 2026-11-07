@@ -92,13 +92,16 @@ async function makeRenderer(){
  let current=null,chartKey=null;
  async function block(settings,x,y,w,h,size){
   const s=normalize(settings);
-  if(s.style!==current){
-   const image=await loadPhoto(s.style);
+  // An original colour chart must not inherit the *preset* Fair Isle motif.
+  // Start with a neutral knitted surface and apply only user-painted stitches.
+  const materialStyle=s.motifActive&&s.style==='fairisle'?'stockinette':s.style;
+  if(materialStyle!==current){
+   const image=await loadPhoto(materialStyle);
    gl.bindTexture(gl.TEXTURE_2D,texture);
    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,image);
    gl.generateMipmap(gl.TEXTURE_2D);
-   current=s.style;
+   current=materialStyle;
   }
   const chartSignature=s.chartCols+':'+s.chartCells.join('');
   if(chartSignature!==chartKey){
