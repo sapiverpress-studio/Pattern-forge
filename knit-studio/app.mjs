@@ -76,7 +76,7 @@ $('mirrorMotif').addEventListener('change',e=>{
  announce(mirrored?'Mirrored drawing on — both sides change together.':'Mirrored drawing off.');
 });
 $('motifActive').addEventListener('change',()=>{
- changed();announce($('motifActive').checked?'Your original stitch pattern is on.':'Your stitch pattern is hidden. Untick again to show it.');
+ changed();announce($('motifActive').checked?'Your original stitch pattern is on.':'Your stitch pattern is hidden. Tick the box to show it again.');
 });
 $('chartCols').addEventListener('change',()=>{
  const next=Number($('chartCols').value);
