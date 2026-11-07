@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
 const page=await browser.newPage({viewport:{width:385,height:840},acceptDownloads:true,hasTouch:true,isMobile:true});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4185/',{waitUntil:'load',timeout:30000});
+assert.equal(await page.locator('a.choiceCard[href="/knit-studio/"]').count(),1,'Main Pattern Forge menu must link to current Wool Pattern Studio');
 await page.goto('http://127.0.0.1:4185/knit-studio/',{waitUntil:'load',timeout:30000});
 await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:45000});
 const picture=()=>page.locator('#motifCanvas').evaluate(el=>el.toDataURL());
