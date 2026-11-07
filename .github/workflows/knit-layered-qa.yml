@@ -1,0 +1,74 @@
+name: Three-layer knitted yarn experimental visual QA
+on:
+  push:
+    branches: [feature/three-layer-yarn-stitch-masking-20261107]
+    paths:
+      - knit-studio/**
+      - tests/knit-three-layer-browser.mjs
+      - .github/workflows/knit-layered-qa.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: three-layer-wool-qa
+  cancel-in-progress: true
+jobs:
+  mobile-visual-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Check JS and randomiser compatibility
+        run: |
+          node --check knit-studio/engine.mjs
+          node --check knit-studio/app.mjs
+          node --check knit-studio/stitch-ownership.mjs
+          node --check tests/knit-three-layer-browser.mjs
+          node tests/knit-randomiser-node.mjs
+      - name: Install headless Android-width browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          python -m pip install --no-cache-dir pillow numpy
+      - name: Serve checked-out static production code
+        run: |
+          python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/wool-http.log 2>&1 &
+          for i in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4185/knit-studio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wool-http.log; exit 1
+      - name: Real 3-yarn layer compositor and touch editor browser QA
+        run: node tests/knit-three-layer-browser.mjs
+      - name: Confirm native seamless 5000px 300DPI output
+        run: |
+          python3 - <<'PY'
+          from PIL import Image
+          import numpy as np
+          im=Image.open('wool-three-layer-5000.png')
+          assert im.size==(5000,5000),im.size
+          assert abs(im.info['dpi'][0]-300)<.2,im.info
+          a=np.asarray(im.convert('RGB'),dtype=np.int16)
+          sx=float(np.abs(a[:,0]-a[:,-1]).mean())
+          sy=float(np.abs(a[0]-a[-1]).mean())
+          assert sx<.01 and sy<.01,(sx,sy)
+          assert a.std()>12, 'Output appears blank'
+          im.convert('RGB').resize((1250,1250),Image.Resampling.LANCZOS).save('wool-layered-5k-overview.jpg',quality=92)
+          im.crop((1250,1250,3250,3250)).save('wool-layered-native-crop.png')
+          print('PASS full 5000px one tile 300DPI, seam left/right=',sx,'top/bottom=',sy)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: three-layer-knitted-wool-visual-qa
+          path: |
+            wool-three-layer-mobile.png
+            wool-three-layer-tile.png
+            wool-three-layer-repeat.png
+            wool-layered-5k-overview.jpg
+            wool-layered-native-crop.png
+          if-no-files-found: ignore
