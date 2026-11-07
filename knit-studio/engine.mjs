@@ -33,7 +33,7 @@ export function normalize(x={}){
   variation:clamp(Number(x.variation)||0,0,100),
   fibres:clamp(Number(x.fibres)||0,0,100),
   subtleColours:x.subtleColours===true,
-  layeredYarn:x.layeredYarn===true,
+  layeredYarn:x.layeredYarn===true&&['stockinette','fairisle'].includes(x.style),
   angle:[0,90,180,270].includes(Number(x.angle))?Number(x.angle):0,
   name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name,
   motifActive:x.motifActive===true,chartCols:chart.cols,chartCells:chart.cells
