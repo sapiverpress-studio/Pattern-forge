@@ -29,6 +29,11 @@ def parse_args():
     p.add_argument("--knittr-blend", default="")
     p.add_argument("--weavr-blend", default="")
     p.add_argument("--weavr-material", default="")
+    p.add_argument("--division",type=float,default=0,help="Knitted stitches per material domain; lower makes chunkier")
+    p.add_argument("--fuzziness",type=float,default=None)
+    p.add_argument("--fibers",type=float,default=None)
+    p.add_argument("--fluff",type=float,default=None)
+    p.add_argument("--thickness",type=float,default=None)
     p.add_argument("--library-blend", default="")
     p.add_argument("--knittr-material", default="")
     p.add_argument("--size", type=int, default=720)
@@ -150,6 +155,29 @@ def setup_wool_library(blend_path):
     return mat
 
 
+
+def configure_original_knittr(material,args):
+    """Change original CC0 Knittr GROUP socket values, never redraw its V shapes."""
+    if args.mode!="knittr-original":return
+    for node in material.node_tree.nodes:
+        if node.type!="GROUP" or node.node_tree is None:
+            continue
+        group=node.node_tree.name
+        if "Knittr" in group:
+            controls={"Division":args.division if args.division else None,
+                      "Fuzziness":args.fuzziness,"Fibers":args.fibers,
+                      "Shape [Thickness]":args.thickness}
+        elif "Fluff" in group:
+            controls={"Amount":args.fluff}
+        else:
+            continue
+        for name,value in controls.items():
+            if value is None:continue
+            node.inputs[name].default_value=float(value)
+            print("KNITTR ORIGINAL CONTROL",group,name,
+                  node.inputs[name].default_value,flush=True)
+
+
 def main():
     a = parse_args()
     if a.size < 256 or a.size > 5000:
@@ -177,6 +205,13 @@ def main():
     else:
         material = setup_wool_library(a.library_blend)
     plane.data.materials.append(material)
+    configure_original_knittr(material,a)
+    # A square plane must remain SQUARE. Catmull-Clark subdivision rounds
+    # the four corners into a false circular swatch; Simple preserves UV tile.
+    subdivision=plane.modifiers.new("Simple seamless tile subdivision","SUBSURF")
+    subdivision.subdivision_type="SIMPLE"
+    subdivision.levels=1
+    subdivision.render_levels=1
     # The 2018-2019 materials depend on bump/microdisplacement: let modern
     # Cycles preserve the shader's displacement wiring when possible.
     if hasattr(material,"displacement_method"):
