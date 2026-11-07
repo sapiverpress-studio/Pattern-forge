@@ -9,12 +9,36 @@
 <header class="top">
   <div><p class="eyebrow">Sapiver Press · Pattern Forge</p>
   <h1>Wool Pattern Studio</h1>
-  <p class="intro">Make a knitted-wool design, see it repeat, change its look and download one seamless tile.</p></div>
+  <p class="intro">Draw original knitted motifs and colour arrangements, see them repeat and download one seamless tile.</p></div>
   <a class="home" href="/">All Pattern Forge tools</a>
 </header>
 <div class="workspace">
 <section class="card controls" aria-labelledby="controlsTitle">
-  <h2 id="controlsTitle">Create your wool pattern</h2>
+  <h2 id="controlsTitle">Create your own wool pattern</h2>
+  <section class="motifEditor" aria-labelledby="motifHeading">
+    <h3 id="motifHeading">Draw your own knitted pattern</h3>
+    <p class="hint">Paint stitches with your finger. Your design becomes a repeating knitted colour pattern — not a stock print.</p>
+    <label class="motifSwitch" for="motifActive"><input id="motifActive" type="checkbox" checked> Use my stitch design</label>
+    <canvas id="motifCanvas" width="384" height="384" aria-label="Touch-editable knitting stitch grid: paint rows and columns to create your motif"></canvas>
+    <div class="brushes" role="group" aria-label="Choose yarn for drawing">
+      <button type="button" data-ink="0" aria-pressed="false">Main wool</button>
+      <button type="button" data-ink="1" aria-pressed="true">Second wool</button>
+      <button type="button" data-ink="2" aria-pressed="false">Third wool</button>
+    </div>
+    <div class="motifActions">
+      <button id="undoMotif" type="button">Undo</button>
+      <button id="clearMotif" type="button">Clear chart</button>
+      <label class="mirrorSwitch" for="mirrorMotif"><input type="checkbox" id="mirrorMotif"> Mirror drawing</label>
+    </div>
+    <label for="chartCols">Stitches across each repeat</label>
+    <select id="chartCols">
+      <option value="12">12 × 12 — large motifs</option>
+      <option value="16" selected>16 × 16 — balanced</option>
+      <option value="24">24 × 24 — fine motifs</option>
+      <option value="32">32 × 32 — detailed</option>
+    </select>
+    <p id="paintStatus" class="hint" aria-live="polite">Blank chart — draw an original motif or stripe.</p>
+  </section>
   <div class="mini"><canvas id="miniPreview" width="120" height="120" aria-label="Current knitted pattern miniature"></canvas><div><strong>Current design</strong><p>Changes update immediately.</p></div></div>
   <label for="designName">Design name</label>
   <input id="designName" value="Cosy Cable Wool" maxlength="70" autocomplete="off">
@@ -74,7 +98,7 @@
     </div>
   </div>
   <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live seamless knitted-wool pattern"></canvas></div>
-  <p class="footnote">The downloadable tile is exactly the same repeat structure and colour as this preview. Close-up changes only what you see, not the file. Original wool photo sources are about 1254px; 5000px export adds generated fibre grain but not new 5000px photographic detail.</p>
+  <p class="footnote">Your stitch chart and colour choices make the design; the underlying wool imagery supplies fabric texture. The 3 × 3 display is not downloaded. Export is one seamless 5000px tile with 300 DPI metadata. The source texture is lower-resolution than 5000px and does not create physically modelled yarn.</p>
 </section>
 </div>
 <footer>Personal design workspace · Your existing Pattern Forge projects remain unchanged.</footer>
