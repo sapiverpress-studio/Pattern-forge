@@ -152,7 +152,12 @@ function setInputs(s,preserveUndo=false){
 }
 function status(s){$('status').textContent=s;}
 function updateVisibility(){
- const layered=$('layeredYarn').checked;
+ const supported=['stockinette','fairisle'].includes($('style').value);
+ $('layeredYarn').disabled=!supported;
+ $('layeredHint').textContent=supported?
+  'Experimental: the same wool in three colours, revealed along photographed stitch boundaries. Switch off for the original look.':
+  'Three-layer yarn is currently tested for Stockinette and Fair Isle only. This style keeps its original wool renderer.';
+ const layered=supported&&$('layeredYarn').checked;
  $('directWoolTools').hidden=!layered;
  canvas.classList.toggle('wool-paint-active',layered&&$('paintOnWool').checked&&view==='tile');
  const fair=$('style').value==='fairisle'||$('motifActive').checked;
@@ -255,6 +260,10 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])
 for(const id of ['style','gauge','colour','contrast','third','variation','fibres','angle','designName'])
  $(id).addEventListener(id==='designName'?'change':'input',()=>{
   if(id==='style'){
+    if(!['stockinette','fairisle'].includes($('style').value)&&$('layeredYarn').checked){
+     $('layeredYarn').checked=false;
+     announce('Original wool renderer restored for this stitch style. Three-layer yarn is tested on Stockinette and Fair Isle.');
+    }
     const p={stockinette:'denim',rib:'cream',seed:'sage',cable:'cream',fairisle:'berry'}[$('style').value];
     const vals=PALETTES[p];
     $('colour').value=vals[0];$('contrast').value=vals[1];$('third').value=vals[2];
