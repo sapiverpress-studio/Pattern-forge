@@ -10,6 +10,7 @@
 .controls label{display:block;margin:16px 0 6px;font-size:.84rem;font-weight:750}.controls input:not([type=file]),.controls select{display:block;width:100%;min-height:45px;border-radius:10px;border:1px solid #b8c4d0;background:white;padding:8px 11px;color:var(--ink)}
 .controls input[type=color]{height:48px;padding:4px}.controls input[type=file]{position:absolute;left:-10000px;width:1px;height:1px}
 .micro{font-size:.79rem;color:var(--muted);line-height:1.5;margin:9px 0}.micro a{color:#435f7d}
+.quickVisual{position:sticky;top:8px;z-index:3;display:flex;align-items:center;gap:12px;padding:9px;margin:13px 0 15px;background:#f8f7f3;border:1px solid #d7dde4;border-radius:12px;box-shadow:0 5px 14px #1b283c11}.quickVisual canvas{display:block;width:92px;height:92px;flex:none;border-radius:7px;background:#ede6db}.quickVisual strong{font-size:.84rem}.quickVisual p{font-size:.77rem;color:#647385;margin:3px 0 0}
 .palette{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.palette button{flex:1;min-width:66px;background:#f6f8fa;border:1px solid #ccd5df;border-radius:10px;padding:9px 8px;color:var(--ink);font-size:.79rem;font-weight:700}
 .controls button:not(.palette button),.fileAction{display:block;width:100%;margin-top:10px;border-radius:11px;border:1px solid #ccd5df;padding:12px 14px;background:#f6f8fa;font-weight:700;text-align:center;font-size:.86rem}
 .fileAction{cursor:pointer}.controls button.primary,.download{background:var(--accent);color:white;border-color:var(--accent)}.controls button.plain{background:white}
@@ -23,4 +24,4 @@
 footer{font-size:.77rem;color:var(--muted);margin:22px 3px}
 button:disabled{opacity:.55;cursor:wait}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e99f37;outline-offset:2px}
 [hidden]{display:none!important}
-@media(max-width:780px){.top{flex-wrap:wrap}.workspace{grid-template-columns:1fr}.card{padding:15px}.shell{padding-top:16px}.previewHeader{flex-wrap:wrap}}
+@media(min-width:781px){.quickVisual{position:static}}@media(max-width:780px){.top{flex-wrap:wrap}.workspace{grid-template-columns:1fr}.card{padding:15px}.shell{padding-top:16px}.previewHeader{flex-wrap:wrap}}
