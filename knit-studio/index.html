@@ -25,6 +25,7 @@
     <option value="seed">Seed stitch · textured bumps</option>
     <option value="cable" selected>Cable knit · intertwined wool</option>
     <option value="fairisle">Fair Isle · coloured knitted yarn</option>
+    <option value="custom">My wool image · from this device</option>
   </select>
   <label for="gauge">Stitch size</label>
   <select id="gauge">
@@ -34,7 +35,12 @@
     <option value="medium">Medium</option>
     <option value="fine">Fine knit</option>
   </select>
-  <p class="hint" id="scaleHint" aria-live="polite">Super Mega Chunky · 1 full knitted repeat across the tile.</p>
+  <p class="hint" id="scaleHint" aria-live="polite">Super Mega Chunky · 1 complete knitted repeat across this tile.</p>
+  <div id="customSourceGroup" class="customSource" hidden>
+    <label for="customSource">Choose your wool material (PNG, JPG or WebP)</label>
+    <input id="customSource" type="file" accept="image/png,image/jpeg,image/webp">
+    <p class="hint" id="customSourceNote">The image stays on your device. Seamless sources give the cleanest repeat.</p>
+  </div>
   <div class="colourRow">
     <div><label for="colour">Wool colour</label><input type="color" id="colour" value="#e9d7b6"></div>
     <div id="contrastWrap" hidden><label for="contrast">Fair Isle second</label><input type="color" id="contrast" value="#ebd9b5"></div>
@@ -75,7 +81,7 @@
     </div>
   </div>
   <div class="previewFrame"><canvas id="preview" width="720" height="720" aria-label="Live seamless knitted-wool pattern"></canvas></div>
-  <p class="footnote">The repeat preview shows how the edges join. The downloaded PNG is one seamless tile, not the displayed 3 × 3 grid.  Close-up changes only what you see, not the file. Original wool photo sources are about 1254px; 5000px export adds generated fibre grain but not new 5000px photographic detail.</p>
+  <p class="footnote">The repeat preview shows how the edges join. The downloaded PNG is one seamless tile, not the displayed 3 × 3 grid. Uploaded material photos are not included in saved JSON; reopen the source image when loading a saved design.  Close-up changes only what you see, not the file. Original wool photo sources are about 1254px; 5000px export adds generated fibre grain but not new 5000px photographic detail.</p>
 </section>
 </div>
 <footer>Personal design workspace · Your existing Pattern Forge projects remain unchanged.</footer>
