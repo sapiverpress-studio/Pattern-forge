@@ -5,7 +5,7 @@
  */
 export const EXPORT_SIZE=5000;
 export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
-export const GAUGES=Object.freeze({mega:1,super:1,chunky:2,medium:3,fine:4});
+export const GAUGES=Object.freeze({mega:1,super:2,chunky:3,medium:4,fine:6});
 export const PALETTES=Object.freeze({
  cream:['#e9d7b6','#ebd9b5','#24344f'],
  sage:['#9cb396','#ead7b4','#345846'],
