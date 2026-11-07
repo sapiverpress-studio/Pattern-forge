@@ -129,7 +129,14 @@ $('downloadPng').addEventListener('click',async()=>{
   download(blob,filename(settings.name,'-5000px-300dpi.png'));
   status('Downloaded one 5000 × 5000 px seamless PNG tile (300 DPI).');
  }catch(e){status('Export failed: '+e.message);}
- finally{exporting=false;button.disabled=false;changed();}
+ finally{
+  exporting=false;button.disabled=false;
+  // Do not replace the genuine download/error status with a preview status.
+  // Only re-render if the user changed controls during the long export.
+  if(JSON.stringify(read())!==JSON.stringify(settings)){
+   changed();status('Your controls changed during the export. Previewing those newer settings.');
+  }
+ }
 });
 try{
  const stored=JSON.parse(localStorage.getItem(STORAGE)||'null');
