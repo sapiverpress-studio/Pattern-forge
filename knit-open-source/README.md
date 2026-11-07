@@ -1,3 +1,11 @@
+## 7 November 2026 — Actual visual QA, REJECTED (DO NOT DEPLOY)
+
+- [Action 42378146284](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42378146284): genuine licensed 512px Knittr-derived baked diffuse/normal/AO maps rendered in Blender and seam-sealed at 720px. Technically passed, but visually almost flat grey, with no believable cable/loop structure. Initial run was overexposed white; correcting lighting did not fix the source material.
+- [Action 42378496047](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42378496047): appended genuine CC0 native Blender material from [wirehead/blender-shader-lib](https://github.com/wirehead/blender-shader-lib), pinned commit 72eb89e80e2349f97163abadd6cdf41e172ff579; selected material Mustard Wool. Render, 300 DPI, and seams passed, but the image was uniform dark wool fuzz, not actual knitting. Brightening the image revealed only fine noise. Rejected.
+- NO SOURCE has been proven to reproduce the knitted phone-case reference. Seam error X=Y=0 does not establish wool realism. Do not waste CPU on native 5000px or replace the live website with either failed asset.
+- Simon Thommes's original CC0 Knittr .blend remains unavailable without its official Gumroad checkout. The importer is in this branch, but compatibility with Blender 4.x and oversized cables are UNTESTED. His listing describes three example presets, not verified automatic cable geometry.
+- Draft PR #26 remains unmerged. Existing /knit-studio/ and saved designs unchanged.
+
 # Open-source wool rendering: first independent Blender experiment
 
 **Status: development branch only. Existing live /knit-studio/ remains unchanged.**
