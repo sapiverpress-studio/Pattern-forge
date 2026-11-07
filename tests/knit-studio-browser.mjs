@@ -8,14 +8,27 @@ const base='http://127.0.0.1:4185/knit-studio/';
 await page.goto(base,{waitUntil:'load',timeout:30000});
 await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:30000});
 assert.equal(await page.locator('#downloadPng').isDisabled(),false);
-const first=await page.locator('#preview').evaluate(x=>x.toDataURL());
+// Inspect multiple pixels and WAIT for a real new frame; old status text
+// can still say "ready" before the next animation frame is painted.
+const fingerprint=()=>page.locator('#preview').evaluate(canvas=>{
+ const c=canvas.getContext('2d');
+ return [[41,42],[80,200],[260,320],[350,430],[599,550],[701,701]]
+  .map(([x,y])=>Array.from(c.getImageData(x,y,1,1).data).join(',')).join('|');
+});
+const waitChanged=previous=>page.waitForFunction(expected=>{
+ const c=document.querySelector('#preview').getContext('2d');
+ const current=[[41,42],[80,200],[260,320],[350,430],[599,550],[701,701]]
+  .map(([x,y])=>Array.from(c.getImageData(x,y,1,1).data).join(',')).join('|');
+ return current!==expected;
+},previous,{timeout:15000});
+const first=await fingerprint();
 await page.locator('[data-palette="sage"]').click();
-await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'));
-const second=await page.locator('#preview').evaluate(x=>x.toDataURL());
+await waitChanged(first);
+const second=await fingerprint();
 assert.notEqual(first,second,'Yarn colour must change live design');
 await page.locator('#gauge').selectOption('chunky');
-await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'));
-const third=await page.locator('#preview').evaluate(x=>x.toDataURL());
+await waitChanged(second);
+const third=await fingerprint();
 assert.notEqual(second,third,'Stitch size must change live design');
 for(const style of ['stockinette','rib','seed','cable','fairisle']){
  await page.locator('#style').selectOption(style);
