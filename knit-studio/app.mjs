@@ -124,6 +124,7 @@ function read(){return normalize({
  name:$('designName').value,style:$('style').value,gauge:$('gauge').value,
  colour:$('colour').value,contrast:$('contrast').value,third:$('third').value,
  variation:Number($('variation').value),fibres:Number($('fibres').value),
+ accentStrength:Number($('accentStrength').value),
  angle:Number($('angle').value),
  motifActive:$('motifActive').checked,chartCols:chart.cols,chartCells:chart.cells.slice()
 });}
@@ -132,6 +133,7 @@ function setInputs(s,preserveUndo=false){
  $('designName').value=x.name;$('style').value=x.style;$('gauge').value=x.gauge;
  $('colour').value=x.colour;$('contrast').value=x.contrast;$('third').value=x.third;
  $('variation').value=String(x.variation);$('fibres').value=String(x.fibres);
+ $('accentStrength').value=String(x.accentStrength);
  $('angle').value=String(x.angle);
  $('motifActive').checked=x.motifActive;
  chart=normalizeChart({cols:x.chartCols,cells:x.chartCells});
@@ -145,6 +147,7 @@ function updateVisibility(){
  $('contrastWrap').hidden=!fair;$('thirdWrap').hidden=!fair;
  $('variationValue').textContent=$('variation').value+'%';
  $('fibresValue').textContent=$('fibres').value+'%';
+ $('accentStrengthValue').textContent=$('accentStrength').value+'%';
  $('motifCanvas').setAttribute('aria-label','Edit your original '+chart.cols+' × '+chart.rows+' knitted stitch chart');
 }
 function paintView(){
@@ -192,7 +195,7 @@ function selectView(next){
  paintView();
 }
 for(const v of ['tile','repeat','close'])$(v+'View').addEventListener('click',()=>selectView(v));
-for(const id of ['style','gauge','colour','contrast','third','variation','fibres','angle','designName'])
+for(const id of ['style','gauge','colour','contrast','third','variation','fibres','accentStrength','angle','designName'])
  $(id).addEventListener(id==='designName'?'change':'input',()=>{
   if(id==='style'){
     const p={stockinette:'denim',rib:'cream',seed:'sage',cable:'cream',fairisle:'berry'}[$('style').value];
