@@ -1,0 +1,28 @@
+name: Investigate Wool Source Stitch Geometry
+on:
+  push:
+    branches: [feature/three-layer-yarn-stitch-masking-20261107]
+    paths: [.github/workflows/wool-source-study.yml]
+permissions:
+  contents: read
+jobs:
+  inspect-materials:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect genuine photo material resolutions and densities
+        run: |
+          python3 -m pip -q install pillow numpy
+          python3 - <<'PY'
+          from PIL import Image
+          import os
+          for k in ['stockinette','rib','seed','cable','fairisle']:
+            p='knit/materials/'+k+'.png'
+            with Image.open(p) as im:
+              print('WOOL PHOTO',k,im.size,im.mode,'bytes',os.stat(p).st_size)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genuine-wool-photo-sources
+          path: knit/materials/*.png
+          retention-days: 2
