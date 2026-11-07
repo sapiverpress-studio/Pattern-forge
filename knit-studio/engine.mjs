@@ -15,7 +15,7 @@ export const PALETTES=Object.freeze({
 });
 export const DEFAULTS=Object.freeze({
  style:'stockinette',gauge:'mega',colour:'#e9d7b6',contrast:'#234872',
- third:'#b33d41',variation:32,fibres:55,accentStrength:55,angle:0,name:'My Original Wool Pattern',
+ third:'#b33d41',variation:32,fibres:55,accentStrength:70,angle:0,name:'My Original Wool Pattern',
  motifActive:true,chartCols:16,chartCells:Array(256).fill(0)
 });
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
