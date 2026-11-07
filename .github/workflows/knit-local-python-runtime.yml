@@ -1,0 +1,30 @@
+name: Portable Blender Python 3.12 runtime for local original-shader QA
+on:
+  push:
+    branches: [feature/knittr-cc0-blender-proof-20261107]
+    paths: [.github/workflows/knit-local-python-runtime.yml]
+permissions:
+  contents: read
+jobs:
+  pack-python312-stdlib:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Verify Python standard-library directory
+        run: |
+          python3.12 --version
+          test -f /usr/lib/python3.12/encodings/__init__.py
+          du -sh /usr/lib/python3.12
+      - name: Package Python 3.12 standard library only
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/blender-py312/lib
+          cp -a /usr/lib/python3.12 /tmp/blender-py312/lib/
+          tar -czf /tmp/blender-py312.tar.gz -C /tmp blender-py312
+          du -h /tmp/blender-py312.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blender-python312-stdlib
+          path: /tmp/blender-py312.tar.gz
+          retention-days: 2
+          compression-level: 0
