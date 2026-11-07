@@ -15,7 +15,7 @@ export const PALETTES=Object.freeze({
 });
 export const DEFAULTS=Object.freeze({
  style:'stockinette',gauge:'mega',colour:'#e9d7b6',contrast:'#234872',
- third:'#b33d41',variation:32,fibres:55,angle:0,name:'My Original Wool Pattern',
+ third:'#b33d41',variation:32,fibres:55,accentStrength:55,angle:0,name:'My Original Wool Pattern',
  motifActive:true,chartCols:16,chartCells:Array(256).fill(0)
 });
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
@@ -31,6 +31,7 @@ export function normalize(x={}){
   third:colour(x.third,DEFAULTS.third),
   variation:clamp(Number(x.variation)||0,0,100),
   fibres:clamp(Number(x.fibres)||0,0,100),
+  accentStrength:clamp(Number(x.accentStrength??DEFAULTS.accentStrength),0,100),
   angle:[0,90,180,270].includes(Number(x.angle))?Number(x.angle):0,
   name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name,
   motifActive:x.motifActive===true,chartCols:chart.cols,chartCells:chart.cells
@@ -117,6 +118,7 @@ async function makeRenderer(){
   gl.uniform1f(loc('stitchFrequency'),GAUGES[s.gauge]);
   gl.uniform1f(loc('variation'),s.variation/100);
   gl.uniform1f(loc('fibreStrength'),s.fibres/100);
+  gl.uniform1f(loc('accentStrength'),s.accentStrength/100);
   gl.uniform1f(loc('rotationAngle'),s.angle/90);
   gl.uniform3fv(loc('mainYarn'),rgb(s.colour));
   gl.uniform3fv(loc('contrastYarn'),rgb(s.contrast));
