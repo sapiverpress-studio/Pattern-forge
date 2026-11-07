@@ -1,0 +1,21 @@
+name: Independent wool sources visual inspection
+on:
+  push:
+    branches: [feature/seamless-real-wool-studio-20261107]
+    paths:
+      - .github/workflows/knit-material-visual-inspection.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wool-retained-source-materials
+          path: |
+            knit/materials/*.png
+            knit/textures/*.jpg
+          if-no-files-found: error
