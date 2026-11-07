@@ -53,7 +53,7 @@ assert.equal(await page.locator('#motifCanvas').evaluate(c=>c.toDataURL()),blank
 await page.locator('#redoMotif').click();
 assert.equal(await page.locator('#motifCanvas').evaluate(c=>c.toDataURL()),painted,'Redo must restore direct wool painting');
 await page.locator('[data-preview-ink="2"]').click();
-await preview.click({position:{x:370,y:340}});
+await preview.click({position:{x:265,y:160}});
 assert.equal(await page.locator('[data-preview-ink="2"]').getAttribute('aria-pressed'),'true');
 await page.locator('#randomiseMotif').click();
 await ready();
