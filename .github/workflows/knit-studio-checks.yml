@@ -56,7 +56,7 @@ jobs:
           assert y < max(8, ny*2+3),(y,ny)
           assert np.std(arr)>12,'Export seems blank'
           print('PASS 5000x5000 300DPI. Seams X:',round(x,2),'Y:',round(y,2),'natural neighbours:',round(nx,2),round(ny,2))
-          im.resize((1150,1150),Image.Resampling.LANCZOS).save('knit-studio-5000-overview.jpg',quality=92)
+          im.convert('RGB').resize((1150,1150),Image.Resampling.LANCZOS).save('knit-studio-5000-overview.jpg',quality=92)
           im.crop((1800,1800,3200,3200)).save('knit-studio-5000-native-crop.png')
           PY
       - uses: actions/upload-artifact@v4
