@@ -80,7 +80,7 @@ def setup_baked(source_dir):
     # Additional procedural fibre relief is subtle rather than fake V overlays.
     mix = nodes.new("ShaderNodeMixRGB")
     mix.blend_type = "MULTIPLY"
-    mix.inputs[0].default_value = 0.45
+    mix.inputs[0].default_value = 0.65
     links.new(diffuse.outputs["Color"], mix.inputs[1])
     links.new(ao.outputs["Color"], mix.inputs[2])
     links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
@@ -136,7 +136,7 @@ def main():
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.86, 0.86, 0.86, 1)
-    bg.inputs["Strength"].default_value = 0.76
+    bg.inputs["Strength"].default_value = 0.16
 
     bpy.ops.mesh.primitive_plane_add(size=2, location=(0, 0, 0))
     plane = bpy.context.object
@@ -159,7 +159,7 @@ def main():
     bpy.context.collection.objects.link(lamp)
     lamp.location = (0, 0, 4.5)
     lamp.rotation_euler = (Vector((0, 0, 0)) - lamp.location).to_track_quat("-Z", "Y").to_euler()
-    data.energy = 350
+    data.energy = 30
     data.shape = "DISK"
     data.size = 6.0
 
