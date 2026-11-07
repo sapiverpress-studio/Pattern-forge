@@ -30,6 +30,13 @@ await page.locator('#gauge').selectOption('chunky');
 await waitChanged(second);
 const third=await fingerprint();
 assert.notEqual(second,third,'Stitch size must change live design');
+const beforeVariation=await fingerprint();
+await page.locator('#variation').focus();
+await page.keyboard.press('End');
+await waitChanged(beforeVariation);
+assert.notEqual(beforeVariation,await fingerprint(),'Stitch variation should visibly update the tile');
+await page.locator('#variation').evaluate(el=>{el.value='32';el.dispatchEvent(new Event('input',{bubbles:true}));});
+
 for(const style of ['stockinette','rib','seed','cable','fairisle']){
  await page.locator('#style').selectOption(style);
  await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:30000});
