@@ -20,7 +20,7 @@
 
 ## Evidence and limitations
 
-[Independent CI 42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112) passed browser controls, and generated a real 5000px file. [Final full CI 42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112) reported horizontal and vertical mean border differences **0** after seam correction and verified 300 DPI; a subsequent run [42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112) was followed by successful [42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112). Actual successful complete workflow: [42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112).
+[Independent browser and full-size QA run 42360786112](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42360786112) **PASSED**. Tested all five styles, live colour/gauge updates, mobile layout, the 3 × 3 view, actual 5000px PNG output and 300 DPI. The measured horizontal and vertical border differences were both **0.0**. The saved QA artifact includes a native 1400px crop and a 5000px overview.
 
 **Quality caveat:** This is realistic *photo-style printed knit*, not a physically simulated 5000px wool photograph. The retained sources are around 1254px, and high-frequency detail is supplemented procedurally. It is not knitting instructions and does not create exclusive source images.
 
