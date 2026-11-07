@@ -1,3 +1,18 @@
+## 7 November 2026 — Corrected wool generator UX: visual editing FIRST (DEVELOPMENT, NOT LIVE)
+
+**User correction:** The user does not want either a static preview, a job submission form or a GitHub-only workflow. They want the existing Pattern Forge design-studio interaction: see the design before generating, change its appearance in place and then download a final render when satisfied.
+
+**Implementation in isolated branch `feature/knit-render-service-20261106`:**
+- Rebuilt `knit-renderer/index.html`, `style.css` and `app.mjs` around a responsive visual editor, with a live 720px canvas, compact mobile preview retained beside controls, wool-colour presets, chunkiness, roving/twisted setting, design name, output size and saved/reloadable JSON settings.
+- Real-time colour/gauge edits update an **indicative design preview** immediately from a genuine earlier Blender sample (`knit-renderer/assets/stockinette-reference.png`, copied by Git blob from prior 720px QA). **Do not misrepresent it as an independently rendered 3D preview or the final quality.** Twisted-ply setting is honestly flagged as requiring an actual server render.
+- After the user likes a design, **Render my current design in 3D** sends a new request to the actual TexGen→Blender→Pillow server gateway. Completed image displays in a distinct last-render panel, downloadable separately. Changes after rendering mark that prior result **PREVIOUS** to avoid downloading stale designs inadvertently. The API must be configured to work; missing backend produces a truthful error.
+- Compatible original `sapiver-knit-v1` stockinette settings can be imported, with gauge mapping; other original styles remain available and unmodified in `/knit/`. **Only stockinette** supported by this new 3D engine at present. Rib/seed/cable/Fair Isle must not be presented as 3D-supported.
+- No merges, backend deployments, Netlify config changes or live visual-editor changes have been made. No Work credits required.
+
+**Verification:** GitHub Actions run [42356850753](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42356850753) **both jobs PASS**. Android viewport Chromium test confirms the live preview canvas changes pixels when the user changes colour and gauge, quick-preview existence, simulated completed render/download UI, stale-render warning, failed-backend messaging; separate Docker job proves a real 256px render through TexGen→Blender→Pillow. Browser screenshot retained as Actions artifact [13567379478](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42356850753/artifacts/13567379478). Screenshot inspection confirms control and preview layout; successful mock completion includes an unresolvable sample URL deliberately mocked by the test, so its broken image icon is not a production render failure.
+
+**Hard remaining gates:** Rendering host with configured secrets is still absent. **Native 5000×5000 300 DPI** end-to-end performance and physically convincing wool quality are still unproven. The instant design preview is a small rendered sample, not a full-quality Blender result. The older site's photographic renderer remains live. Do not merge/publish the new generator UI as though a real render button works until secure hosting and final QA are complete. Current work is stacked on draft PR #22 via draft PR #24.
+
 ## 6 November 2026 — Real generator full integration CI PASS, production **NOT CONNECTED**
 
 **Run:** [GitHub Actions 42294409523](https://github.com/sapiverpress-studio/Pattern-forge/actions/runs/42294409523) **both jobs PASSED** on isolated `feature/knit-render-service-20261106` branch:
