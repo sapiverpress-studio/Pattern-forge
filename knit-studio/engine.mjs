@@ -4,7 +4,7 @@
  * Source photographic resolution is 1254px, an explicit quality limitation.
  */
 export const EXPORT_SIZE=5000;
-export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle']);
+export const STYLES=Object.freeze(['stockinette','rib','seed','cable','fairisle','custom']);
 export const GAUGES=Object.freeze({mega:1,super:2,chunky:3,medium:4,fine:6});
 export const PALETTES=Object.freeze({
  cream:['#e9d7b6','#ebd9b5','#24344f'],
@@ -34,7 +34,36 @@ export function normalize(x={}){
 }
 const vertex='#version 300 es\nin vec2 position;\nvoid main(){gl_Position=vec4(position,0.0,1.0);}';
 const photoPromises=new Map();
+let customPhoto=null;
+let customRevision=0;
+export async function setCustomMaterial(file){
+ if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))
+  throw Error('Choose a PNG, JPG or WebP wool photograph.');
+ if(file.size>30*1024*1024)throw Error('The source image exceeds 30 MB.');
+ const url=URL.createObjectURL(file);
+ try{
+  const img=await new Promise((resolve,reject)=>{
+   const im=new Image();
+   im.onload=()=>resolve(im);
+   im.onerror=()=>reject(Error('That image could not be opened.'));
+   im.src=url;
+  });
+  if(img.naturalWidth<256||img.naturalHeight<256)
+   throw Error('Source must be at least 256 × 256 pixels.');
+  if(img.naturalWidth*img.naturalHeight>64000000)
+   throw Error('Source is too large for reliable phone editing.');
+  customPhoto=img;
+  customRevision+=1;
+  return {width:img.naturalWidth,height:img.naturalHeight};
+ }finally{
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }
+}
 function loadPhoto(name){
+ if(name==='custom'){
+  if(!customPhoto)return Promise.reject(Error('Choose a wool image file to use My wool image.'));
+  return Promise.resolve(customPhoto);
+ }
  if(!photoPromises.has(name)){
   const p=new Promise((resolve,reject)=>{
    const i=new Image();i.decoding='async';
@@ -80,13 +109,14 @@ async function makeRenderer(){
  let current=null;
  async function block(settings,x,y,w,h,size){
   const s=normalize(settings);
-  if(s.style!==current){
+  const sourceKey=s.style==='custom'?'custom-'+customRevision:s.style;
+  if(sourceKey!==current){
    const image=await loadPhoto(s.style);
    gl.bindTexture(gl.TEXTURE_2D,texture);
    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,image);
    gl.generateMipmap(gl.TEXTURE_2D);
-   current=s.style;
+   current=sourceKey;
   }
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
   gl.viewport(0,0,w,h);gl.useProgram(prg);
