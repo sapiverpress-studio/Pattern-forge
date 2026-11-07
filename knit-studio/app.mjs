@@ -1,16 +1,67 @@
 import {STYLES,PALETTES,DEFAULTS,normalize,getRenderer,exportPng} from './engine.mjs';
+import {normalizeChart,blankChart,resizeChart,paintCell,drawChart,cellFromPointer} from './motif-chart.mjs';
 const $=id=>document.getElementById(id);
 const STORAGE='sapiver-wool-seamless-settings-v1';
 const tile=document.createElement('canvas');
 const canvas=$('preview'),ctx=canvas.getContext('2d',{alpha:false});
 const mini=$('miniPreview').getContext('2d',{alpha:false});
 let view='tile',renderer=null,scheduleId=0,requestId=0,exporting=false;
+let chart=blankChart(16),activeInk=1,mirrored=false,painting=false;
+const undoStack=[],chartCanvas=$('motifCanvas');
+function updatePaintStatus(){
+ const used=chart.cells.filter(n=>n!==0).length;
+ $('paintStatus').textContent=used?used+' edited stitches in this repeat.':'Blank chart — draw your own motif or stripes.';
+}
+function updateChartView(){
+ drawChart(chartCanvas,chart,[$('colour').value,$('contrast').value,$('third').value],activeInk,mirrored);
+ updatePaintStatus();
+}
+function saveUndo(){undoStack.push(chart.cells.slice());if(undoStack.length>35)undoStack.shift();}
+function setInk(value){
+ activeInk=Number(value);
+ document.querySelectorAll('[data-ink]').forEach(b=>
+  b.setAttribute('aria-pressed',String(Number(b.dataset.ink)===activeInk)));
+}
+document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>setInk(b.dataset.ink)));
+$('mirrorMotif').addEventListener('change',e=>{mirrored=e.target.checked;updateChartView();});
+$('motifActive').addEventListener('change',changed);
+$('chartCols').addEventListener('change',()=>{
+ saveUndo();chart=resizeChart(chart,Number($('chartCols').value));changed();
+});
+$('undoMotif').addEventListener('click',()=>{
+ if(!undoStack.length){status('Nothing to undo.');return;}
+ chart.cells=undoStack.pop();changed();
+});
+$('clearMotif').addEventListener('click',()=>{
+ saveUndo();chart.cells.fill(0);changed();
+});
+function paintPointer(e){
+ const {x,y}=cellFromPointer(chartCanvas,e,chart.cols);
+ if(x<0||x>=chart.cols||y<0||y>=chart.rows)return;
+ const changedCell=paintCell(chart,x,y,activeInk,mirrored);
+ if(changedCell){
+  $('motifActive').checked=true;
+  changed();
+ }
+}
+chartCanvas.addEventListener('pointerdown',e=>{
+ if(e.button!==0&&e.pointerType==='mouse')return;
+ e.preventDefault();chartCanvas.setPointerCapture(e.pointerId);
+ painting=true;saveUndo();paintPointer(e);
+});
+chartCanvas.addEventListener('pointermove',e=>{
+ if(painting&&e.isPrimary){e.preventDefault();paintPointer(e);}
+});
+function endPaint(){painting=false;}
+chartCanvas.addEventListener('pointerup',endPaint);
+chartCanvas.addEventListener('pointercancel',endPaint);
 const labels={tile:'Single tile',repeat:'3 × 3 repeat',close:'Wool close-up'};
 function read(){return normalize({
  name:$('designName').value,style:$('style').value,gauge:$('gauge').value,
  colour:$('colour').value,contrast:$('contrast').value,third:$('third').value,
  variation:Number($('variation').value),fibres:Number($('fibres').value),
- angle:Number($('angle').value)
+ angle:Number($('angle').value),
+ motifActive:$('motifActive').checked,chartCols:chart.cols,chartCells:chart.cells.slice()
 });}
 function setInputs(s){
  const x=normalize(s);
@@ -18,14 +69,19 @@ function setInputs(s){
  $('colour').value=x.colour;$('contrast').value=x.contrast;$('third').value=x.third;
  $('variation').value=String(x.variation);$('fibres').value=String(x.fibres);
  $('angle').value=String(x.angle);
+ $('motifActive').checked=x.motifActive;
+ chart=normalizeChart({cols:x.chartCols,cells:x.chartCells});
+ $('chartCols').value=String(chart.cols);
+ undoStack.length=0;
  changed();
 }
 function status(s){$('status').textContent=s;}
 function updateVisibility(){
- const fair=$('style').value==='fairisle';
+ const fair=$('style').value==='fairisle'||$('motifActive').checked;
  $('contrastWrap').hidden=!fair;$('thirdWrap').hidden=!fair;
  $('variationValue').textContent=$('variation').value+'%';
  $('fibresValue').textContent=$('fibres').value+'%';
+ $('motifCanvas').setAttribute('aria-label','Edit your original '+chart.cols+' × '+chart.rows+' knitted stitch chart');
 }
 function paintView(){
  if(!tile.width||!ctx)return;
@@ -59,6 +115,7 @@ async function refreshPreview(){
 }
 function changed(){
  updateVisibility();
+ updateChartView();
  try{localStorage.setItem(STORAGE,JSON.stringify(read()));}catch{}
  if(exporting)return;
  if(scheduleId)cancelAnimationFrame(scheduleId);
@@ -97,7 +154,7 @@ function download(blob,name){
 }
 $('saveSettings').addEventListener('click',()=>{
  const s=read();
- const file=new Blob([JSON.stringify({format:'sapiver-wool-seamless-v1',...s},null,2)],{type:'application/json'});
+ const file=new Blob([JSON.stringify({format:'sapiver-wool-stitch-chart-v2',...s},null,2)],{type:'application/json'});
  download(file,filename(s.name,'.wool.json'));
  status('Editable wool design saved.');
 });
@@ -109,7 +166,7 @@ $('loadSettings').addEventListener('change',async e=>{
   if(data.format==='sapiver-knit-v1'){
    setInputs({style:data.style,gauge:data.gauge==='megachunky'?'mega':data.gauge==='superchunky'?'super':data.gauge,
      colour:data.yarn,contrast:data.contrast,third:data.navy,name:data.name});
-  }else if(data.format==='sapiver-wool-seamless-v1')setInputs(data);
+  }else if(data.format==='sapiver-wool-seamless-v1'||data.format==='sapiver-wool-stitch-chart-v2')setInputs(data);
   else throw Error('Unrecognised wool settings file.');
   status('Saved design loaded — edit or inspect its repeat.');
  }catch(err){status('Could not load: '+err.message);}
