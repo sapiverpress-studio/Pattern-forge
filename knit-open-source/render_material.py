@@ -24,9 +24,10 @@ from mathutils import Vector
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=("baked-cc0", "knittr-original"), default="baked-cc0")
+    p.add_argument("--mode", choices=("baked-cc0", "knittr-original", "wool-library-cc0"), default="baked-cc0")
     p.add_argument("--source-dir", default="")
     p.add_argument("--knittr-blend", default="")
+    p.add_argument("--library-blend", default="")
     p.add_argument("--knittr-material", default="")
     p.add_argument("--size", type=int, default=720)
     p.add_argument("--samples", type=int, default=24)
@@ -123,6 +124,28 @@ def setup_original(blend_path, material_name):
     return mat
 
 
+def setup_wool_library(blend_path):
+    """Append a *real* GPL-independent CC0 native Blender wool material.
+
+    Source: https://github.com/wirehead/blender-shader-lib
+    Exact repo/commit is pinned by the workflow. This is not Knittr.
+    """
+    path = Path(blend_path).resolve()
+    if not path.is_file() or path.suffix.lower() != ".blend":
+        raise FileNotFoundError("CC0 wool material .blend not found")
+    with bpy.data.libraries.load(str(path), link=False) as (data_from,data_to):
+        available = data_from.materials
+        matches = [name for name in available if "wool" in name.lower()]
+        if not matches:
+            raise RuntimeError("No wool materials in CC0 library: "+", ".join(available[:80]))
+        data_to.materials = [matches[0]]
+    mat = data_to.materials[0]
+    if mat is None or not mat.use_nodes:
+        raise RuntimeError("CC0 wool library material could not load")
+    print("CC0 WOOL LIBRARY MATERIAL LOADED:",mat.name,flush=True)
+    return mat
+
+
 def main():
     a = parse_args()
     if a.size < 256 or a.size > 5000:
@@ -143,8 +166,10 @@ def main():
     plane.name = "Single tile with seamless UVs"
     if a.mode == "baked-cc0":
         material = setup_baked(a.source_dir)
-    else:
+    elif a.mode == "knittr-original":
         material = setup_original(a.knittr_blend, a.knittr_material)
+    else:
+        material = setup_wool_library(a.library_blend)
     plane.data.materials.append(material)
 
     bpy.ops.object.camera_add(location=(0, 0, 4))
