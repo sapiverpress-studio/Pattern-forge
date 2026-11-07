@@ -42,6 +42,10 @@ jobs:
                   image.verify()
               print('Verified third-party CC0 PBR source map',path.name,path.stat().st_size)
           assert len(list(Path('/tmp/wool-material').glob('*.png')))==3
+          from PIL import ImageStat
+          for path in sorted(Path('/tmp/wool-material').glob('*.png')):
+              im=Image.open(path).convert('RGB')
+              print('MAP STATS:',path.name,im.size,[round(k,1) for k in ImageStat.Stat(im).mean])
           PY
       - name: Render actual external procedural-material-derived knit PBR (no photo stamping)
         run: |
@@ -89,4 +93,5 @@ jobs:
             /tmp/wool-proof/*.blend
             /tmp/wool-proof/*.json
             /tmp/wool-proof/*.log
+            /tmp/wool-material/*.png
           if-no-files-found: ignore
