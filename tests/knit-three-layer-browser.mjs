@@ -109,6 +109,19 @@ const download=await big;
 assert.match(download.suggestedFilename(),/5000px-300dpi\.png$/);
 await fs.copyFile(await download.path(),'wool-three-layer-5000.png');
 await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Downloaded one 5000'),null,{timeout:60000});
+// Every existing material remains selectable when layered mode is on.
+for(const material of ['rib','seed','cable','fairisle']){
+ await page.locator('#style').selectOption(material);
+ await ready();
+ const pixels=await page.locator('#preview').evaluate(c=>{
+  const {data}=c.getContext('2d').getImageData(0,0,c.width,c.height);
+  let sum=0,sum2=0,n=0;
+  for(let i=0;i<data.length;i+=40){sum+=data[i];sum2+=data[i]*data[i];n++;}
+  return Math.sqrt(Math.max(0,sum2/n-(sum/n)**2));
+ });
+ assert.ok(pixels>8,material+' layered texture is blank');
+ await page.locator('#preview').screenshot({path:'wool-layered-'+material+'.png'});
+}
 assert.equal(errors.length,0,errors.join(' | '));
 await browser.close();
 console.log('PASS: original default preserved, three real dyed layers, photographic stitch ownership, direct wool painting, undo/redo, saved JSON, 5000px PNG. '+JSON.stringify({metrics,own}));
