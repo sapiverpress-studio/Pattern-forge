@@ -24,9 +24,11 @@ from mathutils import Vector
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=("baked-cc0", "knittr-original", "wool-library-cc0"), default="baked-cc0")
+    p.add_argument("--mode", choices=("baked-cc0", "knittr-original", "weavr-original", "wool-library-cc0"), default="baked-cc0")
     p.add_argument("--source-dir", default="")
     p.add_argument("--knittr-blend", default="")
+    p.add_argument("--weavr-blend", default="")
+    p.add_argument("--weavr-material", default="")
     p.add_argument("--library-blend", default="")
     p.add_argument("--knittr-material", default="")
     p.add_argument("--size", type=int, default=720)
@@ -101,26 +103,28 @@ def setup_baked(source_dir):
     return mat
 
 
-def setup_original(blend_path, material_name):
-    """Append creator's CC0 Knittr material without modifying its node topology."""
+def setup_original(blend_path, material_name, family="Knittr"):
+    """Append Simon Thommes's original node material (Knittr or Weavr)."""
     path = Path(blend_path).resolve()
     if not path.is_file() or path.suffix.lower() != ".blend":
         raise FileNotFoundError(
-            "The original Knittr .blend has not been supplied; "
-            "obtain it from Simon Thommes's $0+ Gumroad listing."
+            "The original "+family+" .blend has not been supplied; "
+            "obtain it from the creator's CC0 download."
         )
     with bpy.data.libraries.load(str(path), link=False) as (data_from, data_to):
         available = data_from.materials
-        matches = [name for name in available if "knit" in name.lower()]
+        matches = [name for name in available if family.lower() in name.lower()]
         name = material_name or (matches[0] if matches else None)
         if not name or name not in available:
-            raise RuntimeError("No matching Knittr material found. Available: " +
+            raise RuntimeError("No matching "+family+" material found. Available: " +
                                ", ".join(available[:40]))
         data_to.materials = [name]
     mat = data_to.materials[0]
     if mat is None or not mat.use_nodes:
-        raise RuntimeError("Unable to load usable Knittr node material")
-    print("ORIGINAL KNITTR MATERIAL LOADED:", mat.name)
+        raise RuntimeError("Unable to load usable "+family+" node material")
+    print("ORIGINAL",family.upper(),"MATERIAL LOADED:", mat.name,flush=True)
+    print("ORIGINAL NODE GROUPS:",[n.node_tree.name for n in mat.node_tree.nodes
+          if n.type=="GROUP" and n.node_tree is not None],flush=True)
     return mat
 
 
@@ -167,10 +171,17 @@ def main():
     if a.mode == "baked-cc0":
         material = setup_baked(a.source_dir)
     elif a.mode == "knittr-original":
-        material = setup_original(a.knittr_blend, a.knittr_material)
+        material = setup_original(a.knittr_blend, a.knittr_material, "Knittr")
+    elif a.mode == "weavr-original":
+        material = setup_original(a.weavr_blend, a.weavr_material, "Weavr")
     else:
         material = setup_wool_library(a.library_blend)
     plane.data.materials.append(material)
+    # The 2018-2019 materials depend on bump/microdisplacement: let modern
+    # Cycles preserve the shader's displacement wiring when possible.
+    if hasattr(material,"displacement_method"):
+        try: material.displacement_method="BOTH"
+        except (TypeError,ValueError,AttributeError): pass
 
     bpy.ops.object.camera_add(location=(0, 0, 4))
     camera = bpy.context.object
@@ -190,6 +201,8 @@ def main():
 
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
+    if hasattr(scene.cycles,"feature_set"):
+        scene.cycles.feature_set="EXPERIMENTAL"
     scene.cycles.samples = a.samples
     scene.cycles.use_denoising = False
     for layer in scene.view_layers:
