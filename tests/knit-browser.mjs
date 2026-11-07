@@ -25,8 +25,12 @@ await page.route('**/api/knit-render',async route=>route.fulfill({status:202,con
 await page.route('**/api/knit-render/'+ 'a'.repeat(32),async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:'a'.repeat(32),status:'ready',size:5000,download_url:'https://example.org/wool.png'})}));
 await page.locator('#generate').click();
 await page.locator('#download').waitFor({state:'visible',timeout:6000});
-assert.match(await page.locator('#status').innerText(),/5000 × 5000 px render ready/);
+assert.match(await page.locator('#status').innerText(),/5000 × 5000 px 3D render completed/);
 assert.equal(await page.locator('#download').getAttribute('href'),'https://example.org/wool.png');
+assert.equal(await page.locator('#renderedPanel').isVisible(),true);
+await page.locator('#gauge').selectOption('super');
+await page.waitForFunction(()=>document.querySelector('#renderNote')?.textContent.includes('PREVIOUS render'));
+assert.equal(await page.locator('#quickPreview').isVisible(),true,'Live mini preview should remain available while editing');
 assert.equal(jsErrors.length,0,jsErrors.join(' | '));
 await page.screenshot({path:'knit-renderer-browser.png',fullPage:true});
 // Failed backend must show a truthful error, not a fake successful render.
