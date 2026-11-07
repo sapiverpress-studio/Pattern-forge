@@ -9,6 +9,7 @@ uniform float fullSize;
 uniform float stitchFrequency;
 uniform float variation;
 uniform float fibreStrength;
+uniform float accentStrength;
 uniform float rotationAngle;
 uniform vec3 mainYarn;
 uniform vec3 contrastYarn;
@@ -32,11 +33,9 @@ void main(){
     .085*sin(TAU*uv.y)*cos(TAU*(2.0*uv.x+uv.y)),
     .078*sin(TAU*uv.x)*cos(TAU*(uv.x+2.0*uv.y))
  );
- // Align the photographic knitted repeat with the editable stitch chart.
- // Mega uses one source period for preset modes, but original colourwork
- // needs more source knit stitches so one chart cell controls one wool loop.
- float motifRepeats=motifEnabled>.5?max(1.0,floor(motifGrid.x/8.0+.5)):1.0;
- vec2 lookup=uv*stitchFrequency*motifRepeats+warp;
+ // Preserve the photographed knitting scale: additional material repeats
+ // distorted the stitch structure and caused hard checkerboard patches.
+ vec2 lookup=uv*stitchFrequency+warp;
  vec3 wool=texture(materialPhoto,fract(lookup)).rgb;
  float L=luminance(wool);
  vec3 colour;
@@ -53,12 +52,14 @@ void main(){
     // Keep the knitted gaps in the background wool colour.
     // Dye the raised loop/fibre highlights so individual chart cells
     // resemble yarn-colour changes, not coloured square photo patches.
-    // Use REAL photographed raised yarn fibres to decide coverage;
-    // no artificial V/chevron overlay or filled cell rectangles.
-    // The material repeat has been scaled to the user chart above.
-    float raisedWool=smoothstep(.24,.51,L);
-    float dyeCoverage=pow(raisedWool,.65);
-    colour=mix(mainYarn*shade,yarn*shade,dyeCoverage);
+    // Preserve the underlying knitted fibres and shadow grooves.
+    // Accent strength is user adjustable. Default modestly extends the
+    // actual raised-fibre dye coverage; it never paints synthetic V shapes.
+    float coverage=clamp(accentStrength,0.0,1.0);
+    float low=mix(.40,.27,coverage);
+    float high=mix(.69,.50,coverage);
+    float dyedFibre=smoothstep(low,high,L);
+    colour=mix(mainYarn*shade,yarn*shade,dyedFibre);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
     // The source photograph contains the Fair Isle yarn colours.
