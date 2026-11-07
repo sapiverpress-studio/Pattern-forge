@@ -2,6 +2,10 @@
 precision highp float;
 uniform sampler2D materialPhoto;
 uniform sampler2D motifChart;
+uniform sampler2D ownershipMap;
+uniform sampler2D ownershipBlend;
+uniform vec2 sourceGrid;
+uniform float layeredYarn;
 uniform vec2 motifGrid;
 uniform float motifEnabled;
 uniform vec2 origin;
@@ -37,7 +41,32 @@ void main(){
  vec3 wool=texture(materialPhoto,fract(lookup)).rgb;
  float L=luminance(wool);
  vec3 colour;
- if(motifEnabled>.5){
+ if(motifEnabled>.5 && layeredYarn>.5){
+    // THREE IDENTICAL PHOTOGRAPHIC WOOL LAYERS. All derive from this one
+    // sampled texture at identical UVs, fibres and lighting; only dye differs.
+    // ownershipMap was derived from dark seams in the *actual photograph*.
+    // These stitched borders are NOT regular colour-filled chart rectangles.
+    vec4 owned=texture(ownershipMap,fract(lookup));
+    vec2 localStitch=floor(owned.rg*sourceGrid);
+    vec2 globalStitch=floor(lookup)*sourceGrid+localStitch;
+    vec2 chartUV=fract((globalStitch+.5)/(sourceGrid*stitchFrequency));
+    float dye=texture(motifChart,vec2(chartUV.x,1.0-chartUV.y)).r;
+    float second=step(.24,dye)*(1.0-step(.74,dye));
+    float third=step(.74,dye);
+    float alpha=clamp(texture(ownershipBlend,fract(lookup)).b,0.0,1.0);
+    float reference=stitchStyle==0?.50:(stitchStyle==1?.68:(stitchStyle==2?.60:.75));
+    if(stitchStyle==4)reference=.50; // Fair Isle colourwork uses stockinette base.
+    float shade=clamp((L+.065)/(reference+.065),.22,1.74);
+    // Only the selected stitch exposes underlying second or third yarn.
+    // Dark recesses remain first wool; no square overlays or artificial Vs.
+    vec3 topMain=mainYarn*shade;
+    vec3 midSecond=mix(contrastYarn,mainYarn,subtleColours>.5?.32:0.0)*shade;
+    vec3 bottomThird=mix(darkYarn,mainYarn,subtleColours>.5?.32:0.0)*shade;
+    float reveal2=alpha*second;
+    float reveal3=alpha*third;
+    colour=topMain*(1.0-reveal2-reveal3)+midSecond*reveal2+bottomThird*reveal3;
+    colour+=vec3(.035)*max(0.0,L-reference)*shade;
+ }else if(motifEnabled>.5){
     // Each edited chart cell dyes a knitted stitch region, rather than
     // drawing a flat motif image on top of a finished fabric photograph.
     // A small periodic course offset makes transitions follow stitch rhythm.
