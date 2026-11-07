@@ -49,11 +49,17 @@ void main(){
     // Keep the knitted gaps in the background wool colour.
     // Dye the raised loop/fibre highlights so individual chart cells
     // resemble yarn-colour changes, not coloured square photo patches.
-    // Dye nearly the full face of each raised knitted stitch; preserve
-    // darker interloop crevices for believable fabric depth. The earlier
-    // .40-.69 threshold left secondary yarns as barely visible highlights.
-    float yarnSurface=smoothstep(.19,.44,L);
-    colour=mix(mainYarn*shade,yarn*shade,yarnSurface);
+    // Colour a complete raised yarn loop rather than the whole RECTANGULAR
+    // chart cell. The photo supplies all actual fibre/detail shading; this
+    // periodic V-shaped coverage mask only determines which yarn is dyed.
+    // It leaves its interlocking neighbours in the main wool so Fair Isle
+    // reads as knitted stitches, not a printed checkerboard overlay.
+    vec2 stitchUV=fract(stitch+shapeShift);
+    float loopY=.21+1.05*abs(stitchUV.x-.5);
+    float yarnLoop=1.0-smoothstep(.115,.235,abs(stitchUV.y-loopY));
+    float raisedFibre=smoothstep(.20,.48,L);
+    float dyeCoverage=yarnLoop*(.72+.28*raisedFibre);
+    colour=mix(mainYarn*shade,yarn*shade,dyeCoverage);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
     // The source photograph contains the Fair Isle yarn colours.
