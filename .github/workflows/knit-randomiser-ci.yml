@@ -1,0 +1,75 @@
+name: Wool studio — stronger yarn colours and randomiser
+on:
+  push:
+    branches: [feature/knit-randomiser-strong-colours-20261107]
+    paths:
+      - knit-studio/**
+      - tests/knit-randomiser-*.mjs
+      - .github/workflows/knit-randomiser-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wool-pattern-randomiser-ci
+  cancel-in-progress: true
+jobs:
+  randomiser-browser-and-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and deterministic pattern tests
+        run: |
+          node --check knit-studio/app.mjs
+          node --check knit-studio/engine.mjs
+          node --check knit-studio/motif-chart.mjs
+          node --check knit-studio/pattern-randomiser.mjs
+          node --check tests/knit-randomiser-browser.mjs
+          node tests/knit-randomiser-node.mjs
+      - name: Install Chromium / image validation
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          python -m pip install --no-cache-dir 'pillow>=10,<13' 'numpy>=1.26,<3'
+      - name: Serve complete site locally
+        run: |
+          python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/wool-http.log 2>&1 &
+          for i in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4185/knit-studio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wool-http.log; exit 1
+      - name: Real Android-size UI, random patterns, colours, save/open and download
+        run: node tests/knit-randomiser-browser.mjs
+      - name: Validate downloaded 5000px PNG DPI and actual opposite-edge joins
+        run: |
+          python3 - <<'PY'
+          import numpy as np
+          from PIL import Image
+          path='knit-randomised-5000.png'
+          with Image.open(path) as im:
+              assert im.size==(5000,5000),im.size
+              assert abs(im.info['dpi'][0]-300)<.3,im.info
+              image=np.asarray(im.convert('RGB'),dtype=np.int16)
+              im.convert('RGB').resize((1000,1000),Image.Resampling.LANCZOS).save('knit-randomised-5k-overview.jpg',quality=90)
+          horizontal=float(np.abs(image[:,0]-image[:,-1]).mean())
+          vertical=float(np.abs(image[0]-image[-1]).mean())
+          assert horizontal<.01 and vertical<.01,(horizontal,vertical)
+          assert float(image.std())>12,'Wool is uniform or blank'
+          print('PASS: original randomised colourwork 5000 x 5000 PNG at 300 DPI; edge differences',horizontal,vertical)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wool-pattern-randomiser-qa
+          path: |
+            knit-randomiser-mobile.png
+            knit-randomiser-tile.png
+            knit-randomised-5k-overview.jpg
+          if-no-files-found: ignore
