@@ -9,7 +9,7 @@ uniform float fullSize;
 uniform float stitchFrequency;
 uniform float variation;
 uniform float fibreStrength;
-uniform float accentStrength;
+uniform float subtleColours;
 uniform float rotationAngle;
 uniform vec3 mainYarn;
 uniform vec3 contrastYarn;
@@ -33,8 +33,6 @@ void main(){
     .085*sin(TAU*uv.y)*cos(TAU*(2.0*uv.x+uv.y)),
     .078*sin(TAU*uv.x)*cos(TAU*(uv.x+2.0*uv.y))
  );
- // Preserve the photographed knitting scale: additional material repeats
- // distorted the stitch structure and caused hard checkerboard patches.
  vec2 lookup=uv*stitchFrequency+warp;
  vec3 wool=texture(materialPhoto,fract(lookup)).rgb;
  float L=luminance(wool);
@@ -52,14 +50,11 @@ void main(){
     // Keep the knitted gaps in the background wool colour.
     // Dye the raised loop/fibre highlights so individual chart cells
     // resemble yarn-colour changes, not coloured square photo patches.
-    // Preserve the underlying knitted fibres and shadow grooves.
-    // Accent strength is user adjustable. Default modestly extends the
-    // actual raised-fibre dye coverage; it never paints synthetic V shapes.
-    float coverage=clamp(accentStrength,0.0,1.0);
-    float low=mix(.40,.27,coverage);
-    float high=mix(.69,.50,coverage);
-    float dyedFibre=smoothstep(low,high,L);
-    colour=mix(mainYarn*shade,yarn*shade,dyedFibre);
+    float yarnSurface=smoothstep(.40,.69,L);
+    // Retain exactly the previous knitted-wool coverage. Subtle mode
+    // only softens the accent yarn colour; it never recolours a full square.
+    vec3 tonedYarn=mix(yarn,mainYarn,subtleColours>.5?.32:0.0);
+    colour=mix(mainYarn*shade,tonedYarn*shade,yarnSurface);
     colour+=vec3(.036)*max(0.,L-.57);
  }else if(stitchStyle==4){
     // The source photograph contains the Fair Isle yarn colours.

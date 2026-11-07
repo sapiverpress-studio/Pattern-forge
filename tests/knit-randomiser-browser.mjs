@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
 const page=await browser.newPage({viewport:{width:385,height:840},acceptDownloads:true,hasTouch:true,isMobile:true});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4185/',{waitUntil:'load',timeout:30000});
+assert.equal(await page.locator('a.choiceCard[href="/knit-studio/"]').count(),1,'Main Pattern Forge menu must link to current Wool Pattern Studio');
 await page.goto('http://127.0.0.1:4185/knit-studio/',{waitUntil:'load',timeout:30000});
 await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Seamless tile ready'),null,{timeout:45000});
 const picture=()=>page.locator('#motifCanvas').evaluate(el=>el.toDataURL());
@@ -49,7 +51,7 @@ for(const style of ['chevrons','stripes','snowflakes','checker','surprise']){
  await awaitChanged(last);
  assert.equal(await page.locator('#clearMotif').isDisabled(),false);
 }
-// Bright contrast colours should visibly cover whole stitches, not just highlights.
+// Contrast colours must remain visible but preserve original wool shading.
 await page.locator('#randomStyle').selectOption('checker');
 await page.locator('#randomiseMotif').click();
 await page.locator('#colour').fill('#dddddd');
@@ -68,14 +70,16 @@ const stats=await page.locator('#preview').evaluate(el=>{
 });
 assert.ok(stats.red>1000,'Second wool must be clearly visible in preview: '+JSON.stringify(stats));
 assert.ok(stats.blue>1000,'Third wool must be clearly visible in preview: '+JSON.stringify(stats));
-const beforeStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
-await page.locator('#accentStrength').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));});
-await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,beforeStrength,{timeout:30000});
-const lowStrength=await page.locator('#preview').evaluate(el=>el.toDataURL());
-await page.locator('#accentStrength').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));});
-await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,lowStrength,{timeout:30000});
-assert.equal(await page.locator('#accentStrengthValue').innerText(),'100%');
-await page.locator('#accentStrength').evaluate(el=>{el.value='70';el.dispatchEvent(new Event('input',{bubbles:true}));});
+assert.equal(await page.locator('#subtleColours').isChecked(),false,'Original wool rendering must be default');
+const beforeToggle=await page.locator('#preview').evaluate(el=>el.toDataURL());
+await page.locator('#subtleColours').check();
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,beforeToggle,{timeout:30000});
+const subtlePreview=await page.locator('#preview').evaluate(el=>el.toDataURL());
+assert.notEqual(subtlePreview,beforeToggle,'Subtle toggle must actually change output');
+await page.locator('#subtleColours').uncheck();
+await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,subtlePreview,{timeout:30000});
+// Switch off must restore the last working look, without changed photo structure.
+await page.waitForFunction(orig=>document.querySelector('#preview')?.toDataURL()===orig,beforeToggle,{timeout:30000});
 // Softer product-ready sample: retains realistic fibres instead of neon test inks.
 await page.locator('#colour').fill('#9cb396');
 await page.locator('#contrast').fill('#f0ddba');
@@ -98,14 +102,14 @@ const saved=JSON.parse(await fs.readFile(await (await downloadSettings).path(),'
 assert.equal(saved.format,'sapiver-wool-stitch-chart-v2');
 assert.equal(saved.chartCells.length,256);
 assert.ok(new Set(saved.chartCells).size===3);
-assert.equal(saved.accentStrength,70,'Colour strength must be saved with the design');
+assert.equal(saved.subtleColours,false,'Toggle off must save the original wool look');
 await page.locator('#clearMotif').click();
 await page.locator('#loadSettings').setInputFiles({name:'my-design.wool.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(saved))});
 await page.waitForFunction(()=>document.querySelector('#paintStatus')?.textContent.includes('coloured stitches'),null,{timeout:15000});
 assert.equal(await page.locator('#colour').inputValue(),'#9cb396');
 assert.equal(await page.locator('#contrast').inputValue(),'#f0ddba');
 assert.equal(await page.locator('#third').inputValue(),'#d9c3d0');
-assert.equal(await page.locator('#accentStrength').inputValue(),'70');
+assert.equal(await page.locator('#subtleColours').isChecked(),false);
 const big=page.waitForEvent('download',{timeout:180000});
 await page.locator('#downloadPng').click();
 const file=await big;
@@ -115,4 +119,4 @@ await page.waitForFunction(()=>document.querySelector('#status')?.textContent.in
 assert.equal(await page.locator('#downloadPng').isDisabled(),false);
 assert.equal(errors.length,0,errors.join(' | '));
 await browser.close();
-console.log('PASS: controls, structured randomisation, stronger colour '+JSON.stringify(stats)+', undo/redo/clear, saved editable chart, 5K PNG');
+console.log('PASS: original knit texture, subtle on/off toggle, randomisation, undo/redo/clear, editable JSON and seamless 5K PNG');
