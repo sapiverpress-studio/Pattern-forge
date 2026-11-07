@@ -1,0 +1,110 @@
+name: Knit real renderer integration (isolated; no deploy)
+on:
+  push:
+    branches:
+      - feature/knit-render-service-20261106
+    paths:
+      - knit-service/**
+      - knit-renderer/**
+      - knit-render/**
+      - tests/test_server.py
+      - tests/knit-browser.mjs
+      - Dockerfile.knit-render
+      - netlify/functions/knit-render.mjs
+      - .github/workflows/knit-render-service-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: knit-render-service-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  python-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install independent Python API test libraries
+        run: python -m pip install --no-cache-dir 'fastapi>=0.115,<1' 'pydantic>=2.8,<3' 'httpx>=0.27,<1' 'uvicorn>=0.30,<1'
+      - name: Validate authenticated job API and failed-token behavior
+        run: |
+          python -m compileall -q knit-service knit-render
+          python -m unittest discover -s tests -p 'test_server.py' -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Use preinstalled runner Chrome for Android-sized browser checks
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            npx playwright install chromium
+          fi
+      - name: Test frontend with real browser and mocked job transport
+        run: |
+          python -m http.server 4189 --bind 127.0.0.1 --directory . >/tmp/knit-http.log 2>&1 &
+          sleep 1
+          node tests/knit-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: knit-renderer-mobile-smoke
+          path: knit-renderer-browser.png
+          if-no-files-found: ignore
+  container-real-render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build actual Blender/TexGen/Pillow API image
+        run: docker build -f Dockerfile.knit-render -t knit-render-api-ci .
+      - name: Start authenticated worker (ephemeral CI tokens)
+        run: |
+          docker run -d --rm --name knit-render-ci \
+            -p 127.0.0.1:8080:8080 \
+            -e KNIT_RENDER_TOKEN=ci-only-render-token-0123456789abcdef \
+            -e KNIT_DOWNLOAD_SIGNING_KEY=ci-only-signing-key-0123456789abcdef \
+            -e KNIT_JOBS_PER_HOUR=2 \
+            -e KNIT_RENDER_TIMEOUT_SECONDS=450 \
+            knit-render-api-ci
+      - name: Prove full HTTP request -> TexGen -> Blender -> Pillow -> signed download
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,time,struct,urllib.error
+          base='http://127.0.0.1:8080'
+          headers={'Authorization':'Bearer ci-only-render-token-0123456789abcdef','Content-Type':'application/json'}
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen(base+'/v1/health',timeout=3) as response:
+                      assert json.load(response)['ok'];break
+              except Exception:
+                  time.sleep(2)
+          else:raise RuntimeError('Container never became healthy')
+          body=json.dumps({'style':'stockinette','gauge':'mega','size':256,'samples':4,'colour':'#ead7b6'}).encode()
+          req=urllib.request.Request(base+'/v1/renders',data=body,headers=headers,method='POST')
+          with urllib.request.urlopen(req,timeout=10) as response:
+              assert response.status==202
+              jid=json.load(response)['id']
+          for attempt in range(90):
+              req=urllib.request.Request(base+'/v1/renders/'+jid,headers=headers)
+              with urllib.request.urlopen(req,timeout=5) as response:d=json.load(response)
+              if d['status']=='ready':break
+              if d['status']=='error':raise RuntimeError(d['message'])
+              time.sleep(5)
+          else:raise RuntimeError('Blender render did not finish')
+          with urllib.request.urlopen(d['download_url'],timeout=30) as response: png=response.read()
+          assert png[:8]==b'\x89PNG\r\n\x1a\n'
+          assert struct.unpack('>II',png[16:24])==(256,256)
+          assert b'pHYs' in png and len(png)>10000
+          try: urllib.request.urlopen(base+'/v1/renders',timeout=3)
+          except urllib.error.HTTPError as e:assert e.code in (401,405)
+          print('PASS: actual 256px knitted wool generated and served via signed PNG URL')
+          PY
+      - name: Print failure logs on error
+        if: failure()
+        run: docker logs knit-render-ci --tail 150 || true
+      - name: Stop disposable worker
+        if: always()
+        run: docker rm -f knit-render-ci || true
