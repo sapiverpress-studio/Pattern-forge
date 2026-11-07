@@ -81,6 +81,7 @@ async function makeRenderer(){
  gl.uniform1i(loc('materialPhoto'),0);
  gl.uniform1i(loc('motifChart'),1);
  gl.uniform1i(loc('ownershipMap'),2);
+ gl.uniform1i(loc('ownershipBlend'),3);
  const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
@@ -98,6 +99,12 @@ async function makeRenderer(){
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ const smoothOwnership=gl.createTexture();
+ gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,smoothOwnership);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
  gl.activeTexture(gl.TEXTURE0);
  const ownershipCache=new Map();
  let current=null,chartKey=null,currentOwnership=null,currentOwnerStyle=null;
@@ -122,6 +129,10 @@ async function makeRenderer(){
    }
    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,ownershipTexture);
    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,owned.width,owned.height,0,gl.RGBA,gl.UNSIGNED_BYTE,owned.data);
+   // A second sampling of the SAME ownership atlas bilinearly feathers
+   // the opacity only. Nearest IDs remain exact and cannot mix dye indices.
+   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,smoothOwnership);
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,owned.width,owned.height,0,gl.RGBA,gl.UNSIGNED_BYTE,owned.data);
    gl.activeTexture(gl.TEXTURE0);
    currentOwnerStyle=materialStyle;currentOwnership=owned;
@@ -186,6 +197,7 @@ async function makeRenderer(){
    gl.deleteTexture(texture);
    gl.deleteTexture(chartTexture);
    gl.deleteTexture(ownershipTexture);
+   gl.deleteTexture(smoothOwnership);
    gl.deleteProgram(prg);
   }
  };
