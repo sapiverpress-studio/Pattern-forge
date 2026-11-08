@@ -11,10 +11,12 @@ const before=await page.locator('#preview').evaluate(c=>c.toDataURL());
 assert.equal(await page.locator('#layeredYarn').isChecked(),false,'Original rendering must remain the default.');
 assert.equal(await page.locator('#directWoolTools').isHidden(),true);
 await page.locator('#style').selectOption('stockinette');
+await page.locator('#randomStyle').selectOption('diamonds');
+// Family selection applies a suggested palette. Set the specific diagnostic
+// yarn colours afterwards so the colour histogram remains deterministic.
 await page.locator('#colour').fill('#8baa91');
 await page.locator('#contrast').fill('#e9d7a4');
 await page.locator('#third').fill('#a15d9a');
-await page.locator('#randomStyle').selectOption('diamonds');
 await page.locator('#randomiseMotif').click();
 await ready();
 const legacy=await page.locator('#preview').evaluate(c=>c.toDataURL());
