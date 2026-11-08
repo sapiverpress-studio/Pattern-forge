@@ -77,6 +77,11 @@ const own=await page.evaluate(async()=>{
  const img=new Image();
  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src='/knit/materials/stockinette.png';});
  const m=buildStitchOwnership(img,'stockinette');
+ // The dyed stitch should be opaque across the majority of its actual
+ // photographed fibres (only thin groove edges feather).
+ let strong=0;
+ for(let k=2;k<m.data.length;k+=4)if(m.data[k]>230)strong++;
+ const coverage=strong/(m.width*m.height);
  const sampleCol=(y)=>{
   const out=[];
   for(let x=0;x<m.width;x++){
@@ -85,10 +90,11 @@ const own=await page.evaluate(async()=>{
   }
   return out;
  };
- return {size:m.width,cols:m.cols,rows:m.rows,low:sampleCol(10),mid:sampleCol(105),high:sampleCol(190)};
+ return {size:m.width,cols:m.cols,rows:m.rows,coverage,low:sampleCol(10),mid:sampleCol(105),high:sampleCol(190)};
 });
-assert.equal(own.size,512);assert.equal(own.cols,16);
+assert.equal(own.size,512);assert.equal(own.cols,9);assert.equal(own.rows,12);
 assert.notDeepEqual(own.low,own.mid,'Stitch boundaries must follow real yarn grooves rather than rectangular columns');
+assert.ok(own.coverage>.50,'Colour masks still produce broken half-dyed yarn patches: '+own.coverage);
 // Saved JSON preserves opt-in and all coloured cells.
 const downloadJson=page.waitForEvent('download');
 await page.locator('#saveSettings').click();
