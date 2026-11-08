@@ -18,3 +18,6 @@ This is image-based colour placement, **not physically simulated yarn topology**
 
 ## Rollback
 Revert the single PR containing this experiment. Existing original colourwork renderer remains in the shader `else if(motifEnabled>.5)` branch. No other Pattern Forge files, Netlify settings, paid services or external APIs are changed.
+
+## 8 November correction — reported blotchy colour patches
+The first all-style preview exposed half-coloured and disconnected stitches. The photographed wool was uploaded with WebGL's Y-flip, while the CPU-built groove atlas was not. The atlas is now flipped on upload and its stitch-row IDs inverted together so painting and preview remain correctly oriented. Per-fibre opacity gating was removed: complete photographic knitted loops take the requested dye, with only seam-edge feathering. The main photograph still provides lighting and fibre structure. The Stockinette/Fair Isle source count is revised to approximately 9 stitches across by 12 rows from screenshot observation; full-resolution visual verification remains necessary, especially for Rib, Seed and Cable. This remains an opt-in preview until approved.
