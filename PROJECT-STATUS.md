@@ -1,3 +1,15 @@
+## 9 November 2026 — Auto Seamless editor navigation (implementation; awaiting verification)
+
+**Problem:** Auto Seamless link was present on the homepage (`index.html`) but absent inside `/app/`. This matters because project users enter directly via editor or saved-project resume overlay and may not see the homepage.
+
+**Change location:** `app/index.html` only: direct `Auto Seamless` header navigation link; full-size `Auto Seamless Pattern Maker` button in the new-project chooser; and an equivalent link in the resume prompt. All point to existing `/auto-seamless/` route. No changes to actual editor JS, project storage, existing drawing or knitted-wool modules. Repo is a static site; the new links use existing .btn and .headerHome CSS.
+
+**Previous production source:** main `0dc0e745c3874d76b38ca7bc423b3522cacccba4`, previously verified Netlify ready deploy `6af17079ae95ec5f751a770d` at `2026-11-09T07:04:44.991Z`. Feature branch `fix/auto-seamless-editor-link-20261109`.
+
+**Test/release stage:** Pending static navigation check and production promotion with source-commit verification. Do not claim published until Netlify confirms.
+
+---
+
 ## 9 November 2026 — Auto Seamless production release VERIFIED at Netlify
 
 **User approval:** Integrate seamless auto-repeat plus Redbubble naming/tagging/AI-disclosure into Pattern Forge and deploy everything to `main`. Scope limited to additive isolated workspace and homepage; no existing drawing, knitting, or saved-project code changed.
