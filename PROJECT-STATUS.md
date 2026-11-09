@@ -1,3 +1,19 @@
+## 9 November 2026 — Genuine automatic vision listing LIVE, production inference TESTED
+
+**User requirement:** A single image upload must identify its visual subject and automatically populate a Redbubble title, one main tag, 14 further tags and an AI-disclosed description, while preserving automatic seamless output. No manual subject dropdown or filename-dependent fallback.
+
+**Production release:** Safely fast-forwarded main from `41c5b845a418ea1828398e715517f3cb1e94d309` to **`e00499cabc2e7bba7c9346b3676db8cad50ee3f7`**; PR **#32** is marked merged. Netlify production deploy **`6af194748b98a06c15370888` READY**, `branch=main`, exact commit `e00499cabc2e7bba7c9346b3676db8cad50ee3f7`, published **2026-11-09T09:38:10.996Z**, error null. Netlify confirms deployed function `auto-seamless-listing` on `/api/auto-seamless-listing` and a 12-request/3600s rate limit. Code specified per-IP aggregation but provider deployment metadata reported domain-level aggregation; monitor actual usage and limit behaviour.
+
+**Real production proof:** A separate one-time GitHub Action **`42595086819`**, job **`129085667908`**, submitted an actual small JPEG of existing knitted artwork from the repository to the production HTTPS endpoint with a neutral filename. Job **SUCCESS**, HTTP 200 response verified title **"Chunky Cream Cable Knit Texture"**, main tag **"cable knit"**, **14 additional tags**, and description disclosing **"aid of AI"**. Also verified that no live keyword-volume assertions are returned. The temporary paid integration workflows were removed from their development/QA branches after verification and do not exist on main. The single test inference consumed some Netlify AI Gateway credits.
+
+**CI:** Browser/Function checks passed on branch `42594065220` and PR `42594070502`, hardened release `42594694236` and **main run `42594903404` SUCCESS**. Covered backend validation, image preview rules, rate limiting configuration, errors, explicit AI disclosure, mobile-size Chromium upload and auto-filled form, 15 tags, TXT export and retry. Does not prove a physical user's Android device behaviour.
+
+**Feature locations:** `auto-seamless/index.html` and `auto-seamless/metadata.js` now read the image preview, display generated metadata and no longer require selecting a category. `netlify/functions/auto-seamless-listing.mjs` uses OpenAI SDK through Netlify AI Gateway without manually exposing an API key, plus same-origin/size/media validation; `package.json`, `tests/auto-seamless-listing.test.mjs`, `tests/auto-seamless-vision-browser.mjs` and `.github/workflows/auto-seamless-vision-checks.yml` support runtime and regression checks. Existing repeat algorithm, full-resolution source, 5000px export and all Pattern/Doodle/Knitting modules remain untouched. User-facing text discloses that a **downsized preview** is sent to the AI for analysis; the full source remains in-browser for pattern processing.
+
+**Limitations / next action:** The keyword wording is generated from the image subject and is not live Redbubble search-volume research; no sales improvement or conversion rate has been verified. Netlify AI calls consume credits and must be monitored. User should upload an original image at https://sapiver-pattern-forge.netlify.app/auto-seamless/ in physical Android Chrome, inspect tags for relevance, verify text-copy and tile downloads. Any issue requires reproducible screenshot/fixture and isolated fix. This is a documentation-only checkpoint `[skip netlify]` to prevent a redundant application deploy.
+
+---
+
 ## 9 November 2026 — True automatic image-to-Redbubble metadata (IN DEVELOPMENT, NOT LIVE)
 
 **Owner requirement:** Upload an image once and obtain detected repeat + title, main tag, 14 further buyer-facing tags and description with AI disclosure. No choosing subject from dropdown and no empty title/tags due to non-descriptive filename.
