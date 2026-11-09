@@ -44,7 +44,7 @@ function getColors(){
   if(max<47)name='Charcoal';
   else if(d<23){name=max>235?'White':max>194?'Ivory':max>130?'Grey':'Charcoal';}
   else if(max>185&&min>136&&d<92&&r>=b&&g>=b)name='Cream';
-  else if(r>g*1.2&&r>b*1.22)name=max<160?'Burgundy':g>85?'Rust':'Red';
+  else if(r>g*1.2&&r>b*1.22){if(r>210&&g>115&&b<g*.7)name='Orange';else if(r<145&&g<55)name='Burgundy';else if(g>38&&b<Math.max(62,g*.85)&&g<r*.7)name='Rust';else name='Red';}
   else if(r>g*1.2&&g>b*1.2)name='Terracotta';
   else if(r>155&&g>104&&b<105)name='Ochre';
   else if(g>r*1.22&&g>b*1.14)name='Green';
