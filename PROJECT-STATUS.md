@@ -6,7 +6,7 @@
 
 **Local Chromium verification (pre-commit):** Using standard ChatGPT tools, tested the patched standalone engine in headless Chromium on 390px Android-size viewport (not physical device). Original 1536×1536 fair-isle image -> crop 768×768, grade Excellent; screenshot-only reconstructed 426×422 cable knit -> crop 317×251, grade Strong and minimum-coverage slider 75% -> 322×329; unobstructed cropped cable texture 426×322 -> 315×215. Zero pixel difference between left/right and top/bottom edges for all tested tile files; no JS page exceptions. Produced an actual 5000×5000 RGBA PNG, 299.9994 DPI in PNG pHYs, no browser exception. This is not proof all real-world designs or product mocks will look flawless: the knit screenshot contains a drawn selection box, and the unobstructed crop is lower resolution than the original upload.
 
-**Release:** Pending controlled source commit, regression verification and Netlify deploy check. Other editor and knitting engines remain unchanged. No automated live demand testing is added.
+**Commit and pre-release verification:** Feature commit `7455ec9a0285dda0a13213a7cb2433998b637ad6` on `fix/auto-seamless-large-motif-20261109`. GitHub branch readback 10/10 static checks PASS: valid inline JS syntax; 40–80% slider; large-motif selection and honest warning; exact edge pixel equality; Redbubble metadata integration intact; 5000px/300 DPI export path intact; only this HTML file and ledger changed; main base unchanged; fast-forward relation. Local Chromium tests and 5000px PNG verification already completed as described above. **Awaiting controlled Netlify production verification.** Other editor and knitting engines remain unchanged. No automated live demand testing is added.
 
 ---
 
