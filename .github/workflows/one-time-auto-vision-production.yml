@@ -1,0 +1,52 @@
+name: One-time production AI visual metadata smoke
+on:
+  push:
+    branches:
+      - qa/auto-seamless-prod-20261109
+    paths:
+      - .github/workflows/one-time-auto-vision-production.yml
+permissions:
+  contents: read
+jobs:
+  production-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create small non-sensitive JPEG fixture
+        run: |
+          python -m pip install --quiet pillow
+          python - <<'PY'
+          import io,base64,json
+          from PIL import Image
+          im=Image.open('knit-preview/assets/knitted-wool-720.png').convert('RGB')
+          im.thumbnail((650,650))
+          stream=io.BytesIO()
+          im.save(stream,format='JPEG',quality=74,optimize=True)
+          data='data:image/jpeg;base64,'+base64.b64encode(stream.getvalue()).decode()
+          assert len(data)<800000
+          with open('/tmp/query.json','w') as f:json.dump({'imageDataUrl':data,'filename':'IMG_0017.jpg'},f)
+          PY
+      - name: Test deployed production AI recognition
+        run: |
+          BASE=https://sapiver-pattern-forge.netlify.app
+          STATUS=$(curl --silent --show-error --max-time 75 --output /tmp/result.json --write-out "%{http_code}" \
+            -H "Origin: $BASE" -H "Content-Type: application/json" --data-binary @/tmp/query.json \
+            "$BASE/api/auto-seamless-listing")
+          python - "$STATUS" <<'PY'
+          import json,sys
+          code=int(sys.argv[1])
+          data=json.load(open('/tmp/result.json'))
+          if code!=200:raise SystemExit('Production API HTTP '+str(code)+' - '+str(data.get('error','Unknown failure')))
+          assert data.get('title') and data.get('main_tag'),data
+          assert len(data.get('other_tags',[]))==14,data
+          assert 'aid of AI' in data.get('description',''),data
+          assert data.get('live_search_volume') is False,data
+          print('PASS: live production AI vision for actual knitted image')
+          print('Generated title:',data['title'])
+          print('Main tag:',data['main_tag'])
+          print('Additional tags:',len(data['other_tags']))
+          PY
