@@ -1,3 +1,15 @@
+## 9 November 2026 — Auto Seamless large-motif crop fix (implementation; not yet published)
+
+**User evidence:** Android Chrome screenshot showed the algorithm selecting a tiny roughly stitch-sized cable-knit patch near the bottom of the original photograph, rather than keeping the full cable structure. The existing `detectAxis()` simply sorted all offsets from 6.5% to 80% of the image by raw RGB difference and took the smallest score. High-frequency knitted stitches can match strongly at very short distances, so the selection was not fit for surface-pattern production.
+
+**Fix location:** `auto-seamless/index.html` only. For each axis search 50–84% of the image by default, select the longest offset within the near-best pixel-match score band; add user-controlled 40–80% minimum design retention. Preserve exact 768×768 fundamental repeat on the provided 1536×1536 snowflake fixture. Select substantially wider/taller whole-cable units on the knit screenshot instead of its approximately 74×34 pixel subrepeat. Show visible warnings where the full motif cannot match well; enforce exact outer-edge pixel equality after blending. Preserve Redbubble metadata, home/editor routes, 5000×5000 PNG / 300 DPI output and user files.
+
+**Local Chromium verification (pre-commit):** Using standard ChatGPT tools, tested the patched standalone engine in headless Chromium on 390px Android-size viewport (not physical device). Original 1536×1536 fair-isle image -> crop 768×768, grade Excellent; screenshot-only reconstructed 426×422 cable knit -> crop 317×251, grade Strong and minimum-coverage slider 75% -> 322×329; unobstructed cropped cable texture 426×322 -> 315×215. Zero pixel difference between left/right and top/bottom edges for all tested tile files; no JS page exceptions. Produced an actual 5000×5000 RGBA PNG, 299.9994 DPI in PNG pHYs, no browser exception. This is not proof all real-world designs or product mocks will look flawless: the knit screenshot contains a drawn selection box, and the unobstructed crop is lower resolution than the original upload.
+
+**Release:** Pending controlled source commit, regression verification and Netlify deploy check. Other editor and knitting engines remain unchanged. No automated live demand testing is added.
+
+---
+
 ## 9 November 2026 — Auto Seamless link added to editor and LIVE
 
 **User request:** "On pattern forge I need a link to auto seamless pattern maker". Existing homepage already had the launch card from the earlier release, but the editor and resume/project chooser lacked a direct link.

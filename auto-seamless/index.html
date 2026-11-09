@@ -34,6 +34,8 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  </div>
  <div class="panel">
   <h2>2. Finish the edges</h2>
+  <div class="row"><label for="coverage">Minimum design retained</label><output id="coverageValue">50%</output></div>
+  <input type="range" id="coverage" min="40" max="80" value="50" step="5"><p class="hint">Default protects larger motifs and cable shapes. Move right to retain more of the original artwork; a larger crop may need extra edge repair.</p>
   <div class="row"><label for="blend">Edge blend</label><output id="blendValue">5%</output></div>
   <input type="range" id="blend" min="1" max="16" value="5" step="1"><p class="hint">Small blends protect crisp stitch detail. Increase only if you see a line or a double stitch where tiles meet.</p>
   <div class="row"><label for="density">Repeats across 5000px export</label><output id="densityValue">6</output></div>
@@ -48,7 +50,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
    <p>Look across the joins. The tile boundaries are intentionally not marked.</p>
    <div class="canvaswrap checker"><canvas id="preview" width="900" height="900" aria-label="Three by three repeated preview"></canvas></div>
  </div>
- <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the automatically selected repeat</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
+ <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the larger motif crop; inspect it before exporting</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
 </section>
 </div>
 <section class="panel metaCard" id="redbubble-metadata" aria-label="Redbubble listing metadata">
@@ -121,14 +123,21 @@ function shiftScore(a,axis,k){
  }
  return count?sum/count:1e9;
 }
-function detectAxis(a,axis){
+function detectAxis(a,axis,minimumCoverage=.5){
  const d=axis==='x'?a.w:a.h;
- const min=Math.max(13,Math.round(d*.065));const max=Math.min(d-14,Math.floor(d*.80));
- let results=[];
- for(let k=min;k<=max;k++){results.push({k,score:shiftScore(a,axis,k)});}
- // Reject a short false-positive subrepeat when a longer genuine repeat is dramatically cleaner.
- results.sort((a,b)=>a.score-b.score);
- return {best:results[0],typical:results[Math.floor(results.length/2)].score};
+ // Stitches may repeat far more often than the design's full cable or motif.
+ // Reject tiny subrepeats by default and favour complete pattern sections.
+ const min=Math.max(24,Math.ceil(d*minimumCoverage));
+ const max=Math.min(d-16,Math.floor(d*.84));
+ const results=[];
+ for(let k=min;k<=max;k++)results.push({k,score:shiftScore(a,axis,k)});
+ if(!results.length)return {best:{k:Math.max(24,d-16),score:1e9},typical:1e9};
+ const sorted=results.slice().sort((x,y)=>x.score-y.score);
+ const best=sorted[0];
+ // Keep the longest offset that is nearly as clean as the strongest match.
+ const plausible=results.filter(x=>x.score<=best.score*1.12+0.5);
+ const chosen=plausible.reduce((acc,item)=>item.k>acc.k?item:acc,best);
+ return {best:chosen,cleanest:best,typical:sorted[Math.floor(sorted.length/2)].score};
 }
 function originScore(a,axis,pos,period){
  const {w,h,buf}=a;let sum=0,count=0,detail=0;
@@ -159,23 +168,25 @@ function chooseOrigin(a,axis,p){
 }
 async function autoDetect(){
  if(!state.source)return;
- busy(true);setStatus('Finding repeating offsets and the cleanest cut lines…');await nextFrame();
- const a=analysisImage();const px=detectAxis(a,'x'),py=detectAxis(a,'y');
+ busy(true);setStatus('Looking for a complete repeating motif, not individual stitches…');await nextFrame();
+ const a=analysisImage(),minCoverage=Number($('coverage').value)/100;
+ const px=detectAxis(a,'x',minCoverage),py=detectAxis(a,'y',minCoverage);
  const source=state.source;
  let w=clamp(Math.round(px.best.k*source.w/a.w),32,source.w-2),h=clamp(Math.round(py.best.k*source.h/a.h),32,source.h-2);
  let x=Math.round(chooseOrigin(a,'x',px.best.k)*source.w/a.w),y=Math.round(chooseOrigin(a,'y',py.best.k)*source.h/a.h);
- const border=Math.max(2,Math.round(Math.min(w,h)*.015));
- x=clamp(x,Math.min(border,source.w-w),source.w-w);y=clamp(y,Math.min(border,source.h-h),source.h-h);
+ const bx=Math.max(2,Math.ceil(w*Number($('blend').value)/100));
+ const by=Math.max(2,Math.ceil(h*Number($('blend').value)/100));
+ x=clamp(x,Math.min(bx,source.w-w),source.w-w);
+ y=clamp(y,Math.min(by,source.h-h),source.h-h);
  const mean=(px.best.score+py.best.score)/2;
  const relative=(px.best.score/Math.max(1,px.typical)+py.best.score/Math.max(1,py.typical))/2;
- state.match=mean;
- state.crop={x,y,w,h};
+ state.match=mean;state.crop={x,y,w,h};
  $('facts').hidden=false;$('sizeFact').textContent=`${w} × ${h}`;
- let grade=mean<8&&relative<.4?'Excellent':mean<19&&relative<.66?'Strong':mean<37&&relative<.8?'Possible':'Weak';
+ const grade=mean<10&&relative<.45?'Excellent':mean<20&&relative<.7?'Strong':mean<38&&relative<.9?'Possible':'Weak';
  $('scoreFact').textContent=grade;
- if(grade==='Weak')setStatus('No convincing original repeat found. A joined tile can still be generated, but some seams or duplicated details may remain.','warn');
- else if(grade==='Possible')setStatus('A possible repeat was detected. Check the 3 × 3 preview for joins and duplicated stitches.','warn');
- else setStatus('Repeat detected. The crop and joining edges have been selected automatically.','good');
+ if(grade==='Weak')setStatus('No clean full-motif repeat found. The larger crop preserves your design, but a visible join may remain. Inspect the 3 × 3 preview.','warn');
+ else if(grade==='Possible')setStatus('A larger candidate repeat was found. Check the 3 × 3 preview for cable or motif alignment before exporting.','warn');
+ else setStatus('Larger repeating motif detected. Inspect the 3 × 3 preview before using the export.','good');
  await buildTile();busy(false);
 }
 function buildTile(){
@@ -202,6 +213,9 @@ function buildTile(){
    for(let ch=0;ch<4;ch++)pixels[dest+ch]=Math.round(buf[a+ch]*u00+buf[b+ch]*u10+buf[c+ch]*u01+buf[d+ch]*u11);
   }
  }
+ // Match outermost pixels exactly; crossfade retains the original interior detail.
+ for(let row=0;row<h;row++)for(let ch=0;ch<4;ch++)pixels[((row*w+w-1)<<2)+ch]=pixels[(row*w<<2)+ch];
+ for(let col=0;col<w;col++)for(let ch=0;ch<4;ch++)pixels[(((h-1)*w+col)<<2)+ch]=pixels[(col<<2)+ch];
  cx.putImageData(out,0,0);
  state.tile={w,h};paintPreview();paintSource();
  $('downloadTile').disabled=false;$('download5000').disabled=false;
@@ -219,7 +233,7 @@ function paintSource(){
  const ctx=cv.getContext('2d');ctx.drawImage(sourceCanvas,0,0,cv.width,cv.height);
  const sx=cv.width/s.w,sy=cv.height/s.h;
  ctx.strokeStyle='#b1f9da';ctx.lineWidth=3;ctx.strokeRect(t.x*sx,t.y*sy,t.w*sx,t.h*sy);
- ctx.fillStyle='rgba(4,27,24,.8)';ctx.fillRect(7,8,165,27);ctx.fillStyle='#ccffeb';ctx.font='bold 13px system-ui';ctx.fillText('Automatically chosen',14,26);
+ ctx.fillStyle='rgba(4,27,24,.8)';ctx.fillRect(7,8,165,27);ctx.fillStyle='#ccffeb';ctx.font='bold 13px system-ui';ctx.fillText('Selected design area',14,26);
 }
 function uint32(n){return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]}
 const crcTable=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -256,6 +270,7 @@ async function exportImage(full){
 $('upload').addEventListener('change',e=>loadFile(e.target.files[0]));
 const drop=$('drop');for(const ev of ['dragenter','dragover'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')});for(const ev of ['dragleave','drop'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')});drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
 $('redetect').addEventListener('click',autoDetect);
+$('coverage').addEventListener('input',e=>{$('coverageValue').textContent=e.target.value+'%';if(state.source&&!state.busy)autoDetect()});
 $('blend').addEventListener('input',e=>{$('blendValue').textContent=e.target.value+'%';if(state.tile&&!state.busy)buildTile()});
 $('density').addEventListener('input',e=>{$('densityValue').textContent=e.target.value});
 $('downloadTile').addEventListener('click',()=>exportImage(false));
