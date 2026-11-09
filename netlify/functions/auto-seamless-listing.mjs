@@ -21,7 +21,7 @@ export function validateListing(raw){
   if(!title||tags.length!==15)throw Error("AI returned incomplete or irrelevant tags");
   const suffix=" Created with the aid of AI.";
   let description=clean(raw.description);
-  if(!/\bAI\b/i.test(description))description=description.slice(0,250-suffix.length).trimEnd()+suffix;
+  if(!/\bcreated with the aid of AI\b/i.test(description))description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(description.length>250)description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(!description)throw Error("Missing description");
   return {title,main_tag:tags[0],other_tags:tags.slice(1),description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",live_search_volume:false};
