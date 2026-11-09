@@ -1,0 +1,51 @@
+name: Auto Seamless visual metadata checks
+on:
+  push:
+    branches:
+      - feature/auto-vision-redbubble-20261109
+    paths:
+      - auto-seamless/**
+      - netlify/functions/**
+      - package.json
+      - tests/auto-seamless-listing.test.mjs
+      - tests/auto-seamless-vision-browser.mjs
+      - .github/workflows/auto-seamless-vision-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  server-and-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install runtime and test browser
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Syntax and API validation
+        run: |
+          node --check netlify/functions/auto-seamless-listing.mjs
+          node --check auto-seamless/metadata.js
+          node --test tests/auto-seamless-listing.test.mjs
+      - name: Serve static application
+        run: |
+          python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/auto-seamless-test-http.log 2>&1 &
+          for i in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4185/auto-seamless/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/auto-seamless-test-http.log
+          exit 1
+      - name: Android-sized browser: upload, AI metadata, copy, failure, retry
+        run: node tests/auto-seamless-vision-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-seamless-vision-mobile-check
+          path: auto-seamless-ai-metadata-mobile.png
+          if-no-files-found: ignore
