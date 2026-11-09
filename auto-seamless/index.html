@@ -56,10 +56,10 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <section class="panel metaCard" id="redbubble-metadata" aria-label="Redbubble listing metadata">
  <div class="eyebrow">Sales listing · Redbubble</div>
  <h2>4. Automatic name, tags and description</h2>
- <p>Generate a listing alongside the seamless design. Colour detection is automatic; use the subject selector when the artwork's motif is not clear from its filename.</p>
+ <p>Generate buyer-facing listing wording. Colours can be detected from pixels; the artwork's subject must come from a descriptive filename or your selection. Unknown subjects are never filled with generic tags.</p>
  <div class="metaGrid">
   <div class="metaField"><label for="metaTheme">What does the pattern show?</label>
-   <select id="metaTheme"><option value="auto">Automatic from filename</option><option value="knit">Fair Isle / knitting</option><option value="snowflake">Snowflakes / winter</option><option value="floral">Flowers / floral</option><option value="botanical">Leaves / botanical</option><option value="geometric">Geometric / diamond</option><option value="stripes">Stripes</option><option value="dots">Polka dots</option><option value="abstract">Abstract</option></select>
+   <select id="metaTheme"><option value="auto">Try filename (choose subject if unknown)</option><option value="cable">Cable knit texture</option><option value="knit">Fair Isle / knitted colourwork</option><option value="snowflake">Snowflakes / winter</option><option value="floral">Flowers / floral</option><option value="botanical">Leaves / botanical</option><option value="geometric">Geometric / diamond</option><option value="stripes">Stripes</option><option value="dots">Polka dots</option><option value="abstract">Abstract</option></select>
   </div>
   <div class="metaField"><label for="metaSubject">Specific subject (optional)</label><input id="metaSubject" type="text" maxlength="65" placeholder="e.g. snowflakes, hedgehogs, acorns" /></div>
   <div class="metaField wide"><label for="metaName">Design name</label><input id="metaName" type="text" maxlength="150" placeholder="Generated when an image is loaded"/><button class="secondary" id="copy-name">Copy name</button></div>
@@ -69,7 +69,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  </div>
  <p id="metaNotice" class="metaNote" role="status" aria-live="polite">Upload an image to generate its sales details.</p>
  <div class="metaAction"><button id="metaGenerate" class="outline">Regenerate listing</button><button id="copy-all" class="primary">Copy all details</button><button id="saveMeta" class="secondary">Download listing TXT</button></div>
- <p class="metaRef">Keyword sets follow <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble's tagging rules</a>. They are not live search-volume research. Check each tag for accuracy before publishing.</p>
+ <p class="metaRef">Subject-specific keyword sets follow <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble's tagging rules</a>. Terms are informed by Redbubble guidance and comparable listings, not live search-volume research. Check every tag against the actual artwork.</p>
 </section>
 </main>
 <script>

@@ -1,3 +1,15 @@
+## 9 November 2026 — Buyer-language Redbubble metadata correction (development branch)
+
+**User issue:** Existing Auto Seamless output used tags such as `surface pattern design`, `repeat print` and `continuous pattern`. Verified root cause: generic offline fallback filled 15 slots with process/artist vocabulary rather than describing the artwork.
+
+**Research:** Redbubble Help updated 22 January 2026 allows up to 15 relevant tags of 50 characters and a 250-character description. Redbubble's tagging guidance advises unique, customer-facing subject/style/colour terms, and discourages unnecessary product-type tags and generic terms. Redbubble current listing pages show descriptive `cable knit`, `knitted texture`, `cozy cream`, etc; these are observed seller terms, NOT evidence of keyword search volume or sales.
+
+**Scope:** Only `auto-seamless/metadata.js`, `auto-seamless/index.html` and this status record. Adds `Cable knit` option; replaces all generic fallback tags with buyer-oriented category terms; ranks subject, identifying details and image colours first; description includes `aid of AI` and buyer context. Unknown subject defaults to no invented tags and prompts one subject selection. No backend or image-recognition service is present. Existing seamless crop, 3×3 preview, 5000px PNG, metadata download and Pattern Forge editor remain unchanged.
+
+**Stage:** Source rewritten on isolated branch `fix/redbubble-buyer-intent-metadata-20261109`, code JS syntax validated and source-preservation checks passed. Browser/mock functional checks, branch commit and potential release verification to be appended separately. Site remains unchanged at this point.
+
+---
+
 ## 9 November 2026 — Auto Seamless crop-preservation fix LIVE (Netlify source verified)
 
 **Production promotion:** From `main=0d76e2055cf20f4ccf404e60ca03aa016fa2c1a5` fast-forwarded to validated branch commit `c5521f32bc4a284926ae9581d5c84adb0a132a63`. Only `auto-seamless/index.html` and `PROJECT-STATUS.md` changed. No force push and no changes to existing editor/knitting or metadata modules.

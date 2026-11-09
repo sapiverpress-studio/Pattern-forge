@@ -2,25 +2,35 @@
 /* Redbubble-aware, offline metadata. No fabricated live search volumes. */
 (function(){
 const E=id=>document.getElementById(id);
-const official='Redbubble guidance (2026): up to 15 relevant tags, 50 characters each, and descriptions up to 250 characters. No live demand figures are available offline.';
+const official='Tag principles: Redbubble Help updated Jan 2026; buyer terms cross-checked against existing Redbubble listings. These are qualitative examples, NOT measured search volumes or guaranteed sales.';
 const categories={
- auto:{label:'Seamless Surface Pattern',main:'seamless pattern',tags:['repeating pattern','surface pattern design','all over pattern','repeat print','patterned textile','decorative repeat','surface design','fabric pattern','pattern design','textile print','home decor pattern','continuous pattern']},
- knit:{label:'Fair Isle Knit Pattern',main:'fair isle pattern',tags:['fair isle knit','knitted texture','knit pattern','cosy knit','sweater print','winter knitwear','traditional knitting','knitted fabric','wool texture','textile design','folk knit pattern','jacquard knit','knitwear motif']},
- snowflake:{label:'Snowflake Winter Pattern',main:'snowflake pattern',tags:['winter snowflakes','snowflake motif','winter pattern','snowflake design','festive textile','cosy winter print','winter decoration','seasonal pattern','scandinavian winter','nordic pattern','holiday textile','winter repeat','snowflake print']},
- floral:{label:'Floral Repeat Pattern',main:'floral pattern',tags:['flower pattern','botanical illustration','floral print','flower repeat','botanical pattern','garden inspired','decorative florals','floral textile','nature pattern','flower design','repeating florals','vintage floral','plant motif']},
- geometric:{label:'Geometric Repeat Pattern',main:'geometric pattern',tags:['geometric design','abstract geometry','geometric textile','geometric shapes','geometric print','graphic pattern','modern geometry','surface design','repeating shapes','structured repeat','decorative geometry','bold geometric','geometric motif']},
- stripes:{label:'Striped Repeat Pattern',main:'striped pattern',tags:['stripes','stripe design','striped textile','striped print','linear pattern','colourful stripes','vertical stripes','horizontal stripes','repeating lines','stripe motif','graphic stripes','simple repeat','modern textile']},
- botanical:{label:'Botanical Repeat Pattern',main:'botanical pattern',tags:['botanical print','leaf pattern','foliage design','plant pattern','nature inspired','leaf repeat','greenery motif','botanical textile','repeating leaves','organic shapes','plant inspired print','leaf motif','garden pattern']},
- dots:{label:'Polka Dot Repeat Pattern',main:'polka dot pattern',tags:['polka dots','dotted print','dot pattern','repeating dots','spot pattern','graphic dots','retro dots','decorative spots','simple geometric','playful pattern','small dots','circle pattern','spotted textile']},
- abstract:{label:'Abstract Repeat Pattern',main:'abstract pattern',tags:['abstract design','abstract textile','contemporary pattern','abstract print','modern decor pattern','decorative abstract','graphic design','colourful abstract','expressive pattern','abstract shapes','modern repeat','artistic texture','surface design']}
+ cable:{label:'Cable Knit Texture',main:'cable knit',terms:['knitted texture','chunky knit','braided knit','sweater','knitwear','aran knit','cosy','cozy','winter','wool texture','sweater weather','cottagecore','hygge','autumn','rustic','knitted look','soft texture','warm and cosy'],detail:'a braided-stitch sweater look',mood:'cosy, textured style'},
+ knit:{label:'Fair Isle Knit',main:'fair isle',terms:['fair isle sweater','knitwear','knitted texture','sweater','winter','traditional knit','cosy','cozy','winter sweater','wool texture','folk knit','colourwork','sweater weather','patterned sweater','heritage knit','yarn texture','cold weather'],detail:'a classic knitted colourwork look',mood:'winter-ready character'},
+ snowflake:{label:'Snowflake Winter Design',main:'snowflakes',terms:['snowflake','winter','festive','snow','wintertime','christmas','holiday season','frosty','winter wonderland','cosy winter','cozy winter','snow day','seasonal','winter decor','snowy','christmas snowflakes','holiday'],detail:'snowflake motifs',mood:'a festive winter feeling'},
+ floral:{label:'Floral Design',main:'floral',terms:['flowers','flower','botanical','garden','bloom','petals','flower art','spring','summer','nature','romantic','cottagecore','florals','flower lover','botanical art','garden flowers','pretty florals'],detail:'a flower-inspired look',mood:'gentle garden-inspired character'},
+ botanical:{label:'Botanical Leaves',main:'botanical',terms:['leaves','foliage','leaf','plants','greenery','nature','botanical art','plant lover','leafy','garden','nature lover','natural','plant art','organic','green leaves','leaf design','foliage art'],detail:'leaf and botanical motifs',mood:'a natural, leafy feeling'},
+ geometric:{label:'Geometric Shapes',main:'geometric',terms:['geometric art','abstract geometry','shapes','graphic','modern','abstract','geometry','symmetry','contemporary','lines','minimalist','graphic shapes','bold geometry','colour blocking','modern shapes','geometric print','shape art'],detail:'structured geometric shapes',mood:'a graphic, modern look'},
+ stripes:{label:'Striped Design',main:'stripes',terms:['striped','stripe','linear','lines','classic stripes','graphic','minimalist','modern','bold','timeless','clean lines','retro','simple stripes','striped art','stripe design','colour stripes','line art'],detail:'clean repeating stripes',mood:'a classic graphic feel'},
+ dots:{label:'Polka Dot Design',main:'polka dots',terms:['polka dot','dots','spotted','spotty','spots','retro','playful','cute','classic polka dots','graphic','circle','whimsical','fun','dotted','vintage feel','polka','dots and spots'],detail:'playful dots',mood:'a cheerful retro-inspired feel'},
+ abstract:{label:'Abstract Artwork',main:'abstract',terms:['abstract art','modern','contemporary','graphic','colourful','colorful','artistic','abstract shapes','modern art','expressive','bold','creative','colour palette','modern decor','art lover','artistic style','abstract colour'],detail:'an abstract composition',mood:'a modern decorative feel'}
 };
-const subjectHints=[['snowflake',/snowflakes?|winter[-_ ]?flake/i],['knit',/knit|wool|yarn|fair[-_ ]?isle|sweater|jumper/i],['floral',/floral|flowers?|daisy|rose|tulip|blossom/i],['geometric',/geo|diamond|chevron|triangle|hexagon/i],['stripes',/stripes?|pinstripe/i],['botanical',/botanic|leaves?|leaf|foliage|fern/i],['dots',/polka|dots?|spots?/i],['abstract',/abstract|marble|swirl/i]];
+const subjectHints=[
+ ['cable',/cable[-_ ]?knit|braided[-_ ]?knit|aran[-_ ]?knit|chunky[-_ ]?knit/i],
+ ['snowflake',/snowflake|winter[-_ ]?flake/i],
+ ['knit',/knit|wool|yarn|fair[-_ ]?isle|sweater|jumper/i],
+ ['floral',/floral|flowers?|daisy|rose|tulip|blossom/i],
+ ['botanical',/botanic|leaves?|leaf|foliage|fern/i],
+ ['geometric',/geo|diamond|chevron|triangle|hexagon/i],
+ ['stripes',/stripes?|pinstripe/i],
+ ['dots',/polka|dots?|spots?/i],
+ ['abstract',/abstract|marble|swirl/i]
+];
 const stop=new Set(['img','image','final','master','design','new','upload','file','photo','png','jpg','jpeg','webp','copy','seamless','pattern','repeat','tile','square','5000px','5000','300dpi','300','v1','v2','and','the','for']);
 let lastFile='',metadataReady=false;
 function clean(s){return String(s||'').replace(/[_-]+/g,' ').replace(/[^a-z0-9 ]/gi,' ').replace(/\s+/g,' ').trim();}
 function titleCase(s){return clean(s).toLowerCase().replace(/\b[a-z]/g,m=>m.toUpperCase());}
 function inferCategory(name){return (subjectHints.find(x=>x[1].test(name))||['auto'])[0];}
-function autoSubject(name){return clean(name).split(' ').filter(x=>x.length>2&&!stop.has(x.toLowerCase())&&!/^\d+$/.test(x)).slice(0,4).join(' ');}
+function autoSubject(name){return clean(name).split(' ').filter(x=>x.length>2&&!stop.has(x.toLowerCase())&&!/^(cream|rust|beige|ivory|brown|white|black|grey|gray|blue|green|red|orange|yellow|purple|pink|colour|color|warm|neutral)$/i.test(x)&&!/^\d+$/.test(x)).slice(0,4).join(' ');}
 function getColors(){
  const c=sourceCanvas;if(!c.width||!c.height)return ['Colourful'];
  const t=document.createElement('canvas');t.width=72;t.height=72;
@@ -48,42 +58,60 @@ function getColors(){
  return selected.slice(0,2).map(x=>x[0]).length?selected.slice(0,2).map(x=>x[0]):['Colourful'];
 }
 function makeData(category,subject,colors,grade){
- const c=categories[category]||categories.auto;
- const colorName=colors.length>1?colors.join(' & '):colors[0];
- const specific=clean(subject),noun=specific?titleCase(specific)+' Pattern':c.label;
- const name=(colorName+' '+noun).slice(0,95);
- const main=specific?(specific.toLowerCase()+' pattern'):c.main;
- const tags=[];
- const add=t=>{t=clean(t).toLowerCase().slice(0,50);if(t&&!tags.some(x=>x.toLowerCase()===t))tags.push(t);};
- add(main);
- if(specific)add(specific.toLowerCase()+' pattern');
- if(colors.length===2)add(colors.join(' and ').toLowerCase()+' pattern');
- else add(colors[0].toLowerCase()+' pattern');
- c.tags.forEach(add);
- ['seamless repeat','repeating pattern','pattern design','all over print','decorative surface','textile pattern','surface pattern','repeat design','fabric design','colour palette','modern print','home decor design','artistic pattern','continuous print'].forEach(add);
- if(tags.length<15)throw Error('Insufficient tags');
+ const c=categories[category];
+ // Offline pixel colours cannot identify what an image depicts. Never fill 15 slots
+ // with irrelevant 'surface pattern' terms when the subject cannot be established.
+ if(!c)return null;
+ const specific=clean(subject),palette=(colors||[]).filter(x=>x&&x!=='Colourful').slice(0,2);
+ const colorText=palette.join(' & ');
+ const likelySame=specific&&new RegExp('\\b'+c.main.split(' ')[0]+'\\b','i').test(specific);
+ const titleParts=[colorText,(!likelySame&&specific?titleCase(specific)+' — ':'')+c.label];
+ const name=titleParts.filter(Boolean).join(' ').slice(0,110);
+ const tags=[],seen=new Set();
+ const add=t=>{
+  const v=clean(t).toLowerCase().slice(0,50);
+  if(!v||seen.has(v))return;
+  seen.add(v);tags.push(v);
+ };
+ add(c.main);
+ if(specific&&!likelySame)add(specific);
+ c.terms.slice(0,2).forEach(add);
+ palette.forEach(add);
+ if(palette.length===2){
+  const pair=palette.join(' and ').toLowerCase();
+  add(pair);
+  if(palette.every(x=>/cream|ivory|rust|terracotta|sand|ochre|burgundy/i.test(x)))add('warm neutrals');
+ }
+ c.terms.slice(2).forEach(add);
  const selected=tags.slice(0,15);
- const observed=category==='auto'?'repeating surface design':c.label.toLowerCase();
- const blurb=(colorName.toLowerCase()+' '+observed+' with a continuous repeat, designed for decorative accessories and home textiles. Created with the aid of AI and refined into a repeatable print.').replace(/\s+/g,' ').trim();
- const description=blurb.slice(0,250);
- return {name,main:selected[0],other:selected.slice(1),description,grade};
+ // Product names deliberately omitted from tags; Redbubble has product filters.
+ const colourPhrase=colorText?colorText.toLowerCase()+' ':'';
+ const lead=colourPhrase+c.label.toLowerCase()+' artwork with '+c.detail+'.';
+ const finish=' '+c.mood.charAt(0).toUpperCase()+c.mood.slice(1)+' for everyday accessories and home décor. Created with the aid of AI.';
+ let description=(lead+finish).replace(/\s+/g,' ').trim();
+ if(description.length>250)description=description.slice(0,250-29).trimEnd()+' Made with the aid of AI.';
+ return {name,main:selected[0],other:selected.slice(1),description,grade,tagCount:selected.length};
 }
 function parseInputs(){
  const selected=E('metaTheme').value;
  const guessed=inferCategory(lastFile);
- return {category:selected==='auto'?guessed:selected,subject:E('metaSubject').value,colors:getColors(),grade:(E('scoreFact')?.textContent||'').trim()};
+ return {category:selected==='auto'?(guessed!=='auto'?guessed:inferCategory(E('metaSubject').value)):selected,subject:E('metaSubject').value,colors:getColors(),grade:(E('scoreFact')?.textContent||'').trim()};
 }
 function generate(){
  if(!state.source){E('metaNotice').textContent='Upload an image to generate its sales details.';return}
  const p=parseInputs(),m=makeData(p.category,p.subject,p.colors,p.grade);
+ if(!m){
+  ['metaName','metaMain','metaTags','metaDesc'].forEach(id=>E(id).value='');
+  E('metaCount').textContent='0 tags · Subject identification required';
+  E('metaNotice').textContent='I can detect colours but cannot recognise this image’s subject offline. Choose what you can actually see from the subject menu. No generic filler tags will be invented.';
+  metadataReady=false;return;
+ }
  E('metaName').value=m.name;
  E('metaMain').value=m.main;
  E('metaTags').value=m.other.join(', ');
  E('metaDesc').value=m.description;
- E('metaCount').textContent='14 additional tags · 15 total · '+m.description.length+'/250 description characters';
- E('metaNotice').textContent=p.category==='auto'?
-  'Subject could not be identified reliably offline. Colours and repeat are automatic; select a subject for more precise tags.':
-  'Draft generated using palette analysis and your subject selection. Review tags against what is actually visible.';
+ E('metaCount').textContent=m.other.length+' additional tags · '+m.tagCount+' total · '+m.description.length+'/250 description characters';
+ E('metaNotice').textContent='Buyer-facing keywords based on Redbubble guidance and comparable listing wording, NOT live search-volume data. Check the pictured subject and colours before uploading.';
  metadataReady=true;
 }
 function prepare(){
