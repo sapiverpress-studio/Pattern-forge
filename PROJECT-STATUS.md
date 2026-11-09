@@ -1,3 +1,19 @@
+## 9 November 2026 — Auto Seamless production release VERIFIED at Netlify
+
+**User approval:** Integrate seamless auto-repeat plus Redbubble naming/tagging/AI-disclosure into Pattern Forge and deploy everything to `main`. Scope limited to additive isolated workspace and homepage; no existing drawing, knitting, or saved-project code changed.
+
+**GitHub:** Feature branch `feature/auto-seamless-metadata-20261109`, production fast-forward from `876e71688664db2044d4d1259fc1472e26c56d45` to `54a2e94182a9c0c384c4a6d0bb61e6a425e64192`. Compare showed exactly `auto-seamless/index.html`, `auto-seamless/metadata.css`, `auto-seamless/metadata.js`, `index.html`, `PROJECT-STATUS.md`.
+
+**Netlify:** Site ID `25cb894e-3e25-404a-b784-1b65fc8ce933`, production deploy ID `6af17079ae95ec5f751a770d`, state **ready**, published `2026-11-09T07:04:44.991Z`. Verified deploy `commit_ref=54a2e94182a9c0c384c4a6d0bb61e6a425e64192`, branch `main`, error null; upload summary explicitly lists new `auto-seamless/index.html`, alongside homepage and three changed assets. URL: https://sapiver-pattern-forge.netlify.app/auto-seamless/ . This confirms Netlify publication of the route and files; independent public HTTPS navigation, full browser interactions and physical Android have **not** been verified. Public URL fetch through web browsing returned an accessibility error unrelated to the Netlify ready signal.
+
+**Feature:** Existing tested browser-only repeat detector with 3×3 tile preview, variable blend, 5000×5000 PNG with pHYs approx 300 DPI. Automatic on-device palette and filename hints; optional category and subject for accurate wording. One main plus 14 extra tags; description up to 250 chars, with AI disclosure on copy/download. Offline keyword taxonomy reflects Redbubble help rules; **not** live per-image search rankings or semantic computer vision. Design name and tags are drafts subject to visual review; no sales improvements guaranteed.
+
+**Evidence:** Existing standalone seamless HTML previously browser-tested with example knitted image and exported PNG. Integration inspected for script/style references. Metadata JS compiled; mocked upload, palette, 15-tag uniqueness/length and AI-description behaviour passed before release. No new end-to-end browser test of the integrated site. All legacy modules unchanged.
+
+**Next:** On a real phone, upload the red-and-cream snowflake image at the live URL, inspect 3×3 tile joins and downloaded PNG, select Fair Isle or Snowflakes theme to correct any generic auto metadata, and check the 15 tags for subject relevance. If failure, fix on an isolated branch with a reproducible browser regression test rather than changing the existing pattern or knit engines.
+
+---
+
 ## 9 November 2026 — Auto Seamless and Redbubble metadata (implementation on feature branch; not yet verified or live)
 
 **Request and authorisation:** Integrate the existing single-file automatic seamless detector into Pattern Forge, add an automatic Redbubble design name, one main tag, 14 additional tags and a description with AI disclosure; then publish tested changes to production main. Do not change the existing editor, doodle, knitting or saved-project formats.
