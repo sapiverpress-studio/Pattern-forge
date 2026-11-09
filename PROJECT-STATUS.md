@@ -10,7 +10,14 @@
 
 **Tests added:** `tests/auto-seamless-listing.test.mjs` checks prompt/image input, tag validity, disclosure, input security and failure handling with mocked model, no charge. `tests/auto-seamless-vision-browser.mjs` is a Chromium Android-sized upload-to-listing end-to-end test with a mocked AI response, TXT download, absence of dropdown, no fake fallback and retry. Feature-specific GitHub Actions workflow installed. Actual gateway integration, automated run results and production deploy have NOT been verified at this checkpoint; do not claim released or working.
 
-**Next concrete action:** Run branch/PR CI checks, inspect any failure, validate Netlify deploy preview and gateway readiness; only then authorise safe main promotion and verify production function with an actual image and small controlled paid inference.
+**Verified development evidence (2026-11-09):**
+- Netlify draft PR #32 deploy preview `6af19222aeb3a177751c6faf` ready for source `fcc148bd647b911850f40c476dec449df44c2579` and reported one packaged serverless function at `/api/auto-seamless-listing`.
+- Initial GitHub workflow runs 42593411769, 42593516421, 42593599764 failed before any jobs because an unquoted colon in a YAML step name invalidated workflow syntax. Corrected. GitHub Actions run `42594065220` **SUCCESS** (push) and `42594070502` **SUCCESS** (PR), including six guarded server tests and mobile-emulated Chromium upload/metadata/download/failure/retry.
+- Separate one-time live integration workflow `42594325923`, job `129083179337` **SUCCESS**. It resized the existing 720px knitted texture to 49,814 JPEG bytes, called actual deploy preview endpoint via HTTPS with a neutral filename, and received HTTP 200 with title `Chunky Cream Cable Knit Texture`, main tag `cable knit`, 14 additional tags and AI-disclosed description. This is genuine Netlify AI Gateway runtime evidence, not a mocked browser reply.
+- Removed the one-off paid AI test workflow after success. Durable workflow covers PRs and main. Hardened mandatory `Created with the aid of AI.` disclosure even when unrelated "AI" appears in the text.
+- No changes to current public production main or existing editor/knit engines so far. The latest hardened feature commit is newer than the live-tested preview commit but changes only disclosure enforcement, workflow cleanup and status notes.
+
+**Release gate:** Await current PR CI on hardened source; then safe fast-forward main, verify exact Netlify production deploy + function. Live physical Android image upload and live Redbubble traffic/conversion remain unverified. No real search-volume data is being gathered.
 
 ---
 
