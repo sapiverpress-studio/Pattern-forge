@@ -50,7 +50,7 @@ async function analyse(file){
     const title=String(data.title||"").trim(),main=String(data.main_tag||"").trim(),
       tags=Array.isArray(data.other_tags)?data.other_tags.map(x=>String(x).trim()):[],
       description=String(data.description||"").trim();
-    if(!title||!main||tags.length!==14||!description||!/\bAI\b/i.test(description))
+    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description))
       throw Error("The analysis returned incomplete listing information");
     E("metaName").value=title;E("metaMain").value=main;
     E("metaTags").value=tags.join(", ");E("metaDesc").value=description.slice(0,250);
