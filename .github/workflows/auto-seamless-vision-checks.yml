@@ -2,7 +2,7 @@ name: Auto Seamless visual metadata checks
 on:
   push:
     branches:
-      - feature/auto-vision-redbubble-20261109
+      - main
     paths:
       - auto-seamless/**
       - netlify/functions/**
