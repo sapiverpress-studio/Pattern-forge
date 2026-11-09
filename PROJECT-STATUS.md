@@ -1,3 +1,21 @@
+## 9 November 2026 — Redbubble buyer-language metadata corrected and LIVE
+
+**Problem:** Auto Seamless defaulted to irrelevant developer/creator tags (`surface pattern design`, `repeat print`, `continuous pattern`). The user's explicit complaint was that these are not credible shopping terms. This was a real code problem: `auto` category had a long stock list of filler terms, and every upload was forced into 15 tags.
+
+**Scope:** Feature branch `fix/redbubble-buyer-intent-metadata-20261109` changed only `auto-seamless/metadata.js`, `auto-seamless/index.html`, and this release ledger. Added cable knit subject; replaced generic repeated/surface-process tags with distinct subject, colour and mood vocabulary; prefers accurate descriptive subject and colours, includes both cosy/cozy where applicable. Revised rusty-orange RGB classification. If the filename is uninformative and no subject is selected, it now shows a warning and produces NO fake 15-tag listing. A user selects what is actually visible. Description remains below 250 characters and discloses `aid of AI`; original Auto Seamless crop/export and all other Pattern Forge editors remain unchanged.
+
+**Evidence:** Redbubble's January 2026 help specifies 15 relevant tags, 50 chars each, and 250-character description; Redbubble's own tagging guidance advises describing observable content/style/palette, avoids product type tags, and orders by relevance. Comparable existing marketplace listings use `knitted texture`, `cable knit`, `cozy cream`, etc, but listing examples do NOT prove searches or sales. The offline HTML has no search-volume or visual-recognition API, so generated terms are category-based recommendations, never presented as quantitatively verified.
+
+**Testing:** Source JS compilation passed; simulated DOM/canvas upload and selector interaction passed; 9 named visual categories each produced 15 unique terms with appropriate main tag and AI disclosure, <=250 chars; unidentified upload produced zero fallback tags and warning. Synthetic rust/cream palette yielded `Rust & Cream Cable Knit Texture` rather than generic or falsely red. Existing export controls and metadata UI preserved; no actual Android physical device test.
+
+**GitHub release:** Base `main=939333a57594d0a5a65abba4d621ed4e76ba799a`; feature branch validated, safely fast-forwarded `main` to `d011804f462b110347feca045d4db9d8a70bd092`, with exactly the three allowed paths, no force push.
+
+**Netlify VERIFIED:** Site `sapiver-pattern-forge`, production deploy `6af18ab371648fadee9d1b19`, **ready**, `branch=main`, exact `commit_ref=d011804f462b110347feca045d4db9d8a70bd092`, published `2026-11-09T08:56:30.561Z`, error null. Source is now live at https://sapiver-pattern-forge.netlify.app/auto-seamless/ . Release evidence comes from Netlify deploy API; live end-user click-through and physical Android browser remain to be checked.
+
+**Next:** Ask user to refresh page, upload actual image, select `Cable knit texture` if file is not descriptive, and visually check the resulting title, 15 tags and AI disclosure. If still poor, collect 5–10 real buyer queries from Redbubble search or search logs, and test tag variations rather than claiming search volume without measurement.
+
+---
+
 ## 9 November 2026 — Buyer-language Redbubble metadata correction (development branch)
 
 **User issue:** Existing Auto Seamless output used tags such as `surface pattern design`, `repeat print` and `continuous pattern`. Verified root cause: generic offline fallback filled 15 slots with process/artist vocabulary rather than describing the artwork.
