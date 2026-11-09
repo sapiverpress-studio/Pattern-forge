@@ -1,3 +1,19 @@
+## 9 November 2026 — True automatic image-to-Redbubble metadata (IN DEVELOPMENT, NOT LIVE)
+
+**Owner requirement:** Upload an image once and obtain detected repeat + title, main tag, 14 further buyer-facing tags and description with AI disclosure. No choosing subject from dropdown and no empty title/tags due to non-descriptive filename.
+
+**Investigated:** Production Auto Seamless was previously an offline palette/filename keyword template without actual image understanding. Netlify project has no site or team custom AI environment variables, but Netlify documents credential-injected AI Gateway for existing production sites on credit-based plans. Existing production source before branch `41c5b845a418ea1828398e715517f3cb1e94d309`; existing production Netlify deploy `6af18ab371648fadee9d1b19` READY for earlier metadata release.
+
+**Implementation on branch:** `feature/auto-vision-redbubble-20261109`. New `netlify/functions/auto-seamless-listing.mjs` uses the official OpenAI Node SDK, model `gpt-4o-mini` (documented by Netlify as available), and runtime-injected gateway credentials. Browser `auto-seamless/metadata.js` hooks the existing upload, sends only a downsampled max-768px JPEG thumbnail to the same-origin function, receives a visibly grounded listing. Frontend removes manual category/subject menus in `auto-seamless/index.html` and shows an automatic analysis indicator, retry on error, editable results, copy and downloadable TXT. The original full-resolution crop and 5000px export remain client-side, with no changes to other editor engines or existing projects. New root `package.json` declares required OpenAI SDK, no keys stored in source.
+
+**Quality and guardrails:** 15 unique relevant tags, max 50 chars per tag, description <=250 chars with `Created with the aid of AI.` enforced server-side. Bad AI outputs return a clear error, never filler tags. Explicit browser disclosure explains Netlify credit usage and thumbnail leaving the device. Function validates same-origin, POST JSON, preview size/media; configured 12 requests/IP/hour Netlify rate limit. Not a live keyword-search or ranking API. The public nature of the site makes usage monitoring important.
+
+**Tests added:** `tests/auto-seamless-listing.test.mjs` checks prompt/image input, tag validity, disclosure, input security and failure handling with mocked model, no charge. `tests/auto-seamless-vision-browser.mjs` is a Chromium Android-sized upload-to-listing end-to-end test with a mocked AI response, TXT download, absence of dropdown, no fake fallback and retry. Feature-specific GitHub Actions workflow installed. Actual gateway integration, automated run results and production deploy have NOT been verified at this checkpoint; do not claim released or working.
+
+**Next concrete action:** Run branch/PR CI checks, inspect any failure, validate Netlify deploy preview and gateway readiness; only then authorise safe main promotion and verify production function with an actual image and small controlled paid inference.
+
+---
+
 ## 9 November 2026 — Redbubble buyer-language metadata corrected and LIVE
 
 **Problem:** Auto Seamless defaulted to irrelevant developer/creator tags (`surface pattern design`, `repeat print`, `continuous pattern`). The user's explicit complaint was that these are not credible shopping terms. This was a real code problem: `auto` category had a long stock list of filler terms, and every upload was forced into 15 tags.
