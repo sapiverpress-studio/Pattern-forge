@@ -1,3 +1,17 @@
+## 9 November 2026 — Auto Seamless crop-preservation fix LIVE (Netlify source verified)
+
+**Production promotion:** From `main=0d76e2055cf20f4ccf404e60ca03aa016fa2c1a5` fast-forwarded to validated branch commit `c5521f32bc4a284926ae9581d5c84adb0a132a63`. Only `auto-seamless/index.html` and `PROJECT-STATUS.md` changed. No force push and no changes to existing editor/knitting or metadata modules.
+
+**Netlify:** Site `sapiver-pattern-forge`, production deploy **`6af17840bbacf97ef1eeb5ec` READY**, published **2026-11-09T07:37:42.557Z**, `commit_ref` exactly **`c5521f32bc4a284926ae9581d5c84adb0a132a63`**, branch `main`, context `production`, error null. Live URL https://sapiver-pattern-forge.netlify.app/auto-seamless/ . This proves deployed source matches tested code. Physical Android navigation and direct browser rendering of Netlify-hosted route remain unverified.
+
+**Observed root cause and fix:** Original tiny chosen crop was caused by selecting the absolute minimum RGB displacement error, where knitted micro-stitches outweighed larger cable motifs. Current detector rejects tiny per-axis periods by default (minimum 50% of image extent), chooses the longest near-best full motif candidate, offers a 40–80% minimum-coverage slider, and zeroes outermost pixel edge mismatch after existing seam feathering. Larger source preservation is a safer default but does not guarantee visually invisible or authentic joins for photos without a true periodic structure.
+
+**Evidence:** Real headless Chromium mobile-viewport tests using both the red/cream 1536×1536 fair-isle original (768×768 full-motif crop) and a 426px cable-knit reconstruction from user's screenshot (317×251 crop; 75% slider 322×329); additional unobstructed cable sample 315×215; all tiles passed zero edge-pixel difference. Actual exported 5000×5000 RGBA PNG included ~299.9994 DPI metadata. Integrated GitHub source compilation and retention checks passed. Actual source files and Redbubble fields remain intact.
+
+**Next:** Jim should reload the live Auto Seamless tool and re-upload the actual original knitted image, then judge the 3×3 seam preview. Avoid treating pixel-perfect edges alone as proof of photorealistic cable alignment. If a particular pattern still looks wrong, obtain its original full-resolution file (not the screenshot) and tune motif-aware seam placement/repair.
+
+---
+
 ## 9 November 2026 — Auto Seamless large-motif crop fix (implementation; not yet published)
 
 **User evidence:** Android Chrome screenshot showed the algorithm selecting a tiny roughly stitch-sized cable-knit patch near the bottom of the original photograph, rather than keeping the full cable structure. The existing `detectAxis()` simply sorted all offsets from 6.5% to 80% of the image by raw RGB difference and took the smallest score. High-frequency knitted stitches can match strongly at very short distances, so the selection was not fit for surface-pattern production.
