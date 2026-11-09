@@ -1,3 +1,15 @@
+## 9 November 2026 — Auto Seamless and Redbubble metadata (implementation on feature branch; not yet verified or live)
+
+**Request and authorisation:** Integrate the existing single-file automatic seamless detector into Pattern Forge, add an automatic Redbubble design name, one main tag, 14 additional tags and a description with AI disclosure; then publish tested changes to production main. Do not change the existing editor, doodle, knitting or saved-project formats.
+
+**Feature locations:** New isolated /auto-seamless/ browser workspace and new homepage launch card. Existing /app/pattern/, /app/doodle/, /knit/, /knit-studio/ are untouched. The repeat-detection algorithm is carried across from the standalone HTML for image-upload, pixel-shift period detection, edge blending, 3x3 preview and 5000px/300 DPI export.
+
+**Metadata:** Local image-palette analysis plus file-name subject hints and optional subject selection. Exactly 15 tag slots (1 + 14), 50 character tag limit, max 250 character description, mandatory AI-disclosure repair on copy/download. Content and tags are drafts; no image semantic recognition model or live Redbubble keyword-volume API is bundled, so do not claim online demand research or guaranteed conversion. Rules verified against Redbubble help and tagging guidance on 2026-11-09.
+
+**Release ledger:** Source feature branch: feature/auto-seamless-metadata-20261109. Implementation/test/release evidence to be appended in subsequent checkpoints. The previously verified production head/deploy before this change was main 876e71688664db2044d4d1259fc1472e26c56d45, Netlify ready deploy 6aef731df0432a926eff8412, matching source commit. No production release completed at this checkpoint.
+
+---
+
 ## 6 November 2026 — Standalone knitted-wool visual preview LIVE (static sample, NOT renderer)
 
 **User authorisation:** "Deploy it and let me see". Safely released only a new mobile-friendly preview page in `knit-preview/`, not the unfinished real-time rendering engine. PR [#23](https://github.com/sapiverpress-studio/Pattern-forge/pull/23) merged to `main` as `1c0d2f033f866c2b8043266aa3ea7e38750b24f8`. Netlify production `sapiver-pattern-forge` deploy `6aee3a22a81e221c910f0c23` **READY**, published at **2026-11-06T20:36:03.154Z**, exact `commit_ref` `1c0d2f033f866c2b8043266aa3ea7e38750b24f8`, zero reported deployment error. Public path: https://sapiver-pattern-forge.netlify.app/knit-preview/.

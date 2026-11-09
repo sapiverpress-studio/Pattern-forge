@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto Seamless Pattern Maker</title>
+<style>
+:root { color-scheme: dark; --bg:#10151c; --panel:#19222c; --line:#334252; --ink:#f2f6fb; --muted:#b2c1ce; --accent:#9fe1d1; --accentink:#082c26; }
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+main{max-width:1170px;margin:0 auto;padding:24px 16px 60px}h1{font-size:clamp(26px,4vw,39px);letter-spacing:-.045em;line-height:1.16;margin:6px 0 9px}h2{font-size:18px;margin:0 0 12px}p{color:var(--muted);margin:0 0 13px}.eyebrow{color:var(--accent);text-transform:uppercase;font-size:11px;letter-spacing:.17em;font-weight:750}
+header{margin-bottom:23px}.layout{display:grid;grid-template-columns:minmax(270px,360px) minmax(0,1fr);gap:16px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.stack{display:grid;gap:16px}
+.drop{border:2px dashed #61788b;background:#14202a;border-radius:13px;min-height:176px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:17px;cursor:pointer;text-align:center;transition:all .18s}.drop:hover,.drop.drag{border-color:var(--accent);background:#1e3440}.drop svg{width:37px;height:37px;stroke:var(--accent)}.drop strong{font-size:15px}.drop small{color:var(--muted)}
+button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14px;cursor:pointer;min-height:44px}button:disabled{opacity:.46;cursor:not-allowed}.primary{background:var(--accent);color:var(--accentink)}.secondary{background:#344455;color:white}.outline{background:transparent;border:1px solid #627d8e;color:white}.buttons{display:grid;gap:8px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:12px 0 6px}.row label{font-weight:650}.row output,.meta{color:var(--muted);font-variant-numeric:tabular-nums}.controls{display:grid;gap:13px;margin:16px 0}input[type=range]{width:100%;accent-color:var(--accent)}input[type=number]{max-width:90px;background:#0d1922;border:1px solid var(--line);color:white;padding:8px 10px;border-radius:7px;font-size:15px}
+.status{background:#101c25;border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--muted);font-size:13px;min-height:45px}.status.good{border-color:#3a8275;color:#baf3e4}.status.warn{border-color:#b48d40;color:#f0d49a}.status.error{border-color:#bb5961;color:#ffcad0}.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 15px}.fact{padding:12px;border-radius:10px;background:#101c25}.fact strong{display:block;font-size:19px;font-variant-numeric:tabular-nums}.fact span{display:block;font-size:12px;color:var(--muted)}.canvaswrap{position:relative;background:#0b1117;border:1px solid var(--line);border-radius:10px;overflow:hidden}.checker{background-color:#d2d2d2;background-image:linear-gradient(45deg,#eee 25%, transparent 25%),linear-gradient(-45deg,#eee 25%, transparent 25%),linear-gradient(45deg,transparent 75%, #eee 75%),linear-gradient(-45deg,transparent 75%, #eee 75%);background-size:22px 22px;background-position:0 0,0 11px,11px -11px,-11px 0}canvas{display:block;width:100%;height:auto}.preview-head{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.preview-head p{font-size:13px}.info{font-size:12px;line-height:1.55;color:var(--muted);margin:12px 0 0}.hint{font-size:13px;color:var(--muted)}.hidden{display:none!important}.mini{max-width:260px;margin:0 auto}.tag{display:inline-block;padding:3px 8px;border-radius:6px;background:#284338;color:#beefdb;font-size:12px;font-weight:700}
+@media(max-width:760px){main{padding:18px 12px 40px}.layout{grid-template-columns:1fr}.panel{padding:14px}.facts{grid-template-columns:1fr 1fr}}
+</style>
+<link rel="stylesheet" href="/auto-seamless/metadata.css">
+</head>
+<body>
+<main>
+<a href="/" style="color:#9fe1d1;display:inline-block;margin-bottom:12px">← Pattern Forge home</a>
+<header><div class="eyebrow">Single-file · Offline · No uploads to a server</div><h1>Auto Seamless Pattern Maker</h1><p>Upload a knitted, fabric, wallpaper or repeating design. The tool detects the repeat, chooses the cut, blends the joins and previews the result as a continuous surface.</p></header>
+<div class="layout">
+<section class="stack" aria-label="Pattern controls">
+ <div class="panel">
+  <h2>1. Choose your image</h2>
+  <label class="drop" id="drop" for="upload">
+   <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v4h16v-4"/><path d="M3 12h5m8 0h5"/></svg>
+   <strong id="uploadTitle">Tap to choose an image</strong><small>Or drop a PNG, JPG or WebP here</small><small>Processed locally in your browser</small>
+  </label><input class="hidden" type="file" accept="image/png,image/jpeg,image/webp" id="upload">
+  <div class="status" id="status" role="status" aria-live="polite">Choose an image to begin. Auto-detection starts immediately.</div>
+  <div class="facts" id="facts" hidden><div class="fact"><strong id="sizeFact">—</strong><span>Detected repeat tile</span></div><div class="fact"><strong id="scoreFact">—</strong><span>Repeat match</span></div></div>
+  <button id="redetect" class="secondary" disabled style="width:100%;margin-top:12px">Detect pattern again</button>
+ </div>
+ <div class="panel">
+  <h2>2. Finish the edges</h2>
+  <div class="row"><label for="blend">Edge blend</label><output id="blendValue">5%</output></div>
+  <input type="range" id="blend" min="1" max="16" value="5" step="1"><p class="hint">Small blends protect crisp stitch detail. Increase only if you see a line or a double stitch where tiles meet.</p>
+  <div class="row"><label for="density">Repeats across 5000px export</label><output id="densityValue">6</output></div>
+  <input type="range" id="density" min="2" max="15" value="6" step="1"><p class="hint">Height automatically adjusts to keep the pattern's original proportions.</p>
+  <div class="buttons"><button id="downloadTile" class="primary" disabled>Download seamless tile PNG</button><button id="download5000" class="outline" disabled>Download 5000 × 5000 PNG · 300 DPI</button></div>
+  <p class="info">The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.</p>
+ </div>
+</section>
+<section class="stack" aria-label="Pattern previews">
+ <div class="panel">
+   <div class="preview-head"><h2>3. Check the repeating preview</h2><span class="tag" id="previewTag">3 × 3 preview</span></div>
+   <p>Look across the joins. The tile boundaries are intentionally not marked.</p>
+   <div class="canvaswrap checker"><canvas id="preview" width="900" height="900" aria-label="Three by three repeated preview"></canvas></div>
+ </div>
+ <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the automatically selected repeat</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
+</section>
+</div>
+<section class="panel metaCard" id="redbubble-metadata" aria-label="Redbubble listing metadata">
+ <div class="eyebrow">Sales listing · Redbubble</div>
+ <h2>4. Automatic name, tags and description</h2>
+ <p>Generate a listing alongside the seamless design. Colour detection is automatic; use the subject selector when the artwork's motif is not clear from its filename.</p>
+ <div class="metaGrid">
+  <div class="metaField"><label for="metaTheme">What does the pattern show?</label>
+   <select id="metaTheme"><option value="auto">Automatic from filename</option><option value="knit">Fair Isle / knitting</option><option value="snowflake">Snowflakes / winter</option><option value="floral">Flowers / floral</option><option value="botanical">Leaves / botanical</option><option value="geometric">Geometric / diamond</option><option value="stripes">Stripes</option><option value="dots">Polka dots</option><option value="abstract">Abstract</option></select>
+  </div>
+  <div class="metaField"><label for="metaSubject">Specific subject (optional)</label><input id="metaSubject" type="text" maxlength="65" placeholder="e.g. snowflakes, hedgehogs, acorns" /></div>
+  <div class="metaField wide"><label for="metaName">Design name</label><input id="metaName" type="text" maxlength="150" placeholder="Generated when an image is loaded"/><button class="secondary" id="copy-name">Copy name</button></div>
+  <div class="metaField"><label for="metaMain">Main tag</label><input id="metaMain" type="text" maxlength="50" /><button class="secondary" id="copy-main">Copy main tag</button></div>
+  <div class="metaField"><label for="metaTags">14 other tags, comma-separated</label><textarea rows="4" id="metaTags"></textarea><button class="secondary" id="copy-tags">Copy 14 tags</button></div>
+  <div class="metaField wide"><label for="metaDesc">Description (mentions AI assistance)</label><textarea rows="4" id="metaDesc" maxlength="250"></textarea><button class="secondary" id="copy-desc">Copy description</button><small class="meta" id="metaCount">14 additional tags · 15 total · 0/250 description characters</small></div>
+ </div>
+ <p id="metaNotice" class="metaNote" role="status" aria-live="polite">Upload an image to generate its sales details.</p>
+ <div class="metaAction"><button id="metaGenerate" class="outline">Regenerate listing</button><button id="copy-all" class="primary">Copy all details</button><button id="saveMeta" class="secondary">Download listing TXT</button></div>
+ <p class="metaRef">Keyword sets follow <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble's tagging rules</a>. They are not live search-volume research. Check each tag for accuracy before publishing.</p>
+</section>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const state={source:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false};
+const sourceCanvas=document.createElement('canvas');
+const tileCanvas=document.createElement('canvas');
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
+function setStatus(msg,type=''){const el=$('status');el.textContent=msg;el.className='status '+type}
+function busy(v){state.busy=v; $('redetect').disabled=v||!state.source;$('downloadTile').disabled=v||!state.tile;$('download5000').disabled=v||!state.tile;}
+function emptyPreview(){const c=$('preview'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(8,24,36,.65)';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#9aaab8';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('Your repeat preview appears here',c.width/2,c.height/2);}
+emptyPreview();
+
+async function loadFile(file){
+ if(!file)return;
+ if(!/^image\/(png|jpeg|webp)$/.test(file.type)){setStatus('Please select a PNG, JPG or WebP image.','error');return}
+ if(file.size>70*1024*1024){setStatus('This image is too large for reliable mobile processing. Try a file under 70 MB.','error');return}
+ busy(true);state.tile=null;setStatus('Reading image…');
+ try{
+  let bmp=await createImageBitmap(file);
+  if(bmp.width<96||bmp.height<96)throw new Error('Image is too small to analyse (minimum 96 × 96 pixels).');
+  if(bmp.width*bmp.height>42e6)throw new Error('Image exceeds the 42-megapixel local processing limit.');
+  sourceCanvas.width=bmp.width;sourceCanvas.height=bmp.height;
+  sourceCanvas.getContext('2d',{willReadFrequently:true}).drawImage(bmp,0,0);
+  state.source={w:bmp.width,h:bmp.height,pixels:sourceCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,bmp.width,bmp.height).data};
+  if(bmp.close)bmp.close();
+  state.fileName=file.name.replace(/\.[^.]+$/,'').replace(/[^\w-]/g,'-').slice(0,70)||'pattern';
+  $('uploadTitle').textContent=file.name;
+  await nextFrame();await autoDetect();
+ }catch(err){console.error(err);setStatus(err.message||'Unable to process this image.','error');busy(false)}
+}
+function nextFrame(){return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
+function analysisImage(){
+ const s=state.source;const scale=Math.min(1,400/Math.max(s.w,s.h));
+ const w=Math.max(32,Math.round(s.w*scale)),h=Math.max(32,Math.round(s.h*scale));
+ const c=document.createElement('canvas');c.width=w;c.height=h;
+ const cx=c.getContext('2d',{willReadFrequently:true});cx.fillStyle='#ffffff';cx.fillRect(0,0,w,h);
+ cx.filter='blur(1px)';cx.drawImage(sourceCanvas,0,0,w,h);cx.filter='none';
+ return {w,h,buf:cx.getImageData(0,0,w,h).data};
+}
+function shiftScore(a,axis,k){
+ const {w,h,buf}=a;let sum=0,count=0;
+ const sx=4,sy=4;
+ const xMax=axis==='x'?w-k:w, yMax=axis==='y'?h-k:h;
+ for(let y=2;y<yMax-2;y+=sy){let i=y*w*4;const other=(axis==='y'?k*w*4:k*4);
+  for(let x=2;x<xMax-2;x+=sx){const at=i+x*4,j=at+other;
+   sum+=Math.abs(buf[at]-buf[j])+Math.abs(buf[at+1]-buf[j+1])+Math.abs(buf[at+2]-buf[j+2]);count+=3;
+  }
+ }
+ return count?sum/count:1e9;
+}
+function detectAxis(a,axis){
+ const d=axis==='x'?a.w:a.h;
+ const min=Math.max(13,Math.round(d*.065));const max=Math.min(d-14,Math.floor(d*.80));
+ let results=[];
+ for(let k=min;k<=max;k++){results.push({k,score:shiftScore(a,axis,k)});}
+ // Reject a short false-positive subrepeat when a longer genuine repeat is dramatically cleaner.
+ results.sort((a,b)=>a.score-b.score);
+ return {best:results[0],typical:results[Math.floor(results.length/2)].score};
+}
+function originScore(a,axis,pos,period){
+ const {w,h,buf}=a;let sum=0,count=0,detail=0;
+ const limit=axis==='x'?h:w;
+ for(let j=3;j<limit-3;j+=3){
+  const at=(axis==='x'?(j*w+pos):(pos*w+j))*4;
+  const off=(axis==='x'?period:period*w)*4;
+  const p=at+off;
+  sum+=Math.abs(buf[at]-buf[p])+Math.abs(buf[at+1]-buf[p+1])+Math.abs(buf[at+2]-buf[p+2]);
+  const neighbor=at+(axis==='x'?4:w*4);
+  detail+=Math.abs(buf[at]-buf[neighbor])+Math.abs(buf[at+1]-buf[neighbor+1])+Math.abs(buf[at+2]-buf[neighbor+2]);
+  count+=3;
+ }
+ return sum/Math.max(1,count)+.09*detail/Math.max(1,count);
+}
+function chooseOrigin(a,axis,p){
+ const n=axis==='x'?a.w:a.h;
+ const margin=Math.max(3,Math.round(p*.065));
+ const last=n-p-1;
+ if(last<=0)return 0;
+ let best=clamp(Math.round((n-p)/2),0,last),minimum=1e9;
+ const left=Math.min(margin,last),right=last;
+ for(let st=left;st<=right;st++){
+  const cost=originScore(a,axis,st,p);
+  if(cost<minimum){minimum=cost;best=st}
+ }
+ return best;
+}
+async function autoDetect(){
+ if(!state.source)return;
+ busy(true);setStatus('Finding repeating offsets and the cleanest cut lines…');await nextFrame();
+ const a=analysisImage();const px=detectAxis(a,'x'),py=detectAxis(a,'y');
+ const source=state.source;
+ let w=clamp(Math.round(px.best.k*source.w/a.w),32,source.w-2),h=clamp(Math.round(py.best.k*source.h/a.h),32,source.h-2);
+ let x=Math.round(chooseOrigin(a,'x',px.best.k)*source.w/a.w),y=Math.round(chooseOrigin(a,'y',py.best.k)*source.h/a.h);
+ const border=Math.max(2,Math.round(Math.min(w,h)*.015));
+ x=clamp(x,Math.min(border,source.w-w),source.w-w);y=clamp(y,Math.min(border,source.h-h),source.h-h);
+ const mean=(px.best.score+py.best.score)/2;
+ const relative=(px.best.score/Math.max(1,px.typical)+py.best.score/Math.max(1,py.typical))/2;
+ state.match=mean;
+ state.crop={x,y,w,h};
+ $('facts').hidden=false;$('sizeFact').textContent=`${w} × ${h}`;
+ let grade=mean<8&&relative<.4?'Excellent':mean<19&&relative<.66?'Strong':mean<37&&relative<.8?'Possible':'Weak';
+ $('scoreFact').textContent=grade;
+ if(grade==='Weak')setStatus('No convincing original repeat found. A joined tile can still be generated, but some seams or duplicated details may remain.','warn');
+ else if(grade==='Possible')setStatus('A possible repeat was detected. Check the 3 × 3 preview for joins and duplicated stitches.','warn');
+ else setStatus('Repeat detected. The crop and joining edges have been selected automatically.','good');
+ await buildTile();busy(false);
+}
+function buildTile(){
+ if(!state.crop||!state.source)return;
+ const {w,h}=state.crop,s=state.source,buf=s.pixels;
+ const blendPercent=Number($('blend').value)/100;
+ // Leave real source pixels before the top and left cut for a continuous wrap.
+ let x=clamp(state.crop.x,0,s.w-w),y=clamp(state.crop.y,0,s.h-h);
+ const bx=Math.min(Math.max(2,Math.round(w*blendPercent)),x);
+ const by=Math.min(Math.max(2,Math.round(h*blendPercent)),y);
+ tileCanvas.width=w;tileCanvas.height=h;
+ const cx=tileCanvas.getContext('2d',{willReadFrequently:true});
+ const out=cx.createImageData(w,h),pixels=out.data;
+ for(let row=0;row<h;row++){
+  let ty=by>0&&row>=h-by?smooth((row-(h-by))/(by-1||1)):0;
+  const yA=y+row, yB=y+row-h;
+  for(let col=0;col<w;col++){
+   let tx=bx>0&&col>=w-bx?smooth((col-(w-bx))/(bx-1||1)):0;
+   const xA=x+col,xB=x+col-w;
+   const a=((yA*s.w+xA)<<2),b=((yA*s.w+(tx?xB:xA))<<2);
+   const c=(( (ty?yB:yA)*s.w+xA)<<2),d=(((ty?yB:yA)*s.w+(tx?xB:xA))<<2);
+   const dest=((row*w+col)<<2);
+   const u00=(1-tx)*(1-ty),u10=tx*(1-ty),u01=(1-tx)*ty,u11=tx*ty;
+   for(let ch=0;ch<4;ch++)pixels[dest+ch]=Math.round(buf[a+ch]*u00+buf[b+ch]*u10+buf[c+ch]*u01+buf[d+ch]*u11);
+  }
+ }
+ cx.putImageData(out,0,0);
+ state.tile={w,h};paintPreview();paintSource();
+ $('downloadTile').disabled=false;$('download5000').disabled=false;
+}
+function paintPreview(){
+ const t=state.tile;if(!t)return;
+ const cv=$('preview');cv.width=900;cv.height=Math.max(150,Math.round(900*t.h/t.w));
+ const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);ctx.imageSmoothingQuality='high';
+ const ww=cv.width/3,hh=cv.height/3;
+ for(let r=0;r<3;r++)for(let c=0;c<3;c++)ctx.drawImage(tileCanvas,c*ww,r*hh,ww,hh);
+}
+function paintSource(){
+ const s=state.source,t=state.crop;if(!s||!t)return;
+ const cv=$('sourcePreview');cv.width=400;cv.height=Math.round(400*s.h/s.w);
+ const ctx=cv.getContext('2d');ctx.drawImage(sourceCanvas,0,0,cv.width,cv.height);
+ const sx=cv.width/s.w,sy=cv.height/s.h;
+ ctx.strokeStyle='#b1f9da';ctx.lineWidth=3;ctx.strokeRect(t.x*sx,t.y*sy,t.w*sx,t.h*sy);
+ ctx.fillStyle='rgba(4,27,24,.8)';ctx.fillRect(7,8,165,27);ctx.fillStyle='#ccffeb';ctx.font='bold 13px system-ui';ctx.fillText('Automatically chosen',14,26);
+}
+function uint32(n){return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]}
+const crcTable=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(bytes){let c=0xffffffff;for(let b of bytes)c=crcTable[(c^b)&255]^(c>>>8);return(c^0xffffffff)>>>0}
+function chunk(type,content){const name=Uint8Array.from(type.split('').map(x=>x.charCodeAt(0)));const body=new Uint8Array(4+content.length);body.set(name);body.set(content,4);const output=new Uint8Array(4+body.length+4);output.set(uint32(content.length));output.set(body,4);output.set(uint32(crc32(body)),4+body.length);return output;}
+function taggedDPI(binary){
+ const parts=[binary.slice(0,8)],view=new DataView(binary.buffer,binary.byteOffset,binary.byteLength);let at=8;
+ const ppm=Math.round(300/0.0254);const phys=chunk('pHYs',Uint8Array.from([...uint32(ppm),...uint32(ppm),1]));
+ while(at<binary.length){const len=view.getUint32(at);const type=String.fromCharCode(...binary.slice(at+4,at+8));const end=at+12+len;if(end>binary.length)throw Error('Invalid PNG data');if(type!=='pHYs')parts.push(binary.slice(at,end));if(type==='IHDR')parts.push(phys);at=end;}
+ return new Blob(parts,{type:'image/png'});
+}
+function asBlob(canvas){return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG export failed.')), 'image/png'));}
+function saveBlob(blob,name){let url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+async function exportImage(full){
+ if(!state.tile||state.busy)return;busy(true);setStatus(full?'Rendering the full 5000 × 5000 repeating design…':'Exporting the seamless tile…');await nextFrame();
+ try{
+  let cv=tileCanvas;
+  if(full){cv=document.createElement('canvas');cv.width=5000;cv.height=5000;const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   const nx=Number($('density').value),ny=clamp(Math.round(nx*state.tile.w/state.tile.h),1,40);
+   // Integer repeat counts make the complete 5000px canvas tileable too.
+   for(let row=0;row<ny;row++)for(let col=0;col<nx;col++){
+     const x0=Math.round(col*5000/nx),x1=Math.round((col+1)*5000/nx);
+     const y0=Math.round(row*5000/ny),y1=Math.round((row+1)*5000/ny);
+     ctx.drawImage(tileCanvas,x0,y0,x1-x0,y1-y0);
+   }
+  }
+  const png=await asBlob(cv),bytes=new Uint8Array(await png.arrayBuffer());
+  const output=taggedDPI(bytes);
+  saveBlob(output,`${state.fileName}-${full?'5000px-300dpi-repeat':'seamless-tile-300dpi'}.png`);
+  setStatus(full?'5000 × 5000 repeat PNG downloaded, with 300 DPI metadata.':'Seamless repeat tile PNG downloaded, with 300 DPI metadata.','good');
+ }catch(err){console.error(err);setStatus(err.message||'Export failed. Try downloading the smaller tile.','error')}
+ finally{busy(false)}
+}
+$('upload').addEventListener('change',e=>loadFile(e.target.files[0]));
+const drop=$('drop');for(const ev of ['dragenter','dragover'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')});for(const ev of ['dragleave','drop'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')});drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+$('redetect').addEventListener('click',autoDetect);
+$('blend').addEventListener('input',e=>{$('blendValue').textContent=e.target.value+'%';if(state.tile&&!state.busy)buildTile()});
+$('density').addEventListener('input',e=>{$('densityValue').textContent=e.target.value});
+$('downloadTile').addEventListener('click',()=>exportImage(false));
+$('download5000').addEventListener('click',()=>exportImage(true));
+</script>
+<script src="/auto-seamless/metadata.js"></script>
+</body>
+</html>
