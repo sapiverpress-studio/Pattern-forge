@@ -52,7 +52,7 @@ function makeData(category,subject,colors,grade){
  const colorName=colors.length>1?colors.join(' & '):colors[0];
  const specific=clean(subject),noun=specific?titleCase(specific)+' Pattern':c.label;
  const name=(colorName+' '+noun).slice(0,95);
- const main=c.main;
+ const main=specific?(specific.toLowerCase()+' pattern'):c.main;
  const tags=[];
  const add=t=>{t=clean(t).toLowerCase().slice(0,50);if(t&&!tags.some(x=>x.toLowerCase()===t))tags.push(t);};
  add(main);
