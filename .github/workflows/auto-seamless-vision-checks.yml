@@ -10,6 +10,14 @@ on:
       - tests/auto-seamless-listing.test.mjs
       - tests/auto-seamless-vision-browser.mjs
       - .github/workflows/auto-seamless-vision-checks.yml
+  pull_request:
+    paths:
+      - auto-seamless/**
+      - netlify/functions/**
+      - package.json
+      - tests/auto-seamless-listing.test.mjs
+      - tests/auto-seamless-vision-browser.mjs
+      - .github/workflows/auto-seamless-vision-checks.yml
   workflow_dispatch:
 permissions:
   contents: read
