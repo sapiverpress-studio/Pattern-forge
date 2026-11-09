@@ -6,7 +6,7 @@
 
 **Previous production source:** main `0dc0e745c3874d76b38ca7bc423b3522cacccba4`, previously verified Netlify ready deploy `6af17079ae95ec5f751a770d` at `2026-11-09T07:04:44.991Z`. Feature branch `fix/auto-seamless-editor-link-20261109`.
 
-**Test/release stage:** Pending static navigation check and production promotion with source-commit verification. Do not claim published until Netlify confirms.
+**Test stage:** GitHub branch `b6a822ac9e8506c8b324c75618e0ba637a6e30dc` checked after push. 10/10 static navigation checks passed: three correctly located links (header, resume, new-project chooser), original Main menu and Wool Pattern Studio retained, homepage link intact, target `/auto-seamless/` HTML exists, file diff limited to `app/index.html` and this ledger, and main base SHA unchanged. These are repository-source checks, not visual/physical browser tests. **Production promotion authorised by website-link request; pending Netlify ready/exact-commit confirmation at this checkpoint.**
 
 ---
 
