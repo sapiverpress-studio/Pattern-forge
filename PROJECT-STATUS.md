@@ -1,3 +1,17 @@
+## 9 November 2026 — Auto Seamless link added to editor and LIVE
+
+**User request:** "On pattern forge I need a link to auto seamless pattern maker". Existing homepage already had the launch card from the earlier release, but the editor and resume/project chooser lacked a direct link.
+
+**Source and scope:** Created branch `fix/auto-seamless-editor-link-20261109` from `main=0dc0e745c3874d76b38ca7bc423b3522cacccba4`. Only `app/index.html` and this `PROJECT-STATUS.md` changed; added direct `/auto-seamless/` links in header, new-project chooser and resume screen. Kept existing home, knitting and editor functionality untouched.
+
+**Testing:** 10/10 static source-navigation checks passed before promotion: three direct editor links; existing Main menu and Wool button preserved; homepage link retained; target HTML present; safe two-file diff; matching GitHub base head. No new browser/physical Android interaction test was performed.
+
+**Release:** Fast-forwarded `main` to `7012de29f005b1997bb5680591c550bec185bc30` (no force). Netlify site `25cb894e-3e25-404a-b784-1b65fc8ce933`, production deploy **`6af1756fd9707c1aa2d79b0c` READY**, published **2026-11-09T07:25:42.210Z**, `commit_ref` exactly `7012de29f005b1997bb5680591c550bec185bc30`, context production, `error_message=null`. Available at https://sapiver-pattern-forge.netlify.app/app/ and direct https://sapiver-pattern-forge.netlify.app/auto-seamless/ . An independent web scraper cannot load the public app URL here, so the claim of publication is supported by matching Netlify build evidence rather than direct end-user navigation.
+
+**Next:** User can reload the editor (prefer hard refresh if cached), select Auto Seamless in the header or initial project/resume screen, and verify mobile routing. A physical device interaction remains outstanding. Documentation-only checkpoint committed with `[skip netlify]` to avoid an additional production build.
+
+---
+
 ## 9 November 2026 — Auto Seamless editor navigation (implementation; awaiting verification)
 
 **Problem:** Auto Seamless link was present on the homepage (`index.html`) but absent inside `/app/`. This matters because project users enter directly via editor or saved-project resume overlay and may not see the homepage.
