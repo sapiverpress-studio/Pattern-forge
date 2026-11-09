@@ -1,0 +1,56 @@
+name: One-time AI Gateway preview integration check
+on:
+  push:
+    branches:
+      - feature/auto-vision-redbubble-20261109
+    paths:
+      - .github/workflows/one-time-vision-preview-check.yml
+permissions:
+  contents: read
+jobs:
+  real-preview-inference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare small JPEG of existing knit fixture
+        run: |
+          python -m pip install --quiet pillow
+          python - <<'PY'
+          import base64,io,json
+          from PIL import Image
+          im=Image.open('knit-preview/assets/knitted-wool-720.png').convert('RGB')
+          im.thumbnail((650,650))
+          buffer=io.BytesIO()
+          im.save(buffer,format='JPEG',quality=74,optimize=True)
+          image='data:image/jpeg;base64,'+base64.b64encode(buffer.getvalue()).decode()
+          assert len(image)<800000
+          with open('/tmp/vision-request.json','w') as f:
+              json.dump({'imageDataUrl':image,'filename':'IMG_0017.jpg'},f)
+          print('Preview size',len(buffer.getvalue()),'bytes')
+          PY
+      - name: Verify real Netlify AI Gateway visual response
+        run: |
+          BASE=https://6af19222aeb3a177751c6faf--sapiver-pattern-forge.netlify.app
+          STATUS=$(curl --silent --show-error --max-time 75 --output /tmp/vision-result.json --write-out "%{http_code}" \
+            -H "Origin: $BASE" -H "Content-Type: application/json" \
+            --data-binary @/tmp/vision-request.json "$BASE/api/auto-seamless-listing")
+          python - "$STATUS" <<'PY'
+          import json,sys
+          code=int(sys.argv[1])
+          data=json.load(open('/tmp/vision-result.json'))
+          if code!=200:
+              raise SystemExit('Vision endpoint returned HTTP '+str(code)+': '+str(data.get('error','no error returned')))
+          assert isinstance(data.get('title'),str) and data['title'],data
+          assert isinstance(data.get('main_tag'),str) and data['main_tag'],data
+          assert len(data.get('other_tags',[]))==14,data
+          assert 'aid of AI' in data.get('description',''),data
+          assert not data.get('live_search_volume'),data
+          print('PASS actual image -> Netlify AI Gateway -> title / 15 tags / AI disclosure')
+          print('Visible image title:',data['title'])
+          print('Main tag:',data['main_tag'])
+          print('Other tags:',len(data['other_tags']))
+          PY
