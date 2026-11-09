@@ -53,23 +53,20 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the larger motif crop; inspect it before exporting</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
 </section>
 </div>
-<section class="panel metaCard" id="redbubble-metadata" aria-label="Redbubble listing metadata">
+<section class="panel metaCard" id="redbubble-metadata" aria-label="Automatic Redbubble title and tags">
  <div class="eyebrow">Sales listing · Redbubble</div>
- <h2>4. Automatic name, tags and description</h2>
- <p>Generate buyer-facing listing wording. Colours can be detected from pixels; the artwork's subject must come from a descriptive filename or your selection. Unknown subjects are never filled with generic tags.</p>
+ <h2>4. Automatic title, tags and description</h2>
+ <p>One upload generates everything. AI examines the actual subject, knitting or other texture, colours and style to produce buyer-facing listing information automatically. There is no category to select.</p>
+ <p class="metaNote">A reduced preview (not your 5000px file) is sent securely to the AI service for analysis. The complete artwork stays local for the seamless PNG exports. AI requests use Netlify credits.</p>
  <div class="metaGrid">
-  <div class="metaField"><label for="metaTheme">What does the pattern show?</label>
-   <select id="metaTheme"><option value="auto">Try filename (choose subject if unknown)</option><option value="cable">Cable knit texture</option><option value="knit">Fair Isle / knitted colourwork</option><option value="snowflake">Snowflakes / winter</option><option value="floral">Flowers / floral</option><option value="botanical">Leaves / botanical</option><option value="geometric">Geometric / diamond</option><option value="stripes">Stripes</option><option value="dots">Polka dots</option><option value="abstract">Abstract</option></select>
-  </div>
-  <div class="metaField"><label for="metaSubject">Specific subject (optional)</label><input id="metaSubject" type="text" maxlength="65" placeholder="e.g. snowflakes, hedgehogs, acorns" /></div>
-  <div class="metaField wide"><label for="metaName">Design name</label><input id="metaName" type="text" maxlength="150" placeholder="Generated when an image is loaded"/><button class="secondary" id="copy-name">Copy name</button></div>
-  <div class="metaField"><label for="metaMain">Main tag</label><input id="metaMain" type="text" maxlength="50" /><button class="secondary" id="copy-main">Copy main tag</button></div>
-  <div class="metaField"><label for="metaTags">14 other tags, comma-separated</label><textarea rows="4" id="metaTags"></textarea><button class="secondary" id="copy-tags">Copy 14 tags</button></div>
-  <div class="metaField wide"><label for="metaDesc">Description (mentions AI assistance)</label><textarea rows="4" id="metaDesc" maxlength="250"></textarea><button class="secondary" id="copy-desc">Copy description</button><small class="meta" id="metaCount">14 additional tags · 15 total · 0/250 description characters</small></div>
+  <div class="metaField wide"><label for="metaName">Design title</label><input id="metaName" type="text" maxlength="150" placeholder="Generated automatically from image"/><button class="secondary" id="copy-name" disabled>Copy title</button></div>
+  <div class="metaField"><label for="metaMain">Main tag</label><input id="metaMain" type="text" maxlength="50" placeholder="Generated automatically from image"/><button class="secondary" id="copy-main" disabled>Copy main tag</button></div>
+  <div class="metaField"><label for="metaTags">14 other tags, comma-separated</label><textarea rows="4" id="metaTags" placeholder="Generated automatically from image"></textarea><button class="secondary" id="copy-tags" disabled>Copy 14 tags</button></div>
+  <div class="metaField wide"><label for="metaDesc">Description (with AI disclosure)</label><textarea rows="4" id="metaDesc" maxlength="250" placeholder="Generated automatically from image"></textarea><button class="secondary" id="copy-desc" disabled>Copy description</button><small class="meta" id="metaCount">Waiting for automatic image analysis</small></div>
  </div>
- <p id="metaNotice" class="metaNote" role="status" aria-live="polite">Upload an image to generate its sales details.</p>
- <div class="metaAction"><button id="metaGenerate" class="outline">Regenerate listing</button><button id="copy-all" class="primary">Copy all details</button><button id="saveMeta" class="secondary">Download listing TXT</button></div>
- <p class="metaRef">Subject-specific keyword sets follow <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble's tagging rules</a>. Terms are informed by Redbubble guidance and comparable listings, not live search-volume research. Check every tag against the actual artwork.</p>
+ <p id="metaNotice" class="metaNote" role="status" aria-live="polite">Upload an image to start automatic analysis.</p>
+ <div class="metaAction"><button id="metaGenerate" class="outline" disabled>Analyse image again</button><button id="copy-all" class="primary" disabled>Copy all details</button><button id="saveMeta" class="secondary" disabled>Download listing TXT</button></div>
+ <p class="metaRef">AI analyses what is visible; this is not live search-volume research. Always check accuracy before uploading to Redbubble. <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble tagging guidance</a>.</p>
 </section>
 </main>
 <script>
