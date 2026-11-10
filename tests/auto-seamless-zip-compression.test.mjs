@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {inflateRawSync} from 'node:zlib';
 import {randomFillSync} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
 
 const source=readFileSync(new URL('../auto-seamless/commercial-kit.js',import.meta.url),'utf8');
 const a=source.indexOf(' const encoder=new TextEncoder(), MAX=20000000;');
@@ -38,6 +39,10 @@ test('real ZIP method 8 compresses a 20MB+ patterned file without changing one b
  const compressedSize=view.getUint32(18,true);
  const recovered=inflateRawSync(bytes.subarray(dataStart,dataStart+compressedSize));
  assert.deepEqual(recovered,Buffer.from(original),'ZIP extraction must be byte-for-byte identical');
+ const python=spawnSync('python3',['-c',"import io,sys,zipfile; b=sys.stdin.buffer.read(); z=zipfile.ZipFile(io.BytesIO(b)); assert z.testzip() is None; assert len(z.namelist())==4; assert len(z.read(z.namelist()[0]))==20100000"],{
+  input:Buffer.from(bytes),encoding:'utf8',timeout:30000,maxBuffer:1024*1024
+ });
+ assert.equal(python.status,0,python.stderr||python.stdout||'Python ZIP validation failed');
 });
 
 test('uncompressible over-limit 5000px PNG is omitted transparently, while full-size JPG and two PNGs remain',async()=>{
