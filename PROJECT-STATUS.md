@@ -1,3 +1,12 @@
+## CURRENT RELEASE — 10 November 2026: Auto Seamless commercial seller kit LIVE (source/deploy verified)
+- **Owner request:** Add seller-kit ZIP export exclusively to Auto Seamless; include LICENCE, About Us and README in every independently delivered buyer ZIP; test, then release.
+- **GitHub PR:** [#33](https://github.com/sapiverpress-studio/Pattern-forge/pull/33) merged as `bfba24284d57d7bd8942d71e8e467d246cca6b44` into `main`. Scope checked: `auto-seamless/`, relevant CI tests/workflow and this status file only.
+- **Tests VERIFIED:** GitHub Actions `42780024861`, job `129707543527` SUCCESS, 9 Node unit tests and Android-sized Chromium browser regressions. The new Chromium test generated actual 5000px/2500px PNGs, 5000px JPG and tile, checked ZIP CRCs and 300DPI PNG chunks, and verified LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt in all customer ZIPs. Synthetic simple artwork only; large complex artwork can be blocked by the 20,000,000 byte per-file guard.
+- **Netlify VERIFIED:** Site `sapiver-pattern-forge` current production deploy `6af2d15b7e333cc73ff1cf2a` **READY**, `branch=main`, `commit_ref=bfba24284d57d7bd8942d71e8e467d246cca6b44`, published `2026-11-10T08:10:16.496Z`, error null. URL: https://sapiver-pattern-forge.netlify.app/auto-seamless/ .
+- **Limits:** Exact live-page authenticated user click on personal Android not independently confirmed; external web-fetch verification failed in this session; deployed source and CI are verified. No Etsy listing or merchant action performed. Work credits: zero.
+- **Next:** Owner checks page on real Android, inspects a final 3×3 join, downloads seller kit. For files beyond Etsy's 20MB limit, improve packaging without compromising source quality.
+---
+
 ## 10 November 2026 — PR #33: full export/browser tests PASSED, production release pending
 - **GitHub CI verified:** workflow `42780024861` on head `85c9e5610feeee1b841e39c8c820aabeadbea8ae`, job `129707543527` SUCCESS. Node test runner passed **9 tests**; Playwright Chromium at 390×844 completed original AI metadata test and generated a **real 5000×5000 commercial seller ZIP** from a 256px synthetic tile. Python zipfile confirmed two-level ZIP CRCs, four actual PNG/JPG image assets, 5000/2500 PNG dimensions and pHYs metadata, mandatory LICENSE/README/ABOUT in customer ZIP, and 2 seller listing JPGs.
 - Source CI test: `tests/auto-seamless-commercial-browser.mjs`, which is now wired into `.github/workflows/auto-seamless-vision-checks.yml`. PR: https://github.com/sapiverpress-studio/Pattern-forge/pull/33 .
