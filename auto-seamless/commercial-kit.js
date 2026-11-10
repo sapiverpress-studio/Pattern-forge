@@ -57,16 +57,26 @@
   const t=await r.text();if(!t.trim()||t.length>5000)throw Error('Invalid customer document '+name);
   return {name,data:encode(t)};
  }
- function pack(files){
-  const groups=[];
-  for(const f of [...files].sort((a,b)=>b.data.length-a.data.length)){
-   if(f.data.length+256>=MAX)throw Error(f.name+' exceeds Etsy’s 20 MB limit. No quality was reduced.');
-   let group=groups.find(g=>g.size+f.data.length+256<MAX);
-   if(!group){group={size:0,files:[]};groups.push(group);}
-   group.files.push(f);group.size+=f.data.length+256;
+ function packedSize(files){
+  // ZIP is intentionally stored (lossless). Account for exact local and central headers.
+  return 22+files.reduce((sum,f)=>sum+f.data.length+76+2*encode(f.name).length,0);
+ }
+ function pack(artwork,documents){
+  const names=['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'];
+  if(documents.length!==3||names.some(name=>!documents.some(d=>d.name===name&&d.data.length>0))||!artwork.length)
+   throw Error('All three buyer documents and at least one artwork file are required');
+  const documentBytes=packedSize(documents),groups=[];
+  if(documentBytes>=MAX)throw Error('Buyer documents exceed the Etsy ZIP limit');
+  for(const asset of [...artwork].sort((a,b)=>b.data.length-a.data.length)){
+   const bytes=asset.data.length+76+2*encode(asset.name).length;
+   if(bytes+documentBytes>MAX)throw Error(asset.name+' plus the required licence, About and instructions exceeds Etsy’s 20 MB limit. No image quality was reduced.');
+   let group=groups.find(g=>g.bytes+bytes<=MAX);
+   if(!group){group={bytes:documentBytes,artwork:[]};groups.push(group);}
+   group.artwork.push(asset);group.bytes+=bytes;
   }
-  if(groups.length>5)throw Error('Design requires more than five Etsy ZIP attachments.');
-  return groups.map(g=>g.files);
+  if(groups.length>5)throw Error('Design requires more than five Etsy ZIP attachments after including the licence in each one.');
+  // EACH independently downloadable buyer ZIP includes the same three actual documents.
+  return groups.map(g=>[...g.artwork,...documents]);
  }
  function refresh(){button.disabled=running||!state.tile||state.busy||!check.checked;}
  window.addEventListener('sapiver:source-changed',()=>{check.checked=false;status.textContent='Review the new 3 × 3 repeat before export.';refresh();});
@@ -87,8 +97,9 @@
    files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
    small.width=small.height=0;small=null;
    files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
-   for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])files.push(await documentText(file));
-   const pieces=pack(files),seller=[];
+   const documents=[];
+   for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
+   const pieces=pack(files,documents),seller=[];
    for(let i=0;i<pieces.length;i++){
     const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
     seller.push({name:'UPLOAD-TO-ETSY/'+stem+'-part-'+(i+1)+'.zip',data:await getBytes(buyer)});
@@ -100,7 +111,7 @@
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note)});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Commercial seller kit downloaded. '+pieces.length+' customer ZIP(s), 2 listing previews and licence documents. Review before publishing.';
+   status.textContent='Commercial seller kit downloaded. '+pieces.length+' customer ZIP(s), EACH with licence, About and instructions, plus 2 listing previews. Review before publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
