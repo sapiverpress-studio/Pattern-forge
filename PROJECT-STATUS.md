@@ -1,3 +1,12 @@
+## 10 November 2026 — All independently downloadable buyer ZIPs now contain customer documents (development only)
+- **Issue:** First seller-kit version treated LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt like ordinary assets. With multiple Etsy buyer ZIP parts, documents could occur only in one part, leaving other customers without licence details.
+- **Fix:** `auto-seamless/commercial-kit.js` now packs image assets separately, reserves exact ZIP overhead for three mandatory document files, and duplicates the same document payloads into **every** buyer ZIP. Oversize/too-many-part cases fail without shrinking artwork; invalid/missing document fetches still fail before any ZIP is offered.
+- **Scope:** Only the Auto Seamless page and its commercial ZIP exporter. Existing standalone tile/5000px exports, main Pattern Forge editor, Doodle and knitting modules unchanged.
+- **Verification:** Executed the *committed GitHub version* of the pack/size functions in an isolated JavaScript test. Two 12 MB/11 MB asset groups retained all three documents, each under 20,000,000 bytes; missing documents, oversized single asset and more than five groups were rejected. This is focused code-level verification, not a full browser/Android/Netlify test.
+- **Repo:** `feature/auto-seamless-commercial-seller-kit-20261110`, commercial-kit implementation commit `e3b34620256a5b5d2e0077c2556e911155e873ce`. No main merge, site deployment, paid gateway call, Etsy section change or listing publication.
+- **Next:** Run actual 5000px browser generation with the source file, inspect nested ZIPs and import the result into the Poster Gen digital review route. Owner to approve a single tested production release.
+---
+
 ## 10 November 2026 — Export readiness event timing correction (development only)
 - Auto Seamless now emits its commercial-kit readiness event after the image analysis busy flag clears; confirmation before analysis completion no longer leaves the export button disabled.
 - Exact scope: `auto-seamless/index.html` and this status entry. No other Pattern Forge tools or publishing systems changed. Staged only; full physical mobile acceptance pending.
