@@ -40,7 +40,7 @@ jobs:
           node --check netlify/functions/auto-seamless-listing.mjs
           node --check auto-seamless/metadata.js
           node --check auto-seamless/commercial-kit.js
-          node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs
+          node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs
       - name: Serve static application
         run: |
           python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/auto-seamless-test-http.log 2>&1 &
