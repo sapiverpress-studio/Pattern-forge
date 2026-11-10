@@ -56,8 +56,11 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <section class="panel" id="commercial-kit-panel" aria-label="Commercial seller kit export">
  <div class="eyebrow">Sapiver Prints · commercial files</div>
  <h2>5. Download a commercial seller kit</h2>
- <p>One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP for the existing Poster Gen digital uploader.</p>
+ <p>One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.</p>
  <p class="info">Includes 5000px PNG and JPG, 2500px PNG, the original seamless repeat tile, two listing previews and buyer documents. SVG is not supplied unless a genuine vector source exists. No embroidery machine files are invented.</p>
+ <label for="commercialPrice" style="display:block;margin:14px 0 6px;font-weight:700">Etsy digital selling price (£ GBP)</label>
+ <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
+ <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
  <label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0"><input id="commercialReviewConfirmed" type="checkbox" style="margin-top:4px"><span>I have inspected the 3 × 3 preview and confirmed that the repeat and artwork are suitable for sale.</span></label>
  <button id="downloadCommercial" class="primary" disabled style="width:100%">Download Commercial Seller Kit ZIP</button>
  <p id="commercialExportStatus" class="status" role="status" aria-live="polite" style="margin-top:12px">Review the repeating preview and confirm before export.</p>
