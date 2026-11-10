@@ -1,3 +1,9 @@
+## 10 November 2026 — Commercial buyer ZIP regression test committed (development only)
+- Added `tests/auto-seamless-commercial-kit.test.mjs` on branch `feature/auto-seamless-commercial-seller-kit-20261110` (commit `300f0467b0aeec7e225ed4dcdfca1e3ddfdc844a`). It loads the actual source grouping functions and asserts that each independently delivered part contains the exact three documents, stays inside the 20 MB cap and rejects missing-document/oversized/>5-part cases.
+- Focused isolated execution of the actual GitHub packaging functions passed before the test was committed. The new Node test file is committed but **its GitHub Actions/Node suite has not yet been executed**; the existing vision workflow was not altered or triggered.
+- No deployment, main merge, live site update, paid call or marketplace changes. Full browser creation and nested seller-kit acceptance remain the release gate.
+---
+
 ## 10 November 2026 — All independently downloadable buyer ZIPs now contain customer documents (development only)
 - **Issue:** First seller-kit version treated LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt like ordinary assets. With multiple Etsy buyer ZIP parts, documents could occur only in one part, leaving other customers without licence details.
 - **Fix:** `auto-seamless/commercial-kit.js` now packs image assets separately, reserves exact ZIP overhead for three mandatory document files, and duplicates the same document payloads into **every** buyer ZIP. Oversize/too-many-part cases fail without shrinking artwork; invalid/missing document fetches still fail before any ZIP is offered.
