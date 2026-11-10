@@ -4,6 +4,35 @@
  const byId=id=>document.getElementById(id);
  const button=byId('downloadCommercial'),check=byId('commercialReviewConfirmed'),status=byId('commercialExportStatus');
  if(!button||!check||!status)return;
+ const priceInput=byId('commercialPrice');
+ if(priceInput){
+  try{const remembered=localStorage.getItem('sapiver-digital-pattern-price');if(remembered)priceInput.value=remembered;}catch{}
+ }
+ function listingDetails(){
+  const name=String(byId('metaName')?.value||'').trim();
+  const main=String(byId('metaMain')?.value||'').trim();
+  const desc=String(byId('metaDesc')?.value||'').trim();
+  const extras=String(byId('metaTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!name||name.length>100||!main||extras.length!==14||!desc)
+   throw Error('Automatic title, tags and description must be ready. Check the listing fields before exporting.');
+  if(!/\bAI\b/i.test(desc))throw Error('The listing description must disclose AI assistance.');
+  const tagCandidates=[main,...extras],tags=[],used=new Set();
+  for(const raw of tagCandidates){
+   if(!raw||raw.length>20||/[<>\x00-\x1f]/.test(raw))continue;
+   const key=raw.toLowerCase();if(used.has(key))continue;
+   tags.push(raw);used.add(key);if(tags.length===13)break;
+  }
+  if(tags.length<5)throw Error('The artwork needs at least five relevant Etsy tags of 20 characters or fewer. Edit the generated tag fields and retry.');
+  const rawPrice=String(priceInput?.value||'').trim(),price=Number(rawPrice);
+  if(!rawPrice||!/^\d+(?:\.\d{1,2})?$/.test(rawPrice)||!Number.isFinite(price)||price<0.2||price>10000)
+   throw Error('Enter your approved GBP selling price (at least £0.20, no more than two decimal places).');
+  return {
+   format:'sapiver-seamless-seller-kit',version:1,
+   product:{type:'digital',kind:'pattern',name,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true},
+   listingSource:'AI visual description; keyword demand and search volumes are not measured.',
+   reviewRequired:true
+  };
+ }
  const encoder=new TextEncoder(), MAX=20000000;
  const crcTable=Array.from({length:256},(_,i)=>{let c=i;for(let n=0;n<8;n++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
  const encode=s=>encoder.encode(s),binary=v=>typeof v==='string'?encode(v):v;
@@ -88,6 +117,7 @@
   await new Promise(ok=>requestAnimationFrame(()=>requestAnimationFrame(ok)));
   let big,small,prev;
   try{
+   const listing=listingDetails();
    const stem=(state.fileName||'seamless-pattern').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'seamless-pattern',files=[];
    big=render(5000);
    files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
@@ -106,10 +136,11 @@
    }
    prev=preview(false);seller.push({name:'LISTING-IMAGES/01-pattern.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
    prev.width=prev.height=0;prev=preview(true);seller.push({name:'LISTING-IMAGES/02-repeat.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
-   const title=byId('metaName')?.value?.trim()||stem.replace(/-/g,' '),tags=(byId('metaTags')?.value||'').split(',').map(x=>x.trim()).filter(x=>x.length<=20);
-   const note='Seller checklist — one design: '+title+'\nEtsy shop section: Digital Downloads\nDigital seamless pattern, not a physical product.\nCheck listing title, max 13 Etsy tags under 20 characters, pricing, AI disclosure, the 3×3 repeat, and all customer files before approval.\nSuggested terms (not live keyword research): '+tags.join(', ')+'\nNo SVG vector or embroidery machine files are implied.\n';
+   seller.push({name:'LISTING-METADATA.json',data:encode(JSON.stringify(listing,null,2)+'\\n')});
+   const note='One design: '+listing.product.name+'\\nPrice: £'+listing.product.price.toFixed(2)+'\\nEtsy section: Digital Downloads\\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\\nSource: AI visual description, not live search-volume research.\\nReview before approving Etsy deployment.\\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note)});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
+   try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
    status.textContent='Commercial seller kit downloaded. '+pieces.length+' customer ZIP(s), EACH with licence, About and instructions, plus 2 listing previews. Review before publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
