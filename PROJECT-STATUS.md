@@ -1,3 +1,42 @@
+## 10 November 2026 — PR #33: full export/browser tests PASSED, production release pending
+- **GitHub CI verified:** workflow `42780024861` on head `85c9e5610feeee1b841e39c8c820aabeadbea8ae`, job `129707543527` SUCCESS. Node test runner passed **9 tests**; Playwright Chromium at 390×844 completed original AI metadata test and generated a **real 5000×5000 commercial seller ZIP** from a 256px synthetic tile. Python zipfile confirmed two-level ZIP CRCs, four actual PNG/JPG image assets, 5000/2500 PNG dimensions and pHYs metadata, mandatory LICENSE/README/ABOUT in customer ZIP, and 2 seller listing JPGs.
+- Source CI test: `tests/auto-seamless-commercial-browser.mjs`, which is now wired into `.github/workflows/auto-seamless-vision-checks.yml`. PR: https://github.com/sapiverpress-studio/Pattern-forge/pull/33 .
+- Scope remains exclusively `auto-seamless/`, tests and this record. This confirms one simple pattern and one customer ZIP; complex artwork may exceed 20 MB/asset and fail safely. No actual Android device, buyer purchase or Etsy publish tested.
+- **Deployment:** not yet performed at this checkpoint. Owner explicitly authorised test then production deployment; merge to main and verify Netlify deploy for the exact released commit. No Work credits.
+---
+
+## 10 November 2026 — Commercial buyer ZIP regression test committed (development only)
+- Added `tests/auto-seamless-commercial-kit.test.mjs` on branch `feature/auto-seamless-commercial-seller-kit-20261110` (commit `300f0467b0aeec7e225ed4dcdfca1e3ddfdc844a`). It loads the actual source grouping functions and asserts that each independently delivered part contains the exact three documents, stays inside the 20 MB cap and rejects missing-document/oversized/>5-part cases.
+- Focused isolated execution of the actual GitHub packaging functions passed before the test was committed. The new Node test file is committed but **its GitHub Actions/Node suite has not yet been executed**; the existing vision workflow was not altered or triggered.
+- No deployment, main merge, live site update, paid call or marketplace changes. Full browser creation and nested seller-kit acceptance remain the release gate.
+---
+
+## 10 November 2026 — All independently downloadable buyer ZIPs now contain customer documents (development only)
+- **Issue:** First seller-kit version treated LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt like ordinary assets. With multiple Etsy buyer ZIP parts, documents could occur only in one part, leaving other customers without licence details.
+- **Fix:** `auto-seamless/commercial-kit.js` now packs image assets separately, reserves exact ZIP overhead for three mandatory document files, and duplicates the same document payloads into **every** buyer ZIP. Oversize/too-many-part cases fail without shrinking artwork; invalid/missing document fetches still fail before any ZIP is offered.
+- **Scope:** Only the Auto Seamless page and its commercial ZIP exporter. Existing standalone tile/5000px exports, main Pattern Forge editor, Doodle and knitting modules unchanged.
+- **Verification:** Executed the *committed GitHub version* of the pack/size functions in an isolated JavaScript test. Two 12 MB/11 MB asset groups retained all three documents, each under 20,000,000 bytes; missing documents, oversized single asset and more than five groups were rejected. This is focused code-level verification, not a full browser/Android/Netlify test.
+- **Repo:** `feature/auto-seamless-commercial-seller-kit-20261110`, commercial-kit implementation commit `e3b34620256a5b5d2e0077c2556e911155e873ce`. No main merge, site deployment, paid gateway call, Etsy section change or listing publication.
+- **Next:** Run actual 5000px browser generation with the source file, inspect nested ZIPs and import the result into the Poster Gen digital review route. Owner to approve a single tested production release.
+---
+
+## 10 November 2026 — Export readiness event timing correction (development only)
+- Auto Seamless now emits its commercial-kit readiness event after the image analysis busy flag clears; confirmation before analysis completion no longer leaves the export button disabled.
+- Exact scope: `auto-seamless/index.html` and this status entry. No other Pattern Forge tools or publishing systems changed. Staged only; full physical mobile acceptance pending.
+
+---
+
+## 10 November 2026 — Commercial seller-kit export (development branch only)
+
+- Owner clarified that the new export control belongs **only on /auto-seamless/**; main editor, Doodle, knitting and other Pattern Forge modules remain unchanged.
+- Branch: `feature/auto-seamless-commercial-seller-kit-20261110` based on `09066febdffc33cd1b7ce72eff9714fc11f66723`.
+- Files: `auto-seamless/index.html`, `auto-seamless/commercial-kit.js`, three buyer documents under `auto-seamless/commercial/`.
+- Workflow: owner checks 3×3 preview, creates one-design seller kit with PNG 5000px and 2500px, 5000px JPG, original repeat tile, two listing JPEGs, licence, README, About and seller-only checklist. ZIP format is stored/lossless and independent files are grouped into <=5 customer ZIPs, each <20,000,000 bytes. Oversize art fails instead of being silently degraded. SVG and machine embroidery files are not fabricated.
+- Local coding validation: JavaScript parsed with source syntax check; a simulated ZIP encoder produced CRC-valid outer and nested ZIPs (not a full mobile end-to-end test of this branch source). No paid inference, merchant actions or deployment occurred during preparation.
+- Release status: **STAGED ONLY**. No main merge, live deployment or user-device acceptance. Validate full browser and nested seller-kit import before owner-approved production release. Customer licence is a commercial draft requiring owner review.
+
+---
+
 ## 9 November 2026 — Genuine automatic vision listing LIVE, production inference TESTED
 
 **User requirement:** A single image upload must identify its visual subject and automatically populate a Redbubble title, one main tag, 14 further tags and an AI-disclosed description, while preserving automatic seamless output. No manual subject dropdown or filename-dependent fallback.

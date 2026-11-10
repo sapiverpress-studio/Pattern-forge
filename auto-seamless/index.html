@@ -53,6 +53,16 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the larger motif crop; inspect it before exporting</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
 </section>
 </div>
+<section class="panel" id="commercial-kit-panel" aria-label="Commercial seller kit export">
+ <div class="eyebrow">Sapiver Prints · commercial files</div>
+ <h2>5. Download a commercial seller kit</h2>
+ <p>One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP for the existing Poster Gen digital uploader.</p>
+ <p class="info">Includes 5000px PNG and JPG, 2500px PNG, the original seamless repeat tile, two listing previews and buyer documents. SVG is not supplied unless a genuine vector source exists. No embroidery machine files are invented.</p>
+ <label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0"><input id="commercialReviewConfirmed" type="checkbox" style="margin-top:4px"><span>I have inspected the 3 × 3 preview and confirmed that the repeat and artwork are suitable for sale.</span></label>
+ <button id="downloadCommercial" class="primary" disabled style="width:100%">Download Commercial Seller Kit ZIP</button>
+ <p id="commercialExportStatus" class="status" role="status" aria-live="polite" style="margin-top:12px">Review the repeating preview and confirm before export.</p>
+ <p class="info">If any lossless file cannot fit Etsy’s 20 MB download limit, the export stops rather than reducing quality. You review and approve the Etsy listing separately.</p>
+</section>
 <section class="panel metaCard" id="redbubble-metadata" aria-label="Automatic Redbubble title and tags">
  <div class="eyebrow">Sales listing · Redbubble</div>
  <h2>4. Automatic title, tags and description</h2>
@@ -86,7 +96,7 @@ async function loadFile(file){
  if(!file)return;
  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){setStatus('Please select a PNG, JPG or WebP image.','error');return}
  if(file.size>70*1024*1024){setStatus('This image is too large for reliable mobile processing. Try a file under 70 MB.','error');return}
- busy(true);state.tile=null;setStatus('Reading image…');
+ busy(true);state.tile=null;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
  try{
   let bmp=await createImageBitmap(file);
   if(bmp.width<96||bmp.height<96)throw new Error('Image is too small to analyse (minimum 96 × 96 pixels).');
@@ -184,7 +194,7 @@ async function autoDetect(){
  if(grade==='Weak')setStatus('No clean full-motif repeat found. The larger crop preserves your design, but a visible join may remain. Inspect the 3 × 3 preview.','warn');
  else if(grade==='Possible')setStatus('A larger candidate repeat was found. Check the 3 × 3 preview for cable or motif alignment before exporting.','warn');
  else setStatus('Larger repeating motif detected. Inspect the 3 × 3 preview before using the export.','good');
- await buildTile();busy(false);
+ await buildTile();busy(false);window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
 function buildTile(){
  if(!state.crop||!state.source)return;
@@ -215,7 +225,7 @@ function buildTile(){
  for(let col=0;col<w;col++)for(let ch=0;ch<4;ch++)pixels[(((h-1)*w+col)<<2)+ch]=pixels[(col<<2)+ch];
  cx.putImageData(out,0,0);
  state.tile={w,h};paintPreview();paintSource();
- $('downloadTile').disabled=false;$('download5000').disabled=false;
+ $('downloadTile').disabled=false;$('download5000').disabled=false;window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
 function paintPreview(){
  const t=state.tile;if(!t)return;
@@ -274,5 +284,6 @@ $('downloadTile').addEventListener('click',()=>exportImage(false));
 $('download5000').addEventListener('click',()=>exportImage(true));
 </script>
 <script src="/auto-seamless/metadata.js"></script>
+<script src="/auto-seamless/commercial-kit.js"></script>
 </body>
 </html>
