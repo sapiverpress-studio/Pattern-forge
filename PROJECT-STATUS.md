@@ -1,3 +1,14 @@
+## 10 November 2026 — Commercial seller-kit export (development branch only)
+
+- Owner clarified that the new export control belongs **only on /auto-seamless/**; main editor, Doodle, knitting and other Pattern Forge modules remain unchanged.
+- Branch: `feature/auto-seamless-commercial-seller-kit-20261110` based on `09066febdffc33cd1b7ce72eff9714fc11f66723`.
+- Files: `auto-seamless/index.html`, `auto-seamless/commercial-kit.js`, three buyer documents under `auto-seamless/commercial/`.
+- Workflow: owner checks 3×3 preview, creates one-design seller kit with PNG 5000px and 2500px, 5000px JPG, original repeat tile, two listing JPEGs, licence, README, About and seller-only checklist. ZIP format is stored/lossless and independent files are grouped into <=5 customer ZIPs, each <20,000,000 bytes. Oversize art fails instead of being silently degraded. SVG and machine embroidery files are not fabricated.
+- Local coding validation: JavaScript parsed with source syntax check; a simulated ZIP encoder produced CRC-valid outer and nested ZIPs (not a full mobile end-to-end test of this branch source). No paid inference, merchant actions or deployment occurred during preparation.
+- Release status: **STAGED ONLY**. No main merge, live deployment or user-device acceptance. Validate full browser and nested seller-kit import before owner-approved production release. Customer licence is a commercial draft requiring owner review.
+
+---
+
 ## 9 November 2026 — Genuine automatic vision listing LIVE, production inference TESTED
 
 **User requirement:** A single image upload must identify its visual subject and automatically populate a Redbubble title, one main tag, 14 further tags and an AI-disclosed description, while preserving automatic seamless output. No manual subject dropdown or filename-dependent fallback.
