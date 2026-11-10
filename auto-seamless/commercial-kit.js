@@ -136,8 +136,8 @@
    }
    prev=preview(false);seller.push({name:'LISTING-IMAGES/01-pattern.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
    prev.width=prev.height=0;prev=preview(true);seller.push({name:'LISTING-IMAGES/02-repeat.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
-   seller.push({name:'LISTING-METADATA.json',data:encode(JSON.stringify(listing,null,2)+'\\n')});
-   const note='One design: '+listing.product.name+'\\nPrice: £'+listing.product.price.toFixed(2)+'\\nEtsy section: Digital Downloads\\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\\nSource: AI visual description, not live search-volume research.\\nReview before approving Etsy deployment.\\n';
+   seller.push({name:'LISTING-METADATA.json',data:encode(JSON.stringify(listing,null,2)+'\n')});
+   const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+'\nEtsy section: Digital Downloads\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\nSource: AI visual description, not live search-volume research.\nReview before approving Etsy deployment.\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note)});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
