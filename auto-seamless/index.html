@@ -194,7 +194,7 @@ async function autoDetect(){
  if(grade==='Weak')setStatus('No clean full-motif repeat found. The larger crop preserves your design, but a visible join may remain. Inspect the 3 × 3 preview.','warn');
  else if(grade==='Possible')setStatus('A larger candidate repeat was found. Check the 3 × 3 preview for cable or motif alignment before exporting.','warn');
  else setStatus('Larger repeating motif detected. Inspect the 3 × 3 preview before using the export.','good');
- await buildTile();busy(false);
+ await buildTile();busy(false);window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
 function buildTile(){
  if(!state.crop||!state.source)return;

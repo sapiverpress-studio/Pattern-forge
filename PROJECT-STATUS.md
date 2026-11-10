@@ -1,3 +1,9 @@
+## 10 November 2026 — Export readiness event timing correction (development only)
+- Auto Seamless now emits its commercial-kit readiness event after the image analysis busy flag clears; confirmation before analysis completion no longer leaves the export button disabled.
+- Exact scope: `auto-seamless/index.html` and this status entry. No other Pattern Forge tools or publishing systems changed. Staged only; full physical mobile acceptance pending.
+
+---
+
 ## 10 November 2026 — Commercial seller-kit export (development branch only)
 
 - Owner clarified that the new export control belongs **only on /auto-seamless/**; main editor, Doodle, knitting and other Pattern Forge modules remain unchanged.
