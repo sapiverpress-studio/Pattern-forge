@@ -1,3 +1,11 @@
+## 10 November 2026 — One seller ZIP carries complete Etsy listing data (development branch; not released)
+- **Owner correction:** The previous commercial ZIP requires manually entering title, price, description and tags in Poster Gen, unlike the physical bulk ZIP importer. The desired workflow is *one uploadable seller ZIP*, which includes customer-download ZIP(s), licence, About, instructions, listing previews and machine-readable product metadata.
+- **Implementation:** On `feature/auto-seamless-manifest-upload-20261110`, changed ONLY `auto-seamless/index.html`, `auto-seamless/commercial-kit.js`, and `tests/auto-seamless-commercial-browser.mjs`. New seller price field is saved to the user's browser after an export; no unapproved price is invented. Export requires complete AI visual metadata and emits `LISTING-METADATA.json` with version, name, subject, AI-disclosed description, GBP price, 5-13 deduplicated Etsy tags of <=20 characters, Digital Downloads section, buyer-doc flag and repeat approval. Original ZIP contents and 20 MB-per-buyer limit retained. No separate second download required; the outer ZIP is the uploader file.
+- **Test added:** Existing real 5000px browser CI script now enters £4.95 and checks manifest contents and the customer files. This checkpoint records source edits, NOT a CI success. A separate Poster Gen feature branch will parse the manifest on selection.
+- **Risk:** AI metadata is descriptive, NOT verified buyer keyword demand; artwork needing a customer ZIP larger than 20 MB still fails safely. Actual personal Android device not tested.
+- **Release:** Development only. No main merge, production deploy, Etsy listing or paid inference here. Next: PR + browser CI, verify importer, then seek/confirm the user's release instruction before publishing.
+---
+
 ## CURRENT RELEASE — 10 November 2026: Auto Seamless commercial seller kit LIVE (source/deploy verified)
 - **Owner request:** Add seller-kit ZIP export exclusively to Auto Seamless; include LICENCE, About Us and README in every independently delivered buyer ZIP; test, then release.
 - **GitHub PR:** [#33](https://github.com/sapiverpress-studio/Pattern-forge/pull/33) merged as `bfba24284d57d7bd8942d71e8e467d246cca6b44` into `main`. Scope checked: `auto-seamless/`, relevant CI tests/workflow and this status file only.

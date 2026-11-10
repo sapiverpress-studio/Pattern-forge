@@ -38,6 +38,8 @@ try{
  await page.waitForFunction(()=>!document.querySelector('#downloadTile').disabled,null,{timeout:45000});
  assert.equal(await page.locator('#downloadCommercial').isDisabled(),true,
   'owner must confirm repeat quality first');
+ await page.waitForFunction(()=>Boolean(document.querySelector('#metaName')?.value),null,{timeout:15000});
+ await page.locator('#commercialPrice').fill('4.95');
  await page.locator('#commercialReviewConfirmed').check();
  await page.waitForFunction(()=>!document.querySelector('#downloadCommercial').disabled,null,{timeout:10000});
  const wait=page.waitForEvent('download',{timeout:120000});
@@ -50,6 +52,18 @@ import io,sys,zipfile,struct
 with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert envelope.testzip() is None, 'outer ZIP CRC mismatch'
     names=envelope.namelist()
+    import json
+    manifest=json.loads(envelope.read('LISTING-METADATA.json'))
+    assert manifest['format']=='sapiver-seamless-seller-kit' and manifest['version']==1
+    product=manifest['product']
+    assert product['name']=='Blue Grid Textile Pattern'
+    assert product['price']==4.95
+    assert product['kind']=='pattern' and product['sectionTitle']=='Digital Downloads'
+    assert product['description'].endswith('aid of AI.')
+    assert product['useEmbeddedText'] and product['seamlessConfirmed']
+    assert 5<=len(product['tags'])<=13
+    assert len({t.lower() for t in product['tags']})==len(product['tags'])
+    assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]
     assert 1<=len(buyers)<=5,names
     assert len([n for n in names if n.startswith('LISTING-IMAGES/')])==2,names
