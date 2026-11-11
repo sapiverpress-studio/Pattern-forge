@@ -73,11 +73,67 @@
   }
   return canvas;
  }
+
+ const PREVIEW_SIZE=2400;
  function preview(tiled){
-  const canvas=document.createElement('canvas');canvas.width=canvas.height=1100;
-  const c=canvas.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,1100,1100);
-  if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*550,y*550,550,550);}
-  else{const r=render(1100);c.drawImage(r,0,0);r.width=r.height=0;}
+  const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+  const c=canvas.getContext('2d');if(!c)throw Error('Listing image rendering unavailable');
+  c.fillStyle='#fff';c.fillRect(0,0,size,size);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+  if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*1200,y*1200,1200,1200);}
+  else{const r=render(size);c.drawImage(r,0,0);r.width=r.height=0;}
+  return canvas;
+ }
+ function previewMockup(){
+  const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+  const c=canvas.getContext('2d');if(!c)throw Error('Mock-up rendering unavailable');
+  const bg=c.createLinearGradient(0,0,size,size);bg.addColorStop(0,'#e9e5dc');bg.addColorStop(1,'#f8f5ef');
+  c.fillStyle=bg;c.fillRect(0,0,size,size);
+  c.fillStyle='#273e38';c.font='bold 82px system-ui';c.fillText('PATTERN IN CONTEXT',145,205);
+  c.fillStyle='#556861';c.font='48px system-ui';c.fillText('Illustrative fabric cushion mock-up',145,285);
+  c.save();c.translate(1220,1210);c.rotate(-0.07);
+  c.shadowColor='rgba(22,35,29,.34)';c.shadowBlur=100;c.shadowOffsetY=65;
+  c.fillStyle='#fff';c.beginPath();c.roundRect(-765,-765,1530,1530,150);c.fill();
+  c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;
+  c.clip();
+  const art=render(1550);c.drawImage(art,-765,-765,1530,1530);art.width=art.height=0;
+  const shade=c.createLinearGradient(-765,0,765,0);shade.addColorStop(0,'rgba(0,0,0,.22)');shade.addColorStop(.16,'rgba(255,255,255,.1)');shade.addColorStop(.8,'rgba(255,255,255,.06)');shade.addColorStop(1,'rgba(0,0,0,.19)');
+  c.fillStyle=shade;c.fillRect(-765,-765,1530,1530);
+  c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=13;c.strokeRect(-742,-742,1484,1484);
+  c.restore();
+  c.fillStyle='#273e38';c.font='bold 52px system-ui';c.fillText('DIGITAL PATTERN FILES',145,2230);
+  c.fillStyle='#556861';c.font='40px system-ui';c.fillText('Visualisation only - cushion is not supplied',145,2300);
+  return canvas;
+ }
+ function previewContents(listing,accepted,partCount){
+  const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+  const c=canvas.getContext('2d');if(!c)throw Error('Contents image rendering unavailable');
+  c.fillStyle='#f7f4ec';c.fillRect(0,0,size,size);
+  c.fillStyle='#263c35';c.font='bold 92px system-ui';c.fillText('WHAT IS INCLUDED',125,215);
+  c.fillStyle='#61746b';c.font='48px system-ui';c.fillText('One seamless design - digital download',125,298);
+  const side=Math.min(tileCanvas.width,tileCanvas.height),sx=Math.round((tileCanvas.width-side)/2),sy=Math.round((tileCanvas.height-side)/2);
+  c.drawImage(tileCanvas,sx,sy,side,side,130,400,980,980);
+  c.strokeStyle='#d8d2c6';c.lineWidth=10;c.strokeRect(130,400,980,980);
+  c.fillStyle='#263c35';c.font='bold 54px system-ui';c.fillText('MOTIF CLOSE-UP',130,1470);
+  c.font='bold 65px system-ui';c.fillText('Your files',1200,490);
+  const hasFullPNG=accepted.some(f=>/-5000px-300dpi-repeat\.png$/i.test(f.name));
+  const formats=[
+   '5000 x 5000 JPG image',
+   hasFullPNG?'5000 x 5000 PNG image':'5000px PNG not included',
+   '2500 x 2500 PNG image',
+   'Seamless repeat tile PNG',
+   'Commercial-use licence',
+   'Instructions + About'
+  ];
+  c.font='48px system-ui';
+  for(let i=0;i<formats.length;i++){
+   c.fillStyle=i===1&&!hasFullPNG?'#8a5324':'#263c35';
+   c.fillText((i===1&&!hasFullPNG?'! ':'- ')+formats[i],1200,615+i*133,1090);
+  }
+  c.fillStyle='#263c35';c.font='bold 57px system-ui';c.fillText(partCount+' Etsy download ZIP'+(partCount===1?'':'s'),1200,1570);
+  c.fillStyle='#607168';c.font='45px system-ui';c.fillText('PNG assets include 300 DPI metadata',1200,1670,1080);
+  c.fillStyle='#263c35';c.font='bold 63px system-ui';c.fillText(String(listing.product.name).slice(0,95),125,2020,2150);
+  c.fillStyle='#61746b';c.font='45px system-ui';c.fillText('Digital files only - no physical product',125,2115);
+  c.fillText('Review the item description for exact formats',125,2190);
   return canvas;
  }
  async function documentText(name){
@@ -178,15 +234,40 @@
     const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
     seller.push({name:'UPLOAD-TO-ETSY/'+stem.slice(0,49)+'-part-'+(i+1)+'.zip',data:await getBytes(buyer)});
    }
-   prev=preview(false);seller.push({name:'LISTING-IMAGES/01-pattern.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
-   prev.width=prev.height=0;prev=preview(true);seller.push({name:'LISTING-IMAGES/02-repeat.jpg',data:await getBytes(await toBlob(prev,'image/jpeg',0.94))});
+   // Four independent 2400px Etsy photographs: cover, repeat evidence, honest context mock-up and contents/detail.
+   for(const [imageName,makeImage] of [
+    ['01-pattern.jpg',()=>preview(false)],
+    ['02-repeat.jpg',()=>preview(true)],
+    ['03-cushion-visualisation.jpg',()=>previewMockup()],
+    ['04-files-and-detail.jpg',()=>previewContents(listing,accepted,pieces.length)]
+   ]){
+    status.textContent='Rendering listing image '+imageName+' at 2400 x 2400…';
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    prev=makeImage();
+    const data=await getBytes(await toBlob(prev,'image/jpeg',0.9));
+    if(!data.length)throw Error('Listing image export is empty: '+imageName);
+    seller.push({name:'LISTING-IMAGES/'+imageName,data});
+    prev.width=prev.height=0;prev=null;
+   }
    seller.push({name:'LISTING-METADATA.json',data:encode(JSON.stringify(listing,null,2)+'\n')});
+   const quality=[
+    'QUALITY CHECK - automated packaging checks only',
+    'Seller kit: '+stem,
+    'Buyer ZIP files: '+pieces.length+' (each at or below 20,000,000 bytes)',
+    'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt',
+    'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
+    '5000px PNG included: '+(omitted.length?'NO - oversize disclosed':'YES'),
+    '5000px JPG, 2500px PNG and seamless tile: included',
+    'Seamless repeat and print results: require owner visual review; not guaranteed by export',
+    'Etsy publication: NOT automatic; Poster Gen approval required'
+   ];
+   seller.push({name:'QUALITY-CHECK.txt',data:encode(quality.join('\n')+'\n')});
    const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+'\nEtsy section: Digital Downloads\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\nSource: AI visual description, not live search-volume research.\nReview before approving Etsy deployment.\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+(listing.formatWarnings||[]).join('\n'))});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and checked. '+(omitted.length?'WARNING: 5000px PNG exceeded Etsy’s limit and is not included; the 5000px JPG, 2500px PNG and seamless tile ARE included. This is disclosed in the listing. ':'All four artwork formats included. ')+'Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. '+(omitted.length?'WARNING: 5000px PNG exceeded Etsy’s limit and is not included; the 5000px JPG, 2500px PNG and seamless tile ARE included. This is disclosed in the listing. ':'All four artwork formats included. ')+'Review before Etsy publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
