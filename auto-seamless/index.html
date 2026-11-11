@@ -57,7 +57,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <div class="eyebrow">Sapiver Prints · commercial files</div>
  <h2>5. Download a commercial seller kit</h2>
  <p>One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.</p>
- <p class="info">Normally includes 5000px PNG and JPG, 2500px PNG, the original seamless repeat tile, two listing previews and buyer documents. If the 5000px PNG cannot fit Etsy even after lossless compression, a clearly disclosed JPG-at-5000px alternative is delivered instead; other required PNGs are retained. SVG is not supplied unless a genuine vector source exists. No embroidery machine files are invented.</p>
+ <p class="info">Normally includes 5000px PNG and JPG, 2500px PNG, the original seamless repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up, close-up and file contents) and buyer documents. If the 5000px PNG cannot fit Etsy even after lossless compression, a clearly disclosed JPG-at-5000px alternative is delivered instead; other required PNGs are retained. SVG is not supplied unless a genuine vector source exists. No embroidery machine files are invented.</p>
  <label for="commercialPrice" style="display:block;margin:14px 0 6px;font-weight:700">Etsy digital selling price (£ GBP)</label>
  <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
  <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
@@ -287,6 +287,6 @@ $('downloadTile').addEventListener('click',()=>exportImage(false));
 $('download5000').addEventListener('click',()=>exportImage(true));
 </script>
 <script src="/auto-seamless/metadata.js"></script>
-<script src="/auto-seamless/commercial-kit.js?v=20261110-zip-compression"></script>
+<script src="/auto-seamless/commercial-kit.js?v=20261111-etsy-preview-quality"></script>
 </body>
 </html>
