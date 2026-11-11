@@ -1,3 +1,13 @@
+## CURRENT RELEASE — 11 November 2026: upgraded Auto Seamless Etsy preview package LIVE
+- **Feature:** One seller ZIP still carries original customer deliverables, licence/README/About in every buyer ZIP, listing metadata and owner-controlled price. Four separate 2400 x 2400 JPG listing photos now include the hero pattern, 2x2 repeat evidence, explicitly illustrative cushion visualisation, and motif detail/files included. `QUALITY-CHECK.txt` reports actual packaging expectations and warns that repeat/print quality still needs human checking. Optional oversize 5000px PNG remains transparently disclosed, never silently downscaled.
+- **Source / PR:** [#36](https://github.com/sapiverpress-studio/Pattern-forge/pull/36) merged into `main` as `19f2ddbd954809d3241200fcdee3b82aa57123cd`.
+- **Tests VERIFIED:** Actions run `42978285334`, job `130382411052` SUCCESS. 12 Node tests passed, zero failures. A 390px-wide Chromium test generated real 5000px images, inspected nested customer ZIPs, and checked four 2400px listing photos and complete legal documents.
+- **Netlify VERIFIED:** Production site `sapiver-pattern-forge` deploy `6af417891bde0c0834e5d04c` READY on `main`, exact source commit `19f2ddbd954809d3241200fcdee3b82aa57123cd`, published 2026-11-11T07:22:00.770Z, error null.
+- **Limits:** Independent public HTTP retrieval was unavailable to the assistant, and physical owner's Android test has not occurred. No buyer purchase, Etsy listing edit or output print proof was performed. Automatic metadata is not live keyword research.
+- **Cost:** One production deploy resulting from the approved merge; no Work credits. This documentation-only checkpoint uses `[skip netlify]` to avoid a second production build.
+- **Next:** Generate the next seller kit from `/auto-seamless/`, inspect its images and buyer ZIP contents, then review in Poster Gen before manually approving Etsy publication.
+---
+
 ## DEVELOPMENT CHECKPOINT — 11 November 2026: improved digital-pattern listing previews (NOT RELEASED)
 - **Owner request:** Improve the next commercial seller kit's Etsy photographs and quality evidence without altering the working physical-product publisher or silently lowering buyer-file quality.
 - **Branch:** `feature/etsy-preview-quality-20261111` (isolated from production `main`).
