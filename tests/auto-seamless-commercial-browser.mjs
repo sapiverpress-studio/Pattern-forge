@@ -72,7 +72,7 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert b'2400 x 2400' in envelope.read('QUALITY-CHECK.txt')
     for image in previews:
         jpg=envelope.read(image)
-        assert jpg.startswith(b'\\xff\\xd8'),image
+        assert jpg.startswith(b'\xff\xd8'),image
         i=2
         dimensions=None
         while i<len(jpg)-8:
