@@ -66,7 +66,25 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]
     assert 1<=len(buyers)<=5,names
-    assert len([n for n in names if n.startswith('LISTING-IMAGES/')])==2,names
+    previews=[n for n in names if n.startswith('LISTING-IMAGES/')]
+    assert len(previews)==4,names
+    assert 'QUALITY-CHECK.txt' in names
+    assert b'2400 x 2400' in envelope.read('QUALITY-CHECK.txt')
+    for image in previews:
+        jpg=envelope.read(image)
+        assert jpg.startswith(b'\\xff\\xd8'),image
+        i=2
+        dimensions=None
+        while i<len(jpg)-8:
+            if jpg[i]!=255: i+=1; continue
+            marker=jpg[i+1]
+            if marker in (0xD8,0xD9): i+=2; continue
+            length=int.from_bytes(jpg[i+2:i+4],'big')
+            if marker in (0xC0,0xC1,0xC2):
+                dimensions=tuple(struct.unpack('>HH',jpg[i+5:i+9]))
+                break
+            i+=2+length
+        assert dimensions==(2400,2400),(image,dimensions)
     assets=[]
     for buyer in buyers:
         data=envelope.read(buyer)
@@ -89,7 +107,7 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
                     else: assert body.startswith(b'\xff\xd8')
                     assets.append(f)
     assert len(assets)==4,assets
-    print('PASS REAL BROWSER ZIP:',len(buyers),'buyer ZIP(s),',len(assets),'artwork formats, all buyer legal documents present')
+    print('PASS REAL BROWSER ZIP:',len(buyers),'buyer ZIP(s),',len(assets),'artwork formats, 4 verified 2400px previews, all buyer legal documents present')
 `;
  const test=spawnSync('python3',['-c',py,downloaded],{encoding:'utf8',timeout:30000});
  assert.equal(test.status,0,test.stderr||test.stdout);
