@@ -1,0 +1,53 @@
+{
+  "knittr": {
+    "file": "Knittr v0.1.blend",
+    "node_group": "Knittr v0.1",
+    "controls": {
+      "stitch_scale": "Division",
+      "organic_variation": "Distortion",
+      "wool_fuzz": "Fuzziness",
+      "shape_shear": "Shape [Shear]",
+      "yarn_thickness": "Shape [Thickness]",
+      "fibre_density": "Fibers"
+    },
+    "fluff_group": "Fluff",
+    "fluff_controls": {
+      "flyaway_amount": "Amount",
+      "flyaway_size_mod": "Size Mod",
+      "flyaway_thickness": "Thickness"
+    },
+    "presets": [
+      "Knittr - Example 1",
+      "Knittr - Example 2",
+      "Knittr - Example 3"
+    ]
+  },
+  "weavr": {
+    "file": "Weavr-v1_0.blend",
+    "node_group": "Weavr-v1_0",
+    "controls": {
+      "weave_scale": "Division",
+      "warp_threads": "Threads 1",
+      "weft_threads": "Threads 2",
+      "warp_gaps": "Gaps 1",
+      "weft_gaps": "Gaps 2",
+      "distortion": "Distortion",
+      "fibres": "Fibers",
+      "fuzziness": "Fuzziness",
+      "irregularity": "Errors"
+    },
+    "presets": [
+      "01 Weavr",
+      "02 Weavr",
+      "03 Weavr",
+      "04 Weavr",
+      "05 Weavr"
+    ]
+  },
+  "exclusions": [
+    {
+      "file": "B'rn_v0.1-1.blend",
+      "reason": "Volumetric fire; not knitted/woven fabric"
+    }
+  ]
+}
