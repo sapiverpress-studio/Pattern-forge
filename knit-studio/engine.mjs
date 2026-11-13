@@ -12,7 +12,14 @@ export const PALETTES=Object.freeze({
  cream:['#e9d7b6','#ebd9b5','#24344f'],
  sage:['#9cb396','#ead7b4','#345846'],
  denim:['#729ac6','#ead7b4','#233e60'],
- berry:['#88312d','#ebd9b5','#172a42']
+ berry:['#88312d','#ebd9b5','#172a42'],
+ snowFrost:['#284c74','#f4f0e8','#9ebed3'],
+ snowNordic:['#992d33','#f4e8ca','#254969'],
+ snowForest:['#315c4f','#f2ead9','#afc3ad'],
+ diamondsHeritage:['#b69168','#303e59','#eee1bd'],
+ chevronsEarth:['#af7658','#eadbc0','#5d6f56'],
+ stripesMarine:['#2d5071','#efe4cd','#b04a3f'],
+ checkerAutumn:['#7d4c36','#e6d5b8','#65744a']
 });
 export const DEFAULTS=Object.freeze({
  style:'stockinette',gauge:'mega',colour:'#e9d7b6',contrast:'#234872',
@@ -33,7 +40,7 @@ export function normalize(x={}){
   variation:clamp(Number(x.variation)||0,0,100),
   fibres:clamp(Number(x.fibres)||0,0,100),
   subtleColours:x.subtleColours===true,
-  layeredYarn:x.layeredYarn===true&&['stockinette','fairisle'].includes(x.style),
+  layeredYarn:x.layeredYarn===true,
   angle:[0,90,180,270].includes(Number(x.angle))?Number(x.angle):0,
   name:typeof x.name==='string'?x.name.slice(0,70):DEFAULTS.name,
   motifActive:x.motifActive===true,chartCols:chart.cols,chartCells:chart.cells
