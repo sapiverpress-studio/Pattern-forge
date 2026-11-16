@@ -1,3 +1,13 @@
+## DEVELOPMENT CHECKPOINT — 16 November 2026: optional format warning kept seller-only (STAGED, NOT DEPLOYED)
+- **Owner report:** Commercial kit 50725 imported a negative-format explanation into the public Etsy listing description. Actual outer ZIP inspection confirmed 2 complete buyer ZIPs containing the 5000 × 5000 JPG, 2500 × 2500 PNG, seamless tile PNG, and required customer documents. The optional 5000 × 5000 lossless PNG exceeded Etsy's per-file limit and was not included.
+- **Root cause:** `auto-seamless/commercial-kit.js` appended a packaging warning directly to `listing.product.description`, which Poster Gen correctly imported verbatim.
+- **Staged fix:** Isolated branch `fix/seller-format-warning-20261116`; optional-format warning now remains in seller-only `formatWarnings`, `QUALITY-CHECK.txt`, `SELLER-CHECKLIST.txt` and the owner's export status. Customer description stays focused on the artwork; buyer files and 20 MB guard stay unchanged. Added a regression test proving the listing description is untouched for omitted optional formats.
+- **Verification:** Source change committed; GitHub CI and mobile browser acceptance pending. Separate corrected 50725 kit was rebuilt outside this repository, preserving the buyer ZIP bytes; it is not yet published to Etsy.
+- **Deploy / credit impact:** No production or staging deploy authorised or performed; commits marked `[skip netlify]`. No Etsy/PrintShrimp mutation or Work credits.
+- **Next:** Review PR and CI, then request a separate production-release approval before merging or deploying. Retain the original file-format truth in the seller's quality report.
+
+---
+
 ## CURRENT RELEASE — 11 November 2026: upgraded Auto Seamless Etsy preview package LIVE
 - **Feature:** One seller ZIP still carries original customer deliverables, licence/README/About in every buyer ZIP, listing metadata and owner-controlled price. Four separate 2400 x 2400 JPG listing photos now include the hero pattern, 2x2 repeat evidence, explicitly illustrative cushion visualisation, and motif detail/files included. `QUALITY-CHECK.txt` reports actual packaging expectations and warns that repeat/print quality still needs human checking. Optional oversize 5000px PNG remains transparently disclosed, never silently downscaled.
 - **Source / PR:** [#36](https://github.com/sapiverpress-studio/Pattern-forge/pull/36) merged into `main` as `19f2ddbd954809d3241200fcdee3b82aa57123cd`.
