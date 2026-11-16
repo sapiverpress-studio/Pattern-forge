@@ -70,6 +70,10 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert len(previews)==4,names
     assert 'QUALITY-CHECK.txt' in names
     assert b'2400 x 2400' in envelope.read('QUALITY-CHECK.txt')
+    assert 'formatWarnings' not in manifest
+    assert b'Buyer artwork files:' in envelope.read('QUALITY-CHECK.txt')
+    assert b'not included' not in envelope.read('QUALITY-CHECK.txt').lower()
+    assert b'not included' not in envelope.read('SELLER-CHECKLIST.txt').lower()
     for image in previews:
         jpg=envelope.read(image)
         assert jpg.startswith(b'\xff\xd8'),image

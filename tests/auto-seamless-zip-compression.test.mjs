@@ -13,9 +13,9 @@ const d=source.indexOf('\n function refresh(){',c);
 assert.ok(a>=0&&b>a&&c>b&&d>c,'Source packaging functions must be present');
 // Execute the actual browser writer and lossless preflight from the page with Node22 web streams.
 const status={textContent:''},requestAnimationFrame=fn=>fn();
-const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork}=new Function(
+const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,includedArtworkLabels}=new Function(
  'status','requestAnimationFrame','CompressionStream','Blob','Response',
- source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork};'
+ source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,includedArtworkLabels};'
 )(status,requestAnimationFrame,CompressionStream,Blob,Response);
 const docs=['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'].map(name=>({name,data:new TextEncoder().encode('This document accompanies each buyer ZIP. Permission and instructions remain identical across downloads.')}));
 const asset=(name,data)=>({name,data});
@@ -75,4 +75,20 @@ test('an oversized required JPG cannot be silently removed or downscaled',async(
   asset('test-seamless-tile-300dpi.png',new Uint8Array(240_000))
  ];
  await assert.rejects(prepareCustomerArtwork(images,docs),/remains above Etsy/);
+});
+
+
+test('included-file labels list only packaged digital artwork for three- or four-file exports',()=>{
+ const three=[
+  asset('test-5000px-repeat.jpg',new Uint8Array(2)),
+  asset('test-2500px-300dpi-repeat.png',new Uint8Array(2)),
+  asset('test-seamless-tile-300dpi.png',new Uint8Array(2))
+ ];
+ assert.deepEqual(includedArtworkLabels(three),[
+  '5000 x 5000 JPG image','2500 x 2500 PNG image','Seamless tile PNG'
+ ]);
+ assert.deepEqual(includedArtworkLabels([...three,asset('test-5000px-300dpi-repeat.png',new Uint8Array(2))]),[
+  '5000 x 5000 JPG image','5000 x 5000 PNG image','2500 x 2500 PNG image','Seamless tile PNG'
+ ]);
+ assert.ok(!includedArtworkLabels(three).some(line=>/missing|omitted|not included|original/i.test(line)));
 });
