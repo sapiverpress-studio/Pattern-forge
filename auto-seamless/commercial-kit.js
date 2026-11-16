@@ -201,6 +201,12 @@
     throw Error('Required customer formats are missing. Nothing was downloaded.');
   return {accepted,omitted};
  }
+ function recordFormatWarning(listing,omitted){
+  // Buyer-facing descriptions say what is included. Missing optional formats are
+  // reported to the owner in the seller-only report, never appended to Etsy copy.
+  if(!omitted.length)return;
+  listing.formatWarnings=['Seller-only format check: The 5000 × 5000 lossless PNG exceeded Etsy’s 20 MB per-file limit after compression and is not in the buyer files. The 5000 × 5000 JPG, 2500 × 2500 PNG and seamless tile PNG are included. No image was silently downscaled.'];
+ }
  function refresh(){button.disabled=running||!state.tile||state.busy||!check.checked;}
  window.addEventListener('sapiver:source-changed',()=>{check.checked=false;status.textContent='Review the new 3 × 3 repeat before export.';refresh();});
  window.addEventListener('sapiver:tile-ready',refresh);
@@ -224,11 +230,7 @@
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
    const {accepted,omitted}=await prepareCustomerArtwork(files,documents);
-   if(omitted.length){
-    const warning='Format disclosure: This package includes the original 5000 × 5000 JPG, 2500 × 2500 lossless PNG and seamless repeat tile, but NOT a 5000 × 5000 PNG. That PNG could not fit Etsy’s 20 MB limit even after lossless ZIP compression. No file was downscaled to conceal the limit.';
-    listing.product.description=(listing.product.description+' '+warning).slice(0,1500);
-    listing.formatWarnings=[warning];
-   }
+   recordFormatWarning(listing,omitted);
    const pieces=pack(accepted,documents),seller=[];
    for(let i=0;i<pieces.length;i++){
     const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
@@ -267,7 +269,7 @@
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. '+(omitted.length?'WARNING: 5000px PNG exceeded Etsy’s limit and is not included; the 5000px JPG, 2500px PNG and seamless tile ARE included. This is disclosed in the listing. ':'All four artwork formats included. ')+'Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. '+(omitted.length?'WARNING: 5000px PNG exceeded Etsy’s limit and is not included; the 5000px JPG, 2500px PNG and seamless tile ARE included. See the seller-only quality report; the listing describes only included formats. ':'All four artwork formats included. ')+'Review before Etsy publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
