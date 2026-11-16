@@ -1,3 +1,11 @@
+## LIVE VERIFIED — 16 November 2026: exact included-file seller kit descriptions and previews
+- **Status:** LIVE. Netlify `sapiver-pattern-forge` current production deploy `6afae38082fca8a442f47e2f` is READY, source branch `main`, exact release commit `c20516d4adbc87df75585661328dd6ab99f62d6e`, published 2026-11-16T11:05:54.850Z, error null.
+- **Source/testing:** PR #37 merged; GitHub Actions run `43854073342` SUCCESS (13 Node tests, zero failures; browser ZIP readback and 2400x2400 preview checks passed). Customer-facing files and seller-kit output list actual delivered formats only, with no descriptions of omitted/source-original file formats. Listing preview #4 includes actual formats only. No changes to source artwork or optional-file size handling.
+- **Exact 50725 ZIP:** Clean corrected seller kit generated for manual use in the chat, 2 buyer ZIPs preserved byte-for-byte with 5000x5000 JPG, 2500x2500 PNG, 843x784 seamless tile PNG, customer documents and four Etsy JPG listing images. No Etsy publication was performed.
+- **Limit:** Actual owner's Android export and marketplace preview not independently verified after deployment. The release proves deployed source, CI and ZIP readback, not buyer manufacturing quality.
+- **Cost:** One Netlify production build, zero Work credits. This documentation-only aftercare commit includes [skip netlify] to avoid another build.
+
+---
 ## PRODUCTION RELEASE — 16 November 2026: exact delivered-file seller ZIPs (deploy started; live verification pending)
 - **Approved scope:** Only the actual included digital deliverables appear in generated Etsy listing descriptions, included-files JPG, seller export status, seller checklist and quality report. No source-original or omitted-format explanation is shown. Buyer ZIPs and 20 MB limit unchanged.
 - **Verified:** PR #37 CI run `43854073342` succeeded: 13 Node tests, zero failures; mobile-sized Chromium generated a real seller ZIP with four 2400px listing images, four delivered artwork files for the test fixture, and validated nested buyer ZIPs and documents. User design 50725 separate clean seller kit generated and verified with exactly three delivered image files and two unchanged buyer ZIP attachments.
