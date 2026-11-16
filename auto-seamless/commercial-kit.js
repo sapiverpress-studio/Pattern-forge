@@ -115,25 +115,15 @@
   c.strokeStyle='#d8d2c6';c.lineWidth=10;c.strokeRect(130,400,980,980);
   c.fillStyle='#263c35';c.font='bold 54px system-ui';c.fillText('MOTIF CLOSE-UP',130,1470);
   c.font='bold 65px system-ui';c.fillText('Your files',1200,490);
-  const hasFullPNG=accepted.some(f=>/-5000px-300dpi-repeat\.png$/i.test(f.name));
-  const formats=[
-   '5000 x 5000 JPG image',
-   hasFullPNG?'5000 x 5000 PNG image':'5000px PNG not included',
-   '2500 x 2500 PNG image',
-   'Seamless repeat tile PNG',
-   'Commercial-use licence',
-   'Instructions + About'
-  ];
+  const formats=[...includedArtworkLabels(accepted),'Commercial-use licence','Instructions + About'];
   c.font='48px system-ui';
-  for(let i=0;i<formats.length;i++){
-   c.fillStyle=i===1&&!hasFullPNG?'#8a5324':'#263c35';
-   c.fillText((i===1&&!hasFullPNG?'! ':'- ')+formats[i],1200,615+i*133,1090);
-  }
+  c.fillStyle='#263c35';
+  for(let i=0;i<formats.length;i++)c.fillText('- '+formats[i],1200,615+i*133,1090);
   c.fillStyle='#263c35';c.font='bold 57px system-ui';c.fillText(partCount+' Etsy download ZIP'+(partCount===1?'':'s'),1200,1570);
   c.fillStyle='#607168';c.font='45px system-ui';c.fillText('PNG assets include 300 DPI metadata',1200,1670,1080);
   c.fillStyle='#263c35';c.font='bold 63px system-ui';c.fillText(String(listing.product.name).slice(0,95),125,2020,2150);
   c.fillStyle='#61746b';c.font='45px system-ui';c.fillText('Digital files only - no physical product',125,2115);
-  c.fillText('Review the item description for exact formats',125,2190);
+  c.fillText('Only the files listed above are included',125,2190);
   return canvas;
  }
  async function documentText(name){
@@ -201,11 +191,15 @@
     throw Error('Required customer formats are missing. Nothing was downloaded.');
   return {accepted,omitted};
  }
- function recordFormatWarning(listing,omitted){
-  // Buyer-facing descriptions say what is included. Missing optional formats are
-  // reported to the owner in the seller-only report, never appended to Etsy copy.
-  if(!omitted.length)return;
-  listing.formatWarnings=['Seller-only format check: The 5000 × 5000 lossless PNG exceeded Etsy’s 20 MB per-file limit after compression and is not in the buyer files. The 5000 × 5000 JPG, 2500 × 2500 PNG and seamless tile PNG are included. No image was silently downscaled.'];
+ function includedArtworkLabels(accepted){
+  // Customer-facing descriptions are derived from buyer ZIP contents only.
+  const formats=[
+   [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
+   [/-5000px-300dpi-repeat\.png$/i,'5000 x 5000 PNG image'],
+   [/-2500px-300dpi-repeat\.png$/i,'2500 x 2500 PNG image'],
+   [/-seamless-tile-300dpi\.png$/i,'Seamless tile PNG']
+  ];
+  return formats.filter(([pattern])=>accepted.some(f=>pattern.test(f.name))).map(([,label])=>label);
  }
  function refresh(){button.disabled=running||!state.tile||state.busy||!check.checked;}
  window.addEventListener('sapiver:source-changed',()=>{check.checked=false;status.textContent='Review the new 3 × 3 repeat before export.';refresh();});
@@ -229,8 +223,7 @@
    files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
-   const {accepted,omitted}=await prepareCustomerArtwork(files,documents);
-   recordFormatWarning(listing,omitted);
+   const {accepted}=await prepareCustomerArtwork(files,documents);
    const pieces=pack(accepted,documents),seller=[];
    for(let i=0;i<pieces.length;i++){
     const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
@@ -258,18 +251,17 @@
     'Buyer ZIP files: '+pieces.length+' (each at or below 20,000,000 bytes)',
     'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt',
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
-    '5000px PNG included: '+(omitted.length?'NO - oversize disclosed':'YES'),
-    '5000px JPG, 2500px PNG and seamless tile: included',
+    'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
    ];
    seller.push({name:'QUALITY-CHECK.txt',data:encode(quality.join('\n')+'\n')});
    const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+'\nEtsy section: Digital Downloads\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\nSource: AI visual description, not live search-volume research.\nReview before approving Etsy deployment.\n';
-   seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+(listing.formatWarnings||[]).join('\n'))});
+   seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+'Included customer artwork:\n'+includedArtworkLabels(accepted).join('\n')+'\n')});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. '+(omitted.length?'WARNING: 5000px PNG exceeded Etsy’s limit and is not included; the 5000px JPG, 2500px PNG and seamless tile ARE included. See the seller-only quality report; the listing describes only included formats. ':'All four artwork formats included. ')+'Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. Included: '+includedArtworkLabels(accepted).join(', ')+'. Review before Etsy publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
