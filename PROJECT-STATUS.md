@@ -1,3 +1,12 @@
+## RELEASE APPROVED — 16 November 2026: seller kits describe delivered files only (release pending CI and Netlify)
+- **Owner directive:** No public or private generated warnings about a source/original 5000px image or a format absent from the ZIP. Do not imply the source input was already a repeating pattern; the product is the generated seamless output.
+- **Implementation:** The consumer-facing fourth listing JPG now derives its image-file list exclusively from the artwork entries actually packed; no missing-file placeholder. The generated manifest description is left untouched by packaging. The owner export status, seller quality report, checklist and Auto Seamless seller-kit explanation now list only actual deliverables. Buyer ZIP packaging, file formats, licence and price logic remain unchanged. Cache-busted `commercial-kit.js` in `auto-seamless/index.html`.
+- **Regression tests:** `tests/auto-seamless-zip-compression.test.mjs` verifies both three- and four-format actual lists; `tests/auto-seamless-commercial-browser.mjs` ensures no missing-file claims in the generated seller ZIP metadata or reports. GitHub PR #37 remains separate until CI passes.
+- **Current design 50725:** Rebuilt corrected outer seller ZIP with exact included-files preview and clean listing metadata. Both customer ZIPs preserved byte-for-byte and ZIP validity and actual image dimensions checked. Output is provided in this conversation for manual upload; existing Etsy listings are not changed.
+- **Authorisation:** User explicitly approved software deployment. Merge after CI succeeds to the existing Netlify-connected `main` branch and verify a Ready deploy SHA. No Work credits; Netlify build may consume deployment allowance. No Etsy publish or PrintShrimp mutation.
+- **Verification status:** Code staged; full CI and live deployment pending at this checkpoint.
+
+---
 ## DEVELOPMENT CHECKPOINT — 16 November 2026: optional format warning kept seller-only (STAGED, NOT DEPLOYED)
 - **Owner report:** Commercial kit 50725 imported a negative-format explanation into the public Etsy listing description. Actual outer ZIP inspection confirmed 2 complete buyer ZIPs containing the 5000 × 5000 JPG, 2500 × 2500 PNG, seamless tile PNG, and required customer documents. The optional 5000 × 5000 lossless PNG exceeded Etsy's per-file limit and was not included.
 - **Root cause:** `auto-seamless/commercial-kit.js` appended a packaging warning directly to `listing.product.description`, which Poster Gen correctly imported verbatim.
