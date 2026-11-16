@@ -1,3 +1,11 @@
+## PRODUCTION RELEASE — 16 November 2026: exact delivered-file seller ZIPs (deploy started; live verification pending)
+- **Approved scope:** Only the actual included digital deliverables appear in generated Etsy listing descriptions, included-files JPG, seller export status, seller checklist and quality report. No source-original or omitted-format explanation is shown. Buyer ZIPs and 20 MB limit unchanged.
+- **Verified:** PR #37 CI run `43854073342` succeeded: 13 Node tests, zero failures; mobile-sized Chromium generated a real seller ZIP with four 2400px listing images, four delivered artwork files for the test fixture, and validated nested buyer ZIPs and documents. User design 50725 separate clean seller kit generated and verified with exactly three delivered image files and two unchanged buyer ZIP attachments.
+- **Merged:** PR #37 squashed into main at `6aa819d4a6494ab28a648daabe89aa5a22e860a6` after owner authorisation. The squash message inherited `[skip netlify]` from development commits; this documentation checkpoint has an explicit non-skip release commit to trigger one production build of the tested code.
+- **Netlify:** Ready deployment and final source SHA pending independent verification; do not claim live until verified.
+- **No marketplace actions:** No Etsy listing, PrintShrimp order or customer file mutation; no Work credits.
+
+---
 ## RELEASE APPROVED — 16 November 2026: seller kits describe delivered files only (release pending CI and Netlify)
 - **Owner directive:** No public or private generated warnings about a source/original 5000px image or a format absent from the ZIP. Do not imply the source input was already a repeating pattern; the product is the generated seamless output.
 - **Implementation:** The consumer-facing fourth listing JPG now derives its image-file list exclusively from the artwork entries actually packed; no missing-file placeholder. The generated manifest description is left untouched by packaging. The owner export status, seller quality report, checklist and Auto Seamless seller-kit explanation now list only actual deliverables. Buyer ZIP packaging, file formats, licence and price logic remain unchanged. Cache-busted `commercial-kit.js` in `auto-seamless/index.html`.
