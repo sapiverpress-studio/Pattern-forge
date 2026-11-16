@@ -13,9 +13,9 @@ const d=source.indexOf('\n function refresh(){',c);
 assert.ok(a>=0&&b>a&&c>b&&d>c,'Source packaging functions must be present');
 // Execute the actual browser writer and lossless preflight from the page with Node22 web streams.
 const status={textContent:''},requestAnimationFrame=fn=>fn();
-const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork}=new Function(
+const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,recordFormatWarning}=new Function(
  'status','requestAnimationFrame','CompressionStream','Blob','Response',
- source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork};'
+ source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,recordFormatWarning};'
 )(status,requestAnimationFrame,CompressionStream,Blob,Response);
 const docs=['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'].map(name=>({name,data:new TextEncoder().encode('This document accompanies each buyer ZIP. Permission and instructions remain identical across downloads.')}));
 const asset=(name,data)=>({name,data});
@@ -75,4 +75,18 @@ test('an oversized required JPG cannot be silently removed or downscaled',async(
   asset('test-seamless-tile-300dpi.png',new Uint8Array(240_000))
  ];
  await assert.rejects(prepareCustomerArtwork(images,docs),/remains above Etsy/);
+});
+
+
+test('omitted optional PNG is warned in seller notes, never pasted into customer listing description',()=>{
+ const listing={product:{description:'A seamless knitted-look surface design. Created with the aid of AI.'}};
+ const before=listing.product.description;
+ recordFormatWarning(listing,['test-5000px-300dpi-repeat.png']);
+ assert.equal(listing.product.description,before);
+ assert.equal(listing.formatWarnings.length,1);
+ assert.match(listing.formatWarnings[0],/Seller-only format check/);
+ assert.match(listing.formatWarnings[0],/5000 × 5000 JPG/);
+ const complete={product:{description:before}};
+ recordFormatWarning(complete,[]);
+ assert.equal(complete.formatWarnings,undefined);
 });
