@@ -72,6 +72,13 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
  <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
  <label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0"><input id="commercialReviewConfirmed" type="checkbox" style="margin-top:4px"><span>I have inspected the 3 × 3 preview and confirmed that the repeat and artwork are suitable for sale.</span></label>
+ <div id="commercialOversizeOptions" hidden>
+  <p class="info" id="oversizeNotice">If your original is too large for Etsy, you can approve an alternative before export.</p>
+  <label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0">
+   <input id="commercialAllowConversion" type="checkbox" style="margin-top:4px">
+   <span><strong>Allow an Etsy-compatible version only if the original cannot fit.</strong> First try the full-size PNG re-encoded without resizing; otherwise use a high-quality full-resolution WebP (lossy, preserving transparency where present) and, where possible, a smaller PNG. Your original on this device is not changed. The listing will name the actual delivered files.</span>
+  </label>
+ </div>
  <button id="downloadCommercial" class="primary" disabled style="width:100%">Download Commercial Seller Kit ZIP</button>
  <p id="commercialExportStatus" class="status" role="status" aria-live="polite" style="margin-top:12px">Review the repeating preview and confirm before export.</p>
  <p class="info">Customer ZIPs are packaged within Etsy's file limits without reducing image dimensions. Inspect the included-files preview and the buyer ZIPs before publishing.</p>
@@ -204,7 +211,8 @@ async function setMode(mode){
  $('modeDescription').textContent=ready?'Keep your original PNG, JPG or WebP file unchanged. Only listing previews and a seller ZIP will be generated.':'Detect the pattern repeat, crop it and blend the joins before exporting.';
  $('edgeHeading').textContent=ready?'2. Export the original artwork':'2. Finish the edges';
  $('commercialKitIntro').textContent=ready?'Package your complete original artwork, licence, About Us, instructions, listing title, description, tags and saved price into one seller ZIP for Poster Gen. No new pattern is generated.':'One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.';
- $('commercialKitContents').textContent=ready?'The buyer ZIP contains the exact uploaded PNG, JPG or WebP master and the three customer documents. Four separate 2400 × 2400 listing previews are generated. A source too large for Etsy is rejected rather than silently resized.':'The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.';
+ $('commercialKitContents').textContent=ready?'The buyer ZIP contains your exact original PNG, JPG or WebP when it fits Etsy. For a larger file you can approve an alternative separately. Four listing previews, licence, About and instructions are generated. No substitution occurs without your permission.':'The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.';
+ $('commercialOversizeOptions').hidden=!ready;
  $('edgeControls').hidden=ready;$('redetect').hidden=ready;$('download5000').hidden=ready;
  $('downloadTile').textContent=ready?'Download original file':'Download seamless tile PNG';
  $('edgeHint').textContent=ready?'The uploaded master file remains unchanged in the buyer download. Preview images are generated separately.':'The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.';
@@ -239,6 +247,8 @@ function useOriginal(){
  const ctx=tileCanvas.getContext('2d');if(!ctx)throw Error('Image preview unavailable');
  ctx.drawImage(sourceCanvas,0,0);
  state.tile={w,h};state.crop={x:0,y:0,w,h};state.match=0;
+ const sourceMegabytes=(state.originalBytes.byteLength/1e6).toFixed(2);
+ $('oversizeNotice').textContent=state.originalBytes.byteLength>=19_900_000?'Original file: '+sourceMegabytes+' MB. Etsy permits up to 20 MB per buyer ZIP. The exact original will be tried first; tick below to allow an alternative only if needed.':'Your full-resolution original will be supplied unchanged if it fits. You may optionally permit an alternative only if a future file is too large.';
  $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Skipped';
  paintPreview();paintSource();busy(false);
  setStatus('Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
@@ -368,6 +378,6 @@ let savedMode='auto';try{if(localStorage.getItem('sapiver-preparation-mode')==='
 setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
-<script src="/auto-seamless/commercial-kit.js?v=20261118-android-snapshot"></script>
+<script src="/auto-seamless/commercial-kit.js?v=20261118-etsy-sized"></script>
 </body>
 </html>
