@@ -189,9 +189,62 @@
     status.textContent='Checking whether the unmodified file fits with lossless ZIP compression…';
     original=await tryLosslessZipCompression(original);
    }
-   if(packedSize([original,...documents])>MAX)
-    throw Error('This original design exceeds Etsy’s 20 MB per-file limit even after lossless ZIP compression. Nothing was resized or changed. Use a smaller lossless master or another permitted delivery format.');
-   return {accepted:[original],omitted:[]};
+   if(packedSize([original,...documents])<=MAX)return {accepted:[original],omitted:[],converted:false};
+   // A larger original can be retained on the seller's device. Conversion is strictly opt-in:
+   // it is NOT equivalent to the original master; list the delivered file formats honestly.
+   if(!byId('commercialAllowConversion')?.checked)
+    throw Error('Original is '+(files[0].data.length/1e6).toFixed(2)+' MB and cannot fit Etsy’s 20 MB buyer ZIP. Tick "Allow an Etsy-compatible version" to approve a re-encoded alternative, then download again. Original unchanged.');
+   const stem=files[0].name.replace(/-seamless-master\.(png|jpg|webp)$/i,'');
+   if(!tileCanvas.width||!tileCanvas.height)throw Error('Original image preview is missing; upload again.');
+   const sourceWidth=tileCanvas.width,sourceHeight=tileCanvas.height;
+   const fits=async asset=>{
+    if(packedSize([asset,...documents])>MAX)asset=await tryLosslessZipCompression(asset);
+    return packedSize([asset,...documents])<=MAX?asset:null;
+   };
+   // First try a same-size PNG re-encode (no downsampling, but not byte-identical).
+   status.textContent='Trying to fit a full-resolution PNG without resizing…';
+   const recodedPng=await toBlob(tileCanvas,'image/png');
+   if(recodedPng.type!=='image/png')throw Error('Browser cannot create a PNG image.');
+   const png=await fits({
+    name:stem+'-full-size-reencoded.png',
+    data:await getBytes(recodedPng),width:sourceWidth,height:sourceHeight,
+    deliveryNote:'Same-dimension PNG re-encoded from the source, not the byte-identical original.'
+   });
+   if(png)return {accepted:[png],omitted:[],converted:true};
+   // WebP supports alpha and keeps the full pixel dimensions, but is lossy.
+   // If the user's printer requires PNG, a smaller PNG companion is included where it fits.
+   let webp=null;
+   for(const quality of [0.98,0.94,0.90,0.85,0.78]){
+    status.textContent='Preparing full-resolution WebP with transparent pixels supported ('+Math.round(quality*100)+'% quality)…';
+    const blob=await toBlob(tileCanvas,'image/webp',quality);
+    if(blob.type!=='image/webp')throw Error('Your browser cannot create WebP files. No alternative was delivered.');
+    const candidate=await fits({
+     name:stem+'-full-size-compressed.webp',
+     data:await getBytes(blob),width:sourceWidth,height:sourceHeight,
+     deliveryNote:'Full-resolution WebP uses lossy compression; transparency is supported. Check compatibility with the printer and inspect the repeat.'
+    });
+    if(candidate){webp=candidate;break;}
+   }
+   if(!webp)throw Error('The full-resolution version still exceeds Etsy’s limit. Nothing was silently resized. Use a smaller original or prepare a separate delivery format.');
+   const accepted=[webp];
+   if(Math.max(sourceWidth,sourceHeight)>2500){
+    status.textContent='Preparing an additional PNG for printers that do not accept WebP…';
+    const scale=2500/Math.max(sourceWidth,sourceHeight);
+    const w=Math.max(1,Math.round(sourceWidth*scale)),h=Math.max(1,Math.round(sourceHeight*scale));
+    const smallCanvas=document.createElement('canvas');smallCanvas.width=w;smallCanvas.height=h;
+    const ctx=smallCanvas.getContext('2d');if(!ctx)throw Error('Cannot create smaller PNG');
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(tileCanvas,0,0,w,h);
+    try{
+     const blob=await toBlob(smallCanvas,'image/png');
+     const candidate=await fits({
+      name:stem+'-portable-png.png',data:await getBytes(blob),width:w,height:h,
+      deliveryNote:'Smaller PNG companion; dimensions are clearly listed.'
+     });
+     if(candidate)accepted.push(candidate);
+    }finally{smallCanvas.width=smallCanvas.height=0;}
+   }
+   return {accepted,omitted:[],converted:true};
   }
   const accepted=[],omitted=[];
   for(const file of files){
@@ -219,9 +272,13 @@
  }
  function includedArtworkLabels(accepted){
   // Customer-facing descriptions are derived from buyer ZIP contents only.
-  if(typeof state!=='undefined'&&state.mode==='ready')return accepted.filter(f=>/-seamless-master\.(png|jpg|webp)$/i.test(f.name)).map(f=>{
-   const ext=f.name.split('.').pop().toUpperCase();
-   return state.tile.w+' x '+state.tile.h+' '+ext+' seamless master';
+  if(typeof state!=='undefined'&&state.mode==='ready')return accepted.map(f=>{
+   const ext=f.name.split('.').pop().toUpperCase(),width=f.width||state.tile.w,height=f.height||state.tile.h;
+   const kind=/-seamless-master\./i.test(f.name)?'original seamless master':
+    /-full-size-reencoded\.png$/i.test(f.name)?'full-size re-encoded PNG':
+    /-full-size-compressed\.webp$/i.test(f.name)?'high-quality compressed WEBP':
+    /-portable-png\.png$/i.test(f.name)?'smaller PNG companion':'digital image';
+   return width+' x '+height+' '+ext+' ('+kind+')';
   });
   const formats=[
    [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
@@ -232,7 +289,7 @@
   return formats.filter(([pattern])=>accepted.some(f=>pattern.test(f.name))).map(([,label])=>label);
  }
  function refresh(){button.disabled=running||!state.tile||state.busy||!check.checked;}
- window.addEventListener('sapiver:source-changed',()=>{check.checked=false;status.textContent='Review the new 3 × 3 repeat before export.';refresh();});
+ window.addEventListener('sapiver:source-changed',()=>{check.checked=false;const conversion=byId('commercialAllowConversion');if(conversion)conversion.checked=false;status.textContent='Review the new 3 × 3 repeat before export.';refresh();});
  window.addEventListener('sapiver:tile-ready',refresh);
  check.addEventListener('change',refresh);
  async function run(){
@@ -266,7 +323,15 @@
    }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
-   const {accepted}=await prepareCustomerArtwork(files,documents);
+   const {accepted,converted=false}=await prepareCustomerArtwork(files,documents);
+   if(state.mode==='ready'){
+    const delivered=includedArtworkLabels(accepted);
+    listing.product.description+='\n\nDigital artwork included: '+delivered.join('; ')+'.';
+    if(converted){
+     listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
+     listing.product.deliveryChangedFromOriginal=true;
+    }
+   }
    const pieces=pack(accepted,documents),seller=[];
    for(let i=0;i<pieces.length;i++){
     const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
@@ -295,6 +360,7 @@
     'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt',
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
+    'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
    ];
@@ -304,7 +370,7 @@
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. Included: '+includedArtworkLabels(accepted).join(', ')+'. Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. Included: '+includedArtworkLabels(accepted).join(', ')+(converted?' Re-encoded customer format: review carefully; source on device unchanged.':'')+'. Review before Etsy publishing.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
