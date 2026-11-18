@@ -1,6 +1,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:390,height:844},acceptDownloads:true});
@@ -131,6 +132,21 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
  assert.equal(await page.locator('#sizeFact').textContent(),'256 × 256');
  assert.equal(await page.locator('#download5000').isHidden(),true);
  assert.match(await page.locator('#status').textContent(),/No detection, crop, blending/);
+ // Simulate Android revoking the provider-backed File after its preview loads.
+ // A late File.arrayBuffer() must fail, while both exports use the early snapshot.
+ await page.evaluate(()=>{
+  if(!(state.originalBytes instanceof Uint8Array)||state.originalBytes.byteLength!==state.originalFile.size)
+   throw Error('Original upload was not saved to memory');
+  Object.defineProperty(state.originalFile,'arrayBuffer',{
+   configurable:true,
+   value:()=>Promise.reject(new DOMException('The requested file could not be read','NotReadableError'))
+  });
+ });
+ const unchangedWait=page.waitForEvent('download',{timeout:30000});
+ await page.locator('#downloadTile').click();
+ const unchangedDownload=await unchangedWait;
+ assert.equal(unchangedDownload.suggestedFilename(),'finished-grid.png');
+ assert.deepEqual(readFileSync(await unchangedDownload.path()),Buffer.from(base64,'base64'));
  await page.locator('#commercialPrice').fill('4.95');
  await page.locator('#commercialReviewConfirmed').check();
  await page.waitForFunction(()=>!document.querySelector('#downloadCommercial').disabled,null,{timeout:15000});
@@ -143,4 +159,5 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
  assert.equal(readyTest.status,0,readyTest.stderr||readyTest.stdout);
  assert.equal(errors.length,0,errors.join('\n'));
  console.log(readyTest.stdout.trim());
+ console.log('PASS Android file-provider revocation: original-download and seller ZIP preserve source bytes without a second File read.');
 }finally{await browser.close();}
