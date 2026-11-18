@@ -182,6 +182,17 @@
   return asset;
  }
  async function prepareCustomerArtwork(files,documents){
+  if(state.mode==='ready'){
+   if(files.length!==1||!/-seamless-master\.(png|jpg|webp)$/i.test(files[0].name))throw Error('The unchanged seamless master is missing');
+   let original=files[0];
+   if(packedSize([original,...documents])>MAX){
+    status.textContent='Checking whether the unmodified file fits with lossless ZIP compression…';
+    original=await tryLosslessZipCompression(original);
+   }
+   if(packedSize([original,...documents])>MAX)
+    throw Error('This original design exceeds Etsy’s 20 MB per-file limit even after lossless ZIP compression. Nothing was resized or changed. Use a smaller lossless master or another permitted delivery format.');
+   return {accepted:[original],omitted:[]};
+  }
   const accepted=[],omitted=[];
   for(const file of files){
    let selected=file;
@@ -208,6 +219,10 @@
  }
  function includedArtworkLabels(accepted){
   // Customer-facing descriptions are derived from buyer ZIP contents only.
+  if(state.mode==='ready')return accepted.filter(f=>/-seamless-master\.(png|jpg|webp)$/i.test(f.name)).map(f=>{
+   const ext=f.name.split('.').pop().toUpperCase();
+   return state.tile.w+' x '+state.tile.h+' '+ext+' seamless master';
+  });
   const formats=[
    [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
    [/-5000px-300dpi-repeat\.png$/i,'5000 x 5000 PNG image'],
@@ -228,14 +243,22 @@
   try{
    const listing=listingDetails();
    const stem=(state.fileName||'seamless-pattern').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'seamless-pattern',files=[];
-   big=render(5000);
-   files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
-   files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
-   big.width=big.height=0;big=null;
-   small=render(2500);
-   files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
-   small.width=small.height=0;small=null;
-   files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
+   if(state.mode==='ready'){
+    // Unmodified source bytes are delivered in the Etsy buyer ZIP.
+    const original=state.originalFile;
+    if(!original||!/\.(png|jpe?g|webp)$/i.test(original.name))throw Error('Upload a PNG, JPG or WebP master first');
+    const ext=original.name.toLowerCase().split('.').pop().replace('jpeg','jpg');
+    files.push({name:stem+'-seamless-master.'+ext,data:await getBytes(original)});
+   }else{
+    big=render(5000);
+    files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
+    files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
+    big.width=big.height=0;big=null;
+    small=render(2500);
+    files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
+    small.width=small.height=0;small=null;
+    files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
+   }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
    const {accepted}=await prepareCustomerArtwork(files,documents);
