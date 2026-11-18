@@ -66,6 +66,12 @@
   const canvas=document.createElement('canvas');canvas.width=canvas.height=width;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas rendering unavailable');
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  if(typeof state!=='undefined'&&state.mode==='ready'){
+   // Listing-only rendering retains the tile aspect ratio; it never modifies the buyer master.
+   const tileHeight=width*state.tile.h/state.tile.w;
+   for(let y=0;y<Math.ceil(width/tileHeight);y++)ctx.drawImage(tileCanvas,0,y*tileHeight,width,tileHeight);
+   return canvas;
+  }
   const across=Number(byId('density').value),down=Math.max(1,Math.min(40,Math.round(across*state.tile.w/state.tile.h)));
   for(let y=0;y<down;y++)for(let x=0;x<across;x++){
    const x0=Math.round(x*width/across),x1=Math.round((x+1)*width/across),y0=Math.round(y*width/down),y1=Math.round((y+1)*width/down);
@@ -79,7 +85,16 @@
   const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
   const c=canvas.getContext('2d');if(!c)throw Error('Listing image rendering unavailable');
   c.fillStyle='#fff';c.fillRect(0,0,size,size);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-  if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*1200,y*1200,1200,1200);}
+  if(typeof state!=='undefined'&&state.mode==='ready'){
+   if(tiled){
+    const tw=size/2,th=tw*state.tile.h/state.tile.w;
+    for(let y=0;y<Math.ceil(size/th);y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*tw,y*th,tw,th);
+   }else{
+    // The cover shows the whole original rectangle, never stretched or cropped.
+    const scale=Math.min(size/state.tile.w,size/state.tile.h),w=state.tile.w*scale,h=state.tile.h*scale;
+    c.drawImage(tileCanvas,(size-w)/2,(size-h)/2,w,h);
+   }
+  }else if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*1200,y*1200,1200,1200);}
   else{const r=render(size);c.drawImage(r,0,0);r.width=r.height=0;}
   return canvas;
  }
@@ -120,7 +135,7 @@
   c.fillStyle='#263c35';
   for(let i=0;i<formats.length;i++)c.fillText('- '+formats[i],1200,615+i*133,1090);
   c.fillStyle='#263c35';c.font='bold 57px system-ui';c.fillText(partCount+' Etsy download ZIP'+(partCount===1?'':'s'),1200,1570);
-  c.fillStyle='#607168';c.font='45px system-ui';c.fillText('PNG assets include 300 DPI metadata',1200,1670,1080);
+  c.fillStyle='#607168';c.font='45px system-ui';c.fillText(state.mode==='ready'?'Original master file supplied unchanged':'PNG assets include 300 DPI metadata',1200,1670,1080);
   c.fillStyle='#263c35';c.font='bold 63px system-ui';c.fillText(String(listing.product.name).slice(0,95),125,2020,2150);
   c.fillStyle='#61746b';c.font='45px system-ui';c.fillText('Digital files only - no physical product',125,2115);
   c.fillText('Only the files listed above are included',125,2190);
@@ -167,6 +182,17 @@
   return asset;
  }
  async function prepareCustomerArtwork(files,documents){
+  if(typeof state!=='undefined'&&state.mode==='ready'){
+   if(files.length!==1||!/-seamless-master\.(png|jpg|webp)$/i.test(files[0].name))throw Error('The unchanged seamless master is missing');
+   let original=files[0];
+   if(packedSize([original,...documents])>MAX){
+    status.textContent='Checking whether the unmodified file fits with lossless ZIP compression…';
+    original=await tryLosslessZipCompression(original);
+   }
+   if(packedSize([original,...documents])>MAX)
+    throw Error('This original design exceeds Etsy’s 20 MB per-file limit even after lossless ZIP compression. Nothing was resized or changed. Use a smaller lossless master or another permitted delivery format.');
+   return {accepted:[original],omitted:[]};
+  }
   const accepted=[],omitted=[];
   for(const file of files){
    let selected=file;
@@ -193,6 +219,10 @@
  }
  function includedArtworkLabels(accepted){
   // Customer-facing descriptions are derived from buyer ZIP contents only.
+  if(typeof state!=='undefined'&&state.mode==='ready')return accepted.filter(f=>/-seamless-master\.(png|jpg|webp)$/i.test(f.name)).map(f=>{
+   const ext=f.name.split('.').pop().toUpperCase();
+   return state.tile.w+' x '+state.tile.h+' '+ext+' seamless master';
+  });
   const formats=[
    [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
    [/-5000px-300dpi-repeat\.png$/i,'5000 x 5000 PNG image'],
@@ -213,14 +243,22 @@
   try{
    const listing=listingDetails();
    const stem=(state.fileName||'seamless-pattern').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'seamless-pattern',files=[];
-   big=render(5000);
-   files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
-   files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
-   big.width=big.height=0;big=null;
-   small=render(2500);
-   files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
-   small.width=small.height=0;small=null;
-   files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
+   if(typeof state!=='undefined'&&state.mode==='ready'){
+    // Unmodified source bytes are delivered in the Etsy buyer ZIP.
+    const original=state.originalFile;
+    if(!original||!/\.(png|jpe?g|webp)$/i.test(original.name))throw Error('Upload a PNG, JPG or WebP master first');
+    const ext=original.name.toLowerCase().split('.').pop().replace('jpeg','jpg');
+    files.push({name:stem+'-seamless-master.'+ext,data:await getBytes(original)});
+   }else{
+    big=render(5000);
+    files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
+    files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
+    big.width=big.height=0;big=null;
+    small=render(2500);
+    files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
+    small.width=small.height=0;small=null;
+    files.push({name:stem+'-seamless-tile-300dpi.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(tileCanvas,'image/png'))))});
+   }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
    const {accepted}=await prepareCustomerArtwork(files,documents);
