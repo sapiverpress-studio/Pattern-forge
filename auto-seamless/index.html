@@ -19,7 +19,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <body>
 <main>
 <a href="/" style="color:#9fe1d1;display:inline-block;margin-bottom:12px">← Pattern Forge home</a>
-<header><div class="eyebrow">Single-file · Offline · No uploads to a server</div><h1>Auto Seamless Pattern Maker</h1><p>Upload a knitted, fabric, wallpaper or repeating design. The tool detects the repeat, chooses the cut, blends the joins and previews the result as a continuous surface.</p></header>
+<header><div class="eyebrow">Full-size artwork stays in your browser · AI metadata uses a reduced preview</div><h1>Auto Seamless Pattern Maker</h1><p>Upload a knitted, fabric, wallpaper or repeating design. The tool detects the repeat, chooses the cut, blends the joins and previews the result as a continuous surface.</p></header>
 <section class="panel" aria-label="Choose preparation mode" style="margin-bottom:16px">
  <h2>Choose how to use this image</h2>
  <div class="workflow-select" role="group" aria-label="Pattern preparation mode">
@@ -66,8 +66,8 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <section class="panel" id="commercial-kit-panel" aria-label="Commercial seller kit export">
  <div class="eyebrow">Sapiver Prints · commercial files</div>
  <h2>5. Download a commercial seller kit</h2>
- <p>One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.</p>
- <p class="info">The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.</p>
+ <p id="commercialKitIntro">One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.</p>
+ <p class="info" id="commercialKitContents">The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.</p>
  <label for="commercialPrice" style="display:block;margin:14px 0 6px;font-weight:700">Etsy digital selling price (£ GBP)</label>
  <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
  <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
@@ -195,6 +195,8 @@ function setMode(mode){
  $('readyMode').className=ready?'primary':'outline';$('detectMode').className=ready?'outline':'primary';
  $('modeDescription').textContent=ready?'Keep your original PNG, JPG or WebP file unchanged. Only listing previews and a seller ZIP will be generated.':'Detect the pattern repeat, crop it and blend the joins before exporting.';
  $('edgeHeading').textContent=ready?'2. Export the original artwork':'2. Finish the edges';
+ $('commercialKitIntro').textContent=ready?'Package your complete original artwork, licence, About Us, instructions, listing title, description, tags and saved price into one seller ZIP for Poster Gen. No new pattern is generated.':'One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.';
+ $('commercialKitContents').textContent=ready?'The buyer ZIP contains the exact uploaded PNG, JPG or WebP master and the three customer documents. Four separate 2400 × 2400 listing previews are generated. A source too large for Etsy is rejected rather than silently resized.':'The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.';
  $('edgeControls').hidden=ready;$('redetect').hidden=ready;$('download5000').hidden=ready;
  $('downloadTile').textContent=ready?'Download original file':'Download seamless tile PNG';
  $('edgeHint').textContent=ready?'The uploaded master file remains unchanged in the buyer download. Preview images are generated separately.':'The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.';
@@ -339,6 +341,6 @@ let savedMode='auto';try{if(localStorage.getItem('sapiver-preparation-mode')==='
 setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
-<script src="/auto-seamless/commercial-kit.js?v=20261116-exact-deliverables"></script>
+<script src="/auto-seamless/commercial-kit.js?v=20261118-ready-seamless"></script>
 </body>
 </html>
