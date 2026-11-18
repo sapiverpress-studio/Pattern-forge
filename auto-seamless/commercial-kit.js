@@ -66,7 +66,7 @@
   const canvas=document.createElement('canvas');canvas.width=canvas.height=width;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas rendering unavailable');
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  if(state.mode==='ready'){
+  if(typeof state!=='undefined'&&state.mode==='ready'){
    // Listing-only rendering retains the tile aspect ratio; it never modifies the buyer master.
    const tileHeight=width*state.tile.h/state.tile.w;
    for(let y=0;y<Math.ceil(width/tileHeight);y++)ctx.drawImage(tileCanvas,0,y*tileHeight,width,tileHeight);
@@ -85,7 +85,7 @@
   const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
   const c=canvas.getContext('2d');if(!c)throw Error('Listing image rendering unavailable');
   c.fillStyle='#fff';c.fillRect(0,0,size,size);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-  if(state.mode==='ready'){
+  if(typeof state!=='undefined'&&state.mode==='ready'){
    if(tiled){
     const tw=size/2,th=tw*state.tile.h/state.tile.w;
     for(let y=0;y<Math.ceil(size/th);y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*tw,y*th,tw,th);
@@ -182,7 +182,7 @@
   return asset;
  }
  async function prepareCustomerArtwork(files,documents){
-  if(state.mode==='ready'){
+  if(typeof state!=='undefined'&&state.mode==='ready'){
    if(files.length!==1||!/-seamless-master\.(png|jpg|webp)$/i.test(files[0].name))throw Error('The unchanged seamless master is missing');
    let original=files[0];
    if(packedSize([original,...documents])>MAX){
@@ -219,7 +219,7 @@
  }
  function includedArtworkLabels(accepted){
   // Customer-facing descriptions are derived from buyer ZIP contents only.
-  if(state.mode==='ready')return accepted.filter(f=>/-seamless-master\.(png|jpg|webp)$/i.test(f.name)).map(f=>{
+  if(typeof state!=='undefined'&&state.mode==='ready')return accepted.filter(f=>/-seamless-master\.(png|jpg|webp)$/i.test(f.name)).map(f=>{
    const ext=f.name.split('.').pop().toUpperCase();
    return state.tile.w+' x '+state.tile.h+' '+ext+' seamless master';
   });
@@ -243,7 +243,7 @@
   try{
    const listing=listingDetails();
    const stem=(state.fileName||'seamless-pattern').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'seamless-pattern',files=[];
-   if(state.mode==='ready'){
+   if(typeof state!=='undefined'&&state.mode==='ready'){
     // Unmodified source bytes are delivered in the Etsy buyer ZIP.
     const original=state.originalFile;
     if(!original||!/\.(png|jpe?g|webp)$/i.test(original.name))throw Error('Upload a PNG, JPG or WebP master first');
