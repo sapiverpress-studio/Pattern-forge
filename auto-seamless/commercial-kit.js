@@ -207,7 +207,7 @@
    if(recodedPng.type!=='image/png')throw Error('Browser cannot create a PNG image.');
    const png=await fits({
     name:stem+'-full-size-reencoded.png',
-    data:await getBytes(recodedPng),width:sourceWidth,height:sourceHeight,
+    data:await getBytes(taggedDPI(await getBytes(recodedPng))),width:sourceWidth,height:sourceHeight,
     deliveryNote:'Same-dimension PNG re-encoded from the source, not the byte-identical original.'
    });
    if(png)return {accepted:[png],omitted:[],converted:true};
@@ -238,7 +238,7 @@
     try{
      const blob=await toBlob(smallCanvas,'image/png');
      const candidate=await fits({
-      name:stem+'-portable-png.png',data:await getBytes(blob),width:w,height:h,
+      name:stem+'-portable-png.png',data:await getBytes(taggedDPI(await getBytes(blob))),width:w,height:h,
       deliveryNote:'Smaller PNG companion; dimensions are clearly listed.'
      });
      if(candidate)accepted.push(candidate);
@@ -361,6 +361,7 @@
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
     'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
+    'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
    ];
