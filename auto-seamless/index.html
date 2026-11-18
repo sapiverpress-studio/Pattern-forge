@@ -11,7 +11,7 @@ main{max-width:1170px;margin:0 auto;padding:24px 16px 60px}h1{font-size:clamp(26
 header{margin-bottom:23px}.layout{display:grid;grid-template-columns:minmax(270px,360px) minmax(0,1fr);gap:16px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.stack{display:grid;gap:16px}
 .drop{border:2px dashed #61788b;background:#14202a;border-radius:13px;min-height:176px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:17px;cursor:pointer;text-align:center;transition:all .18s}.drop:hover,.drop.drag{border-color:var(--accent);background:#1e3440}.drop svg{width:37px;height:37px;stroke:var(--accent)}.drop strong{font-size:15px}.drop small{color:var(--muted)}
 button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14px;cursor:pointer;min-height:44px}button:disabled{opacity:.46;cursor:not-allowed}.primary{background:var(--accent);color:var(--accentink)}.secondary{background:#344455;color:white}.outline{background:transparent;border:1px solid #627d8e;color:white}.buttons{display:grid;gap:8px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:12px 0 6px}.row label{font-weight:650}.row output,.meta{color:var(--muted);font-variant-numeric:tabular-nums}.controls{display:grid;gap:13px;margin:16px 0}input[type=range]{width:100%;accent-color:var(--accent)}input[type=number]{max-width:90px;background:#0d1922;border:1px solid var(--line);color:white;padding:8px 10px;border-radius:7px;font-size:15px}
-.status{background:#101c25;border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--muted);font-size:13px;min-height:45px}.status.good{border-color:#3a8275;color:#baf3e4}.status.warn{border-color:#b48d40;color:#f0d49a}.status.error{border-color:#bb5961;color:#ffcad0}.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 15px}.fact{padding:12px;border-radius:10px;background:#101c25}.fact strong{display:block;font-size:19px;font-variant-numeric:tabular-nums}.fact span{display:block;font-size:12px;color:var(--muted)}.canvaswrap{position:relative;background:#0b1117;border:1px solid var(--line);border-radius:10px;overflow:hidden}.checker{background-color:#d2d2d2;background-image:linear-gradient(45deg,#eee 25%, transparent 25%),linear-gradient(-45deg,#eee 25%, transparent 25%),linear-gradient(45deg,transparent 75%, #eee 75%),linear-gradient(-45deg,transparent 75%, #eee 75%);background-size:22px 22px;background-position:0 0,0 11px,11px -11px,-11px 0}canvas{display:block;width:100%;height:auto}.preview-head{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.preview-head p{font-size:13px}.info{font-size:12px;line-height:1.55;color:var(--muted);margin:12px 0 0}.hint{font-size:13px;color:var(--muted)}.hidden{display:none!important}.mini{max-width:260px;margin:0 auto}.tag{display:inline-block;padding:3px 8px;border-radius:6px;background:#284338;color:#beefdb;font-size:12px;font-weight:700}
+.status{background:#101c25;border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--muted);font-size:13px;min-height:45px}.status.good{border-color:#3a8275;color:#baf3e4}.status.warn{border-color:#b48d40;color:#f0d49a}.status.error{border-color:#bb5961;color:#ffcad0}.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 15px}.fact{padding:12px;border-radius:10px;background:#101c25}.fact strong{display:block;font-size:19px;font-variant-numeric:tabular-nums}.fact span{display:block;font-size:12px;color:var(--muted)}.canvaswrap{position:relative;background:#0b1117;border:1px solid var(--line);border-radius:10px;overflow:hidden}.checker{background-color:#d2d2d2;background-image:linear-gradient(45deg,#eee 25%, transparent 25%),linear-gradient(-45deg,#eee 25%, transparent 25%),linear-gradient(45deg,transparent 75%, #eee 75%),linear-gradient(-45deg,transparent 75%, #eee 75%);background-size:22px 22px;background-position:0 0,0 11px,11px -11px,-11px 0}canvas{display:block;width:100%;height:auto}.preview-head{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.preview-head p{font-size:13px}.info{font-size:12px;line-height:1.55;color:var(--muted);margin:12px 0 0}.hint{font-size:13px;color:var(--muted)}.hidden{display:none!important}.mini{max-width:260px;margin:0 auto}.workflow-select{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}.workflow-select button{white-space:normal;text-align:left;min-height:75px}.workflow-select small{display:block;font-weight:500;opacity:.85;margin-top:4px}.tag{display:inline-block;padding:3px 8px;border-radius:6px;background:#284338;color:#beefdb;font-size:12px;font-weight:700}
 @media(max-width:760px){main{padding:18px 12px 40px}.layout{grid-template-columns:1fr}.panel{padding:14px}.facts{grid-template-columns:1fr 1fr}}
 </style>
 <link rel="stylesheet" href="/auto-seamless/metadata.css">
@@ -20,6 +20,14 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <main>
 <a href="/" style="color:#9fe1d1;display:inline-block;margin-bottom:12px">← Pattern Forge home</a>
 <header><div class="eyebrow">Single-file · Offline · No uploads to a server</div><h1>Auto Seamless Pattern Maker</h1><p>Upload a knitted, fabric, wallpaper or repeating design. The tool detects the repeat, chooses the cut, blends the joins and previews the result as a continuous surface.</p></header>
+<section class="panel" aria-label="Choose preparation mode" style="margin-bottom:16px">
+ <h2>Choose how to use this image</h2>
+ <div class="workflow-select" role="group" aria-label="Pattern preparation mode">
+  <button id="readyMode" type="button" class="outline" aria-pressed="false">Already seamless<small>Prepare for listing; do not modify</small></button>
+  <button id="detectMode" type="button" class="primary" aria-pressed="true">Make seamless<small>Detect and repair a repeat</small></button>
+ </div>
+ <p id="modeDescription" class="hint">This mode searches for a repeat and repairs the edges.</p>
+</section>
 <div class="layout">
 <section class="stack" aria-label="Pattern controls">
  <div class="panel">
@@ -33,15 +41,17 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
   <button id="redetect" class="secondary" disabled style="width:100%;margin-top:12px">Detect pattern again</button>
  </div>
  <div class="panel">
-  <h2>2. Finish the edges</h2>
+  <h2 id="edgeHeading">2. Finish the edges</h2>
+  <div id="edgeControls">
   <div class="row"><label for="coverage">Minimum design retained</label><output id="coverageValue">50%</output></div>
   <input type="range" id="coverage" min="40" max="80" value="50" step="5"><p class="hint">Default protects larger motifs and cable shapes. Move right to retain more of the original artwork; a larger crop may need extra edge repair.</p>
   <div class="row"><label for="blend">Edge blend</label><output id="blendValue">5%</output></div>
   <input type="range" id="blend" min="1" max="16" value="5" step="1"><p class="hint">Small blends protect crisp stitch detail. Increase only if you see a line or a double stitch where tiles meet.</p>
   <div class="row"><label for="density">Repeats across 5000px export</label><output id="densityValue">6</output></div>
   <input type="range" id="density" min="2" max="15" value="6" step="1"><p class="hint">Height automatically adjusts to keep the pattern's original proportions.</p>
+  </div>
   <div class="buttons"><button id="downloadTile" class="primary" disabled>Download seamless tile PNG</button><button id="download5000" class="outline" disabled>Download 5000 × 5000 PNG · 300 DPI</button></div>
-  <p class="info">The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.</p>
+  <p class="info" id="edgeHint">The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.</p>
  </div>
 </section>
 <section class="stack" aria-label="Pattern previews">
@@ -85,13 +95,13 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const state={source:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false};
+const state={source:null,originalFile:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false,mode:'auto'};
 const sourceCanvas=document.createElement('canvas');
 const tileCanvas=document.createElement('canvas');
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 function setStatus(msg,type=''){const el=$('status');el.textContent=msg;el.className='status '+type}
-function busy(v){state.busy=v; $('redetect').disabled=v||!state.source;$('downloadTile').disabled=v||!state.tile;$('download5000').disabled=v||!state.tile;}
+function busy(v){state.busy=v;$('readyMode').disabled=v;$('detectMode').disabled=v;$('redetect').disabled=v||!state.source||state.mode==='ready';$('downloadTile').disabled=v||!state.tile;$('download5000').disabled=v||!state.tile||state.mode==='ready';}
 function emptyPreview(){const c=$('preview'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(8,24,36,.65)';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#9aaab8';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('Your repeat preview appears here',c.width/2,c.height/2);}
 emptyPreview();
 
@@ -99,18 +109,19 @@ async function loadFile(file){
  if(!file)return;
  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){setStatus('Please select a PNG, JPG or WebP image.','error');return}
  if(file.size>70*1024*1024){setStatus('This image is too large for reliable mobile processing. Try a file under 70 MB.','error');return}
- busy(true);state.tile=null;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
+ busy(true);state.tile=null;state.originalFile=null;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
  try{
   let bmp=await createImageBitmap(file);
   if(bmp.width<96||bmp.height<96)throw new Error('Image is too small to analyse (minimum 96 × 96 pixels).');
   if(bmp.width*bmp.height>42e6)throw new Error('Image exceeds the 42-megapixel local processing limit.');
   sourceCanvas.width=bmp.width;sourceCanvas.height=bmp.height;
   sourceCanvas.getContext('2d',{willReadFrequently:true}).drawImage(bmp,0,0);
-  state.source={w:bmp.width,h:bmp.height,pixels:sourceCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,bmp.width,bmp.height).data};
+  state.source={w:bmp.width,h:bmp.height,pixels:state.mode==='auto'?sourceCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,bmp.width,bmp.height).data:null};
+  state.originalFile=file;
   if(bmp.close)bmp.close();
   state.fileName=file.name.replace(/\.[^.]+$/,'').replace(/[^\w-]/g,'-').slice(0,70)||'pattern';
   $('uploadTitle').textContent=file.name;
-  await nextFrame();await autoDetect();
+  await nextFrame();if(state.mode==='ready')useOriginal();else await autoDetect();
  }catch(err){console.error(err);setStatus(err.message||'Unable to process this image.','error');busy(false)}
 }
 function nextFrame(){return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
@@ -176,8 +187,38 @@ function chooseOrigin(a,axis,p){
  }
  return best;
 }
+function setMode(mode){
+ if(state.busy)return;
+ state.mode=mode==='ready'?'ready':'auto';
+ const ready=state.mode==='ready';
+ $('readyMode').setAttribute('aria-pressed',String(ready));$('detectMode').setAttribute('aria-pressed',String(!ready));
+ $('readyMode').className=ready?'primary':'outline';$('detectMode').className=ready?'outline':'primary';
+ $('modeDescription').textContent=ready?'Keep your original PNG, JPG or WebP file unchanged. Only listing previews and a seller ZIP will be generated.':'Detect the pattern repeat, crop it and blend the joins before exporting.';
+ $('edgeHeading').textContent=ready?'2. Export the original artwork':'2. Finish the edges';
+ $('edgeControls').hidden=ready;$('redetect').hidden=ready;$('download5000').hidden=ready;
+ $('downloadTile').textContent=ready?'Download original file':'Download seamless tile PNG';
+ $('edgeHint').textContent=ready?'The uploaded master file remains unchanged in the buyer download. Preview images are generated separately.':'The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.';
+ $('sizeFact').parentElement.querySelector('span').textContent=ready?'Full original tile':'Detected repeat tile';
+ $('scoreFact').parentElement.querySelector('span').textContent=ready?'Repeat detection':'Repeat match';
+ try{localStorage.setItem('sapiver-preparation-mode',state.mode)}catch{}
+ if(state.source){state.tile=null;window.dispatchEvent(new Event('sapiver:source-changed'));if(ready)useOriginal();else autoDetect();}
+}
+function useOriginal(){
+ if(!state.source||!state.originalFile)return;
+ const {w,h}=state.source;
+ tileCanvas.width=w;tileCanvas.height=h;
+ const ctx=tileCanvas.getContext('2d');if(!ctx)throw Error('Image preview unavailable');
+ ctx.drawImage(sourceCanvas,0,0);
+ state.tile={w,h};state.crop={x:0,y:0,w,h};state.match=0;
+ $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Skipped';
+ paintPreview();paintSource();busy(false);
+ setStatus('Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
+ window.dispatchEvent(new Event('sapiver:tile-ready'));
+}
 async function autoDetect(){
  if(!state.source)return;
+ if(state.mode==='ready'){useOriginal();return;}
+ if(!state.source.pixels)state.source.pixels=sourceCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,state.source.w,state.source.h).data;
  busy(true);setStatus('Looking for a complete repeating motif, not individual stitches…');await nextFrame();
  const a=analysisImage(),minCoverage=Number($('coverage').value)/100;
  const px=detectAxis(a,'x',minCoverage),py=detectAxis(a,'y',minCoverage);
@@ -243,7 +284,7 @@ function paintSource(){
  const ctx=cv.getContext('2d');ctx.drawImage(sourceCanvas,0,0,cv.width,cv.height);
  const sx=cv.width/s.w,sy=cv.height/s.h;
  ctx.strokeStyle='#b1f9da';ctx.lineWidth=3;ctx.strokeRect(t.x*sx,t.y*sy,t.w*sx,t.h*sy);
- ctx.fillStyle='rgba(4,27,24,.8)';ctx.fillRect(7,8,165,27);ctx.fillStyle='#ccffeb';ctx.font='bold 13px system-ui';ctx.fillText('Selected design area',14,26);
+ ctx.fillStyle='rgba(4,27,24,.8)';ctx.fillRect(7,8,165,27);ctx.fillStyle='#ccffeb';ctx.font='bold 13px system-ui';ctx.fillText(state.mode==='ready'?'Full original design':'Selected design area',14,26);
 }
 function uint32(n){return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]}
 const crcTable=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -258,7 +299,14 @@ function taggedDPI(binary){
 function asBlob(canvas){return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG export failed.')), 'image/png'));}
 function saveBlob(blob,name){let url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
 async function exportImage(full){
- if(!state.tile||state.busy)return;busy(true);setStatus(full?'Rendering the full 5000 × 5000 repeating design…':'Exporting the seamless tile…');await nextFrame();
+ if(!state.tile||state.busy)return;
+  if(state.mode==='ready'){
+    if(!state.originalFile)return;
+    saveBlob(state.originalFile,state.originalFile.name);
+    setStatus('Original uploaded file downloaded without modification.','good');
+    return;
+  }
+  busy(true);setStatus(full?'Rendering the full 5000 × 5000 repeating design…':'Exporting the seamless tile…');await nextFrame();
  try{
   let cv=tileCanvas;
   if(full){cv=document.createElement('canvas');cv.width=5000;cv.height=5000;const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -285,6 +333,10 @@ $('blend').addEventListener('input',e=>{$('blendValue').textContent=e.target.val
 $('density').addEventListener('input',e=>{$('densityValue').textContent=e.target.value});
 $('downloadTile').addEventListener('click',()=>exportImage(false));
 $('download5000').addEventListener('click',()=>exportImage(true));
+$('readyMode').addEventListener('click',()=>setMode('ready'));
+$('detectMode').addEventListener('click',()=>setMode('auto'));
+let savedMode='auto';try{if(localStorage.getItem('sapiver-preparation-mode')==='ready')savedMode='ready'}catch{}
+setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
 <script src="/auto-seamless/commercial-kit.js?v=20261116-exact-deliverables"></script>
