@@ -118,4 +118,29 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
  assert.equal(errors.length,0,errors.join('\n'));
  console.log(test.stdout.trim());
  console.log('PASS: actual 5000px Auto Seamless Chromium export was validated through both ZIP levels.');
+
+ // Finished-pattern mode must preserve the source bytes inside the buyer ZIP.
+ // Auto-detect assertions above remain unchanged.
+ await page.locator('#readyMode').click();
+ assert.equal(await page.locator('#readyMode').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.locator('#edgeControls').isHidden(),true);
+ await page.locator('#upload').setInputFiles({
+  name:'finished-grid.png',mimeType:'image/png',buffer:Buffer.from(base64,'base64')
+ });
+ await page.waitForFunction(()=>document.querySelector('#scoreFact')?.textContent==='Skipped',null,{timeout:15000});
+ assert.equal(await page.locator('#sizeFact').textContent(),'256 × 256');
+ assert.equal(await page.locator('#download5000').isHidden(),true);
+ assert.match(await page.locator('#status').textContent(),/No detection, crop, blending/);
+ await page.locator('#commercialPrice').fill('4.95');
+ await page.locator('#commercialReviewConfirmed').check();
+ await page.waitForFunction(()=>!document.querySelector('#downloadCommercial').disabled,null,{timeout:15000});
+ const readyWait=page.waitForEvent('download',{timeout:120000});
+ await page.locator('#downloadCommercial').click();
+ const readyDownload=await readyWait;
+ const readyPath=await readyDownload.path();
+ const verifyReady="import io,sys,zipfile,base64,json\nexpected=base64.b64decode(sys.argv[2])\nwith zipfile.ZipFile(sys.argv[1]) as outer:\n    assert outer.testzip() is None\n    names=outer.namelist()\n    assert len([n for n in names if n.startswith('LISTING-IMAGES/')])==4\n    buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]\n    assert len(buyers)==1,buyers\n    assert json.loads(outer.read('LISTING-METADATA.json'))['product']['kind']=='pattern'\n    with zipfile.ZipFile(io.BytesIO(outer.read(buyers[0]))) as buyer:\n        assert buyer.testzip() is None\n        names=buyer.namelist()\n        art=[n for n in names if n.endswith('-seamless-master.png')]\n        assert len(art)==1,names\n        assert buyer.read(art[0])==expected,'ready-made mode changed original file bytes'\n        for doc in ('LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'):\n            assert doc in names\n    assert b'256 x 256 PNG seamless master' in outer.read('SELLER-CHECKLIST.txt')\nprint('PASS already seamless: original source bytes preserved, one buyer ZIP, 4 listing previews, licence and metadata')\n";
+ const readyTest=spawnSync('python3',['-c',verifyReady,readyPath,base64],{encoding:'utf8',timeout:30000});
+ assert.equal(readyTest.status,0,readyTest.stderr||readyTest.stdout);
+ assert.equal(errors.length,0,errors.join('\n'));
+ console.log(readyTest.stdout.trim());
 }finally{await browser.close();}
