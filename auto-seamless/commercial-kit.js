@@ -66,6 +66,12 @@
   const canvas=document.createElement('canvas');canvas.width=canvas.height=width;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas rendering unavailable');
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  if(state.mode==='ready'){
+   // Listing-only rendering retains the tile aspect ratio; it never modifies the buyer master.
+   const tileHeight=width*state.tile.h/state.tile.w;
+   for(let y=0;y<Math.ceil(width/tileHeight);y++)ctx.drawImage(tileCanvas,0,y*tileHeight,width,tileHeight);
+   return canvas;
+  }
   const across=Number(byId('density').value),down=Math.max(1,Math.min(40,Math.round(across*state.tile.w/state.tile.h)));
   for(let y=0;y<down;y++)for(let x=0;x<across;x++){
    const x0=Math.round(x*width/across),x1=Math.round((x+1)*width/across),y0=Math.round(y*width/down),y1=Math.round((y+1)*width/down);
@@ -79,7 +85,16 @@
   const size=PREVIEW_SIZE,canvas=document.createElement('canvas');canvas.width=canvas.height=size;
   const c=canvas.getContext('2d');if(!c)throw Error('Listing image rendering unavailable');
   c.fillStyle='#fff';c.fillRect(0,0,size,size);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-  if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*1200,y*1200,1200,1200);}
+  if(state.mode==='ready'){
+   if(tiled){
+    const tw=size/2,th=tw*state.tile.h/state.tile.w;
+    for(let y=0;y<Math.ceil(size/th);y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*tw,y*th,tw,th);
+   }else{
+    // The cover shows the whole original rectangle, never stretched or cropped.
+    const scale=Math.min(size/state.tile.w,size/state.tile.h),w=state.tile.w*scale,h=state.tile.h*scale;
+    c.drawImage(tileCanvas,(size-w)/2,(size-h)/2,w,h);
+   }
+  }else if(tiled){for(let y=0;y<2;y++)for(let x=0;x<2;x++)c.drawImage(tileCanvas,x*1200,y*1200,1200,1200);}
   else{const r=render(size);c.drawImage(r,0,0);r.width=r.height=0;}
   return canvas;
  }
@@ -120,7 +135,7 @@
   c.fillStyle='#263c35';
   for(let i=0;i<formats.length;i++)c.fillText('- '+formats[i],1200,615+i*133,1090);
   c.fillStyle='#263c35';c.font='bold 57px system-ui';c.fillText(partCount+' Etsy download ZIP'+(partCount===1?'':'s'),1200,1570);
-  c.fillStyle='#607168';c.font='45px system-ui';c.fillText('PNG assets include 300 DPI metadata',1200,1670,1080);
+  c.fillStyle='#607168';c.font='45px system-ui';c.fillText(state.mode==='ready'?'Original master file supplied unchanged':'PNG assets include 300 DPI metadata',1200,1670,1080);
   c.fillStyle='#263c35';c.font='bold 63px system-ui';c.fillText(String(listing.product.name).slice(0,95),125,2020,2150);
   c.fillStyle='#61746b';c.font='45px system-ui';c.fillText('Digital files only - no physical product',125,2115);
   c.fillText('Only the files listed above are included',125,2190);
