@@ -248,7 +248,12 @@
     const original=state.originalFile;
     if(!original||!/\.(png|jpe?g|webp)$/i.test(original.name))throw Error('Upload a PNG, JPG or WebP master first');
     const ext=original.name.toLowerCase().split('.').pop().replace('jpeg','jpg');
-    files.push({name:stem+'-seamless-master.'+ext,data:await getBytes(original)});
+    // Original file permissions can expire on Android after preview/AI analysis.
+    // Only use the byte-for-byte snapshot captured during initial upload.
+    const originalBytes=state.originalBytes;
+    if(!(originalBytes instanceof Uint8Array)||originalBytes.byteLength!==original.size)
+     throw Error('The original artwork is not safely held in memory. Please upload the file again.');
+    files.push({name:stem+'-seamless-master.'+ext,data:originalBytes});
    }else{
     big=render(5000);
     files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
