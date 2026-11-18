@@ -127,7 +127,7 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
  await page.locator('#upload').setInputFiles({
   name:'finished-grid.png',mimeType:'image/png',buffer:Buffer.from(base64,'base64')
  });
- await page.waitForFunction(()=>document.querySelector('#scoreFact')?.textContent==='Skipped',null,{timeout:15000});
+ await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.startsWith('Full original retained.') && document.querySelector('#uploadTitle')?.textContent==='finished-grid.png' && document.querySelector('#scoreFact')?.textContent==='Skipped',null,{timeout:30000});
  assert.equal(await page.locator('#sizeFact').textContent(),'256 × 256');
  assert.equal(await page.locator('#download5000').isHidden(),true);
  assert.match(await page.locator('#status').textContent(),/No detection, crop, blending/);
