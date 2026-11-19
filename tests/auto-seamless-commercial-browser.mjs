@@ -15,7 +15,7 @@ await page.route('**/api/auto-seamless-listing',route=>route.fulfill({
  'home decor','soft blue','square design','modern','blue repeat','textile',
  'cerulean','indigo','checkerboard'],
  description:'A blue geometric textile design. Created with the aid of AI.',
- visual_subject:'blue grid',source:'visual-ai',live_search_volume:false})
+ etsy:{title:'Blue Grid Geometric Seamless Pattern Digital Download',tags:['blue grid pattern','blue textile tile','blue squares','geometric pattern','checkerboard print','blue fabric design','digital pattern','seamless blue','tile repeat','soft blue pattern','indigo geometric','woven look pattern','grid digital file'],description:'Blue geometric grid artwork, supplied as a digital seamless pattern. Digital download only. Created with the aid of AI.'},visual_subject:'blue grid',source:'visual-ai',live_search_volume:false})
 }));
 try{
  await page.goto('http://127.0.0.1:4185/auto-seamless/',{waitUntil:'load'});
@@ -58,11 +58,12 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert manifest['format']=='sapiver-seamless-seller-kit' and manifest['version']==1
     product=manifest['product']
     assert product['name']=='Blue Grid Textile Pattern'
+    assert product['etsyTitle']=='Blue Grid Geometric Seamless Pattern Digital Download'
     assert product['price']==4.95
     assert product['kind']=='pattern' and product['sectionTitle']=='Digital Downloads'
     assert product['description'].endswith('aid of AI.')
     assert product['useEmbeddedText'] and product['seamlessConfirmed']
-    assert 5<=len(product['tags'])<=13
+    assert len(product['tags'])==13
     assert len({t.lower() for t in product['tags']})==len(product['tags'])
     assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]
