@@ -38,7 +38,7 @@ try{
   title:'Two Colour Celestial Circles',main_tag:'geometric',
   other_tags:['circles','space pattern','blue motif','blue fabric','navy','abstract tile',
    'repeat pattern','art print','surface design','digital image','blue repeat','printable','colourway','pattern'],
-  description:'Circular motif in coordinated colours, created with AI assistance.',
+  description:'Circular motif in coordinated colours, created with the aid of AI.',
   visual_subject:'circles',source:'visual-ai',live_search_volume:false
  })}));
  await ready.goto('http://127.0.0.1:4185/auto-seamless/',{waitUntil:'load'});
