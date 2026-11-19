@@ -17,8 +17,8 @@ function validateEtsy(raw){
   throw Error("Etsy title must clearly identify a digital pattern and stay concise");
  const tags=Array.isArray(raw.tags)?raw.tags.map(clean):[];
  const normalised=tags.map(t=>t.toLocaleLowerCase("en-GB"));
- if(tags.length!==13||tags.some(t=>!t||t.length>20||/[<>\x00-\x1f]/.test(t)||disallowed.test(t))||new Set(normalised).size!==13)
-  throw Error("Etsy needs thirteen unique, accurate tags of at most 20 characters");
+ if(tags.length<5||tags.length>13||tags.some(t=>!t||t.length>20||/[<>\x00-\x1f]/.test(t)||disallowed.test(t))||new Set(normalised).size!==tags.length)
+  throw Error("Etsy tags must be accurate and unique, at most 20 characters each (aim for thirteen)");
  let description=clean(raw.description);
  if(!description||description.length>800)throw Error("Etsy description is missing or too long");
  if(!/\bdigital download\b/i.test(description))description="Digital download only. "+description;
