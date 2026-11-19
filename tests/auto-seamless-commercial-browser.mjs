@@ -58,11 +58,12 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert manifest['format']=='sapiver-seamless-seller-kit' and manifest['version']==1
     product=manifest['product']
     assert product['name']=='Blue Grid Textile Pattern'
+    assert product['etsyTitle']=='Blue Grid Geometric Seamless Pattern Digital Download'
     assert product['price']==4.95
     assert product['kind']=='pattern' and product['sectionTitle']=='Digital Downloads'
     assert product['description'].endswith('aid of AI.')
     assert product['useEmbeddedText'] and product['seamlessConfirmed']
-    assert 5<=len(product['tags'])<=13
+    assert len(product['tags'])==13
     assert len({t.lower() for t in product['tags']})==len(product['tags'])
     assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]
