@@ -51,7 +51,7 @@ async function analyse(file){
       tags=Array.isArray(data.other_tags)?data.other_tags.map(x=>String(x).trim()):[],
       description=String(data.description||"").trim();
     const etsy=data.etsy||{},etsyTitle=String(etsy.title||"").trim(),etsyTags=Array.isArray(etsy.tags)?etsy.tags.map(t=>String(t).trim()):[],etsyDesc=String(etsy.description||"").trim();
-    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description)||!etsyTitle||etsyTitle.length>140||etsyTags.length!==13||etsyTags.some(t=>!t||t.length>20)||new Set(etsyTags.map(t=>t.toLowerCase())).size!==13||!etsyDesc||!/\bAI\b/i.test(etsyDesc))
+    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description)||!etsyTitle||etsyTitle.length>140||(etsyTags.length<5||etsyTags.length>13)||etsyTags.some(t=>!t||t.length>20)||new Set(etsyTags.map(t=>t.toLowerCase())).size!==etsyTags.length||!etsyDesc||!/\bAI\b/i.test(etsyDesc))
       throw Error("The analysis returned incomplete listing information");
     E("metaName").value=title;E("metaMain").value=main;
     E("metaTags").value=tags.join(", ");E("metaDesc").value=description.slice(0,250);
