@@ -3,7 +3,7 @@
 (function(){
 const E=id=>document.getElementById(id);
 const ENDPOINT="/api/auto-seamless-listing";
-const fields=["metaName","metaMain","metaTags","metaDesc"];
+const fields=["metaName","metaMain","metaTags","metaDesc","etsyTitle","etsyTags","etsyDesc"];
 const copyActions=["name","main","tags","desc","all"];
 let currentFile=null,sequence=0,active=null,ready=false;
 function status(message,loading=false){
@@ -34,7 +34,7 @@ async function analyse(file){
   const token=++sequence;
   if(active)active.abort();
   const ctrl=new AbortController();active=ctrl;
-  clear();status("AI is examining the image and preparing the title, 15 tags and description…",true);
+  clear();status("Analysing artwork for separate Redbubble and Etsy listing details…",true);
   const timer=setTimeout(()=>ctrl.abort(),40000);
   try{
     const preview=smallPreview();
@@ -50,14 +50,16 @@ async function analyse(file){
     const title=String(data.title||"").trim(),main=String(data.main_tag||"").trim(),
       tags=Array.isArray(data.other_tags)?data.other_tags.map(x=>String(x).trim()):[],
       description=String(data.description||"").trim();
-    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description))
+    const etsy=data.etsy||{},etsyTitle=String(etsy.title||"").trim(),etsyTags=Array.isArray(etsy.tags)?etsy.tags.map(t=>String(t).trim()):[],etsyDesc=String(etsy.description||"").trim();
+    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description)||!etsyTitle||etsyTitle.length>140||etsyTags.length!==13||etsyTags.some(t=>!t||t.length>20)||new Set(etsyTags.map(t=>t.toLowerCase())).size!==13||!etsyDesc||!/\bAI\b/i.test(etsyDesc))
       throw Error("The analysis returned incomplete listing information");
     E("metaName").value=title;E("metaMain").value=main;
     E("metaTags").value=tags.join(", ");E("metaDesc").value=description.slice(0,250);
+    E("etsyTitle").value=etsyTitle;E("etsyTags").value=etsyTags.join(", ");E("etsyDesc").value=etsyDesc;
     ready=true;copyActions.forEach(id=>E("copy-"+id).disabled=false);
     E("saveMeta").disabled=false;
     E("metaCount").textContent="14 additional tags · 15 total · "+E("metaDesc").value.length+"/250 description characters";
-    status("Automatically generated from the image. Check accuracy before publishing; live keyword volumes were not checked.");
+    status("Redbubble and Etsy details generated separately. Review each platform before publishing; live search demand was not measured.");
   }catch(error){
     if(token!==sequence)return;
     const message=error?.name==="AbortError"?"AI analysis timed out.":
