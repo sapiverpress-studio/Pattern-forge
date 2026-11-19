@@ -18,8 +18,8 @@
   if(!/\bAI\b/i.test(desc))throw Error('The listing description must disclose AI assistance.');
   const tagCandidates=extras,tags=[],used=new Set();
   for(const raw of tagCandidates){
-   if(!raw||raw.length>20||/[<>\x00-\x1f]/.test(raw))continue;
-   const key=raw.toLowerCase();if(used.has(key))continue;
+   if(!raw||raw.length>20||/[<>\x00-\x1f]/.test(raw))throw Error('An Etsy tag exceeds 20 characters or contains invalid text. Correct the tag before exporting.');
+   const key=raw.toLowerCase();if(used.has(key))throw Error('Duplicate Etsy tags need editing. Keep each phrase relevant and distinct.');
    tags.push(raw);used.add(key);if(tags.length===13)break;
   }
   if(tags.length<5)throw Error('Etsy needs at least five truthful tags of 20 characters or fewer; aim for thirteen without filler.');
