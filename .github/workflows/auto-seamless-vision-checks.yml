@@ -42,7 +42,8 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm install --no-save --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          command -v google-chrome
+          echo "PF_CHROME=$(command -v google-chrome)" >> "$GITHUB_ENV"
       - name: Syntax and API validation
         run: |
           node --check netlify/functions/auto-seamless-listing.mjs
