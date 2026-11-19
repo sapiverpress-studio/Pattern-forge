@@ -2311,7 +2311,25 @@
     setStatus(message);
     return {success:true,message,transparentSize:transparent.size,solidSize:solid.size,etsyWarning:atRisk};
   }
-  window.PatternForgeQuickExport=Object.freeze({run:quickExportBackground});
+  function previewQuickExportBackground(colour,output){
+    // Render through the exact same tile engine as the full-resolution export.
+    // Small canvas only: no PNG encoding, project change, background setting, or file download.
+    if(isDoodleProject())throw Error("Background preview is available for pattern projects.");
+    if(!/^#[0-9a-fA-F]{6}$/.test(colour||""))throw Error("Choose a valid background colour.");
+    if(!output||output.tagName!=="CANVAS")throw Error("Background preview canvas is missing.");
+    const mult=exportMultipliers(),base=200/Math.max(mult.x,mult.y);
+    const w=Math.max(1,Math.round(base*mult.x)),h=Math.max(1,Math.round(base*mult.y));
+    const preview=makeTileCanvas(w,h,base,base,projectRepeatStyle(),true,"solid",colour);
+    try{
+      output.width=w;output.height=h;
+      const ctx=output.getContext("2d");
+      if(!ctx)throw Error("Your browser cannot display a background preview.");
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(preview,0,0);
+      return {width:w,height:h,colour};
+    }finally{preview.width=0;preview.height=0;}
+  }
+  window.PatternForgeQuickExport=Object.freeze({run:quickExportBackground,preview:previewQuickExportBackground});
   async function exportPNG(){
     // Doodle export and the existing SVG/project/other export paths stay unchanged.
     if(isDoodleProject()){
