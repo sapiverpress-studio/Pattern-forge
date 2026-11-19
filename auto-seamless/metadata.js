@@ -59,7 +59,7 @@ async function analyse(file){
     ready=true;copyActions.forEach(id=>E("copy-"+id).disabled=false);
     E("saveMeta").disabled=false;
     E("metaCount").textContent="14 additional tags · 15 total · "+E("metaDesc").value.length+"/250 description characters";
-    status("Redbubble and Etsy details generated separately. Review each platform before publishing; live search demand was not measured.");
+    status("Redbubble and Etsy details generated separately. "+(etsyTags.length<13?"Etsy has "+etsyTags.length+" relevant tags; add up to 13 truthful phrases if useful. ":"")+"Review before publishing; live search demand was not measured.");
   }catch(error){
     if(token!==sequence)return;
     const message=error?.name==="AbortError"?"AI analysis timed out.":
