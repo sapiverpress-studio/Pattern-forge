@@ -26,7 +26,8 @@ function validateEtsy(raw){
  if(description.length>900)throw Error("Etsy description exceeds the safety limit");
  return {title,tags,description,source:"visual-ai",live_search_volume:false};
 }
-\nexport function validateListing(raw){
+
+export function validateListing(raw){
   if(!raw||typeof raw!=="object")throw Error("Invalid metadata object");
   const title=clean(raw.title).slice(0,110);
   const words=[raw.main_tag,...(Array.isArray(raw.other_tags)?raw.other_tags:[])];
