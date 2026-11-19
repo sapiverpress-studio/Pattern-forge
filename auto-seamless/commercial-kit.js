@@ -496,18 +496,27 @@
     'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
-    'Background variants: '+(paired?'transparent AND solid '+paired.backgroundColor+'; four images required':'single image background'),
+    'Background variants: '+(paired?'transparent original and '+listing.product.backgroundColours.length+' solid colour(s): '+listing.product.backgroundColours.join(', ')+(listing.product.backgroundColours.length===1?'; four images required':'; '+accepted.length+' images required'):'single image background'),
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
    ];
    seller.push({name:'QUALITY-CHECK.txt',data:encode(quality.join('\n')+'\n')});
-   const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+'\nEtsy section: Digital Downloads\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\nSource: AI visual description, not live search-volume research.\nReview before approving Etsy deployment.\n';
+   const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+
+    '\nEtsy section: Digital Downloads\nTitle, description and '+listing.product.tags.length+
+    ' Etsy tags are embedded in LISTING-METADATA.json.\n'+
+    (paired?'IMPORTANT: Poster Gen must be updated to attach ALL the nested original and colour-variation ZIPs to ONE Etsy digital listing before publishing. Do NOT use the old single-attachment importer for this seller kit.\n':
+      'Upload the outer ZIP to Poster Gen as one digital pattern product.\n')+
+    'Only UPLOAD-TO-ETSY ZIP files are delivered to buyers. Each has the licence, About and instructions.\n'+
+    (paired?'BUYER-ZIP-MAP.json identifies the original and colour-variation ZIPs separately.\n':'')+
+    'Source: AI visual description; not live keyword-demand research.\nReview before Etsy publication.\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+'Included customer artwork:\n'+includedArtworkLabels(accepted).join('\n')+'\n')});
    const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. Included: '+includedArtworkLabels(accepted).join(', ')+(converted?' Re-encoded customer format: review carefully; source on device unchanged.':'')+'. Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded with '+pieces.length+' separate Etsy buyer ZIP(s), '+(paired?'original and colour options grouped separately':'all images documented')+
+    ', and four listing previews. '+(paired?'Do not use Poster Gen until its multi-attachment importer is updated. ':'')+
+    (converted?'Approved image format changes must be reviewed. ':'')+'No Etsy listing created.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
