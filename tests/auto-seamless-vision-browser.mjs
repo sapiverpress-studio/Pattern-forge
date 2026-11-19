@@ -13,7 +13,7 @@ const response={
  main_tag:"cable knit",
  other_tags:["knitted texture","chunky knit","braided wool","aran knit","cable stitch","cream","rust","sweater texture","soft wool","cozy","cosy","winter warmth","warm neutrals","textured yarn"],
  description:"A cosy cable-knit texture with warm rust and creamy knitted stitches. Created with the aid of AI.",
- visual_subject:"cream and rust cable knitted stitches",source:"visual-ai",live_search_volume:false
+ etsy:{title:"Cream and Rust Cable Knit Digital Seamless Pattern",tags:["cable knit pattern","rust cream pattern","cosy knit design","digital knit tile","knitted texture","cream wool look","braided stitch art","warm rust design","seamless knit","neutral knit tile","knit style pattern","cosy yarn pattern","fabric digital tile"],description:"Cream and rust cable-knit inspired artwork. Digital download only. Created with the aid of AI."},visual_subject:"cream and rust cable knitted stitches",source:"visual-ai",live_search_volume:false
 };
 await page.route("**/api/auto-seamless-listing",async route=>{
  const data=route.request().postDataJSON();
@@ -38,6 +38,9 @@ const fields={
  description:await page.locator("#metaDesc").inputValue()
 };
 assert.equal(fields.name,response.title);
+assert.equal(await page.locator("#etsyTitle").inputValue(),response.etsy.title);
+assert.equal((await page.locator("#etsyTags").inputValue()).split(",").length,13);
+assert.match(await page.locator("#etsyDesc").inputValue(),/Digital download only/);
 assert.equal(fields.main,response.main_tag);
 assert.equal(fields.tags.split(",").length,14);
 assert.ok(fields.description.includes("aid of AI"));
@@ -56,6 +59,7 @@ mode="fail";
 await page.locator("#metaGenerate").click();
 await page.waitForFunction(()=>document.querySelector("#metaNotice")?.textContent.includes("temporarily unavailable"),null,{timeout:10000});
 assert.equal(await page.locator("#metaName").inputValue(),"","No made-up fallback on AI failure");
+assert.equal(await page.locator("#etsyTitle").inputValue(),"","No misleading Etsy metadata after AI failure");
 assert.equal(await page.locator("#copy-all").isDisabled(),true);
 mode="success";
 await page.locator("#metaGenerate").click();
