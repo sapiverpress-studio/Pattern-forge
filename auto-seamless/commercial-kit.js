@@ -416,9 +416,12 @@
     const delivered=includedArtworkLabels(accepted);
     listing.product.description+='\n\nDigital artwork included: '+delivered.join('; ')+'.';
     if(paired){
-     listing.product.backgroundOptions='transparent-and-solid';
-     listing.product.backgroundColour=paired.backgroundColor;
-     listing.product.description+=' Includes both transparent and solid '+paired.backgroundColor+' backgrounds in two sizes each. All four images are one design under one commercial licence.';
+     const colours=(paired.variations||[{color:paired.backgroundColor}]).map(v=>v.color);
+     listing.product.backgroundOptions=colours.length===1?'transparent-and-solid':'transparent-and-colour-variations';
+     listing.product.backgroundColour=colours[0];
+     listing.product.backgroundColours=colours;
+     listing.product.description+=' This one design includes a transparent original and '+colours.length+
+       ' solid-background colour option(s) ('+colours.join(', ')+'), each in original and smaller sizes. Original and colour files are delivered in separate Etsy buyer ZIPs under one commercial-use licence.';
     }
     if(converted){
      listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
@@ -426,11 +429,47 @@
     }
     if(smallerAlternative)listing.product.description+=' The smaller WEBP uses lossy compression and is not a PNG. Inspect the included file formats and printer compatibility.';
    }
-   const pieces=pack(accepted,documents),seller=[];
-   for(let i=0;i<pieces.length;i++){
-    const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
-    seller.push({name:'UPLOAD-TO-ETSY/'+stem.slice(0,49)+'-part-'+(i+1)+'.zip',data:await getBytes(buyer)});
+   // One separate class for the transparent ORIGINAL, another for the
+   // selected COLOUR VARIATIONS. Each group can span multiple Etsy attachments.
+   // Reserve 4096 bytes for a precise, per-part CONTENTS.txt during bin packing.
+   const reserve=paired?[...documents,{name:'CONTENTS.txt',data:encode(' '.repeat(4096))}]:documents;
+   const planned=paired?[
+    ...pack(originalAssets,reserve).map((group,i)=>({role:'original',number:i+1,artwork:group.slice(0,-reserve.length)})),
+    ...pack(colourAssets,reserve).map((group,i)=>({role:'colours',number:i+1,artwork:group.slice(0,-reserve.length)}))
+   ]:pack(accepted,documents).map((group,i)=>({role:'standard',number:i+1,entries:group}));
+   if(planned.length>5)throw Error('These image sizes and colours require '+planned.length+
+     ' Etsy download ZIPs. Etsy accepts five. Remove a colour variation or approve a permitted alternative.');
+   const pieces=[],seller=[],buyerMap=[];
+   for(const part of planned){
+    const entries=paired?[
+     ...part.artwork,...documents,
+     {name:'CONTENTS.txt',data:encode([
+      'SAPIVER PRINTS - CONTENTS OF THIS DOWNLOAD ZIP','',
+      'Type: '+(part.role==='original'?'ORIGINAL TRANSPARENT PATTERN':'SOLID BACKGROUND COLOUR VARIATIONS'),
+      'Files IN THIS ZIP (not other purchase attachments):',
+      ...part.artwork.map(asset=>'- '+asset.name+' - '+includedArtworkLabels([asset])[0]),
+      '',
+      'Also inside THIS ZIP: LICENSE.txt, README.txt, ABOUT-SAPIVER-PRINTS.txt, CONTENTS.txt.',
+      'Check your Etsy order for separate original and background-colour ZIP downloads.',
+      'All background options represent one design under one commercial-use licence.',
+      'Some files are supplied as compressed WebP only if that alternative was approved.'
+     ].join('\n')+'\n')}
+    ]:part.entries;
+    const buyer=zip(entries);
+    if(buyer.size>MAX)throw Error('The '+part.role+' buyer ZIP exceeds Etsy’s 20 MB limit with its licence documents.');
+    const filename=paired?stem.slice(0,41)+'-'+(part.role==='original'?'01-original':'02-colour-variations')+'-part-'+part.number+'.zip':
+      stem.slice(0,49)+'-part-'+part.number+'.zip';
+    const path='UPLOAD-TO-ETSY/'+filename;
+    seller.push({name:path,data:await getBytes(buyer)});
+    pieces.push(entries);
+    buyerMap.push({file:path,kind:part.role,part:part.number,bytes:buyer.size,
+      artwork:entries.filter(e=>/\.(png|jpg|webp)$/i.test(e.name)).map(e=>({name:e.name,description:includedArtworkLabels([e])[0]})),
+      documents:entries.filter(e=>/\.txt$/i.test(e.name)).map(e=>e.name)});
    }
+   if(paired)seller.push({name:'BUYER-ZIP-MAP.json',data:encode(JSON.stringify({
+    schema:'sapiver-buyer-parts',version:1,listingId:stem,backgroundColours:listing.product.backgroundColours,
+    etsyMaxFiles:5,etsyMaxBytesPerFile:MAX,buyerFiles:buyerMap
+   },null,2)+'\n')});
    // Four independent 2400px Etsy photographs: cover, repeat evidence, honest context mock-up and contents/detail.
    for(const [imageName,makeImage] of [
     ['01-pattern.jpg',()=>preview(false)],
