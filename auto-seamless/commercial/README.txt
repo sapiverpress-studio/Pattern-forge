@@ -6,7 +6,7 @@ WHAT YOU RECEIVE
 Your purchased artwork file(s) are included in this download. See the included-files listing image for their exact formats and pixel dimensions. This ZIP also contains the commercial-use licence, these instructions and About Sapiver Prints. No files other than those actually present in the ZIP are promised.
 
 BACKGROUND OPTIONS AND FILE LIST
-Some products supply both a transparent-background image and a solid-colour-background image, each in two pixel sizes. If supplied, choose the version that suits your finished product or printer. These are options for one licensed design, not different designs. Check CONTENTS.txt (when present) for the exact artwork files and dimensions included across the buyer ZIP parts.
+Some purchases include a transparent original and several solid-colour background variations, each offered at full and smaller pixel sizes. Etsy may show these as SEPARATE downloadable ZIP attachments under ONE listing. Download each attachment to obtain all the purchased options. Every ZIP contains its own licence and instructions. Check CONTENTS.txt in EACH ZIP for exactly the artwork inside that ZIP; other variations may be in another attachment. All colour versions are presentations of one licensed design.
 
 A transparent-background image lets you choose a background in compatible design software. A solid-background image includes its selected background colour. Flattened artwork cannot reliably be made transparent simply by removing its colour.
 

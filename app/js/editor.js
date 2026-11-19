@@ -2276,11 +2276,15 @@
     try{return await canvasToPngBlobWithDpi(canvas,spec.dpi);}
     finally{canvas.width=0;canvas.height=0;}
   }
-  async function quickExportBackground(mode,colour){
+  async function quickExportBackground(mode,colour,colours=null){
     if(isDoodleProject())throw Error("Use the standard transparent doodle export.");
     const spec=getExportSpec();
-    if(spec.wPx*spec.hPx>100_000_000)throw Error("This design is over 100 megapixels; use a smaller repeat swatch for browser export.");
+    if(spec.wPx*spec.hPx>100_000_000)throw Error("This design is over 100 megapixels; use a smaller repeat swatch.");
     if(!/^#[0-9a-fA-F]{6}$/.test(colour||""))throw Error("Choose a valid solid background colour.");
+    const selected=(Array.isArray(colours)&&colours.length?colours:[colour]).map(c=>String(c).toLowerCase());
+    if(mode==="both"&&(selected.length<1||selected.length>3||new Set(selected).size!==selected.length||
+      selected.some(c=>!/^#[0-9a-f]{6}$/.test(c))))
+      throw Error("Choose up to three different solid background colours.");
     setStatus("Exporting transparent "+spec.wPx+" × "+spec.hPx+" PNG…");
     await new Promise(r=>setTimeout(r,35));
     const transparent=await backgroundExportPng(spec,"transparent");
@@ -2291,25 +2295,35 @@
       setStatus(message);return {success:true,message,transparentSize:transparent.size,solidSize:0};
     }
     if(mode!=="both")throw Error("Unsupported background export choice.");
-    setStatus("Preparing "+colour+" background at the original dimensions…");
-    const solid=await backgroundExportPng(spec,"solid",colour);
-    if(transparent.size+solid.size>120_000_000)
-      throw Error("The two image files are too large for one reliable mobile ZIP. Export transparent only, or use a smaller pattern.");
-    const manifest={format:"sapiver-background-pair",version:1,
-      transparent:base+"-transparent.png",solid:base+"-solid.png",
-      backgroundColor:colour,width:spec.wPx,height:spec.hPx,dpi:spec.dpi};
-    const zipped=await makeZip([
-      {name:manifest.transparent,blob:transparent},
-      {name:manifest.solid,blob:solid},
-      {name:"SAPIVER-BACKGROUND-PAIR.json",blob:new Blob([JSON.stringify(manifest,null,2)],{type:"application/json"})}
-    ]);
+    const variants=[],files=[{name:base+"-transparent.png",blob:transparent}];
+    let total=transparent.size;
+    for(const c of selected){
+      setStatus("Preparing colour "+c+" ("+(variants.length+1)+" of "+selected.length+")…");
+      const solid=await backgroundExportPng(spec,"solid",c);
+      total+=solid.size;
+      if(total>120_000_000)
+        throw Error("Selected colours exceed the 120 MB mobile ZIP limit. Remove a colour variation and export again.");
+      const name=selected.length===1?base+"-solid.png":base+"-solid-"+c.slice(1)+".png";
+      variants.push({color:c,file:name,size:solid.size});
+      files.push({name,blob:solid});
+    }
+    // Version 1 is retained for existing two-image workflows; v2 supports several colours.
+    const manifest=selected.length===1
+      ?{format:"sapiver-background-pair",version:1,transparent:base+"-transparent.png",
+        solid:variants[0].file,backgroundColor:variants[0].color,width:spec.wPx,height:spec.hPx,dpi:spec.dpi}
+      :{format:"sapiver-background-pair",version:2,transparent:base+"-transparent.png",
+        variations:variants.map(v=>({color:v.color,file:v.file})),width:spec.wPx,height:spec.hPx,dpi:spec.dpi};
+    files.push({name:"SAPIVER-BACKGROUND-PAIR.json",blob:new Blob([JSON.stringify(manifest,null,2)],{type:"application/json"})});
+    const zipped=await makeZip(files);
     downloadBlob(zipped,safeName()+"-background-pair.zip");
-    const atRisk=transparent.size>18_000_000||solid.size>18_000_000;
-    const message="ZIP downloaded: transparent "+sizeMB(transparent.size)+" + "+colour+" background "+sizeMB(solid.size)+
-      " (both "+spec.wPx+" × "+spec.hPx+" px, 300 DPI)."+
-      (atRisk?" Etsy warning: one or both originals may exceed the 20 MB buyer-ZIP limit; we recommend transparent-only for Etsy unless the Already Seamless packager can fit or convert the paired files.":" Both backgrounds are available for the listing packager.");
+    const atRisk=[transparent.size,...variants.map(v=>v.size)].some(n=>n>18_000_000);
+    const message="ZIP downloaded: transparent "+sizeMB(transparent.size)+" + "+selected.length+
+      " colour variation"+(selected.length===1?"":"s")+" ("+variants.map(v=>v.color+" "+sizeMB(v.size)).join(", ")+
+      "), "+spec.wPx+" × "+spec.hPx+" px, 300 DPI."+
+      (atRisk?" Etsy warning: one or more originals may exceed the 20 MB buyer-ZIP limit. The commercial kit will separate original and colours, and ask before any format conversion.":" The commercial kit will package original and background variations separately.");
     setStatus(message);
-    return {success:true,message,transparentSize:transparent.size,solidSize:solid.size,etsyWarning:atRisk};
+    return {success:true,message,transparentSize:transparent.size,solidSize:variants.reduce((sum,v)=>sum+v.size,0),
+      variations:variants,etsyWarning:atRisk};
   }
   function previewQuickExportBackground(colour,output){
     // Render through the exact same tile engine as the full-resolution export.

@@ -338,10 +338,22 @@
     if(!(originalBytes instanceof Uint8Array)||originalBytes.byteLength!==original.size)
      throw Error('The original artwork is not safely held in memory. Please upload the file again.');
     if(paired){
-     if(ext!=='png'||!(paired.transparent.bytes instanceof Uint8Array)||paired.transparent.width!==state.tile.w||paired.transparent.height!==state.tile.h)
-      throw Error('The two original background PNGs are not available at matching dimensions.');
-     files.push({name:stem+'-solid-seamless-master.png',data:originalBytes,width:state.tile.w,height:state.tile.h});
-     files.push({name:stem+'-transparent-seamless-master.png',data:paired.transparent.bytes,width:state.tile.w,height:state.tile.h});
+     const variations=paired.variations||[{color:paired.backgroundColor,image:paired.solid}];
+     if(ext!=='png'||!(paired.transparent.bytes instanceof Uint8Array)||
+        paired.transparent.width!==state.tile.w||paired.transparent.height!==state.tile.h||
+        variations.length<1||variations.length>3)
+      throw Error('Transparent original and one to three colour PNGs are required at matching dimensions.');
+     files.push({name:stem+'-transparent-seamless-master.png',data:paired.transparent.bytes,
+       width:state.tile.w,height:state.tile.h,role:'original'});
+     for(let i=0;i<variations.length;i++){
+      const variant=variations[i],hex=String(variant.color).replace('#','').toLowerCase();
+      if(!/^[0-9a-f]{6}$/.test(hex)||!(variant.image?.bytes instanceof Uint8Array)||
+         variant.image.width!==state.tile.w||variant.image.height!==state.tile.h)
+       throw Error('Colour '+(i+1)+' is missing or has inconsistent dimensions.');
+      const filename=variations.length===1?stem+'-solid-seamless-master.png':
+        stem+'-solid-'+hex+'-seamless-master.png';
+      files.push({name:filename,data:variant.image.bytes,width:state.tile.w,height:state.tile.h,role:'colour',colour:variant.color});
+     }
     }else files.push({name:stem+'-seamless-master.'+ext,data:originalBytes,width:state.tile.w,height:state.tile.h});
    }else{
     big=render(5000);
@@ -355,62 +367,109 @@
    }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
-   let prepared;
+   let prepared,originalAssets=[],colourAssets=[];
    if(paired){
-    const solid=await prepareCustomerArtwork([files[0]],documents,tileCanvas);
-    const transparentCanvas=document.createElement('canvas');
-    transparentCanvas.width=paired.width;transparentCanvas.height=paired.height;
-    try{
-     const bmp=await createImageBitmap(new Blob([paired.transparent.bytes],{type:'image/png'}));
-     try{transparentCanvas.getContext('2d').drawImage(bmp,0,0);}
-     finally{bmp.close?.();}
-     const clear=await prepareCustomerArtwork([files[1]],documents,transparentCanvas);
-     prepared={accepted:[...solid.accepted,...clear.accepted],converted:!!(solid.converted||clear.converted),
-      smallerAlternative:!!(solid.smallerAlternative||clear.smallerAlternative)};
-    }finally{transparentCanvas.width=transparentCanvas.height=0;}
+    // Reserve enough for the part-specific CONTENTS.txt before choosing formats.
+    const reserve=[...documents,{name:'CONTENTS.txt',data:encode(' '.repeat(4096))}];
+    const preparedParts=[];
+    for(let i=0;i<files.length;i++){
+     const item=files[i];
+     let canvas=tileCanvas,decoded=null,temporary=null;
+     // The preview canvas holds the FIRST coloured version; all other images
+     // are decoded independently from the exact bytes in the source ZIP.
+     if(i===0||i>1){
+      temporary=document.createElement('canvas');
+      temporary.width=paired.width;temporary.height=paired.height;
+      try{
+       decoded=await createImageBitmap(new Blob([item.data],{type:'image/png'}));
+       const ctx=temporary.getContext('2d');
+       if(!ctx)throw Error('Browser cannot prepare background variation '+i);
+       ctx.drawImage(decoded,0,0);
+       canvas=temporary;
+      }catch(e){temporary.width=temporary.height=0;throw e;}
+     }
+     try{preparedParts.push(await prepareCustomerArtwork([item],reserve,canvas));}
+     finally{decoded?.close?.();if(temporary)temporary.width=temporary.height=0;}
+    }
+    originalAssets=preparedParts[0].accepted;
+    colourAssets=preparedParts.slice(1).flatMap(part=>part.accepted);
+    prepared={accepted:[...originalAssets,...colourAssets],
+      converted:preparedParts.some(part=>part.converted),
+      smallerAlternative:preparedParts.some(part=>part.smallerAlternative)};
    }else prepared=await prepareCustomerArtwork(files,documents);
    const {accepted,converted=false,smallerAlternative=false}=prepared;
    if(state.mode==='ready'){
-    const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h)));
-    if((paired?accepted.length!==4:accepted.length!==2)||sizes.size!==2)
-     throw Error('All required full-size and smaller images must be present. No incomplete kit was downloaded.');
-    if(paired)for(const variant of ['solid','transparent']){
-     const images=accepted.filter(f=>f.name.includes('-'+variant+'-'));
-     if(images.length!==2||new Set(images.map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h))).size!==2)
-      throw Error('Missing a full-size or smaller '+variant+' customer image.');
+    const dimensions=asset=>String(asset.width||state.tile.w)+'x'+String(asset.height||state.tile.h);
+    const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(dimensions));
+    if((paired?accepted.length!==(files.length*2):accepted.length!==2)||sizes.size!==2)
+     throw Error('Both image sizes must be present for every included background.');
+    if(paired){
+     for(const source of files){
+      const prefix=source.name.replace(/-seamless-master\.(png|jpg|webp)$/i,'');
+      const images=accepted.filter(f=>f.name.startsWith(prefix));
+      if(images.length!==2||new Set(images.map(dimensions)).size!==2)
+       throw Error('Missing full-size or smaller image for '+source.name);
+     }
     }
-   }
-   if(paired){
-    const exact=includedArtworkLabels(accepted);
-    documents.push({name:'CONTENTS.txt',data:encode([
-     'SAPIVER PRINTS — FILE CONTENTS','',
-     'One design with two background treatments: transparent and solid '+paired.backgroundColor+'.',
-     'Each treatment has a full-resolution image and a smaller image. The artwork is supplied across Etsy buyer ZIP attachments.',
-     'Actual artwork files:',...accepted.map((f,i)=>'- '+f.name+' — '+exact[i]),
-     'Both treatments are covered by one commercial-use licence (LICENSE.txt).',
-     'WebP, where supplied, uses lossy compression and may not work in every print service.',
-     '300 DPI metadata does not add pixel detail.'
-    ].join('\n')+'\n')});
    }
    if(state.mode==='ready'){
     const delivered=includedArtworkLabels(accepted);
     listing.product.description+='\n\nDigital artwork included: '+delivered.join('; ')+'.';
     if(paired){
-     listing.product.backgroundOptions='transparent-and-solid';
-     listing.product.backgroundColour=paired.backgroundColor;
-     listing.product.description+=' Includes both transparent and solid '+paired.backgroundColor+' backgrounds in two sizes each. All four images are one design under one commercial licence.';
+     const colours=(paired.variations||[{color:paired.backgroundColor}]).map(v=>v.color);
+     listing.product.backgroundOptions=colours.length===1?'transparent-and-solid':'transparent-and-colour-variations';
+     listing.product.backgroundColour=colours[0];
+     listing.product.backgroundColours=colours;
+     listing.product.description+=' This one design includes a transparent original and '+colours.length+
+       ' solid-background colour option(s) ('+colours.join(', ')+'), each in original and smaller sizes. Original and colour files are delivered in separate Etsy buyer ZIPs under one commercial-use licence.';
     }
     if(converted){
-     listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
+     listing.product.description+=' One or more full-resolution files could not fit Etsy’s per-file limit without the approved re-encoding. PNG re-encoding preserves pixel dimensions; WebP, if included, uses lossy compression. Check the exact supplied formats and printer compatibility.';
      listing.product.deliveryChangedFromOriginal=true;
     }
     if(smallerAlternative)listing.product.description+=' The smaller WEBP uses lossy compression and is not a PNG. Inspect the included file formats and printer compatibility.';
    }
-   const pieces=pack(accepted,documents),seller=[];
-   for(let i=0;i<pieces.length;i++){
-    const buyer=zip(pieces[i]);if(buyer.size>MAX)throw Error('Buyer ZIP exceeds Etsy’s 20 MB cap');
-    seller.push({name:'UPLOAD-TO-ETSY/'+stem.slice(0,49)+'-part-'+(i+1)+'.zip',data:await getBytes(buyer)});
+   // One separate class for the transparent ORIGINAL, another for the
+   // selected COLOUR VARIATIONS. Each group can span multiple Etsy attachments.
+   // Reserve 4096 bytes for a precise, per-part CONTENTS.txt during bin packing.
+   const reserve=paired?[...documents,{name:'CONTENTS.txt',data:encode(' '.repeat(4096))}]:documents;
+   const planned=paired?[
+    ...pack(originalAssets,reserve).map((group,i)=>({role:'original',number:i+1,artwork:group.slice(0,-reserve.length)})),
+    ...pack(colourAssets,reserve).map((group,i)=>({role:'colours',number:i+1,artwork:group.slice(0,-reserve.length)}))
+   ]:pack(accepted,documents).map((group,i)=>({role:'standard',number:i+1,entries:group}));
+   if(planned.length>5)throw Error('These image sizes and colours require '+planned.length+
+     ' Etsy download ZIPs. Etsy accepts five. Remove a colour variation or approve a permitted alternative.');
+   const pieces=[],seller=[],buyerMap=[];
+   for(const part of planned){
+    const entries=paired?[
+     ...part.artwork,...documents,
+     {name:'CONTENTS.txt',data:encode([
+      'SAPIVER PRINTS - CONTENTS OF THIS DOWNLOAD ZIP','',
+      'Type: '+(part.role==='original'?'ORIGINAL TRANSPARENT PATTERN':'SOLID BACKGROUND COLOUR VARIATIONS'),
+      'Files IN THIS ZIP (not other purchase attachments):',
+      ...part.artwork.map(asset=>'- '+asset.name+' - '+includedArtworkLabels([asset])[0]),
+      '',
+      'Also inside THIS ZIP: LICENSE.txt, README.txt, ABOUT-SAPIVER-PRINTS.txt, CONTENTS.txt.',
+      'Check your Etsy order for separate original and background-colour ZIP downloads.',
+      'All background options represent one design under one commercial-use licence.',
+      'Some files are supplied as compressed WebP only if that alternative was approved.'
+     ].join('\n')+'\n')}
+    ]:part.entries;
+    const buyer=zip(entries);
+    if(buyer.size>MAX)throw Error('The '+part.role+' buyer ZIP exceeds Etsy’s 20 MB limit with its licence documents.');
+    const filename=paired?stem.slice(0,41)+'-'+(part.role==='original'?'01-original':'02-colour-variations')+'-part-'+part.number+'.zip':
+      stem.slice(0,49)+'-part-'+part.number+'.zip';
+    const path='UPLOAD-TO-ETSY/'+filename;
+    seller.push({name:path,data:await getBytes(buyer)});
+    pieces.push(entries);
+    buyerMap.push({file:path,kind:part.role,part:part.number,bytes:buyer.size,
+      artwork:entries.filter(e=>/\.(png|jpg|webp)$/i.test(e.name)).map(e=>({name:e.name,description:includedArtworkLabels([e])[0]})),
+      documents:entries.filter(e=>/\.txt$/i.test(e.name)).map(e=>e.name)});
    }
+   if(paired)seller.push({name:'BUYER-ZIP-MAP.json',data:encode(JSON.stringify({
+    schema:'sapiver-buyer-parts',version:1,listingId:stem,backgroundColours:listing.product.backgroundColours,
+    etsyMaxFiles:5,etsyMaxBytesPerFile:MAX,buyerFiles:buyerMap
+   },null,2)+'\n')});
    // Four independent 2400px Etsy photographs: cover, repeat evidence, honest context mock-up and contents/detail.
    for(const [imageName,makeImage] of [
     ['01-pattern.jpg',()=>preview(false)],
@@ -437,18 +496,27 @@
     'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
-    'Background variants: '+(paired?'transparent AND solid '+paired.backgroundColor+'; four images required':'single image background'),
+    'Background variants: '+(paired?'transparent original and '+listing.product.backgroundColours.length+' solid colour(s): '+listing.product.backgroundColours.join(', ')+(listing.product.backgroundColours.length===1?'; four images required':'; '+accepted.length+' images required'):'single image background'),
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
    ];
    seller.push({name:'QUALITY-CHECK.txt',data:encode(quality.join('\n')+'\n')});
-   const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+'\nEtsy section: Digital Downloads\nTitle, visual description and '+listing.product.tags.length+' valid Etsy tags are embedded in LISTING-METADATA.json.\nUpload this outer ZIP directly to Poster Gen as one digital pattern product.\nOnly the UPLOAD-TO-ETSY ZIP parts are delivered to buyers, each with licence, About and instructions.\nSource: AI visual description, not live search-volume research.\nReview before approving Etsy deployment.\n';
+   const note='One design: '+listing.product.name+'\nPrice: £'+listing.product.price.toFixed(2)+
+    '\nEtsy section: Digital Downloads\nTitle, description and '+listing.product.tags.length+
+    ' Etsy tags are embedded in LISTING-METADATA.json.\n'+
+    (paired?'IMPORTANT: Poster Gen must be updated to attach ALL the nested original and colour-variation ZIPs to ONE Etsy digital listing before publishing. Do NOT use the old single-attachment importer for this seller kit.\n':
+      'Upload the outer ZIP to Poster Gen as one digital pattern product.\n')+
+    'Only UPLOAD-TO-ETSY ZIP files are delivered to buyers. Each has the licence, About and instructions.\n'+
+    (paired?'BUYER-ZIP-MAP.json identifies the original and colour-variation ZIPs separately.\n':'')+
+    'Source: AI visual description; not live keyword-demand research.\nReview before Etsy publication.\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+'Included customer artwork:\n'+includedArtworkLabels(accepted).join('\n')+'\n')});
-   const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
+   const complete=zip(seller);if(complete.size>(paired?125000000:100000000))throw Error('The seller ZIP exceeds safe preparation limits. Reduce background colours or approve a smaller format; no files were omitted.');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
-   status.textContent='Seller ZIP downloaded: '+pieces.length+' Etsy buyer ZIP(s), all licensed and packaging-checked; four 2400px listing previews. Included: '+includedArtworkLabels(accepted).join(', ')+(converted?' Re-encoded customer format: review carefully; source on device unchanged.':'')+'. Review before Etsy publishing.';
+   status.textContent='Seller ZIP downloaded with '+pieces.length+' separate Etsy buyer ZIP(s), '+(paired?'original and colour options grouped separately':'all images documented')+
+    ', and four listing previews. '+(paired?'Do not use Poster Gen until its multi-attachment importer is updated. ':'')+
+    (converted?'Approved image format changes must be reviewed. ':'')+'No Etsy listing created.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }

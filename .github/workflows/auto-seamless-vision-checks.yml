@@ -8,6 +8,7 @@ on:
       - app/js/editor.js
       - app/index.html
       - tests/auto-seamless-background-pair-browser.mjs
+      - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -19,6 +20,7 @@ on:
       - app/js/editor.js
       - app/index.html
       - tests/auto-seamless-background-pair-browser.mjs
+      - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -40,7 +42,8 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm install --no-save --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          command -v google-chrome
+          echo "PF_CHROME=$(command -v google-chrome)" >> "$GITHUB_ENV"
       - name: Syntax and API validation
         run: |
           node --check netlify/functions/auto-seamless-listing.mjs
@@ -64,6 +67,7 @@ jobs:
           node tests/auto-seamless-commercial-browser.mjs
           node tests/auto-seamless-oversize-browser.mjs
           node tests/auto-seamless-background-pair-browser.mjs
+          node tests/auto-seamless-multi-colour-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
