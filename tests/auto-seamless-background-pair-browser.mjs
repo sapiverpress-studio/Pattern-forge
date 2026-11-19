@@ -47,7 +47,12 @@ try{
  }));
  await ready.goto('http://127.0.0.1:4185/auto-seamless/',{waitUntil:'load'});
  await ready.locator('#upload').setInputFiles({name:'Blue-Background-Pair.zip',mimeType:'application/zip',buffer:pairBytes});
- await ready.waitForFunction(()=>document.querySelector('#status')?.textContent?.startsWith('Two original background variants'),null,{timeout:90000});
+ await ready.waitForFunction(()=>{
+  const status=document.querySelector('#status')?.textContent||'';
+  return status.startsWith('Two original background variants')||status.startsWith('Paired ZIP rejected:')||status.startsWith('Unable to process')||status.startsWith('Chrome cannot read');
+ },null,{timeout:30000});
+ const readyStatus=await ready.locator('#status').textContent();
+ assert.match(readyStatus,/^Two original background variants/,readyStatus+'; JS errors: '+errors.join(' | '));
  assert.equal(await ready.locator('#readyMode').getAttribute('aria-pressed'),'true');
  assert.equal(await ready.locator('#scoreFact').textContent(),'Skipped');
  await ready.waitForFunction(()=>document.querySelector('#metaName')?.value,null,{timeout:30000});
