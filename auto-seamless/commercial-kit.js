@@ -153,7 +153,7 @@
  }
  function pack(artwork,documents){
   const names=['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'];
-  if(documents.length!==3||names.some(name=>!documents.some(d=>d.name===name&&d.data.length>0))||!artwork.length)
+  if((documents.length<3||documents.length>4)||names.some(name=>!documents.some(d=>d.name===name&&d.data.length>0))||!artwork.length)
    throw Error('All three buyer documents and at least one artwork file are required');
   const documentBytes=packedSize(documents),groups=[];
   if(documentBytes>=MAX)throw Error('Buyer documents exceed the Etsy ZIP limit');
@@ -181,9 +181,10 @@
   }catch(error){console.warn('Lossless ZIP compression unavailable; using original bytes.',error);}
   return asset;
  }
- async function readySmallerArtwork(stem,documents){
+ async function readySmallerArtwork(stem,documents,renderCanvas=null){
+  if(!renderCanvas)renderCanvas=tileCanvas;
   // Each completed ready-made kit must include a genuinely smaller image.
-  const sw=tileCanvas.width,sh=tileCanvas.height,longest=Math.max(sw,sh);
+  const sw=renderCanvas.width,sh=renderCanvas.height,longest=Math.max(sw,sh);
   if(!sw||!sh||longest<2)throw Error('Complete original image is unavailable. Upload it again.');
   const target=longest>2500?2500:Math.floor(longest/2);
   const w=Math.max(1,Math.round(sw*target/longest)),h=Math.max(1,Math.round(sh*target/longest));
@@ -192,7 +193,7 @@
   try{
    const ctx=canvas.getContext('2d');if(!ctx)throw Error('Smaller-image rendering unavailable on this device.');
    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-   ctx.drawImage(tileCanvas,0,0,w,h);
+   ctx.drawImage(renderCanvas,0,0,w,h);
    status.textContent='Preparing required '+w+' × '+h+' PNG…';
    const png=await toBlob(canvas,'image/png');
    if(png.type!=='image/png')throw Error('Browser cannot encode the required smaller PNG.');
@@ -212,8 +213,9 @@
    throw Error('No smaller image fits Etsy’s limit. Export stopped rather than delivering an incomplete customer pack.');
   }finally{canvas.width=canvas.height=0;}
  }
- async function prepareCustomerArtwork(files,documents){
+ async function prepareCustomerArtwork(files,documents,renderCanvas=null){
   if(typeof state!=='undefined'&&state.mode==='ready'){
+   if(!renderCanvas)renderCanvas=tileCanvas;
    if(files.length!==1||!/-seamless-master\.(png|jpg|webp)$/i.test(files[0].name))throw Error('The unchanged seamless master is missing');
    let original=files[0];
    if(packedSize([original,...documents])>MAX){
@@ -222,7 +224,7 @@
    }
    if(packedSize([original,...documents])<=MAX){
     const stem=files[0].name.replace(/-seamless-master\.(png|jpg|webp)$/i,'');
-    const smaller=await readySmallerArtwork(stem,documents);
+    const smaller=await readySmallerArtwork(stem,documents,renderCanvas);
     return {accepted:[original,smaller.asset],omitted:[],converted:false,smallerAlternative:smaller.smallerAlternative};
    }
    // A larger original can be retained on the seller's device. Conversion is strictly opt-in:
@@ -230,15 +232,15 @@
    if(!byId('commercialAllowConversion')?.checked)
     throw Error('Original is '+(files[0].data.length/1e6).toFixed(2)+' MB and cannot fit Etsy’s 20 MB buyer ZIP. Tick "Allow an Etsy-compatible version" to approve a re-encoded alternative, then download again. Original unchanged.');
    const stem=files[0].name.replace(/-seamless-master\.(png|jpg|webp)$/i,'');
-   if(!tileCanvas.width||!tileCanvas.height)throw Error('Original image preview is missing; upload again.');
-   const sourceWidth=tileCanvas.width,sourceHeight=tileCanvas.height;
+   if(!renderCanvas.width||!renderCanvas.height)throw Error('Original image preview is missing; upload again.');
+   const sourceWidth=renderCanvas.width,sourceHeight=renderCanvas.height;
    const fits=async asset=>{
     if(packedSize([asset,...documents])>MAX)asset=await tryLosslessZipCompression(asset);
     return packedSize([asset,...documents])<=MAX?asset:null;
    };
    // First try a same-size PNG re-encode (no downsampling, but not byte-identical).
    status.textContent='Trying to fit a full-resolution PNG without resizing…';
-   const recodedPng=await toBlob(tileCanvas,'image/png');
+   const recodedPng=await toBlob(renderCanvas,'image/png');
    if(recodedPng.type!=='image/png')throw Error('Browser cannot create a PNG image.');
    const png=await fits({
     name:stem+'-full-size-reencoded.png',
@@ -246,7 +248,7 @@
     deliveryNote:'Same-dimension PNG re-encoded from the source, not the byte-identical original.'
    });
    if(png){
-    const smaller=await readySmallerArtwork(stem,documents);
+    const smaller=await readySmallerArtwork(stem,documents,renderCanvas);
     return {accepted:[png,smaller.asset],omitted:[],converted:true,smallerAlternative:smaller.smallerAlternative};
    }
    // WebP supports alpha and keeps the full pixel dimensions, but is lossy.
@@ -254,7 +256,7 @@
    let webp=null;
    for(const quality of [0.98,0.94,0.90,0.85,0.78]){
     status.textContent='Preparing full-resolution WebP with transparent pixels supported ('+Math.round(quality*100)+'% quality)…';
-    const blob=await toBlob(tileCanvas,'image/webp',quality);
+    const blob=await toBlob(renderCanvas,'image/webp',quality);
     if(blob.type!=='image/webp')throw Error('Your browser cannot create WebP files. No alternative was delivered.');
     const candidate=await fits({
      name:stem+'-full-size-compressed.webp',
@@ -264,7 +266,7 @@
     if(candidate){webp=candidate;break;}
    }
    if(!webp)throw Error('The full-resolution version still exceeds Etsy’s limit. Nothing was silently resized. Use a smaller original or prepare a separate delivery format.');
-   const smaller=await readySmallerArtwork(stem,documents);
+   const smaller=await readySmallerArtwork(stem,documents,renderCanvas);
    return {accepted:[webp,smaller.asset],omitted:[],converted:true,smallerAlternative:smaller.smallerAlternative};
   }
   const accepted=[],omitted=[];
@@ -301,7 +303,8 @@
     /-portable-png\.png$/i.test(f.name)?'smaller PNG companion':
     /-\d+px-300dpi-repeat\.png$/i.test(f.name)?'smaller PNG seamless tile':
     /-\d+px-compressed\.webp$/i.test(f.name)?'smaller compressed WEBP tile':'digital image';
-   return width+' x '+height+' '+ext+' ('+kind+')';
+   const option=/-solid-/i.test(f.name)?'solid background':/-transparent-/i.test(f.name)?'transparent background':null;
+   return width+' x '+height+' '+ext+' ('+(option?option+', ':'')+kind+')';
   });
   const formats=[
    [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
@@ -323,6 +326,7 @@
   try{
    const listing=listingDetails();
    const stem=(state.fileName||'seamless-pattern').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'seamless-pattern',files=[];
+   const paired=state.mode==='ready'&&state.backgroundPair;
    if(typeof state!=='undefined'&&state.mode==='ready'){
     // Unmodified source bytes are delivered in the Etsy buyer ZIP.
     const original=state.originalFile;
@@ -333,7 +337,12 @@
     const originalBytes=state.originalBytes;
     if(!(originalBytes instanceof Uint8Array)||originalBytes.byteLength!==original.size)
      throw Error('The original artwork is not safely held in memory. Please upload the file again.');
-    files.push({name:stem+'-seamless-master.'+ext,data:originalBytes});
+    if(paired){
+     if(ext!=='png'||!(paired.transparent.bytes instanceof Uint8Array)||paired.transparent.width!==state.tile.w||paired.transparent.height!==state.tile.h)
+      throw Error('The two original background PNGs are not available at matching dimensions.');
+     files.push({name:stem+'-solid-seamless-master.png',data:originalBytes,width:state.tile.w,height:state.tile.h});
+     files.push({name:stem+'-transparent-seamless-master.png',data:paired.transparent.bytes,width:state.tile.w,height:state.tile.h});
+    }else files.push({name:stem+'-seamless-master.'+ext,data:originalBytes,width:state.tile.w,height:state.tile.h});
    }else{
     big=render(5000);
     files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
@@ -346,14 +355,51 @@
    }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
-   const {accepted,converted=false,smallerAlternative=false}=await prepareCustomerArtwork(files,documents);
+   let prepared;
+   if(paired){
+    const solid=await prepareCustomerArtwork([files[0]],documents,tileCanvas);
+    const transparentCanvas=document.createElement('canvas');
+    transparentCanvas.width=paired.width;transparentCanvas.height=paired.height;
+    try{
+     const bmp=await createImageBitmap(new Blob([paired.transparent.bytes],{type:'image/png'}));
+     try{transparentCanvas.getContext('2d').drawImage(bmp,0,0);}
+     finally{bmp.close?.();}
+     const clear=await prepareCustomerArtwork([files[1]],documents,transparentCanvas);
+     prepared={accepted:[...solid.accepted,...clear.accepted],converted:!!(solid.converted||clear.converted),
+      smallerAlternative:!!(solid.smallerAlternative||clear.smallerAlternative)};
+    }finally{transparentCanvas.width=transparentCanvas.height=0;}
+   }else prepared=await prepareCustomerArtwork(files,documents);
+   const {accepted,converted=false,smallerAlternative=false}=prepared;
    if(state.mode==='ready'){
     const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h)));
-    if(accepted.length!==2||sizes.size!==2)throw Error('Two distinct image sizes are mandatory. No incomplete kit was downloaded.');
+    if((paired?accepted.length!==4:accepted.length!==2)||sizes.size!==2)
+     throw Error('All required full-size and smaller images must be present. No incomplete kit was downloaded.');
+    if(paired)for(const variant of ['solid','transparent']){
+     const images=accepted.filter(f=>f.name.includes('-'+variant+'-'));
+     if(images.length!==2||new Set(images.map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h))).size!==2)
+      throw Error('Missing a full-size or smaller '+variant+' customer image.');
+    }
+   }
+   if(paired){
+    const exact=includedArtworkLabels(accepted);
+    documents.push({name:'CONTENTS.txt',data:encode([
+     'SAPIVER PRINTS — FILE CONTENTS','',
+     'One design with two background treatments: transparent and solid '+paired.backgroundColor+'.',
+     'Each treatment has a full-resolution image and a smaller image. The artwork is supplied across Etsy buyer ZIP attachments.',
+     'Actual artwork files:',...accepted.map((f,i)=>'- '+f.name+' — '+exact[i]),
+     'Both treatments are covered by one commercial-use licence (LICENSE.txt).',
+     'WebP, where supplied, uses lossy compression and may not work in every print service.',
+     '300 DPI metadata does not add pixel detail.'
+    ].join('\n')+'\n')});
    }
    if(state.mode==='ready'){
     const delivered=includedArtworkLabels(accepted);
     listing.product.description+='\n\nDigital artwork included: '+delivered.join('; ')+'.';
+    if(paired){
+     listing.product.backgroundOptions='transparent-and-solid';
+     listing.product.backgroundColour=paired.backgroundColor;
+     listing.product.description+=' Includes both transparent and solid '+paired.backgroundColor+' backgrounds in two sizes each. All four images are one design under one commercial licence.';
+    }
     if(converted){
      listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
      listing.product.deliveryChangedFromOriginal=true;
@@ -385,12 +431,13 @@
     'QUALITY CHECK - automated packaging checks only',
     'Seller kit: '+stem,
     'Buyer ZIP files: '+pieces.length+' (each at or below 20,000,000 bytes)',
-    'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt',
+    'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt'+(paired?' and CONTENTS.txt':''),
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
     'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
+    'Background variants: '+(paired?'transparent AND solid '+paired.backgroundColor+'; four images required':'single image background'),
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'

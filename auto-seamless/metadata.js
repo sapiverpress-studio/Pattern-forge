@@ -117,12 +117,13 @@ E("metaDesc").addEventListener("input",()=>E("metaCount").textContent=
   "14 additional tags · 15 total · "+E("metaDesc").value.length+"/250 description characters");
 clear();status("Upload an image; its listing will be generated automatically.");
 const originalLoad=loadFile;
-loadFile=async function(file){
+loadFile=async function(file,pair=null){
   ++sequence;if(active)active.abort();
   currentFile=null;clear();
   if(!file)return;
   const permitted=/^image\/(?:png|jpeg|webp)$/.test(file.type)&&file.size<=70*1024*1024;
-  await originalLoad(file);
+  // Preserve validated paired-background metadata through the AI listing wrapper.
+  await originalLoad(file,pair);
   if(permitted&&state.source){currentFile=file;await analyse(file);}
 };
 })();

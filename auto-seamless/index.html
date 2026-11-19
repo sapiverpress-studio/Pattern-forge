@@ -34,8 +34,8 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
   <h2>1. Choose your image</h2>
   <label class="drop" id="drop" for="upload">
    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v4h16v-4"/><path d="M3 12h5m8 0h5"/></svg>
-   <strong id="uploadTitle">Tap to choose an image</strong><small>Or drop a PNG, JPG or WebP here</small><small>Processed locally in your browser</small>
-  </label><input class="hidden" type="file" accept="image/png,image/jpeg,image/webp" id="upload">
+   <strong id="uploadTitle">Tap to choose an image or paired ZIP</strong><small>PNG, JPG, WebP or Pattern Forge background-pair ZIP</small><small>Paired ZIPs automatically use Already Seamless</small>
+  </label><input class="hidden" type="file" accept="image/png,image/jpeg,image/webp,.zip,application/zip" id="upload">
   <div class="status" id="status" role="status" aria-live="polite">Choose an image to begin. Auto-detection starts immediately.</div>
   <div class="facts" id="facts" hidden><div class="fact"><strong id="sizeFact">—</strong><span>Detected repeat tile</span></div><div class="fact"><strong id="scoreFact">—</strong><span>Repeat match</span></div></div>
   <button id="redetect" class="secondary" disabled style="width:100%;margin-top:12px">Detect pattern again</button>
@@ -99,10 +99,11 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <p class="metaRef">AI analyses what is visible; this is not live search-volume research. Always check accuracy before uploading to Redbubble. <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble tagging guidance</a>.</p>
 </section>
 </main>
+<script src="/auto-seamless/background-pair.js"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const state={source:null,originalFile:null,originalBytes:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false,mode:'auto'};
+const state={source:null,originalFile:null,originalBytes:null,backgroundPair:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false,mode:'auto'};
 const sourceCanvas=document.createElement('canvas');
 const tileCanvas=document.createElement('canvas');
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -112,11 +113,11 @@ function busy(v){state.busy=v;$('readyMode').disabled=v;$('detectMode').disabled
 function emptyPreview(){const c=$('preview'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(8,24,36,.65)';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#9aaab8';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('Your repeat preview appears here',c.width/2,c.height/2);}
 emptyPreview();
 
-async function loadFile(file){
+async function loadFile(file,pair=null){
  if(!file)return;
  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){setStatus('Please select a PNG, JPG or WebP image.','error');return}
  if(file.size>70*1024*1024){setStatus('This image is too large for reliable mobile processing. Try a file under 70 MB.','error');return}
- busy(true);state.source=null;state.tile=null;state.crop=null;state.originalFile=null;state.originalBytes=null;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
+ busy(true);state.source=null;state.tile=null;state.crop=null;state.originalFile=null;state.originalBytes=null;state.backgroundPair=pair;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
  try{
   // Keep a local byte-for-byte copy while Android's content-provider access is valid.
   // The later seller export must not have to read the original File handle again.
@@ -134,8 +135,8 @@ async function loadFile(file){
   state.source={w:bmp.width,h:bmp.height,pixels:state.mode==='auto'?sourceCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,bmp.width,bmp.height).data:null};
   state.originalFile=file;
   if(bmp.close)bmp.close();
-  state.fileName=file.name.replace(/\.[^.]+$/,'').replace(/[^\w-]/g,'-').slice(0,70)||'pattern';
-  $('uploadTitle').textContent=file.name;
+  state.fileName=(pair?file.name.replace(/-seamless-solid\.png$/i,''):file.name.replace(/\.[^.]+$/,'')).replace(/[^\w-]/g,'-').slice(0,70)||'pattern';
+  $('uploadTitle').textContent=pair?('Background pair: '+pair.solid.name+' + '+pair.transparent.name):file.name;
   await nextFrame();if(state.mode==='ready')useOriginal();else await autoDetect();
  }catch(err){console.error(err);setStatus(err?.name==='NotReadableError'?'Chrome cannot read this image from its current location. Save it to your phone’s Downloads folder and select it again.':(err.message||'Unable to process this image.'),'error');busy(false)}
 }
@@ -251,7 +252,7 @@ function useOriginal(){
  $('oversizeNotice').textContent=state.originalBytes.byteLength>=19_900_000?'Original file: '+sourceMegabytes+' MB. Etsy permits up to 20 MB per buyer ZIP. The exact original will be tried first; tick below to allow an alternative only if needed.':'Your full-resolution original will be supplied unchanged if it fits. You may optionally permit an alternative only if a future file is too large.';
  $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Skipped';
  paintPreview();paintSource();busy(false);
- setStatus('Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
+ setStatus(state.backgroundPair?'Two original background variants retained unchanged: transparent and solid '+state.backgroundPair.backgroundColor+'. Both will be packaged together with required smaller sizes. Inspect the repeat preview before exporting.':'Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
  window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
 async function autoDetect(){
@@ -364,8 +365,24 @@ async function exportImage(full){
  }catch(err){console.error(err);setStatus(err.message||'Export failed. Try downloading the smaller tile.','error')}
  finally{busy(false)}
 }
-$('upload').addEventListener('change',e=>loadFile(e.target.files[0]));
-const drop=$('drop');for(const ev of ['dragenter','dragover'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')});for(const ev of ['dragleave','drop'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')});drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+async function loadInput(file){
+ if(!file)return;
+ if(/\.zip$/i.test(file.name)){
+  try{
+   busy(true);setStatus('Validating both background PNGs and ZIP manifest…');
+   const pair=await window.SapiverBackgroundPair.parse(file);
+   // A pair is already seamless. Disable destructive auto-detection before reading it.
+   state.source=null;state.tile=null;state.originalFile=null;state.originalBytes=null;
+   busy(false);await setMode('ready');
+   const solidFile=new File([pair.solid.bytes],pair.solid.name,{type:'image/png'});
+   await loadFile(solidFile,pair);
+  }catch(err){console.error(err);busy(false);setStatus('Paired ZIP rejected: '+(err.message||err),'error');}
+  return;
+ }
+ await loadFile(file);
+}
+$('upload').addEventListener('change',e=>loadInput(e.target.files[0]));
+const drop=$('drop');for(const ev of ['dragenter','dragover'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')});for(const ev of ['dragleave','drop'])drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')});drop.addEventListener('drop',e=>loadInput(e.dataTransfer.files[0]));
 $('redetect').addEventListener('click',autoDetect);
 $('coverage').addEventListener('input',e=>{$('coverageValue').textContent=e.target.value+'%';if(state.source&&!state.busy)autoDetect()});
 $('blend').addEventListener('input',e=>{$('blendValue').textContent=e.target.value+'%';if(state.tile&&!state.busy)buildTile()});
@@ -378,6 +395,6 @@ let savedMode='auto';try{if(localStorage.getItem('sapiver-preparation-mode')==='
 setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
-<script src="/auto-seamless/commercial-kit.js?v=20261119-two-sizes"></script>
+<script src="/auto-seamless/commercial-kit.js?v=20261119-background-pair"></script>
 </body>
 </html>
