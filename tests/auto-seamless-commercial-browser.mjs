@@ -15,7 +15,7 @@ await page.route('**/api/auto-seamless-listing',route=>route.fulfill({
  'home decor','soft blue','square design','modern','blue repeat','textile',
  'cerulean','indigo','checkerboard'],
  description:'A blue geometric textile design. Created with the aid of AI.',
- visual_subject:'blue grid',source:'visual-ai',live_search_volume:false})
+ etsy:{title:'Blue Grid Geometric Seamless Pattern Digital Download',tags:['blue grid pattern','blue textile tile','blue squares','geometric pattern','checkerboard print','blue fabric design','digital pattern','seamless blue','tile repeat','soft blue pattern','indigo geometric','woven look pattern','grid digital file'],description:'Blue geometric grid artwork, supplied as a digital seamless pattern. Digital download only. Created with the aid of AI.'},visual_subject:'blue grid',source:'visual-ai',live_search_volume:false})
 }));
 try{
  await page.goto('http://127.0.0.1:4185/auto-seamless/',{waitUntil:'load'});
