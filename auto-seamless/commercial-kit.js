@@ -424,7 +424,7 @@
        ' solid-background colour option(s) ('+colours.join(', ')+'), each in original and smaller sizes. Original and colour files are delivered in separate Etsy buyer ZIPs under one commercial-use licence.';
     }
     if(converted){
-     listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
+     listing.product.description+=' One or more full-resolution files could not fit Etsy’s per-file limit without the approved re-encoding. PNG re-encoding preserves pixel dimensions; WebP, if included, uses lossy compression. Check the exact supplied formats and printer compatibility.';
      listing.product.deliveryChangedFromOriginal=true;
     }
     if(smallerAlternative)listing.product.description+=' The smaller WEBP uses lossy compression and is not a PNG. Inspect the included file formats and printer compatibility.';
@@ -511,7 +511,7 @@
     (paired?'BUYER-ZIP-MAP.json identifies the original and colour-variation ZIPs separately.\n':'')+
     'Source: AI visual description; not live keyword-demand research.\nReview before Etsy publication.\n';
    seller.push({name:'SELLER-CHECKLIST.txt',data:encode(note+'Included customer artwork:\n'+includedArtworkLabels(accepted).join('\n')+'\n')});
-   const complete=zip(seller);if(complete.size>100000000)throw Error('Seller ZIP exceeds uploader’s 100 MB cap; no quality was reduced');
+   const complete=zip(seller);if(complete.size>(paired?125000000:100000000))throw Error('The seller ZIP exceeds safe preparation limits. Reduce background colours or approve a smaller format; no files were omitted.');
    try{localStorage.setItem('sapiver-digital-pattern-price',String(listing.product.price.toFixed(2)));}catch{}
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
    status.textContent='Seller ZIP downloaded with '+pieces.length+' separate Etsy buyer ZIP(s), '+(paired?'original and colour options grouped separately':'all images documented')+
