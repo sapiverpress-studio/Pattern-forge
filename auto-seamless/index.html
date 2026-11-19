@@ -68,6 +68,12 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <h2>5. Download a commercial seller kit</h2>
  <p id="commercialKitIntro">One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.</p>
  <p class="info" id="commercialKitContents">The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.</p>
+ <div class="metaGrid" id="etsy-metadata" aria-label="Etsy-specific seller kit listing details" style="margin:16px 0">
+  <div class="metaField wide"><label for="etsyTitle">Etsy digital listing title</label><input id="etsyTitle" type="text" maxlength="140" placeholder="Generated from the image, separately from Redbubble"></div>
+  <div class="metaField wide"><label for="etsyTags">13 Etsy tags (maximum 20 characters each, comma-separated)</label><textarea id="etsyTags" rows="4" placeholder="13 buyer-facing Etsy phrases"></textarea></div>
+  <div class="metaField wide"><label for="etsyDesc">Etsy digital listing description (AI-assisted artwork disclosed)</label><textarea id="etsyDesc" rows="4" maxlength="900" placeholder="Describes this digital pattern, not a physical product"></textarea></div>
+ </div>
+ <p class="info">These editable Etsy fields are generated independently of the 15 Redbubble tags. They are used only in the Etsy seller ZIP. The system does not measure live Etsy searches or promise rankings.</p>
  <label for="commercialPrice" style="display:block;margin:14px 0 6px;font-weight:700">Etsy digital selling price (£ GBP)</label>
  <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
  <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
