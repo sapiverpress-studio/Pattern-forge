@@ -8,6 +8,25 @@ const disallowed = /\b(surface pattern design|continuous pattern|repeat print|de
 const respond=(body,status=200)=>Response.json(body,{status,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 const clean=x=>String(x??"").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ").trim();
 
+
+// Etsy is a distinct marketplace. Never recycle Redbubble's 15-tag set.
+function validateEtsy(raw){
+ if(!raw||typeof raw!=="object")throw Error("Missing Etsy listing metadata");
+ const title=clean(raw.title);
+ if(!title||title.length>140||title.split(/\s+/).length>15||!/\b(?:pattern|digital|download)\b/i.test(title))
+  throw Error("Etsy title must clearly identify a digital pattern and stay concise");
+ const tags=Array.isArray(raw.tags)?raw.tags.map(clean):[];
+ const normalised=tags.map(t=>t.toLocaleLowerCase("en-GB"));
+ if(tags.length!==13||tags.some(t=>!t||t.length>20||/[<>\x00-\x1f]/.test(t)||disallowed.test(t))||new Set(normalised).size!==13)
+  throw Error("Etsy needs thirteen unique, accurate tags of at most 20 characters");
+ let description=clean(raw.description);
+ if(!description||description.length>800)throw Error("Etsy description is missing or too long");
+ if(!/\bdigital download\b/i.test(description))description="Digital download only. "+description;
+ if(!/\bcreated with the aid of AI\b/i.test(description))description+=" Created with the aid of AI.";
+ if(description.length>900)throw Error("Etsy description exceeds the safety limit");
+ return {title,tags,description,source:"visual-ai",live_search_volume:false};
+}
+
 export function validateListing(raw){
   if(!raw||typeof raw!=="object")throw Error("Invalid metadata object");
   const title=clean(raw.title).slice(0,110);
@@ -24,23 +43,24 @@ export function validateListing(raw){
   if(!/\bcreated with the aid of AI\b/i.test(description))description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(description.length>250)description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(!description)throw Error("Missing description");
-  return {title,main_tag:tags[0],other_tags:tags.slice(1),description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",live_search_volume:false};
+  return {title,main_tag:tags[0],other_tags:tags.slice(1),description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",live_search_volume:false,etsy:validateEtsy(raw.etsy)};
 }
 const INSTRUCTIONS=[
  "You write accurate, buyer-facing Redbubble listings from the image you are shown. The filename is a weak clue only.",
- "Return one JSON object with: title (string), main_tag (string), other_tags (array of exactly 14 unique strings), description (string), visual_subject (string).",
+ "Return one JSON object with Redbubble fields title, main_tag, other_tags (exactly 14), description, visual_subject AND a separate etsy object: {title, tags (exactly 13), description}.",
  "Identify the visible subject, imagery, motif, colours, material appearance, style and mood. Distinguish woven cloth, cable knits, Fair Isle motifs, photos and abstract patterns.",
  "Use natural shopper vocabulary that actually describes this image. If it shows cable knitting, terms such as cable knit, braided knit, knitted texture, chunky knit, sweater texture, cream, rust, cosy and cozy can be relevant.",
  "Never fill tag slots with technical maker language such as seamless repeat, repeating pattern, surface pattern design, repeat print, decorative repeat, textile print or all over pattern.",
  "Use only observable details: never invent animals, snowflakes, seasons, brands, holidays or symbols that are not depicted. Do not make claims about demand, ranking, search volumes or past sales.",
  "No hashtags. Do not insert product categories like phone case, t-shirt or pillow into the tags: the platform handles product filtering.",
  "Make one concise main tag that identifies the image subject. Supply exactly 14 different supporting tags under 50 characters each. Titles should be naturally descriptive; descriptions must be <=220 characters.",
- "Include the exact disclosure 'Created with the aid of AI.' in the description. Use British spelling in prose. Return JSON only."
+ "For Etsy ONLY: the product is a DIGITAL SEAMLESS PATTERN DOWNLOAD, not a shipped poster, real knitted fabric or finished cushion. Etsy title ideally 8-14 words, max 140 characters, identify the design and digital pattern naturally. Etsy tags must be exactly 13 distinct buyer-facing phrases, each 20 characters or fewer, based on the visible motif, style, colour and intended DIGITAL design use; avoid generic filler, deceptive terms, unverified demand claims and Redbubble-specific tags. Etsy description briefly describes visible design and says digital download only. Do not invent downloadable formats, dimensions, licence rights or physical goods.",
+ "Include the exact disclosure 'Created with the aid of AI.' in both descriptions. Use British spelling in prose. Return JSON only."
 ].join(" ");
 export async function analyzeImage(imageDataUrl,filename="",client=null){
   const api=client??new OpenAI({maxRetries:0,timeout:30000});
   const result=await api.chat.completions.create({
-    model:MODEL,temperature:0.2,max_tokens:850,response_format:{type:"json_object"},
+    model:MODEL,temperature:0.2,max_tokens:1600,response_format:{type:"json_object"},
     messages:[
       {role:"system",content:INSTRUCTIONS},
       {role:"user",content:[
