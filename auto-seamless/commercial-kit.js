@@ -358,6 +358,7 @@
      listing.product.description+=' The original full-size file was too large for Etsy. A re-encoded version is supplied; WebP, if included, uses lossy compression. Check printer compatibility.';
      listing.product.deliveryChangedFromOriginal=true;
     }
+    if(smallerAlternative)listing.product.description+=' The smaller WEBP uses lossy compression and is not a PNG. Inspect the included file formats and printer compatibility.';
    }
    const pieces=pack(accepted,documents),seller=[];
    for(let i=0;i<pieces.length;i++){
@@ -388,6 +389,8 @@
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
     'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
+    'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
+    'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
