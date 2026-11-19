@@ -5,6 +5,11 @@ Thank you for purchasing a Sapiver Prints digital design.
 WHAT YOU RECEIVE
 Your purchased artwork file(s) are included in this download. See the included-files listing image for their exact formats and pixel dimensions. This ZIP also contains the commercial-use licence, these instructions and About Sapiver Prints. No files other than those actually present in the ZIP are promised.
 
+BACKGROUND OPTIONS AND FILE LIST
+Some products supply both a transparent-background image and a solid-colour-background image, each in two pixel sizes. If supplied, choose the version that suits your finished product or printer. These are options for one licensed design, not different designs. Check CONTENTS.txt (when present) for the exact artwork files and dimensions included across the buyer ZIP parts.
+
+A transparent-background image lets you choose a background in compatible design software. A solid-background image includes its selected background colour. Flattened artwork cannot reliably be made transparent simply by removing its colour.
+
 USING THE ARTWORK
 1. For seamless printing, repeat the supplied pattern tile edge-to-edge at the same scale, with no gaps. Inspect a 3 × 3 repeat and order a small print proof before manufacturing in quantity.
 2. Colour, scale and sharpness in print depend on your chosen material and manufacturer. Confirm their file requirements and check a proof.
