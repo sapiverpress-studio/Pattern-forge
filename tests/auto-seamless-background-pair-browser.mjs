@@ -24,7 +24,36 @@ try{
  await quick.waitFor({state:'visible',timeout:15000});
  assert.match(await editor.locator('#ux2QuickExportStatus').textContent(),/Etsy/);
  assert.equal(await editor.locator('#ux2QuickBackground').inputValue(),'#ffffff');
+ const thumbnail=editor.locator('#ux2QuickBackgroundPreview');
+ await thumbnail.waitFor({state:'visible'});
+ const previewData=()=>editor.evaluate(()=>{
+  const c=document.querySelector('#ux2QuickBackgroundPreview'),ctx=c.getContext('2d');
+  const raw=ctx.getImageData(0,0,c.width,c.height).data;
+  const bg=Array.from(raw.slice(0,4));
+  let designPixels=0;
+  for(let i=0;i<raw.length;i+=4){
+   if(raw[i]!==bg[0]||raw[i+1]!==bg[1]||raw[i+2]!==bg[2])designPixels++;
+  }
+  return {width:c.width,height:c.height,bg,designPixels};
+ });
+ await editor.waitForFunction(()=>{
+  const c=document.querySelector('#ux2QuickBackgroundPreview');
+  if(!c)return false;
+  const p=c.getContext('2d').getImageData(0,0,1,1).data;
+  return p[0]===255&&p[1]===255&&p[2]===255&&p[3]===255;
+ },null,{timeout:15000});
+ const previewBefore=await previewData();
+ assert(previewBefore.width<=200&&previewBefore.height<=200,'Preview should be a small thumbnail');
+ assert(previewBefore.designPixels>0,'Thumbnail must show real artwork, not just a background swatch');
  await editor.locator('#ux2QuickBackground').fill('#112233');
+ await editor.waitForFunction(()=>{
+  const c=document.querySelector('#ux2QuickBackgroundPreview'),p=c?.getContext('2d').getImageData(0,0,1,1).data;
+  return p&&p[0]===17&&p[1]===34&&p[2]===51&&p[3]===255;
+ },null,{timeout:15000});
+ const previewAfter=await previewData();
+ assert(previewAfter.designPixels>0,'Updated colour preview must retain the artwork');
+ assert.equal(await editor.locator('#bg').inputValue(),'#ffffff','Preview must not alter the editable background');
+ console.log('PASS live thumbnail: actual artwork rendered, RGB background updated to #112233, project not changed.');
  const wait=editor.waitForEvent('download',{timeout:150000});
  await quick.click();
  const pairDownload=await wait;
