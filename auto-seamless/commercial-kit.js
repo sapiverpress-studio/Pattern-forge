@@ -13,7 +13,7 @@
   const etsyTitle=String(byId('etsyTitle')?.value||'').trim();
   const desc=String(byId('etsyDesc')?.value||'').trim();
   const extras=String(byId('etsyTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(!name||name.length>100||!etsyTitle||etsyTitle.length>140||etsyTitle.split(/\s+/).length>15||extras.length!==13||!desc||desc.length>900)
+  if(!name||name.length>100||!etsyTitle||etsyTitle.length>140||etsyTitle.split(/\s+/).length>15||(extras.length<5||extras.length>13)||!desc||desc.length>900)
    throw Error('Automatic title, tags and description must be ready. Check the listing fields before exporting.');
   if(!/\bAI\b/i.test(desc))throw Error('The listing description must disclose AI assistance.');
   const tagCandidates=extras,tags=[],used=new Set();
@@ -22,7 +22,7 @@
    const key=raw.toLowerCase();if(used.has(key))continue;
    tags.push(raw);used.add(key);if(tags.length===13)break;
   }
-  if(tags.length!==13)throw Error('Etsy needs exactly 13 unique, relevant tags of 20 characters or fewer. Edit the Etsy fields and retry.');
+  if(tags.length<5)throw Error('Etsy needs at least five truthful tags of 20 characters or fewer; aim for thirteen without filler.');
   const rawPrice=String(priceInput?.value||'').trim(),price=Number(rawPrice);
   if(!rawPrice||!/^\d+(?:\.\d{1,2})?$/.test(rawPrice)||!Number.isFinite(price)||price<0.2||price>10000)
    throw Error('Enter your approved GBP selling price (at least £0.20, no more than two decimal places).');
