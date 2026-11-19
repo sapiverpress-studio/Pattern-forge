@@ -211,11 +211,11 @@ async function setMode(mode){
  $('modeDescription').textContent=ready?'Keep your original PNG, JPG or WebP file unchanged. Only listing previews and a seller ZIP will be generated.':'Detect the pattern repeat, crop it and blend the joins before exporting.';
  $('edgeHeading').textContent=ready?'2. Export the original artwork':'2. Finish the edges';
  $('commercialKitIntro').textContent=ready?'Package your complete original artwork, licence, About Us, instructions, listing title, description, tags and saved price into one seller ZIP for Poster Gen. No new pattern is generated.':'One seamless design in multiple image formats, with a commercial-use licence, About Us and instructions. Export creates one seller ZIP that Poster Gen reads automatically: artwork, buyer documents, listing title, description, tags and your saved price.';
- $('commercialKitContents').textContent=ready?'The buyer ZIP contains your exact original PNG, JPG or WebP when it fits Etsy. For a larger file you can approve an alternative separately. Four listing previews, licence, About and instructions are generated. No substitution occurs without your permission.':'The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.';
+ $('commercialKitContents').textContent=ready?'Every successful seller kit includes TWO image sizes: the full-resolution original (or an approved full-resolution replacement) and a smaller PNG with a 2500px longest side when the original is larger than 2500px. If your original is smaller, the second image is half-size. Both sizes, the licence, About and instructions are required. If either file cannot fit Etsy, export stops rather than omitting it. Four listing previews and the correct listing metadata are also included.':'The seller kit contains the finished seamless design files packaged for this export, a generated repeat tile, four 2400 × 2400 listing previews (cover, 2 × 2 repeat, illustrative mock-up and exact included-file list), plus a licence, About and instructions in every customer ZIP. The included-file list is generated from the actual delivered files.';
  $('commercialOversizeOptions').hidden=!ready;
  $('edgeControls').hidden=ready;$('redetect').hidden=ready;$('download5000').hidden=ready;
  $('downloadTile').textContent=ready?'Download original file':'Download seamless tile PNG';
- $('edgeHint').textContent=ready?'The uploaded master file remains unchanged in the buyer download. Preview images are generated separately.':'The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.';
+ $('edgeHint').textContent=ready?'The original master is preserved when it fits Etsy. The buyer download also contains a smaller image with clearly stated dimensions. Listing previews are generated separately.':'The 5000px export repeats the new tile an exact whole number of times, so the entire square can also repeat. DPI is saved in the PNG metadata; enlarging an image does not invent extra stitch detail.';
  $('sizeFact').parentElement.querySelector('span').textContent=ready?'Full original tile':'Detected repeat tile';
  $('scoreFact').parentElement.querySelector('span').textContent=ready?'Repeat detection':'Repeat match';
  try{localStorage.setItem('sapiver-preparation-mode',state.mode)}catch{}
@@ -378,6 +378,6 @@ let savedMode='auto';try{if(localStorage.getItem('sapiver-preparation-mode')==='
 setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
-<script src="/auto-seamless/commercial-kit.js?v=20261118-etsy-sized"></script>
+<script src="/auto-seamless/commercial-kit.js?v=20261119-two-sizes"></script>
 </body>
 </html>
