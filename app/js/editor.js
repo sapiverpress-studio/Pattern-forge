@@ -1351,10 +1351,11 @@
   }
 
   function exportHasTransparency(){return isDoodleProject()||$("exportTransparent").checked;}
-  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false){
+  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false,backgroundExportMode=null){
     const out=document.createElement("canvas"); out.width=W; out.height=H;
     const c=out.getContext("2d");
-    if(!(forExport?exportHasTransparency():$("transparent").checked)){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
+    const transparent=forExport?(backgroundExportMode==="transparent"?true:backgroundExportMode==="solid"?false:exportHasTransparency()):$("transparent").checked;
+    if(!transparent){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
 
     // Keep the legacy direct-render path on layers without erasers so existing brush
     // blending is byte-for-byte unchanged. Only layers with eraser strokes are isolated.
@@ -2268,11 +2269,73 @@
     const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
     return {blob,spec};
   }
+  let backgroundExportPending=null;
+  function sizeMB(bytes){return (bytes/1e6).toFixed(2)+" MB";}
+  async function backgroundExportPng(spec,mode){
+    const canvas=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,mode);
+    try{return await canvasToPngBlobWithDpi(canvas,spec.dpi);}
+    finally{canvas.width=0;canvas.height=0;}
+  }
   async function exportPNG(){
-    const result=await renderPNGBlob();if(!result)return;
-    const {blob,spec}=result;
-    downloadBlob(blob,`${safeName()}-${exportFileStem()}-master.png`);
-    setStatus(`${isDoodleProject()?"Standalone artwork":"Seamless pattern"} PNG exported at ${spec.wPx} × ${spec.hPx}px; background ${exportHasTransparency()?"transparent":"included"}. No physical size is assigned.`);
+    // Doodle export and the existing SVG/project/other export paths stay unchanged.
+    if(isDoodleProject()){
+      const result=await renderPNGBlob();if(!result)return;
+      downloadBlob(result.blob,safeName()+"-"+exportFileStem()+"-master.png");
+      setStatus("Standalone artwork PNG exported with transparency.");return;
+    }
+    const dialog=$("backgroundExportDialog"),progress=$("backgroundExportProgress"),tip=$("backgroundExportRecommendation");
+    const single=$("backgroundExportTransparentOnly"),both=$("backgroundExportBoth");
+    backgroundExportPending=null;single.disabled=both.disabled=true;
+    progress.textContent="Preparing original-resolution PNGs. The file-size advice will use the encoded files, not a guess.";
+    tip.textContent="Etsy accepts up to five buyer files, with a 20 MB limit for each buyer ZIP.";
+    if(!dialog.open)dialog.showModal();
+    try{
+      const spec=getExportSpec();
+      if(spec.wPx*spec.hPx>100_000_000)throw Error("This export is over 100 megapixels. Use the standard export workflow for this unusually large pattern.");
+      await new Promise(r=>setTimeout(r,30));
+      const transparent=await backgroundExportPng(spec,"transparent");
+      progress.textContent="Transparent PNG: "+sizeMB(transparent.size)+". Measuring coloured export…";
+      await new Promise(r=>setTimeout(r,30));
+      const solid=await backgroundExportPng(spec,"solid");
+      const total=transparent.size+solid.size;
+      if(total>120_000_000)throw Error("The combined images exceed the 120 MB mobile preparation limit. Use transparent-only or reduce artwork complexity.");
+      const likelyOver=transparent.size>18_000_000||solid.size>18_000_000;
+      progress.textContent="Transparent PNG: "+sizeMB(transparent.size)+"\nSolid background ("+$("bg").value+"): "+sizeMB(solid.size)+"\nBoth: "+sizeMB(total)+" before ZIP packaging.";
+      tip.textContent=likelyOver
+        ?"Recommended for Etsy: TRANSPARENT ONLY. One or both full-size PNGs are close to or above the 20 MB individual buyer-ZIP limit. You can still export both, but the later seller-kit tool may need explicit format conversion. ZIP attachments can be split across five files."
+        :"Both background versions are reasonable to prepare. Each Etsy buyer ZIP is limited to 20 MB; the seller-kit export will check final package sizes independently.";
+      backgroundExportPending={transparent,solid,spec,base:safeName(),colour:$("bg").value};
+      single.disabled=both.disabled=false;
+    }catch(err){progress.textContent="Export preparation failed: "+(err.message||err);tip.textContent="No files were downloaded.";single.disabled=both.disabled=true;setStatus("PNG export preparation failed: "+(err.message||err));}
+  }
+  function closeBackgroundExport(){
+    backgroundExportPending=null;
+    const dialog=$("backgroundExportDialog");if(dialog.open)dialog.close();
+  }
+  async function exportBothBackgrounds(){
+    const pending=backgroundExportPending;if(!pending)return;
+    const both=$("backgroundExportBoth"),single=$("backgroundExportTransparentOnly");
+    both.disabled=single.disabled=true;
+    const progress=$("backgroundExportProgress");
+    try{
+      const prefix=pending.base+"-seamless",transparentName=prefix+"-transparent.png",solidName=prefix+"-solid.png";
+      const manifest={
+        format:"sapiver-background-pair",version:1,
+        transparent:transparentName,solid:solidName,
+        backgroundColor:pending.colour,
+        width:pending.spec.wPx,height:pending.spec.hPx,dpi:pending.spec.dpi
+      };
+      const files=[
+        {name:transparentName,blob:pending.transparent},
+        {name:solidName,blob:pending.solid},
+        {name:"SAPIVER-BACKGROUND-PAIR.json",blob:new Blob([JSON.stringify(manifest,null,2)],{type:"application/json"})}
+      ];
+      progress.textContent="Packaging both 300 DPI versions…";
+      const zip=await makeZip(files);
+      downloadBlob(zip,pending.base+"-background-pair.zip");
+      setStatus("Background pair exported: "+pending.spec.wPx+" × "+pending.spec.hPx+" pixels, transparent and "+pending.colour+" solid, 300 DPI. Buyer files will be checked against Etsy's limits during seller-kit preparation.");
+      closeBackgroundExport();
+    }catch(err){progress.textContent="ZIP export failed: "+(err.message||err);both.disabled=single.disabled=false;}
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -3002,6 +3065,15 @@
   $("shuffle").onclick=()=>{$("seed").value="pattern-"+Math.random().toString(36).slice(2,8);generate();};
   $("clear").onclick=()=>{saveHistory();state.items=[];state.marks=[];state.selectedId=null;renderAll();setStatus("Artwork cleared. Uploaded images remain available.");};
   $("exportPng").onclick=()=>exportPNG().catch(err=>setStatus("PNG export failed: "+err.message));
+  $("backgroundExportTransparentOnly").onclick=()=>{
+    const pending=backgroundExportPending;if(!pending)return;
+    downloadBlob(pending.transparent,pending.base+"-seamless-transparent.png");
+    setStatus("Transparent seamless PNG exported at "+pending.spec.wPx+" × "+pending.spec.hPx+" px, 300 DPI.");
+    closeBackgroundExport();
+  };
+  $("backgroundExportBoth").onclick=()=>exportBothBackgrounds();
+  $("backgroundExportCancel").onclick=closeBackgroundExport;
+  $("backgroundExportDialog").addEventListener("close",()=>{backgroundExportPending=null;});
   $("exportSvg").onclick=exportSVG;
   $("exportZip").onclick=exportZIP;
   $("previewScale").addEventListener("input",renderPreview);
