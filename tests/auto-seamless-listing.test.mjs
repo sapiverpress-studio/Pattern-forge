@@ -59,3 +59,10 @@ test("upstream failures return no fabricated listing",async()=>{
  assert.ok(msg.error.includes("no generic tags"));
  assert.equal(config.rateLimit.windowLimit,12);
 });
+
+test("a seller can publish with fewer than 13 truthful Etsy tags rather than padding",()=>{
+ const out=validateListing({...valid,etsy:{...valid.etsy,tags:valid.etsy.tags.slice(0,10)}});
+ assert.equal(out.etsy.tags.length,10);
+ assert.throws(()=>validateListing({...valid,etsy:{...valid.etsy,tags:valid.etsy.tags.slice(0,4)}}),/five/);
+ assert.throws(()=>validateListing({...valid,etsy:{...valid.etsy,tags:[...valid.etsy.tags.slice(0,12),valid.etsy.tags[0]]}}),/unique/);
+});
