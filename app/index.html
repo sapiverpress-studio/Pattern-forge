@@ -417,6 +417,17 @@
   </footer>
 </div>
 
+<dialog id="backgroundExportDialog" aria-labelledby="backgroundExportTitle" style="width:min(95vw,520px);max-height:88vh;overflow:auto;border:1px solid #6b8584;border-radius:16px;padding:22px;background:#172329;color:#f5f9f9;box-shadow:0 20px 80px #0008">
+ <h2 id="backgroundExportTitle" style="margin:0 0 10px">Pattern background options</h2>
+ <p style="margin:0 0 12px">Choose one transparent PNG, or a ZIP containing both transparent and your selected solid background. The original editable design is not changed.</p>
+ <p id="backgroundExportProgress" role="status" aria-live="polite" style="font-size:14px;white-space:pre-line;margin-bottom:12px">Checking your two image sizes…</p>
+ <p id="backgroundExportRecommendation" style="background:#263a3b;border-radius:9px;padding:12px;font-size:13px;margin:0 0 14px">File-size recommendation will appear here.</p>
+ <div style="display:grid;gap:10px">
+  <button id="backgroundExportTransparentOnly" type="button" class="btn primary" disabled>Transparent PNG only</button>
+  <button id="backgroundExportBoth" type="button" class="btn" disabled>Download transparent + colour ZIP</button>
+  <button id="backgroundExportCancel" type="button" class="btn">Cancel</button>
+ </div>
+</dialog>
 <script src="/app/js/platform.js"></script>
 <script src="/app/js/stroke-closure.js"></script>
 <script src="/app/js/raised-paint.js"></script>
