@@ -17,7 +17,7 @@ window.SapiverBackgroundPair=Object.freeze({
     packedSize=view.getUint32(pos+18,true),size=view.getUint32(pos+22,true),
     nameLength=view.getUint16(pos+26,true),extraLength=view.getUint16(pos+28,true);
    if(flags&0x0009||![0,8].includes(method))throw Error('Background ZIP uses an unsupported compression mode.');
-   if(entries.size>=3)throw Error('Background ZIP has unexpected extra files.');
+   if(entries.size>=5)throw Error('Background ZIP has more than three colour variations.');
    if(size>70_000_000||packedSize>70_000_000||(expanded+=size)>125_000_000)throw Error('Background ZIP expands beyond mobile safety limits.');
    const headerEnd=pos+30+nameLength+extraLength,end=headerEnd+packedSize;
    if(nameLength<1||headerEnd>bytes.length||end>bytes.length)throw Error('Background ZIP is truncated.');
@@ -34,18 +34,28 @@ window.SapiverBackgroundPair=Object.freeze({
    if(data.length!==size||crc32(data)!==sum)throw Error('Background ZIP failed an integrity check.');
    entries.set(name,data);pos=end;
   }
-  if(entries.size!==3||!entries.has('SAPIVER-BACKGROUND-PAIR.json'))throw Error('Choose a Pattern Forge background-pair ZIP containing exactly two PNGs and its manifest.');
+  if(!entries.has('SAPIVER-BACKGROUND-PAIR.json'))throw Error('Choose a Pattern Forge background ZIP with a manifest.');
   let manifest;
   try{manifest=JSON.parse(dec.decode(entries.get('SAPIVER-BACKGROUND-PAIR.json')));}
-  catch{throw Error('Background-pair manifest is invalid.');}
-  if(manifest?.format!=='sapiver-background-pair'||manifest.version!==1||
-     !/^[#][0-9a-fA-F]{6}$/.test(manifest.backgroundColor||'')||
+  catch{throw Error('Background manifest is invalid.');}
+  if(manifest?.format!=='sapiver-background-pair'||![1,2].includes(manifest.version)||
      !Number.isInteger(manifest.width)||!Number.isInteger(manifest.height)||
      manifest.width<96||manifest.height<96||manifest.width*manifest.height>42_000_000||
-     manifest.dpi!==300)throw Error('Background-pair manifest has unsupported dimensions, colour or resolution.');
-  const names=[manifest.transparent,manifest.solid];
-  if(names[0]===names[1]||names.some(n=>typeof n!=='string'||!n.endsWith('.png')||!entries.has(n))||
-     [...entries.keys()].some(n=>n!=='SAPIVER-BACKGROUND-PAIR.json'&&!names.includes(n)))throw Error('Background ZIP must contain the exact two PNGs listed in its manifest.');
+     manifest.dpi!==300)throw Error('Background ZIP has invalid dimensions or resolution.');
+  const variations=manifest.version===1
+   ?[{color:manifest.backgroundColor,file:manifest.solid}]
+   :manifest.variations;
+  if(!Array.isArray(variations)||variations.length<1||variations.length>3||
+      variations.some(v=>!v||typeof v!=='object'||!/^[#][0-9a-fA-F]{6}$/.test(v.color||'')||
+       typeof v.file!=='string'||!v.file.endsWith('.png'))||
+      new Set(variations.map(v=>v.color.toLowerCase())).size!==variations.length)
+    throw Error('Background ZIP must contain one to three different solid colours.');
+  const names=[manifest.transparent,...variations.map(v=>v.file)];
+  if(typeof manifest.transparent!=='string'||!manifest.transparent.endsWith('.png')||
+      new Set(names).size!==names.length||names.some(n=>!entries.has(n))||
+      entries.size!==names.length+1||
+      [...entries.keys()].some(n=>n!=='SAPIVER-BACKGROUND-PAIR.json'&&!names.includes(n)))
+    throw Error('Background ZIP must contain the exact PNG artwork named in its manifest.');
   function pngInfo(name){
    const data=entries.get(name);
    if(data.length<33||data.slice(0,8).some((v,i)=>v!==[137,80,78,71,13,10,26,10][i])||
@@ -55,7 +65,9 @@ window.SapiverBackgroundPair=Object.freeze({
    if(w!==manifest.width||h!==manifest.height)throw Error('Transparent and coloured PNG dimensions do not match the manifest.');
    return {name,bytes:data,width:w,height:h};
   }
-  return {transparent:pngInfo(manifest.transparent),solid:pngInfo(manifest.solid),
-    backgroundColor:manifest.backgroundColor,width:manifest.width,height:manifest.height,dpi:manifest.dpi};
+  const imported=variations.map(v=>({color:v.color.toLowerCase(),file:v.file,image:pngInfo(v.file)}));
+  return {transparent:pngInfo(manifest.transparent),solid:imported[0].image,
+    backgroundColor:imported[0].color,variations:imported,
+    width:manifest.width,height:manifest.height,dpi:manifest.dpi};
  }
 });
