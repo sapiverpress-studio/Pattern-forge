@@ -10,25 +10,25 @@
  }
  function listingDetails(){
   const name=String(byId('metaName')?.value||'').trim();
-  const main=String(byId('metaMain')?.value||'').trim();
-  const desc=String(byId('metaDesc')?.value||'').trim();
-  const extras=String(byId('metaTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(!name||name.length>100||!main||extras.length!==14||!desc)
+  const etsyTitle=String(byId('etsyTitle')?.value||'').trim();
+  const desc=String(byId('etsyDesc')?.value||'').trim();
+  const extras=String(byId('etsyTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!name||name.length>100||!etsyTitle||etsyTitle.length>140||etsyTitle.split(/\s+/).length>15||extras.length!==13||!desc||desc.length>900)
    throw Error('Automatic title, tags and description must be ready. Check the listing fields before exporting.');
   if(!/\bAI\b/i.test(desc))throw Error('The listing description must disclose AI assistance.');
-  const tagCandidates=[main,...extras],tags=[],used=new Set();
+  const tagCandidates=extras,tags=[],used=new Set();
   for(const raw of tagCandidates){
    if(!raw||raw.length>20||/[<>\x00-\x1f]/.test(raw))continue;
    const key=raw.toLowerCase();if(used.has(key))continue;
    tags.push(raw);used.add(key);if(tags.length===13)break;
   }
-  if(tags.length<5)throw Error('The artwork needs at least five relevant Etsy tags of 20 characters or fewer. Edit the generated tag fields and retry.');
+  if(tags.length!==13)throw Error('Etsy needs exactly 13 unique, relevant tags of 20 characters or fewer. Edit the Etsy fields and retry.');
   const rawPrice=String(priceInput?.value||'').trim(),price=Number(rawPrice);
   if(!rawPrice||!/^\d+(?:\.\d{1,2})?$/.test(rawPrice)||!Number.isFinite(price)||price<0.2||price>10000)
    throw Error('Enter your approved GBP selling price (at least £0.20, no more than two decimal places).');
   return {
    format:'sapiver-seamless-seller-kit',version:1,
-   product:{type:'digital',kind:'pattern',name,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true},
+   product:{type:'digital',kind:'pattern',name,etsyTitle,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true},
    listingSource:'AI visual description; keyword demand and search volumes are not measured.',
    reviewRequired:true
   };
