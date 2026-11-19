@@ -605,11 +605,12 @@
     }
   }
 
+  let quickExportColours=[],quickExportProjectTitle=null;
   function exportPanel(){
     const quality=$('quality')?.textContent?.trim()||'Add artwork to check raster-source enlargement.',pixels=$('pixelReadout')?.textContent||'5000 × 5000',doodle=document.body.classList.contains('doodle-project');
     const exportNote=doodle?'Transparent background is preserved for PNG and SVG. Raster dimensions describe the master file, not a physical size.':'Raster dimensions describe the complete seamless master, not a physical size.';
     const etsy=doodle?'':`<div class="ux2-panel-block ux2-etsy-block"><div class="ux2-panel-label">Export for Etsy</div><div class="ux2-repeat-card"><strong>Single adaptable seamless design</strong><span>Checks the repeat and Etsy upload limits, then packages the same design in useful digital formats. No physical product size or product mockup is implied.</span></div><button class="ux2-btn primary" id="ux2EtsyExport" style="width:100%;margin-top:8px">Check & build Etsy kit</button><p class="ux2-info">Creates Etsy-ready buyer ZIP file(s) plus three design-only listing images: full pattern, seamless tile and detail view. It does not publish anything to Etsy.</p><div id="ux2EtsyReport" class="ux2-etsy-report" aria-live="polite"></div></div>`;
-    const quick=doodle?'':("<div class=\"ux2-panel-block ux2-quick-background\" style=\"border:1px solid #8ba7aa;border-radius:16px;padding:16px;margin-bottom:12px;background:rgba(105,164,168,.08)\">\n <div class=\"ux2-panel-label\">Quick PNG export</div>\n <p class=\"ux2-info\">Choose a background colour, then download one ZIP containing both the transparent and solid-background design.</p>\n <label style=\"display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0\">Background colour\n  <input id=\"ux2QuickBackground\" type=\"color\" value=\"__BACKGROUND__\" aria-label=\"Export background colour\" style=\"width:92px;height:48px;border-radius:9px;padding:2px\">\n </label>\n <div style=\"text-align:center;margin:8px 0 16px\">\n  <div class=\"ux2-panel-label\" style=\"text-align:left;margin-bottom:6px\">Background preview</div>\n  <canvas id=\"ux2QuickBackgroundPreview\" width=\"200\" height=\"200\" role=\"img\" aria-label=\"Preview of actual pattern on selected background colour\" style=\"display:block;max-width:100%;max-height:200px;width:auto;height:auto;margin:0 auto;border:1px solid #789595;border-radius:10px;background:#f0f3f5\"></canvas>\n  <small id=\"ux2QuickBackgroundPreviewNote\" style=\"display:block;margin-top:5px;opacity:.8\">Preview only — your design stays unchanged.</small>\n </div>\n <button class=\"ux2-btn primary\" type=\"button\" id=\"ux2QuickExportBoth\" style=\"width:100%;min-height:52px\">Download both images in ZIP</button>\n <button class=\"ux2-btn\" type=\"button\" id=\"ux2QuickExportTransparent\" style=\"width:100%;margin-top:8px\">Transparent PNG only</button>\n <p id=\"ux2QuickExportStatus\" class=\"ux2-info\" role=\"status\" aria-live=\"polite\">Files will be full resolution, 300 DPI. For Etsy, the exporter checks actual sizes and warns if either image may exceed its 20 MB buyer-file limit.</p>\n</div>").replace('__BACKGROUND__',$('bg')?.value||'#ffffff');
+    const quick=doodle?'':("<div class=\"ux2-panel-block ux2-quick-background\" style=\"border:1px solid #8ba7aa;border-radius:16px;padding:16px;margin-bottom:12px;background:rgba(105,164,168,.08)\">\n <div class=\"ux2-panel-label\">Quick PNG export</div>\n <p class=\"ux2-info\">Choose a background colour, then download one ZIP containing both the transparent and solid-background design.</p>\n <label style=\"display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0\">Background colour\n  <input id=\"ux2QuickBackground\" type=\"color\" value=\"__BACKGROUND__\" aria-label=\"Export background colour\" style=\"width:92px;height:48px;border-radius:9px;padding:2px\">\n </label>\n <div style=\"text-align:center;margin:8px 0 16px\">\n  <div class=\"ux2-panel-label\" style=\"text-align:left;margin-bottom:6px\">Background preview</div>\n  <canvas id=\"ux2QuickBackgroundPreview\" width=\"200\" height=\"200\" role=\"img\" aria-label=\"Preview of actual pattern on selected background colour\" style=\"display:block;max-width:100%;max-height:200px;width:auto;height:auto;margin:0 auto;border:1px solid #789595;border-radius:10px;background:#f0f3f5\"></canvas>\n  <small id=\"ux2QuickBackgroundPreviewNote\" style=\"display:block;margin-top:5px;opacity:.8\">Preview only — your design stays unchanged.</small>\n </div>\n <button class=\"ux2-btn\" type=\"button\" id=\"ux2QuickAddColour\" style=\"width:100%;margin:3px 0 8px\">Add this colour to ZIP</button>\n <div id=\"ux2QuickColours\" aria-live=\"polite\" style=\"display:grid;gap:5px;margin:4px 0 12px\"></div>\n <p class=\"ux2-info\">Choose up to 3 background colours. If you don't add any, the current colour will be included.</p>\n <button class=\"ux2-btn primary\" type=\"button\" id=\"ux2QuickExportBoth\" style=\"width:100%;min-height:52px\">Download original + colour ZIP</button>\n <button class=\"ux2-btn\" type=\"button\" id=\"ux2QuickExportTransparent\" style=\"width:100%;margin-top:8px\">Transparent PNG only</button>\n <p id=\"ux2QuickExportStatus\" class=\"ux2-info\" role=\"status\" aria-live=\"polite\">Files will be full resolution, 300 DPI. For Etsy, the exporter checks actual sizes and warns if either image may exceed its 20 MB buyer-file limit.</p>\n</div>").replace('__BACKGROUND__',$('bg')?.value||'#ffffff');
     return quick+`<div class="ux2-panel-block"><div class="ux2-panel-label">Other export options</div><p class="ux2-info">SVG, editable projects and Etsy listing preparation are below.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Export confidence</div><div class="ux2-repeat-card"><strong>${pixels}</strong><span>${exportNote}</span></div><p class="ux2-info">${quality}</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Background in downloaded artwork</div><label class="ux2-check"><input id="ux2ExportTransparent" type="checkbox" ${$('exportTransparent')?.checked?'checked':''} ${doodle?'disabled':''}> Transparent PNG / SVG / ZIP (recommended)</label><p class="ux2-info">Export artwork without the canvas background, keeping the design preview colour. Opaque backgrounds inside imported images cannot be removed automatically. JPG listing previews remain opaque.</p></div><div class="ux2-panel-block"><div class="ux2-panel-label">Artwork</div><button class="ux2-btn primary" data-export-old="exportPng" style="width:100%;margin-bottom:7px">Export PNG options</button><button class="ux2-btn" data-export-old="exportSvg" style="width:100%">Export SVG</button></div>${etsy}<div class="ux2-panel-block"><div class="ux2-panel-label">Editable project</div><button class="ux2-btn" data-export-old="saveProject" style="width:100%;margin-bottom:7px">Save editable project</button><button class="ux2-btn" data-export-old="openProject" style="width:100%;margin-bottom:7px">Open project file</button><button class="ux2-btn" data-export-old="exportZip" style="width:100%;margin-bottom:7px">Download project bundle</button><button class="ux2-btn primary" id="ux2ExportRemix" style="width:100%">Duplicate pattern &amp; swap images</button><p class="ux2-info"><strong>Back up this project:</strong> Autosave stays on this device. Save a project file before clearing app or browser data.</p></div>`;
   }
   function renderEtsyReport(result){
@@ -683,6 +684,34 @@
     if(name==='export'){
       const both=$('ux2QuickExportBoth'),transparent=$('ux2QuickExportTransparent'),colour=$('ux2QuickBackground'),result=$('ux2QuickExportStatus');
       if(both&&transparent&&colour&&result){
+        const project=$('projectTitleInput')?.value||'';
+        if(quickExportProjectTitle!==project){quickExportColours=[];quickExportProjectTitle=project;}
+        const list=$('ux2QuickColours'),add=$('ux2QuickAddColour');
+        const showColours=()=>{
+          if(!list||!add)return;
+          list.replaceChildren();
+          for(const shade of quickExportColours){
+            const row=document.createElement('div');
+            row.style.cssText='display:flex;align-items:center;gap:9px;min-height:35px';
+            const swatch=document.createElement('span');swatch.style.cssText='display:block;width:28px;height:28px;border-radius:7px;border:1px solid #7f8f9b';
+            swatch.style.background=shade;
+            const label=document.createElement('span');label.textContent=shade;label.style.flex='1';
+            const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.className='ux2-btn';remove.style.padding='6px 11px';
+            remove.setAttribute('aria-label','Remove '+shade);
+            remove.addEventListener('click',()=>{quickExportColours=quickExportColours.filter(v=>v!==shade);showColours();});
+            row.append(swatch,label,remove);list.append(row);
+          }
+          add.disabled=quickExportColours.length>=3;
+          const n=quickExportColours.length||1;
+          both.textContent='Download original + '+n+' colour'+(n===1?'':'s')+' ZIP';
+        };
+        add?.addEventListener('click',()=>{
+          const shade=colour.value.toLowerCase();
+          if(quickExportColours.includes(shade)){result.textContent='This colour is already selected.';return;}
+          if(quickExportColours.length>=3){result.textContent='Maximum three background colours for the Etsy pack.';return;}
+          quickExportColours.push(shade);showColours();
+        });
+        showColours();
         let previewFrame=0;
         const renderQuickPreview=()=>{
           if(previewFrame)cancelAnimationFrame(previewFrame);
@@ -705,9 +734,9 @@
           if(both.disabled||transparent.disabled)return;
           both.disabled=transparent.disabled=true;
           both.textContent='Creating images…';result.textContent='Rendering the requested original-resolution PNG files…';
-          try{const finished=await window.PatternForgeQuickExport.run(mode,colour.value);result.textContent=finished.message;}
+          try{const finished=await window.PatternForgeQuickExport.run(mode,colour.value,mode==='both'?(quickExportColours.length?quickExportColours:[colour.value]):null);result.textContent=finished.message;}
           catch(err){result.textContent='Export failed: '+(err?.message||err);}
-          finally{both.disabled=transparent.disabled=false;both.textContent='Download both images in ZIP';}
+          finally{both.disabled=transparent.disabled=false;showColours();}
         };
         both.addEventListener('click',()=>startQuick('both'));
         transparent.addEventListener('click',()=>startQuick('transparent'));
