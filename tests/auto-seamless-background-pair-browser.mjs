@@ -47,6 +47,14 @@ try{
  }));
  await ready.goto('http://127.0.0.1:4185/auto-seamless/',{waitUntil:'load'});
  await ready.locator('#upload').setInputFiles({name:'Blue-Background-Pair.zip',mimeType:'application/zip',buffer:pairBytes});
+ await ready.waitForTimeout(2200);
+ console.log('PAIR IMPORT SNAPSHOT',JSON.stringify(await ready.evaluate(()=>({
+  status:document.querySelector('#status')?.textContent,
+  file:document.querySelector('#upload')?.files?.[0]?.name,
+  mode:state.mode,processing:state.busy,
+  pairLoaded:!!state.backgroundPair,sourceWidth:state.source?.w,
+  parserReady:typeof window.SapiverBackgroundPair?.parse
+ }))),errors.join(' | '));
  await ready.waitForFunction(()=>{
   const status=document.querySelector('#status')?.textContent||'';
   return status.startsWith('Two original background variants')||status.startsWith('Paired ZIP rejected:')||status.startsWith('Unable to process')||status.startsWith('Chrome cannot read');
