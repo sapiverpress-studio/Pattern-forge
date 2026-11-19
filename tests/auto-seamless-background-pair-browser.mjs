@@ -11,25 +11,25 @@ try{
  await editor.locator('#projectTitleInput').fill('Blue Background Pair');
  await editor.locator('#createProject').click();
  await editor.locator('#projectSetupOverlay').waitFor({state:'hidden'});
- await editor.locator('#bg').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}));});
+ await editor.locator('#bg').evaluate(el=>{el.value='#ffffff';el.dispatchEvent(new Event('input',{bubbles:true}));});
  await editor.locator('#files').setInputFiles({
   name:'centre-symbol.svg',mimeType:'image/svg+xml',
   buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="#f18f56"/></svg>')
  });
  await editor.waitForFunction(()=>window.PatternForgeEtsyBridge.state.items.length===1,null,{timeout:15000});
  const count=await editor.evaluate(()=>window.PatternForgeEtsyBridge.state.items.length);
- await editor.locator('#exportPng').evaluate(el=>el.click());
- await editor.locator('#backgroundExportDialog').waitFor({state:'visible',timeout:60000});
- await editor.locator('#backgroundExportBoth').waitFor({state:'visible',timeout:60000});
- await editor.waitForFunction(()=>!document.querySelector('#backgroundExportBoth').disabled,null,{timeout:120000});
- const recommendation=await editor.locator('#backgroundExportRecommendation').textContent();
- assert.match(recommendation,/Etsy|buyer/i);
- const progress=await editor.locator('#backgroundExportProgress').textContent();
- assert.match(progress,/Transparent PNG:/);
- assert.match(progress,/Solid background/);
- const wait=editor.waitForEvent('download',{timeout:120000});
- await editor.locator('#backgroundExportBoth').click();
+ await editor.setViewportSize({width:390,height:844});
+ await editor.locator('#ux2Export').click();
+ const quick=editor.locator('#ux2QuickExportBoth');
+ await quick.waitFor({state:'visible',timeout:15000});
+ assert.match(await editor.locator('#ux2QuickExportStatus').textContent(),/Etsy/);
+ assert.equal(await editor.locator('#ux2QuickBackground').inputValue(),'#ffffff');
+ await editor.locator('#ux2QuickBackground').fill('#112233');
+ const wait=editor.waitForEvent('download',{timeout:150000});
+ await quick.click();
  const pairDownload=await wait;
+ await editor.waitForFunction(()=>document.querySelector('#ux2QuickExportStatus')?.textContent?.includes('ZIP downloaded:'),null,{timeout:15000});
+ assert.equal(await editor.locator('#bg').inputValue(),'#ffffff','Quick export must not change editable background colour');
  assert.match(pairDownload.suggestedFilename(),/background-pair\.zip$/);
  const pairPath=await pairDownload.path();
  const pairBytes=readFileSync(pairPath);

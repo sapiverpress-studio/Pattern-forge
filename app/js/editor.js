@@ -1351,11 +1351,11 @@
   }
 
   function exportHasTransparency(){return isDoodleProject()||$("exportTransparent").checked;}
-  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false,backgroundExportMode=null){
+  function makeTileCanvas(W,H,baseW=W,baseH=H,style=projectRepeatStyle(),forExport=false,backgroundExportMode=null,backgroundExportColour=null){
     const out=document.createElement("canvas"); out.width=W; out.height=H;
     const c=out.getContext("2d");
     const transparent=forExport?(backgroundExportMode==="transparent"?true:backgroundExportMode==="solid"?false:exportHasTransparency()):$("transparent").checked;
-    if(!transparent){ c.fillStyle=$("bg").value; c.fillRect(0,0,W,H); }
+    if(!transparent){ c.fillStyle=backgroundExportColour||$("bg").value; c.fillRect(0,0,W,H); }
 
     // Keep the legacy direct-render path on layers without erasers so existing brush
     // blending is byte-for-byte unchanged. Only layers with eraser strokes are isolated.
@@ -2271,11 +2271,47 @@
   }
   let backgroundExportPending=null;
   function sizeMB(bytes){return (bytes/1e6).toFixed(2)+" MB";}
-  async function backgroundExportPng(spec,mode){
-    const canvas=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,mode);
+  async function backgroundExportPng(spec,mode,backgroundColour=null){
+    const canvas=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,mode,backgroundColour);
     try{return await canvasToPngBlobWithDpi(canvas,spec.dpi);}
     finally{canvas.width=0;canvas.height=0;}
   }
+  async function quickExportBackground(mode,colour){
+    if(isDoodleProject())throw Error("Use the standard transparent doodle export.");
+    const spec=getExportSpec();
+    if(spec.wPx*spec.hPx>100_000_000)throw Error("This design is over 100 megapixels; use a smaller repeat swatch for browser export.");
+    if(!/^#[0-9a-fA-F]{6}$/.test(colour||""))throw Error("Choose a valid solid background colour.");
+    setStatus("Exporting transparent "+spec.wPx+" × "+spec.hPx+" PNG…");
+    await new Promise(r=>setTimeout(r,35));
+    const transparent=await backgroundExportPng(spec,"transparent");
+    const base=safeName()+"-seamless";
+    if(mode==="transparent"){
+      downloadBlob(transparent,base+"-transparent.png");
+      const message="Transparent PNG downloaded: "+sizeMB(transparent.size)+", "+spec.wPx+" × "+spec.hPx+" px, 300 DPI metadata.";
+      setStatus(message);return {success:true,message,transparentSize:transparent.size,solidSize:0};
+    }
+    if(mode!=="both")throw Error("Unsupported background export choice.");
+    setStatus("Preparing "+colour+" background at the original dimensions…");
+    const solid=await backgroundExportPng(spec,"solid",colour);
+    if(transparent.size+solid.size>120_000_000)
+      throw Error("The two image files are too large for one reliable mobile ZIP. Export transparent only, or use a smaller pattern.");
+    const manifest={format:"sapiver-background-pair",version:1,
+      transparent:base+"-transparent.png",solid:base+"-solid.png",
+      backgroundColor:colour,width:spec.wPx,height:spec.hPx,dpi:spec.dpi};
+    const zipped=await makeZip([
+      {name:manifest.transparent,blob:transparent},
+      {name:manifest.solid,blob:solid},
+      {name:"SAPIVER-BACKGROUND-PAIR.json",blob:new Blob([JSON.stringify(manifest,null,2)],{type:"application/json"})}
+    ]);
+    downloadBlob(zipped,safeName()+"-background-pair.zip");
+    const atRisk=transparent.size>18_000_000||solid.size>18_000_000;
+    const message="ZIP downloaded: transparent "+sizeMB(transparent.size)+" + "+colour+" background "+sizeMB(solid.size)+
+      " (both "+spec.wPx+" × "+spec.hPx+" px, 300 DPI)."+
+      (atRisk?" Etsy warning: one or both originals may exceed the 20 MB buyer-ZIP limit; we recommend transparent-only for Etsy unless the Already Seamless packager can fit or convert the paired files.":" Both backgrounds are available for the listing packager.");
+    setStatus(message);
+    return {success:true,message,transparentSize:transparent.size,solidSize:solid.size,etsyWarning:atRisk};
+  }
+  window.PatternForgeQuickExport=Object.freeze({run:quickExportBackground});
   async function exportPNG(){
     // Doodle export and the existing SVG/project/other export paths stay unchanged.
     if(isDoodleProject()){
