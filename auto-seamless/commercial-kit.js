@@ -181,7 +181,8 @@
   }catch(error){console.warn('Lossless ZIP compression unavailable; using original bytes.',error);}
   return asset;
  }
- async function readySmallerArtwork(stem,documents,renderCanvas=tileCanvas){
+ async function readySmallerArtwork(stem,documents,renderCanvas=null){
+  if(!renderCanvas)renderCanvas=tileCanvas;
   // Each completed ready-made kit must include a genuinely smaller image.
   const sw=renderCanvas.width,sh=renderCanvas.height,longest=Math.max(sw,sh);
   if(!sw||!sh||longest<2)throw Error('Complete original image is unavailable. Upload it again.');
@@ -212,8 +213,9 @@
    throw Error('No smaller image fits Etsy’s limit. Export stopped rather than delivering an incomplete customer pack.');
   }finally{canvas.width=canvas.height=0;}
  }
- async function prepareCustomerArtwork(files,documents,renderCanvas=tileCanvas){
+ async function prepareCustomerArtwork(files,documents,renderCanvas=null){
   if(typeof state!=='undefined'&&state.mode==='ready'){
+   if(!renderCanvas)renderCanvas=tileCanvas;
    if(files.length!==1||!/-seamless-master\.(png|jpg|webp)$/i.test(files[0].name))throw Error('The unchanged seamless master is missing');
    let original=files[0];
    if(packedSize([original,...documents])>MAX){
