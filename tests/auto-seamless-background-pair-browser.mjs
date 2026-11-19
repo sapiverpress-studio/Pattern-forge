@@ -86,10 +86,10 @@ try{
  }))),errors.join(' | '));
  await ready.waitForFunction(()=>{
   const status=document.querySelector('#status')?.textContent||'';
-  return status.startsWith('Two original background variants')||status.startsWith('Paired ZIP rejected:')||status.startsWith('Unable to process')||status.startsWith('Chrome cannot read');
+  return status.startsWith('Original transparent pattern')||status.startsWith('Paired ZIP rejected:')||status.startsWith('Unable to process')||status.startsWith('Chrome cannot read');
  },null,{timeout:30000});
  const readyStatus=await ready.locator('#status').textContent();
- assert.match(readyStatus,/^Two original background variants/,readyStatus+'; JS errors: '+errors.join(' | '));
+ assert.match(readyStatus,/^Original transparent pattern/,readyStatus+'; JS errors: '+errors.join(' | '));
  assert.equal(await ready.locator('#readyMode').getAttribute('aria-pressed'),'true');
  assert.equal(await ready.locator('#scoreFact').textContent(),'Skipped');
  await ready.waitForFunction(()=>document.querySelector('#metaName')?.value,null,{timeout:30000});
