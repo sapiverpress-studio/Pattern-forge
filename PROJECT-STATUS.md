@@ -1,3 +1,8 @@
+### 19 November 2026 — Etsy SEO follow-up: isolated parser and UI contract checks VERIFIED (development only)
+- V8 syntax parsing passed for the edited Netlify AI module and both browser scripts. Isolated validation of a representative dual-platform AI JSON response produced 15 Redbubble tags and a distinct 13-tag Etsy digital pattern listing, with source explicitly marked as visual AI rather than measured Etsy demand.
+- The Auto Seamless HTML contains exactly one of each editable Etsy field (`etsyTitle`, `etsyTags`, `etsyDesc`) and versioned URLs for both changed scripts, preventing old cached mobile scripts from being reused after release. Seller kit remains on the original ZIP schema, with optional `product.etsyTitle`; no buyer file/format/price mutation.
+- Automated Node unit tests, 390px Chromium ZIP generation, live AI Gateway response and Android acceptance remain UNVERIFIED. No production build, merchant change or Work credits.
+
 ## DEVELOPMENT CHECKPOINT — 19 November 2026: separate Etsy digital SEO in Auto Seamless seller kit (NOT DEPLOYED)
 - **Request:** Generate Etsy-specific listing wording separately from the existing Redbubble listing, for digital seamless patterns uploaded through Poster Gen.
 - **Branch:** `feature/etsy-specific-seo-20261119`, created from production `main`. No merge or live Netlify publication.
