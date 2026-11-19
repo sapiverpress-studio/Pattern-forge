@@ -5,6 +5,9 @@ on:
       - main
     paths:
       - auto-seamless/**
+      - app/js/editor.js
+      - app/index.html
+      - tests/auto-seamless-background-pair-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -13,6 +16,9 @@ on:
   pull_request:
     paths:
       - auto-seamless/**
+      - app/js/editor.js
+      - app/index.html
+      - tests/auto-seamless-background-pair-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -40,6 +46,8 @@ jobs:
           node --check netlify/functions/auto-seamless-listing.mjs
           node --check auto-seamless/metadata.js
           node --check auto-seamless/commercial-kit.js
+          node --check auto-seamless/background-pair.js
+          node --check app/js/editor.js
           node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs
       - name: Serve static application
         run: |
@@ -55,6 +63,7 @@ jobs:
           node tests/auto-seamless-vision-browser.mjs
           node tests/auto-seamless-commercial-browser.mjs
           node tests/auto-seamless-oversize-browser.mjs
+          node tests/auto-seamless-background-pair-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
