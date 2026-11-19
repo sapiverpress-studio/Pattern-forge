@@ -338,10 +338,22 @@
     if(!(originalBytes instanceof Uint8Array)||originalBytes.byteLength!==original.size)
      throw Error('The original artwork is not safely held in memory. Please upload the file again.');
     if(paired){
-     if(ext!=='png'||!(paired.transparent.bytes instanceof Uint8Array)||paired.transparent.width!==state.tile.w||paired.transparent.height!==state.tile.h)
-      throw Error('The two original background PNGs are not available at matching dimensions.');
-     files.push({name:stem+'-solid-seamless-master.png',data:originalBytes,width:state.tile.w,height:state.tile.h});
-     files.push({name:stem+'-transparent-seamless-master.png',data:paired.transparent.bytes,width:state.tile.w,height:state.tile.h});
+     const variations=paired.variations||[{color:paired.backgroundColor,image:paired.solid}];
+     if(ext!=='png'||!(paired.transparent.bytes instanceof Uint8Array)||
+        paired.transparent.width!==state.tile.w||paired.transparent.height!==state.tile.h||
+        variations.length<1||variations.length>3)
+      throw Error('Transparent original and one to three colour PNGs are required at matching dimensions.');
+     files.push({name:stem+'-transparent-seamless-master.png',data:paired.transparent.bytes,
+       width:state.tile.w,height:state.tile.h,role:'original'});
+     for(let i=0;i<variations.length;i++){
+      const variant=variations[i],hex=String(variant.color).replace('#','').toLowerCase();
+      if(!/^[0-9a-f]{6}$/.test(hex)||!(variant.image?.bytes instanceof Uint8Array)||
+         variant.image.width!==state.tile.w||variant.image.height!==state.tile.h)
+       throw Error('Colour '+(i+1)+' is missing or has inconsistent dimensions.');
+      const filename=variations.length===1?stem+'-solid-seamless-master.png':
+        stem+'-solid-'+hex+'-seamless-master.png';
+      files.push({name:filename,data:variant.image.bytes,width:state.tile.w,height:state.tile.h,role:'colour',colour:variant.color});
+     }
     }else files.push({name:stem+'-seamless-master.'+ext,data:originalBytes,width:state.tile.w,height:state.tile.h});
    }else{
     big=render(5000);
@@ -355,42 +367,50 @@
    }
    const documents=[];
    for(const file of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'])documents.push(await documentText(file));
-   let prepared;
+   let prepared,originalAssets=[],colourAssets=[];
    if(paired){
-    const solid=await prepareCustomerArtwork([files[0]],documents,tileCanvas);
-    const transparentCanvas=document.createElement('canvas');
-    transparentCanvas.width=paired.width;transparentCanvas.height=paired.height;
-    try{
-     const bmp=await createImageBitmap(new Blob([paired.transparent.bytes],{type:'image/png'}));
-     try{transparentCanvas.getContext('2d').drawImage(bmp,0,0);}
-     finally{bmp.close?.();}
-     const clear=await prepareCustomerArtwork([files[1]],documents,transparentCanvas);
-     prepared={accepted:[...solid.accepted,...clear.accepted],converted:!!(solid.converted||clear.converted),
-      smallerAlternative:!!(solid.smallerAlternative||clear.smallerAlternative)};
-    }finally{transparentCanvas.width=transparentCanvas.height=0;}
+    // Reserve enough for the part-specific CONTENTS.txt before choosing formats.
+    const reserve=[...documents,{name:'CONTENTS.txt',data:encode(' '.repeat(4096))}];
+    const preparedParts=[];
+    for(let i=0;i<files.length;i++){
+     const item=files[i];
+     let canvas=tileCanvas,decoded=null,temporary=null;
+     // The preview canvas holds the FIRST coloured version; all other images
+     // are decoded independently from the exact bytes in the source ZIP.
+     if(i===0||i>1){
+      temporary=document.createElement('canvas');
+      temporary.width=paired.width;temporary.height=paired.height;
+      try{
+       decoded=await createImageBitmap(new Blob([item.data],{type:'image/png'}));
+       const ctx=temporary.getContext('2d');
+       if(!ctx)throw Error('Browser cannot prepare background variation '+i);
+       ctx.drawImage(decoded,0,0);
+       canvas=temporary;
+      }catch(e){temporary.width=temporary.height=0;throw e;}
+     }
+     try{preparedParts.push(await prepareCustomerArtwork([item],reserve,canvas));}
+     finally{decoded?.close?.();if(temporary)temporary.width=temporary.height=0;}
+    }
+    originalAssets=preparedParts[0].accepted;
+    colourAssets=preparedParts.slice(1).flatMap(part=>part.accepted);
+    prepared={accepted:[...originalAssets,...colourAssets],
+      converted:preparedParts.some(part=>part.converted),
+      smallerAlternative:preparedParts.some(part=>part.smallerAlternative)};
    }else prepared=await prepareCustomerArtwork(files,documents);
    const {accepted,converted=false,smallerAlternative=false}=prepared;
    if(state.mode==='ready'){
-    const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h)));
-    if((paired?accepted.length!==4:accepted.length!==2)||sizes.size!==2)
-     throw Error('All required full-size and smaller images must be present. No incomplete kit was downloaded.');
-    if(paired)for(const variant of ['solid','transparent']){
-     const images=accepted.filter(f=>f.name.includes('-'+variant+'-'));
-     if(images.length!==2||new Set(images.map(f=>(f.width||state.tile.w)+'x'+(f.height||state.tile.h))).size!==2)
-      throw Error('Missing a full-size or smaller '+variant+' customer image.');
+    const dimensions=asset=>String(asset.width||state.tile.w)+'x'+String(asset.height||state.tile.h);
+    const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(dimensions));
+    if((paired?accepted.length!==(files.length*2):accepted.length!==2)||sizes.size!==2)
+     throw Error('Both image sizes must be present for every included background.');
+    if(paired){
+     for(const source of files){
+      const prefix=source.name.replace(/-seamless-master\.(png|jpg|webp)$/i,'');
+      const images=accepted.filter(f=>f.name.startsWith(prefix));
+      if(images.length!==2||new Set(images.map(dimensions)).size!==2)
+       throw Error('Missing full-size or smaller image for '+source.name);
+     }
     }
-   }
-   if(paired){
-    const exact=includedArtworkLabels(accepted);
-    documents.push({name:'CONTENTS.txt',data:encode([
-     'SAPIVER PRINTS — FILE CONTENTS','',
-     'One design with two background treatments: transparent and solid '+paired.backgroundColor+'.',
-     'Each treatment has a full-resolution image and a smaller image. The artwork is supplied across Etsy buyer ZIP attachments.',
-     'Actual artwork files:',...accepted.map((f,i)=>'- '+f.name+' — '+exact[i]),
-     'Both treatments are covered by one commercial-use licence (LICENSE.txt).',
-     'WebP, where supplied, uses lossy compression and may not work in every print service.',
-     '300 DPI metadata does not add pixel detail.'
-    ].join('\n')+'\n')});
    }
    if(state.mode==='ready'){
     const delivered=includedArtworkLabels(accepted);
