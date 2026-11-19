@@ -38,6 +38,9 @@ const fields={
  description:await page.locator("#metaDesc").inputValue()
 };
 assert.equal(fields.name,response.title);
+assert.equal(await page.locator("#etsyTitle").inputValue(),response.etsy.title);
+assert.equal((await page.locator("#etsyTags").inputValue()).split(",").length,13);
+assert.match(await page.locator("#etsyDesc").inputValue(),/Digital download only/);
 assert.equal(fields.main,response.main_tag);
 assert.equal(fields.tags.split(",").length,14);
 assert.ok(fields.description.includes("aid of AI"));
@@ -56,6 +59,7 @@ mode="fail";
 await page.locator("#metaGenerate").click();
 await page.waitForFunction(()=>document.querySelector("#metaNotice")?.textContent.includes("temporarily unavailable"),null,{timeout:10000});
 assert.equal(await page.locator("#metaName").inputValue(),"","No made-up fallback on AI failure");
+assert.equal(await page.locator("#etsyTitle").inputValue(),"","No misleading Etsy metadata after AI failure");
 assert.equal(await page.locator("#copy-all").isDisabled(),true);
 mode="success";
 await page.locator("#metaGenerate").click();
