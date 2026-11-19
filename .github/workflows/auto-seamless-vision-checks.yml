@@ -8,6 +8,7 @@ on:
       - app/js/editor.js
       - app/index.html
       - tests/auto-seamless-background-pair-browser.mjs
+      - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -19,6 +20,7 @@ on:
       - app/js/editor.js
       - app/index.html
       - tests/auto-seamless-background-pair-browser.mjs
+      - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
       - package.json
       - tests/auto-seamless-listing.test.mjs
@@ -64,6 +66,7 @@ jobs:
           node tests/auto-seamless-commercial-browser.mjs
           node tests/auto-seamless-oversize-browser.mjs
           node tests/auto-seamless-background-pair-browser.mjs
+          node tests/auto-seamless-multi-colour-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
