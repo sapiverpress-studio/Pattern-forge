@@ -4,7 +4,7 @@ import {analyzeImage,validateListing,handleRequest,config} from "../netlify/func
 const base="http://localhost:4185/api/auto-seamless-listing";
 const tiny="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+p4QAAAABJRU5ErkJggg==";
 const tags=["knitted texture","chunky knit","braided wool","cable stitch","cream","rust","sweater texture","soft wool","cozy","cosy","winter warmth","neutral tones","classic knit","aran style"];
-const valid={title:"Cream and Rust Cable Knit Texture",main_tag:"cable knit",other_tags:tags,description:"Warm braided wool texture with cream and rust cable stitches. Created with the aid of AI.",visual_subject:"cable knit"};
+const valid={title:"Cream and Rust Cable Knit Texture",main_tag:"cable knit",other_tags:tags,description:"Warm braided wool texture with cream and rust cable stitches. Created with the aid of AI.",etsy:{title:"Cream and Rust Cable Knit Digital Seamless Pattern",tags:["cable knit pattern","rust cream pattern","cosy knit design","digital knit tile","knitted texture","cream wool look","braided stitch art","warm rust design","seamless knit","neutral knit tile","knit style pattern","cosy yarn pattern","fabric digital tile"],description:"Cream and rust cable-knit inspired artwork. Digital download only. Created with the aid of AI."},visual_subject:"cable knit"};
 function mock(content=valid){
  const seen=[];
  return {seen,chat:{completions:{create:async q=>{seen.push(q);return {choices:[{message:{content:JSON.stringify(content)}}]}}}}};
@@ -18,6 +18,9 @@ test("vision prompt receives thumbnail and returns 15 buyer-language tags",async
  assert.equal(result.title,valid.title);
  assert.equal(result.main_tag,"cable knit");
  assert.equal(result.other_tags.length,14);
+ assert.equal(result.etsy.tags.length,13);
+ assert.equal(result.etsy.title,"Cream and Rust Cable Knit Digital Seamless Pattern");
+ assert.equal(result.etsy.live_search_volume,false);
  assert.equal(new Set([result.main_tag,...result.other_tags]).size,15);
  assert.match(result.description,/aid of AI/);
  assert.equal(result.live_search_volume,false);
