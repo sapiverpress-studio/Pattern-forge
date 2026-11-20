@@ -11,10 +11,12 @@ const before=await page.locator('#preview').evaluate(c=>c.toDataURL());
 assert.equal(await page.locator('#layeredYarn').isChecked(),false,'Original rendering must remain the default.');
 assert.equal(await page.locator('#directWoolTools').isHidden(),true);
 await page.locator('#style').selectOption('stockinette');
+await page.locator('#randomStyle').selectOption('diamonds');
+// Family selection applies a suggested palette. Set the specific diagnostic
+// yarn colours afterwards so the colour histogram remains deterministic.
 await page.locator('#colour').fill('#8baa91');
 await page.locator('#contrast').fill('#e9d7a4');
 await page.locator('#third').fill('#a15d9a');
-await page.locator('#randomStyle').selectOption('diamonds');
 await page.locator('#randomiseMotif').click();
 await ready();
 const legacy=await page.locator('#preview').evaluate(c=>c.toDataURL());
@@ -77,6 +79,11 @@ const own=await page.evaluate(async()=>{
  const img=new Image();
  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src='/knit/materials/stockinette.png';});
  const m=buildStitchOwnership(img,'stockinette');
+ // The dyed stitch should be opaque across the majority of its actual
+ // photographed fibres (only thin groove edges feather).
+ let strong=0;
+ for(let k=2;k<m.data.length;k+=4)if(m.data[k]>230)strong++;
+ const coverage=strong/(m.width*m.height);
  const sampleCol=(y)=>{
   const out=[];
   for(let x=0;x<m.width;x++){
@@ -85,10 +92,11 @@ const own=await page.evaluate(async()=>{
   }
   return out;
  };
- return {size:m.width,cols:m.cols,rows:m.rows,low:sampleCol(10),mid:sampleCol(105),high:sampleCol(190)};
+ return {size:m.width,cols:m.cols,rows:m.rows,coverage,low:sampleCol(10),mid:sampleCol(105),high:sampleCol(190)};
 });
-assert.equal(own.size,512);assert.equal(own.cols,16);
+assert.equal(own.size,512);assert.equal(own.cols,9);assert.equal(own.rows,12);
 assert.notDeepEqual(own.low,own.mid,'Stitch boundaries must follow real yarn grooves rather than rectangular columns');
+assert.ok(own.coverage>.50,'Colour masks still produce broken half-dyed yarn patches: '+own.coverage);
 // Saved JSON preserves opt-in and all coloured cells.
 const downloadJson=page.waitForEvent('download');
 await page.locator('#saveSettings').click();
@@ -109,25 +117,29 @@ const download=await big;
 assert.match(download.suggestedFilename(),/5000px-300dpi\.png$/);
 await fs.copyFile(await download.path(),'wool-three-layer-5000.png');
 await page.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Downloaded one 5000'),null,{timeout:60000});
-// Cable, Rib and Seed retain the verified original renderer, not visually
-// rejected colour blotches. Fair Isle can use the stockinette stitch map.
-for(const material of ['rib','seed','cable']){
+// All five styles permit independent three-yarn stitch painting and opt-out.
+for(const material of ['rib','seed','cable','fairisle']){
  await page.locator('#style').selectOption(material);
  await ready();
- assert.equal(await page.locator('#layeredYarn').isDisabled(),true,material+' must keep the old renderer');
- assert.equal(await page.locator('#layeredYarn').isChecked(),false);
- const pixels=await page.locator('#preview').evaluate(c=>{
-  const {data}=c.getContext('2d').getImageData(0,0,c.width,c.height);
-  let sum=0,sum2=0,n=0;
-  for(let i=0;i<data.length;i+=40){sum+=data[i];sum2+=data[i]*data[i];n++;}
-  return Math.sqrt(Math.max(0,sum2/n-(sum/n)**2));
- });
- assert.ok(pixels>8,material+' original texture is blank');
+ assert.equal(await page.locator('#layeredYarn').isDisabled(),false,material+' must enable three yarn layers');
+ assert.equal(await page.locator('#layeredYarn').isChecked(),true,'Switching styles must preserve the opt-in');
+ const originalLayered=await page.locator('#preview').evaluate(c=>c.toDataURL());
+ await page.locator('#layeredYarn').uncheck();
+ await page.waitForFunction(old=>document.querySelector('#preview')?.toDataURL()!==old,originalLayered,{timeout:60000});
+ await page.locator('#layeredYarn').check();
+ await ready();
  await page.locator('#preview').screenshot({path:'wool-layered-'+material+'.png'});
+ assert.equal(await page.locator('#directWoolTools').isVisible(),true);
 }
-await page.locator('#style').selectOption('fairisle');
-assert.equal(await page.locator('#layeredYarn').isDisabled(),false);
-await page.locator('#layeredYarn').check();
+await page.locator('#randomStyle').selectOption('snowflakes');
+assert.equal(await page.locator('#patternPalette').inputValue(),'snowFrost');
+assert.equal(await page.locator('#colour').inputValue(),'#284c74');
+await page.locator('#patternPalette').selectOption('snowNordic');
+assert.equal(await page.locator('#contrast').inputValue(),'#f4e8ca');
+await page.locator('#randomStyle').selectOption('diamonds');
+assert.equal(await page.locator('#patternPalette').inputValue(),'diamondsHeritage');
+await page.locator('#randomStyle').selectOption('checker');
+assert.equal(await page.locator('#patternPalette').inputValue(),'checkerAutumn');
 await ready();
 await page.locator('#preview').screenshot({path:'wool-layered-fairisle.png'});
 assert.equal(errors.length,0,errors.join(' | '));

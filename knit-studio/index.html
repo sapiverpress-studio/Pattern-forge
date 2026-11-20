@@ -33,6 +33,21 @@
         <button id="randomiseMotif" type="button" class="primary">Randomise pattern</button>
         <button id="rerollMotif" type="button">Another version</button>
       </div>
+      <label for="patternPalette">Ready-made pattern colours</label>
+      <select id="patternPalette" aria-label="Ready-made yarn colourways">
+        <optgroup label="Snowflake colourways">
+          <option value="snowFrost">Snowflake · Frost Blue &amp; Snow</option>
+          <option value="snowNordic">Snowflake · Nordic Red &amp; Cream</option>
+          <option value="snowForest">Snowflake · Forest Green &amp; Ivory</option>
+        </optgroup>
+        <optgroup label="Other programmed patterns">
+          <option value="diamondsHeritage">Diamonds · Heritage Wool</option>
+          <option value="chevronsEarth">Zigzags · Earth Tones</option>
+          <option value="stripesMarine">Stripes · Coastal Wool</option>
+          <option value="checkerAutumn">Checks · Autumn Knit</option>
+        </optgroup>
+      </select>
+      <p class="hint">Choose a motif for its suggested colours, or pick a colourway here. You can still adjust all three wool colours manually. Another version keeps your chosen colours.</p>
       <p class="hint">Every result is editable. You can change individual stitches, colours and repeat size afterward.</p>
     </section>
     <canvas id="motifCanvas" width="384" height="384" aria-label="Touch-editable knitting stitch grid: paint rows and columns to create your motif"></canvas>
@@ -122,7 +137,7 @@
       <input id="layeredYarn" type="checkbox">
       <strong>Try three-layer knitted yarn</strong>
     </label>
-    <p class="hint" id="layeredHint">Experimental for Stockinette and Fair Isle: the same wool in three colours, revealed along photographed stitch boundaries. Switch off for the original look.</p>
+    <p class="hint" id="layeredHint">Experimental on all five knit styles: colour the wool photograph by detected stitch boundaries. Rib, Seed and Cable may need extra visual checking. Switch off for the original look.</p>
     <div id="directWoolTools" hidden>
       <label for="paintOnWool" class="layerSwitch">
         <input id="paintOnWool" type="checkbox" checked>

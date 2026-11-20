@@ -10,6 +10,18 @@ let view='tile',renderer=null,scheduleId=0,requestId=0,exporting=false;
 let chart=blankChart(16),activeInk=1,mirrored=false,painting=false;
 const undoStack=[],redoStack=[],chartCanvas=$('motifCanvas');
 let lastGeneratedSignature=null;
+const PATTERN_PRESETS=Object.freeze({
+ snowflakes:'snowFrost',diamonds:'diamondsHeritage',
+ chevrons:'chevronsEarth',stripes:'stripesMarine',checker:'checkerAutumn'
+});
+function applyPalette(name){
+ const values=PALETTES[name];if(!values)return false;
+ $('colour').value=values[0];
+ $('contrast').value=values[1];
+ $('third').value=values[2];
+ changed();
+ return true;
+}
 function announce(message){$('editNotice').textContent=message;}
 function snapshot(){return {cols:chart.cols,cells:chart.cells.slice(),motifActive:$('motifActive').checked};}
 function updateActionButtons(){
@@ -43,7 +55,19 @@ function useRandomiser(){
 }
 $('randomiseMotif').addEventListener('click',useRandomiser);
 $('rerollMotif').addEventListener('click',useRandomiser);
-$('randomStyle').addEventListener('change',()=>announce('Ready to generate '+$('randomStyle').selectedOptions[0].text.toLowerCase()+'.'));
+$('randomStyle').addEventListener('change',()=>{
+ const family=$('randomStyle').value;
+ const defaultPalette=PATTERN_PRESETS[family];
+ if(defaultPalette){
+  $('patternPalette').value=defaultPalette;
+  applyPalette(defaultPalette);
+  announce('Ready to generate '+$('randomStyle').selectedOptions[0].text.toLowerCase()+'. Suggested yarn colours applied; you can change them.');
+ }else announce('Ready to generate a surprise design. Your current yarn colours are preserved.');
+});
+$('patternPalette').addEventListener('change',()=>{
+ if(applyPalette($('patternPalette').value))
+  announce('Yarn colourway applied. Your knitted design and stitches have not changed.');
+});
 
 function updatePaintStatus(){
  const used=chart.cells.filter(n=>n!==0).length;
@@ -152,12 +176,12 @@ function setInputs(s,preserveUndo=false){
 }
 function status(s){$('status').textContent=s;}
 function updateVisibility(){
- const supported=['stockinette','fairisle'].includes($('style').value);
- $('layeredYarn').disabled=!supported;
- $('layeredHint').textContent=supported?
-  'Experimental: the same wool in three colours, revealed along photographed stitch boundaries. Switch off for the original look.':
-  'Three-layer yarn is currently tested for Stockinette and Fair Isle only. This style keeps its original wool renderer.';
- const layered=supported&&$('layeredYarn').checked;
+ const style=$('style').value;
+ $('layeredYarn').disabled=false;
+ $('layeredHint').textContent=['rib','seed','cable'].includes(style)?
+  'Experimental for '+style+': three dyed versions of this knit photograph follow detected stitch boundaries. Complex stitches may show imperfect colour separation. Switch off for the original look.':
+  'Experimental: three dyed versions of the same wool, revealed along photographed stitch boundaries. Switch off for the original look.';
+ const layered=$('layeredYarn').checked;
  $('directWoolTools').hidden=!layered;
  canvas.classList.toggle('wool-paint-active',layered&&$('paintOnWool').checked&&view==='tile');
  const fair=$('style').value==='fairisle'||$('motifActive').checked;
@@ -260,10 +284,6 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])
 for(const id of ['style','gauge','colour','contrast','third','variation','fibres','angle','designName'])
  $(id).addEventListener(id==='designName'?'change':'input',()=>{
   if(id==='style'){
-    if(!['stockinette','fairisle'].includes($('style').value)&&$('layeredYarn').checked){
-     $('layeredYarn').checked=false;
-     announce('Original wool renderer restored for this stitch style. Three-layer yarn is tested on Stockinette and Fair Isle.');
-    }
     const p={stockinette:'denim',rib:'cream',seed:'sage',cable:'cream',fairisle:'berry'}[$('style').value];
     const vals=PALETTES[p];
     $('colour').value=vals[0];$('contrast').value=vals[1];$('third').value=vals[2];
@@ -292,8 +312,7 @@ $('paintOnWool').addEventListener('change',()=>{
 });
 
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>{
- const x=PALETTES[b.dataset.palette];
- $('colour').value=x[0];$('contrast').value=x[1];$('third').value=x[2];changed();
+ applyPalette(b.dataset.palette);
 }));
 $('reset').addEventListener('click',()=>{
  saveUndo();setInputs(DEFAULTS,true);

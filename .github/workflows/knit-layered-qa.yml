@@ -1,7 +1,7 @@
 name: Three-layer knitted yarn experimental visual QA
 on:
   push:
-    branches: [feature/three-layer-yarn-stitch-masking-20261107]
+    branches: [feature/three-layer-yarn-stitch-masking-20261107, feature/all-knit-layer-colourways-20261107]
     paths:
       - knit-studio/**
       - tests/knit-three-layer-browser.mjs

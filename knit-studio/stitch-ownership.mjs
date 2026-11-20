@@ -1,5 +1,7 @@
 /* Material-guided stitch ownership map for experimental three-yarn layering.
  * Identify the naturally DARK grooves in the *existing wool photograph*.
+ * Atlas upload orientation and stitch-row orientation are corrected together
+ * so dyestuff stays on the same physical loop visible in the material photo.
  * This makes the dye boundaries follow knitted fibres, not chart rectangles
  * or artificially drawn V-shaped marks. No external assets or network calls.
  *
@@ -9,11 +11,11 @@
  */
 export const OWNER_SIZE=512;
 export const NATIVE_STITCHES=Object.freeze({
- stockinette:[16,11],
+ stockinette:[9,12],
  rib:[11,12],
  seed:[15,21],
  cable:[4,6],
- fairisle:[16,11]
+ fairisle:[9,12]
 });
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const wrap=(i,n)=>(i%n+n)%n;
@@ -87,18 +89,15 @@ export function buildStitchOwnership(image,materialStyle='stockinette'){
  context.filter='blur(1.5px)';
  context.drawImage(image,0,0,side,side);
  const pixels=context.getImageData(0,0,side,side).data;
- const gray=new Float32Array(side*side),hist=new Uint32Array(256);
+ const gray=new Float32Array(side*side);
  for(let i=0;i<gray.length;i++){
   const off=i*4;
   const lum=(pixels[off]*.299+pixels[off+1]*.587+pixels[off+2]*.114)/255;
-  gray[i]=lum;hist[clamp(Math.floor(lum*255),0,255)]++;
+  gray[i]=lum;
  }
- function quantile(p){
-  const target=gray.length*p;let count=0;
-  for(let k=0;k<256;k++){count+=hist[k];if(count>=target)return k/255;}
-  return 1;
- }
- const low=quantile(.20),high=Math.max(low+.10,quantile(.65));
+ // All selected yarn fibres should take the same dye; shadows are retained
+ // by the photographed wool luminance in shader.frag. Per-pixel luminance
+ // gating here created broken, mottled patches inside single stitches.
  const vertical=findGrooves(gray,cols,true);
  const horizontal=findGrooves(gray,rows,false);
  const data=new Uint8Array(side*side*4);
@@ -116,13 +115,17 @@ export function buildStitchOwnership(image,materialStyle='stockinette'){
    if(y>=edge)iy=k;
    dy=Math.min(dy,distance,side-distance);
   }
-  const fiber=clamp((gray[y*side+x]-low)/(high-low),0,1);
-  const seamFade=clamp(Math.min(dx,dy)/6,0,1);
-  const opacity=seamFade*(.25+.75*fiber);
-  const p=(y*side+x)*4;
+  // Keep whole knitted loops dyed, feather only their dark groove edges.
+  // The shader applies the original photo's shading after colour selection.
+  const seamFade=clamp(Math.min(dx,dy)/3,0,1);
+  // Photographs use a top-left origin, but WebGL typed-array textures use
+  // their first array row as the BOTTOM row. The original atlas was inverted
+  // relative to materialPhoto (which uploads with UNPACK_FLIP_Y_WEBGL=true).
+  // Flip atlas rows AND stitch row IDs so the chart still paints top-to-top.
+  const p=((side-1-y)*side+x)*4;
   data[p]=Math.round((ix+.5)/cols*255);
-  data[p+1]=Math.round((iy+.5)/rows*255);
-  data[p+2]=Math.round(opacity*255);
+  data[p+1]=Math.round((rows-iy-.5)/rows*255);
+  data[p+2]=Math.round(seamFade*255);
   data[p+3]=255;
  }
  canvas.width=canvas.height=0;

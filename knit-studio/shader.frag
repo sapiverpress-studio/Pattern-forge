@@ -54,6 +54,13 @@ void main(){
     float second=step(.24,dye)*(1.0-step(.74,dye));
     float third=step(.74,dye);
     float alpha=clamp(texture(ownershipBlend,fract(lookup)).b,0.0,1.0);
+    // Rib, seed and cable photographs contain deep recessed gaps that are
+    // NOT yarn loops. Their dark voids must retain background shading, not
+    // turn into rectangular dark-colour blotches. Dye their raised fibres,
+    // feathering naturally into the recesses. Stockinette/Fair Isle use the
+    // full continuous knitted V coverage validated by the photo mask.
+    if(stitchStyle==1||stitchStyle==2||stitchStyle==3)
+      alpha*=smoothstep(.25,.64,L);
     float reference=stitchStyle==0?.50:(stitchStyle==1?.68:(stitchStyle==2?.60:.75));
     if(stitchStyle==4)reference=.50; // Fair Isle colourwork uses stockinette base.
     float shade=clamp((L+.065)/(reference+.065),.22,1.74);
