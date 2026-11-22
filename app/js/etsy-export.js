@@ -57,7 +57,7 @@
   }
   function seamMetrics(){
     const mult=bridge.getMultipliers(),base=320,w=base*mult.x,h=base*mult.y;
-    const canvas=bridge.makeTileCanvas(w,h,base,base,bridge.getRepeatStyle(),true),ctx=canvas.getContext("2d",{willReadFrequently:true}),data=ctx.getImageData(0,0,w,h).data;
+    const canvas=bridge.makeTileCanvas(w,h,base,base,bridge.getRepeatStyle(),true,"transparent"),ctx=canvas.getContext("2d",{willReadFrequently:true}),data=ctx.getImageData(0,0,w,h).data;
     const mean=values=>values.reduce((a,b)=>a+b,0)/Math.max(1,values.length),lr=[],lrLocal=[],tb=[],tbLocal=[];
     for(let y=0;y<h;y+=2){
       const row=y*w*4;lr.push(pixelDiff(data,row,(row+(w-1)*4)));lrLocal.push(pixelDiff(data,row,row+4),pixelDiff(data,row+(w-2)*4,row+(w-1)*4));
@@ -87,8 +87,18 @@
       const seams=seamMetrics(),pass=seams.leftRight.pass&&seams.topBottom.pass;
       checks.push({id:"seams",state:pass?"pass":"fail",label:"Seam continuity",detail:pass?"Opposite-edge pixel continuity is within tolerance in both directions.":"A strong discontinuity was detected at "+(!seams.leftRight.pass&&!seams.topBottom.pass?"both tile seams":!seams.leftRight.pass?"the left/right seam":"the top/bottom seam")+". Inspect the repeat before sale.",metrics:seams});
     }
-    const transparent=!!$("exportTransparent")?.checked;
-    checks.push({id:"transparency",state:"pass",label:"Background handling",detail:transparent?"Master PNG and SVG omit the canvas background; JPG and design-only listing images stay opaque.":"Master PNG, SVG and JPG include the selected canvas background colour."});
+    // Etsy PNGs must contain actual clear pixels regardless of the editor's
+    // ordinary Export Transparent switch. An RGBA file alone is insufficient.
+    if(!bridge.isDoodle()&&counts.total){
+      const sample=bridge.makeTileCanvas(192,192,192,192,bridge.getRepeatStyle(),true,"transparent");
+      try{
+        const data=sample.getContext("2d",{willReadFrequently:true}).getImageData(0,0,192,192).data;
+        let clear=0;for(let i=3;i<data.length;i+=4)if(data[i]<=12)clear++;
+        const percent=Math.round(clear/(192*192)*1000)/10;
+        const pass=clear/(192*192)>=.01;
+        checks.push({id:"transparency",state:pass?"pass":"fail",label:"Actual transparent background",detail:pass?"The Etsy PNG uses a transparent canvas and the artwork has about "+percent+"% fully clear area in a render sample. JPG and listing previews remain opaque.":"The rendered artwork contains less than 1% clear pixels, even without a canvas background. A white background may be baked into imported images. Open Images to clean eligible flat backgrounds or replace opaque motifs with genuine transparent PNGs. Etsy export is blocked; no pixels are removed automatically."});
+      }finally{sample.width=0;sample.height=0;}
+    }
     checks.push({id:"vector",state:"info",label:"SVG eligibility",detail:vectorEligible()?"A vector SVG can be included inside the buyer ZIP.":"At least one placed asset is raster, so the Etsy package will omit SVG rather than label a raster-backed SVG as genuine vector."});
     checks.push({id:"etsy-rules",state:"info",label:"Etsy upload rules",detail:"Checked against Etsy rules verified "+RULES_VERIFIED+": up to "+ETSY_MAX_FILES+" digital files, maximum 20 MB each. Buyer packages are generated as ZIP files."});
     return checks;
@@ -253,10 +263,11 @@
     if(blocking(checks).length){bridge.setStatus("Etsy export blocked: "+blocking(checks)[0].detail);return {success:false,checks,blockers:blocking(checks)};}
     try{
       bridge.setStatus("Etsy export: rendering seamless PNG…");
-      const png=await bridge.renderPNGBlob();if(!png)throw new Error("PNG rendering was cancelled.");
+      const png=await bridge.renderPNGBlob({backgroundMode:"transparent"});if(!png)throw new Error("PNG rendering was cancelled.");
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),pngOriginalName=stem+"-seamless-master.png";
+      if(!png.alphaStats||png.alphaStats.clear/png.alphaStats.total<.01)throw new Error("The master PNG has no verified transparent background. Packaging was stopped.");
       let buyerFiles=[],packages=[],multipartCount=0,originalBytes=png.blob.size;
       const artwork=[
         {name:pngOriginalName,blob:png.blob},
@@ -319,7 +330,7 @@
       if(kit.size>100_000_000)throw new Error("The complete seller kit exceeds the uploader\u0027s 100 MB limit. No image was resized.");
       if(download)bridge.downloadBlob(kit,kitName);
       bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
-      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,multipartPngUsed:multipartCount>0,multipartCount,pngDimensions:{width:png.spec.wPx,height:png.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},originalPngBytes:originalBytes,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
+      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,alphaStats:png.alphaStats,multipartPngUsed:multipartCount>0,multipartCount,pngDimensions:{width:png.spec.wPx,height:png.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},originalPngBytes:originalBytes,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
       return {success:false,checks,blockers:blocking(checks),error:message};
