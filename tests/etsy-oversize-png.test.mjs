@@ -2,138 +2,94 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const exporter=readFileSync(new URL('../app/js/etsy-export.js',import.meta.url),'utf8');
-const editor=readFileSync(new URL('../app/js/editor.js',import.meta.url),'utf8');
+const source=readFileSync(new URL('../app/js/etsy-export.js',import.meta.url),'utf8');
 
 class FakeBlob {
   constructor(parts=[]){
     this.parts=parts;
-    this.size=parts.reduce((total,part)=>total+(typeof part==='string'?part.length:(part?.size||part?.byteLength||0)),0);
+    this.size=parts.reduce((n,p)=>n+(typeof p==='string'?p.length:(p?.size||p?.byteLength||0)),0);
   }
 }
 
-async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowSmallerPng=false}={}){
-  const statuses=[],zipped=[];
-  const canvas=(w=1,h=1)=>({
-    width:w,height:h,
-    getContext(){return {fillRect(){},drawImage(){},createPattern(){return null;},getImageData:()=>({data:new Uint8Array(this.width*this.height*4)})};},
+async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMultipartPng=false}={}){
+  const groups=[],renderCalls=[],statuses=[];
+  const canvas=(w=1,h=1)=>({width:w,height:h,
+    getContext(){return {fillRect(){},drawImage(){},createPattern(){return null},getImageData:()=>({data:new Uint8Array(this.width*this.height*4)})};},
     toBlob(callback,type){callback({size:type==='image/jpeg'?(this.width===5000?jpgSize:300_000):250_000});}
   });
-  const document={
-    getElementById:()=>({checked:true,value:'#ffffff'}),
-    createElement:()=>canvas()
-  };
-  const state={
-    items:[{id:'a',scale:1}],marks:[],layers:[{id:'layer1'}],
-    assets:[{id:'a',src:'data:image/png;base64,x',w:1000,h:1000,vector:false}],
-    templateGuide:null,project:null
-  };
-  const bridge={
-    state,getSpec:()=>({wPx:5000,hPx:5000,dpi:300}),
-    getRepeatStyle:()=> 'straight',getMultipliers:()=>({x:1,y:1}),isDoodle:()=>false,
-    layerForArtwork:()=>({id:'layer1'}),layerIsRenderable:()=>true,assetOf:()=>({vector:false}),
-    baseLayerIds:{motifs:'m',drawing:'d'},
-    makeTileCanvas:(w,h)=>canvas(w,h),
-    renderPNGBlob:async({maxSide}={})=>{
-      const d=Math.min(5000,maxSide||5000);
-      return {spec:{wPx:d,hPx:d,dpi:300},blob:{size:Math.round(originalPng*(d/5000)**2)}};
+  const state={items:[{id:'a',scale:1}],marks:[],layers:[{id:'layer'}],assets:[{id:'a',src:'data:png',w:5000,h:5000,vector:false}],project:null,templateGuide:null};
+  const bridge={state,getSpec:()=>({wPx:5000,hPx:5000,dpi:300}),getRepeatStyle:()=> 'straight',
+    getMultipliers:()=>({x:1,y:1}),isDoodle:()=>false,layerForArtwork:()=>({id:'layer'}),
+    layerIsRenderable:()=>true,assetOf:()=>({vector:false}),baseLayerIds:{motifs:'m',drawing:'d'},
+    makeTileCanvas:(w,h)=>canvas(w,h),renderPNGBlob:async options=>{
+      renderCalls.push(options);
+      return {spec:{wPx:5000,hPx:5000,dpi:300},blob:{size:originalPng}};
     },
-    renderSVGBlob:()=>({size:1000}),
-    makeZip:async files=>{
-      zipped.push(files);
-      return {size:files.reduce((size,file)=>size+file.blob.size+200,22)};
-    },
-    downloadBlob:()=>{},safeName:()=> 'test',setStatus:value=>statuses.push(value)
+    renderSVGBlob:()=>({size:1000}),makeZip:async files=>{
+      groups.push(files);return {size:files.reduce((n,f)=>n+f.blob.size+200,22)};
+    },downloadBlob(){},safeName:()=> 'train',setStatus:v=>statuses.push(v)};
+  const multipart={
+    makeParts:async(blob,name,spec)=>{
+      assert.equal(blob.size,originalPng);
+      assert.equal(spec.wPx,5000);
+      const parts=[
+        {name:name.slice(0,-4)+'-png-part-01.pngpart',blob:{size:18_500_000},bytes:18_500_000,sha256:'a'.repeat(64)},
+        {name:name.slice(0,-4)+'-png-part-02.pngpart',blob:{size:originalPng-18_500_000},bytes:originalPng-18_500_000,sha256:'b'.repeat(64)}
+      ];
+      return {parts,manifest:{format:'sapiver-full-png-parts',version:1,filename:name,bytes:originalPng,width:5000,height:5000,dpi:300,sha256:'c'.repeat(64),parts:parts.map(p=>({name:p.name,bytes:p.bytes,sha256:p.sha256}))},html:new FakeBlob(['<!doctype html>'])};
+    }
   };
-  const window={PatternForgeEtsyBridge:bridge};
-  new Function('window','document','Blob',exporter)(window,document,FakeBlob);
-  return {result:await window.PatternForgeEtsy.prepare({download:false,allowSmallerPng}),zipped,statuses};
+  const window={PatternForgeEtsyBridge:bridge,PatternForgeMultipart:multipart},document={getElementById:()=>({checked:true,value:'#ffffff'}),createElement:()=>canvas()};
+  new Function('window','document','Blob',source)(window,document,FakeBlob);
+  const result=await window.PatternForgeEtsy.prepare({download:false,allowMultipartPng});
+  return {result,groups,renderCalls,statuses};
 }
 
-test('ordinary PNG keeps its exact master dimensions and filename',async()=>{
-  const {result}=await prepareFixture({originalPng:8_000_000});
+test('ordinary PNG is delivered complete at 5000 px in exactly two ZIPs',async()=>{
+  const {result,renderCalls}=await prepareFixture({originalPng:8_000_000});
   assert.equal(result.success,true);
-  assert.equal(result.smallerPngUsed,false);
+  assert.equal(result.multipartPngUsed,false);
+  assert.equal(result.buyerPackages.length,2);
+  assert.ok(result.buyerFiles.some(f=>f.name==='sapiver-train-seamless-master.png'));
   assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
-  assert.ok(result.buyerFiles.some(file=>file.name==='sapiver-test-seamless-master.png'));
-  assert.equal(result.buyerPackages.length,2);
-  assert.ok(result.buyerPackages[0].name.endsWith('-buyer-01-png.zip'));
-  assert.ok(result.buyerPackages[1].name.endsWith('-buyer-02-jpg-and-extras.zip'));
-  assert.ok(result.buyerPackages.every(file=>file.size<=20_000_000));
+  assert.deepEqual(renderCalls,[undefined]);
 });
 
-test('oversized PNG requires explicit opt-in and does not download a misleading package',async()=>{
-  const {result}=await prepareFixture();
+test('oversized original PNG cannot be silently reduced or repackaged without consent',async()=>{
+  const {result,renderCalls}=await prepareFixture();
   assert.equal(result.success,false);
-  assert.match(result.error,/Tick .*Allow smaller PNG/);
+  assert.match(result.error,/Enable .*Preserve original PNG/);
+  assert.deepEqual(renderCalls,[undefined]);
 });
 
-test('consented fallback keeps full-resolution JPG, includes a fitting PNG and truthful README',async()=>{
-  const {result,zipped}=await prepareFixture({allowSmallerPng:true});
-  assert.equal(result.success,true);
-  assert.equal(result.smallerPngUsed,true);
-  assert.equal(result.masterDimensions.width,5000);
-  assert.ok(result.pngDimensions.width<5000);
-  assert.ok(result.pngDimensions.width>=1000);
-  assert.equal(result.buyerPackages.length,2);
-  assert.ok(result.buyerPackages[0].name.endsWith('-buyer-01-png.zip'));
-  assert.ok(result.buyerPackages[1].name.endsWith('-buyer-02-jpg-and-extras.zip'));
-  assert.ok(result.buyerPackages.every(file=>file.size<=20_000_000));
-  assert.ok(result.buyerFiles.some(file=>file.name==='sapiver-test-seamless-master.jpg'));
-  assert.ok(result.buyerFiles.some(file=>file.name.endsWith(result.pngDimensions.width+'x'+result.pngDimensions.height+'.png')));
-  // The initial oversize probe may record a rejected ZIP before the final two are built.
-  const buyerZipFiles=zipped.filter(group=>group.some(file=>file.name==='LICENSE.txt')).slice(-2);
-  assert.equal(buyerZipFiles.length,2);
-  assert.equal(buyerZipFiles[0].filter(file=>file.name.endsWith('.png')).length,1);
-  assert.equal(buyerZipFiles[1].filter(file=>file.name.endsWith('.png')).length,0);
-  assert.ok(buyerZipFiles[1].some(file=>file.name.endsWith('.jpg')));
-  for(const zip of buyerZipFiles){
-    assert.ok(zip.some(file=>file.name==='LICENSE.txt'));
-    assert.ok(zip.some(file=>file.name==='README.txt'));
-    assert.ok(zip.some(file=>file.name==='ABOUT-SAPIVER-PRINTS.txt'));
-    assert.ok(!zip.some(file=>file.name==='QUALITY-CHECK.txt'),'Owner report stays outside buyer ZIPs');
+test('approved multipart export keeps all bytes, exact pixel size and includes recovery tool',async()=>{
+  const {result,groups,renderCalls}=await prepareFixture({allowMultipartPng:true});
+  assert.equal(result.success,true,JSON.stringify(result));
+  assert.equal(result.multipartPngUsed,true);
+  assert.equal(result.multipartCount,2);
+  assert.equal(result.originalPngBytes,24_000_000);
+  assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
+  assert.equal(result.buyerPackages.length,3);
+  assert.ok(result.buyerPackages.every(f=>f.size<20_000_000));
+  assert.ok(result.buyerFiles.some(f=>f.name.endsWith('png-part-01.pngpart')));
+  assert.ok(result.buyerFiles.some(f=>f.name.endsWith('png-part-02.pngpart')));
+  assert.ok(result.buyerFiles.some(f=>f.name==='PNG-REASSEMBLY.json'));
+  assert.ok(result.buyerFiles.some(f=>f.name==='REBUILD-PNG.html'));
+  const archives=groups.filter(group=>group.some(f=>f.name==='LICENSE.txt')).slice(-3);
+  assert.equal(archives.length,3);
+  assert.equal(archives[0].filter(f=>f.name.endsWith('.pngpart')).length,1);
+  assert.equal(archives[1].filter(f=>f.name.endsWith('.pngpart')).length,1);
+  assert.ok(archives[2].some(f=>f.name.endsWith('-seamless-master.jpg')));
+  for(const group of archives){
+    for(const doc of ['README.txt','LICENSE.txt','ABOUT-SAPIVER-PRINTS.txt'])assert.ok(group.some(f=>f.name===doc));
+    assert.ok(!group.some(f=>f.name==='QUALITY-CHECK.txt'));
   }
-  // The deployed uploader permits repeated buyer documents only if their
-  // checksums are identical. Both archives must contain the same documents.
-  for(const name of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt']){
-    const payloads=buyerZipFiles.map(zip=>zip.find(file=>file.name===name)?.blob.parts.join(''));
-    assert.equal(payloads.length,2);
-    assert.equal(payloads[0],payloads[1],name+' differs across buyer ZIPs');
-  }
-  const outer=zipped.at(-1);
-  assert.ok(outer.some(file=>file.name==='QUALITY-CHECK.txt'),'Seller report is retained in the outer kit');
-  const readme=zipped.flat().filter(file=>file.name==='README.txt').at(-1);
-  assert.ok(readme);
-  const content=readme.blob.parts.join('');
-  assert.match(content,new RegExp('PNG seamless tile: '+result.pngDimensions.width+' × '+result.pngDimensions.height+' px'));
-  assert.match(content,/JPG seamless master tile: 5000 × 5000 px/);
-  assert.ok(!content.includes('PNG seamless tile: 5000 × 5000 px'));
+  assert.deepEqual(renderCalls,[undefined],'PNG must not be re-rendered smaller');
   assert.equal(result.designUnchanged,true);
 });
 
-test('oversized full-resolution JPG is not silently substituted',async()=>{
-  const {result}=await prepareFixture({allowSmallerPng:true,jpgSize:21_000_000});
+test('oversized mandatory JPG still blocks the package',async()=>{
+  const {result}=await prepareFixture({allowMultipartPng:true,jpgSize:21_000_000});
   assert.equal(result.success,false);
-  assert.match(result.error,/\.jpg cannot fit/);
-});
-
-test('PNG size reduction uses original repeat renderer and 300 DPI metadata',async()=>{
-  const begin=editor.indexOf('  async function renderPNGBlob(options={}){');
-  const end=editor.indexOf('\n  let backgroundExportPending=',begin);
-  assert.ok(begin>=0&&end>begin,'PNG rendering source must be locatable');
-  const calls=[];
-  const render=new Function('getExportSpec','confirm','setStatus','makeTileCanvas','projectRepeatStyle','canvasToPngBlobWithDpi','setTimeout',
-    editor.slice(begin,end)+'\nreturn renderPNGBlob;')(
-    ()=>({wPx:5000,hPx:5000,dpi:300}),()=>true,()=>{},
-    (w,h,bw,bh,style,forExport)=>{calls.push({w,h,bw,bh,style,forExport});return {width:w,height:h};},
-    ()=> 'straight',
-    async(canvas,dpi)=>{calls.push({dpi});return {size:1000};},
-    fn=>{fn();return 0;}
-  );
-  const full=await render(),small=await render({maxSide:3200});
-  assert.deepEqual({w:full.spec.wPx,h:full.spec.hPx,dpi:full.spec.dpi},{w:5000,h:5000,dpi:300});
-  assert.deepEqual({w:small.spec.wPx,h:small.spec.hPx,dpi:small.spec.dpi},{w:3200,h:3200,dpi:300});
-  assert.equal(calls[0].forExport,true);
-  assert.equal(calls[2].forExport,true);
-  assert.equal(calls[3].dpi,300);
+  assert.match(result.error,/JPG-and-extras ZIP exceeds Etsy/);
 });

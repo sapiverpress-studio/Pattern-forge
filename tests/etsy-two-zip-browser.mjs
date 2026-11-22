@@ -24,7 +24,7 @@ try{
   assert.equal(result.success,true,'Actual browser export failed: '+JSON.stringify(result));
   assert.equal(result.buyerPackages.length,2,'Must export exactly two Etsy upload ZIPs');
   assert.ok(result.buyerPackages.every(f=>f.size<=20_000_000),'An Etsy file exceeds 20 MB');
-  assert.equal(result.smallerPngUsed,false,'Small clean sample must retain full-resolution PNG');
+  assert.equal(result.multipartPngUsed,false,'Small clean sample must retain full-resolution PNG in the usual two ZIPs');
   assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
   assert.equal(result.designUnchanged,true,'Editable design was changed');
   const download=await downloadPromise;
