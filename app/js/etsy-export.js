@@ -213,8 +213,9 @@
     ].join("\n");
   }
   async function buyerPackages(files,base){
-    const docs=files.filter(file=>/\\.txt$/i.test(file.name)),artwork=files.filter(file=>!/\\.txt$/i.test(file.name));
-    const png=artwork.find(file=>/\\.png$/i.test(file.name));
+    const docs=files.filter(file=>file.name.toLowerCase().endsWith(".txt"));
+    const artwork=files.filter(file=>!file.name.toLowerCase().endsWith(".txt"));
+    const png=artwork.find(file=>file.name.toLowerCase().endsWith(".png"));
     if(!png)throw new Error("An Etsy PNG tile is required for this digital pattern.");
     const otherArtwork=artwork.filter(file=>file!==png);
     if(!otherArtwork.length)throw new Error("The JPG master and preview are missing from the buyer package.");
