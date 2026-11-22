@@ -2260,14 +2260,16 @@
     return label.replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"pattern";
   }
   function exportFileStem(){return isDoodleProject()?"artwork":"seamless";}
-  async function renderPNGBlob(){
-    const spec=getExportSpec();
+  async function renderPNGBlob(options={}){
+    const original=getExportSpec(),requested=Number(options?.maxSide)||0;
+    const factor=requested>0?Math.min(1,requested/Math.max(original.wPx,original.hPx)):1;
+    const spec=factor===1?original:{...original,wPx:Math.max(1,Math.round(original.wPx*factor)),hPx:Math.max(1,Math.round(original.hPx*factor))};
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
     const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true);
-    const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
-    return {blob,spec};
+    try{const blob=await canvasToPngBlobWithDpi(out,spec.dpi);return {blob,spec};}
+    finally{out.width=0;out.height=0;}
   }
   let backgroundExportPending=null;
   function sizeMB(bytes){return (bytes/1e6).toFixed(2)+" MB";}
