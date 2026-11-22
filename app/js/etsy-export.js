@@ -5,7 +5,7 @@
 
   const ETSY_MAX_BYTES=20000000;
   const ETSY_MAX_FILES=5;
-  const RULES_VERIFIED="2026-10-09";
+  const RULES_VERIFIED="2026-11-22";
   const LISTING_W=2400,LISTING_H=1800;
   const $=id=>document.getElementById(id);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -136,7 +136,7 @@
     }
     repeatTile.width=1;repeatTile.height=1;tileTile.width=1;tileTile.height=1;detailTile.width=1;detailTile.height=1;return out;
   }
-  function instructions(spec,hasSvg){
+  function instructions(spec,hasSvg,pngSpec=spec){
     const style=bridge.getRepeatStyle();
     return [
       "SAPIVER PRINTS — DIGITAL SEAMLESS PATTERN",
@@ -144,7 +144,7 @@
       "Thank you for purchasing this digital pattern.",
       "",
       "WHAT IS INCLUDED",
-      "- PNG seamless master tile: "+spec.wPx+" × "+spec.hPx+" px.",
+      "- PNG seamless tile: "+pngSpec.wPx+" × "+pngSpec.hPx+" px.",
       "- JPG seamless master tile: "+spec.wPx+" × "+spec.hPx+" px with a flattened background.",
       "- 3 × 3 repeat preview JPG for checking the seamless repeat.",
       hasSvg?"- SVG vector repeat file for resolution-independent scaling.":"- SVG is not included because this design contains raster artwork.",
@@ -190,7 +190,7 @@
   function reportText(checks){
     return ["PATTERN FORGE — ETSY EXPORT QUALITY REPORT","Generated: "+new Date().toISOString(),"",...checks.map(c=>"["+c.state.toUpperCase()+"] "+c.label+" — "+c.detail)].join("\n");
   }
-  function sellerChecklist(packages,listing){
+  function sellerChecklist(packages,listing,smallerPngUsed,pngSpec,originalSpec){
     return [
       "SAPIVER PRINTS — ETSY SELLER CHECKLIST",
       "",
@@ -204,6 +204,9 @@
       "ETSY FILE CHECK",
       "Rules verified "+RULES_VERIFIED+": maximum "+ETSY_MAX_FILES+" digital files, maximum 20 MB per file.",
       ...packages.map(p=>"- "+p.name+" — "+mb(p.blob.size)),
+      "",
+      "PNG included: "+pngSpec.wPx+" × "+pngSpec.hPx+" px.",
+      ...(smallerPngUsed?["Seller note: the original "+originalSpec.wPx+" × "+originalSpec.hPx+" px PNG did not fit Etsy; this kit includes the approved smaller PNG. Use Export PNG separately to retain the full-resolution original. The buyer README lists only supplied formats."]:[]),
       "",
       "LISTING IMAGES",
       listing.length+" design-only listing images generated at "+LISTING_W+" × "+LISTING_H+" px. They show the pattern itself only; no product mockups are included."
@@ -235,17 +238,53 @@
       const png=await bridge.renderPNGBlob();if(!png)throw new Error("PNG rendering was cancelled.");
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
-      const stem=cleanStem(),hasSvg=vectorEligible(),buyerFiles=[
-        {name:stem+"-seamless-master.png",blob:png.blob},
-        {name:stem+"-seamless-master.jpg",blob:jpg.blob},
-        {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
-      ];
-      if(hasSvg)buyerFiles.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
-      buyerFiles.push({name:"README.txt",blob:new Blob([instructions(png.spec,hasSvg)],{type:"text/plain"})});
-      buyerFiles.push({name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})});
-      buyerFiles.push({name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})});
+      const stem=cleanStem(),hasSvg=vectorEligible(),pngOriginalName=stem+"-seamless-master.png";
+      let buyerFiles=[],packages=[],selectedPng=png,smallerPngUsed=false;
+      function filesForPng(asset,smaller){
+        const name=smaller?stem+"-seamless-tile-"+asset.spec.wPx+"x"+asset.spec.hPx+".png":pngOriginalName;
+        const files=[
+          {name,blob:asset.blob},
+          {name:stem+"-seamless-master.jpg",blob:jpg.blob},
+          {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
+        ];
+        if(hasSvg)files.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
+        files.push({name:"README.txt",blob:new Blob([instructions(jpg.spec,hasSvg,asset.spec)],{type:"text/plain"})});
+        files.push({name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})});
+        files.push({name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})});
+        return files;
+      }
+      async function packagePng(asset,smaller){
+        const files=filesForPng(asset,smaller);
+        return {files,packages:await buyerPackages(files,stem)};
+      }
       bridge.setStatus("Etsy export: checking Etsy package sizes…");
-      const packages=await buyerPackages(buyerFiles,stem);
+      try{
+        const packed=await packagePng(png,false);buyerFiles=packed.files;packages=packed.packages;
+      }catch(error){
+        const pngOversize=String(error?.message||"").includes(pngOriginalName+" cannot fit");
+        if(!pngOversize)throw error;
+        if(options.allowSmallerPng!==true)
+          throw new Error("The full-resolution PNG ("+mb(png.blob.size)+") is too large for Etsy. Tick ‘Allow smaller PNG when necessary’, then build the kit again. The full-resolution PNG remains available through Export PNG.");
+        const originalSide=Math.max(png.spec.wPx,png.spec.hPx);
+        const estimated=Math.floor(Math.min(originalSide-100,originalSide*Math.sqrt((ETSY_MAX_BYTES-500000)/Math.max(1,png.blob.size))*.92)/100)*100;
+        let nextSide=Math.max(1000,estimated),lastError=error;
+        while(nextSide>=1000){
+          bridge.setStatus("Etsy export: trying a "+nextSide+" px PNG while keeping the full-size JPG…");
+          const candidate=await bridge.renderPNGBlob({maxSide:nextSide});
+          if(!candidate)throw new Error("PNG rendering was cancelled.");
+          try{
+            const packed=await packagePng(candidate,true);
+            selectedPng=candidate;buyerFiles=packed.files;packages=packed.packages;smallerPngUsed=true;break;
+          }catch(candidateError){
+            const candidateName=stem+"-seamless-tile-"+candidate.spec.wPx+"x"+candidate.spec.hPx+".png";
+            if(!String(candidateError?.message||"").includes(candidateName+" cannot fit"))throw candidateError;
+            lastError=candidateError;
+          }
+          nextSide=Math.floor(nextSide*.8/100)*100;
+        }
+        if(!smallerPngUsed)throw new Error("No practical PNG size could fit an Etsy buyer ZIP while retaining the other required files. "+lastError.message);
+        checks.push({id:"etsy-png-size",state:"warn",label:"Approved smaller PNG",detail:"Buyer PNG is "+selectedPng.spec.wPx+" × "+selectedPng.spec.hPx+" px instead of "+png.spec.wPx+" × "+png.spec.hPx+" px; the full-resolution JPG is retained. Use Export PNG separately for the original."});
+      }
       const sizeOk=packages.length<=ETSY_MAX_FILES&&packages.every(p=>p.blob.size<=ETSY_MAX_BYTES);
       checks.push({id:"etsy-package",state:sizeOk?"pass":"fail",label:"Etsy buyer package",detail:sizeOk?packages.length+" upload ZIP"+(packages.length===1?"":"s")+" prepared; largest is "+mb(Math.max(...packages.map(p=>p.blob.size)))+".":"Generated buyer files exceed Etsy's upload limits."});
       if(!sizeOk)throw new Error("Generated buyer package exceeds Etsy's upload limits.");
@@ -257,13 +296,13 @@
       const kitFiles=[
         ...packages.map(p=>({name:"UPLOAD-TO-ETSY/"+p.name,blob:p.blob})),
         ...listing.map(file=>({name:"LISTING-IMAGES/"+stem+"-"+file.name,blob:file.blob})),
-        {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerChecklist(packages,listing)],{type:"text/plain"})},
+        {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerChecklist(packages,listing,smallerPngUsed,selectedPng.spec,png.spec)],{type:"text/plain"})},
         {name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})}
       ];
       const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
       if(download)bridge.downloadBlob(kit,kitName);
       bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
-      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
+      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,smallerPngUsed,pngDimensions:{width:selectedPng.spec.wPx,height:selectedPng.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
       return {success:false,checks,blockers:blocking(checks),error:message};
