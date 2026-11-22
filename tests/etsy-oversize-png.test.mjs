@@ -89,7 +89,18 @@ test('consented fallback keeps full-resolution JPG, includes a fitting PNG and t
   for(const zip of buyerZipFiles){
     assert.ok(zip.some(file=>file.name==='LICENSE.txt'));
     assert.ok(zip.some(file=>file.name==='README.txt'));
+    assert.ok(zip.some(file=>file.name==='ABOUT-SAPIVER-PRINTS.txt'));
+    assert.ok(!zip.some(file=>file.name==='QUALITY-CHECK.txt'),'Owner report stays outside buyer ZIPs');
   }
+  // The deployed uploader permits repeated buyer documents only if their
+  // checksums are identical. Both archives must contain the same documents.
+  for(const name of ['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt']){
+    const payloads=buyerZipFiles.map(zip=>zip.find(file=>file.name===name)?.blob.parts.join(''));
+    assert.equal(payloads.length,2);
+    assert.equal(payloads[0],payloads[1],name+' differs across buyer ZIPs');
+  }
+  const outer=zipped.at(-1);
+  assert.ok(outer.some(file=>file.name==='QUALITY-CHECK.txt'),'Seller report is retained in the outer kit');
   const readme=zipped.flat().filter(file=>file.name==='README.txt').at(-1);
   assert.ok(readme);
   const content=readme.blob.parts.join('');
