@@ -213,21 +213,24 @@
     ].join("\n");
   }
   async function buyerPackages(files,base){
-    const all=await bridge.makeZip(files);
-    const packageName=(suffix="")=>(base+"-buyer-files"+suffix+".zip").slice(0,70);
-    if(all.size<=ETSY_MAX_BYTES)return [{name:packageName(),blob:all}];
-    const docs=files.filter(file=>/\.txt$/i.test(file.name)),payload=files.filter(file=>!/\.txt$/i.test(file.name)),groups=[],current=[];
-    async function zipped(group){return bridge.makeZip([...group,...docs]);}
-    for(const file of payload){
-      const candidate=[...current,file],zip=await zipped(candidate);
-      if(zip.size<=ETSY_MAX_BYTES){current.push(file);continue;}
-      if(!current.length)throw new Error(file.name+" cannot fit inside Etsy's 20 MB digital-file limit even as its own ZIP.");
-      groups.push([...current]);current.length=0;current.push(file);
-      const single=await zipped(current);if(single.size>ETSY_MAX_BYTES)throw new Error(file.name+" cannot fit inside Etsy's 20 MB digital-file limit even as its own ZIP.");
+    const docs=files.filter(file=>/\\.txt$/i.test(file.name)),artwork=files.filter(file=>!/\\.txt$/i.test(file.name));
+    const png=artwork.find(file=>/\\.png$/i.test(file.name));
+    if(!png)throw new Error("An Etsy PNG tile is required for this digital pattern.");
+    const otherArtwork=artwork.filter(file=>file!==png);
+    if(!otherArtwork.length)throw new Error("The JPG master and preview are missing from the buyer package.");
+    const groups=[
+      {name:(base+"-buyer-01-png.zip").slice(0,70),files:[png,...docs]},
+      {name:(base+"-buyer-02-jpg-and-extras.zip").slice(0,70),files:[...otherArtwork,...docs]}
+    ];
+    const packages=[];
+    for(const group of groups){
+      const blob=await bridge.makeZip(group.files);
+      if(blob.size>ETSY_MAX_BYTES){
+        const dominant=group.files.filter(file=>!docs.includes(file)).sort((a,b)=>b.blob.size-a.blob.size)[0];
+        throw new Error((dominant?.name||group.name)+" cannot fit inside Etsy's 20 MB digital-file limit even as its own ZIP.");
+      }
+      packages.push({name:group.name,blob});
     }
-    if(current.length)groups.push([...current]);
-    if(groups.length>ETSY_MAX_FILES)throw new Error("This product needs "+groups.length+" buyer ZIPs, exceeding Etsy's five-file limit.");
-    const packages=[];for(let i=0;i<groups.length;i++){const blob=await zipped(groups[i]);packages.push({name:packageName("-"+(i+1)),blob});}
     return packages;
   }
   async function prepare(options={}){
