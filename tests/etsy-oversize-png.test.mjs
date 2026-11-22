@@ -56,6 +56,9 @@ test('ordinary PNG keeps its exact master dimensions and filename',async()=>{
   assert.equal(result.smallerPngUsed,false);
   assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
   assert.ok(result.buyerFiles.some(file=>file.name==='sapiver-test-seamless-master.png'));
+  assert.equal(result.buyerPackages.length,2);
+  assert.ok(result.buyerPackages[0].name.endsWith('-buyer-01-png.zip'));
+  assert.ok(result.buyerPackages[1].name.endsWith('-buyer-02-jpg-and-extras.zip'));
   assert.ok(result.buyerPackages.every(file=>file.size<=20_000_000));
 });
 
@@ -72,9 +75,21 @@ test('consented fallback keeps full-resolution JPG, includes a fitting PNG and t
   assert.equal(result.masterDimensions.width,5000);
   assert.ok(result.pngDimensions.width<5000);
   assert.ok(result.pngDimensions.width>=1000);
+  assert.equal(result.buyerPackages.length,2);
+  assert.ok(result.buyerPackages[0].name.endsWith('-buyer-01-png.zip'));
+  assert.ok(result.buyerPackages[1].name.endsWith('-buyer-02-jpg-and-extras.zip'));
   assert.ok(result.buyerPackages.every(file=>file.size<=20_000_000));
   assert.ok(result.buyerFiles.some(file=>file.name==='sapiver-test-seamless-master.jpg'));
   assert.ok(result.buyerFiles.some(file=>file.name.endsWith(result.pngDimensions.width+'x'+result.pngDimensions.height+'.png')));
+  const buyerZipFiles=zipped.filter(group=>group.some(file=>file.name==='LICENSE.txt'));
+  assert.equal(buyerZipFiles.length,2);
+  assert.equal(buyerZipFiles[0].filter(file=>file.name.endsWith('.png')).length,1);
+  assert.equal(buyerZipFiles[1].filter(file=>file.name.endsWith('.png')).length,0);
+  assert.ok(buyerZipFiles[1].some(file=>file.name.endsWith('.jpg')));
+  for(const zip of buyerZipFiles){
+    assert.ok(zip.some(file=>file.name==='LICENSE.txt'));
+    assert.ok(zip.some(file=>file.name==='README.txt'));
+  }
   const readme=zipped.flat().filter(file=>file.name==='README.txt').at(-1);
   assert.ok(readme);
   const content=readme.blob.parts.join('');
