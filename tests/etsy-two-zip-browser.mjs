@@ -58,7 +58,7 @@ assert any(x.endswith('-seamless-master.jpg') for x in second),second
 assert any(x.endswith('-seamless-vector.svg') for x in second),second
 assert any('repeat-preview-3x3' in x for x in second),second
 png=archives[0].read(next(x for x in first if x.endswith('.png')))
-assert png[:8]==b'\\x89PNG\\r\\n\\x1a\\n'
+assert png[:8]==b'\x89PNG\r\n\x1a\n'
 assert struct.unpack('>II',png[16:24])==(5000,5000)
 assert b'pHYs' in png
 for name in buyers:
