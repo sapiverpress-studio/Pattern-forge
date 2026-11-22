@@ -69,6 +69,8 @@ assert sum(x.endswith('.png') for x in first)==1,first
 assert sum(x.endswith('.png') for x in second)==0,second
 assert any(x.endswith('-seamless-master.jpg') for x in second),second
 assert any(x.endswith('-seamless-vector.svg') for x in second),second
+svg=z2=archives[1].read(next(x for x in second if x.endswith('.svg'))).decode('utf-8')
+assert '<rect width="5000" height="5000" fill=' not in svg,'Etsy SVG must not contain a canvas background rectangle'
 assert any('repeat-preview-3x3' in x for x in second),second
 png=archives[0].read(next(x for x in first if x.endswith('.png')))
 assert png[:8]==b'\x89PNG\r\n\x1a\n'
