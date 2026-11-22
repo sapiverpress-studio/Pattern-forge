@@ -83,6 +83,17 @@
     else if(q.maxUpscale<=1.25)checks.push({id:"source-quality",state:"pass",label:"Source quality",detail:"Raster motifs are not being substantially enlarged in the master raster."});
     else if(q.maxUpscale<=2)checks.push({id:"source-quality",state:"warn",label:"Source quality",detail:"At least one raster motif is enlarged about "+q.maxUpscale.toFixed(1)+"× in the master raster. The design is still exportable, but extreme enlargement by the buyer may soften detail."});
     else checks.push({id:"source-quality",state:"warn",label:"Source quality",detail:"At least one raster motif is enlarged about "+q.maxUpscale.toFixed(1)+"× in the master raster. Inspect sharpness before listing; the exporter does not impose a fixed physical-use size."});
+    // Transparent canvas alone cannot erase white/background rectangles baked
+    // into placed image assets. Never silently remove legitimate light details.
+    const opaqueAssets=new Set();
+    for(const item of bridge.state.items){
+      const layer=bridge.layerForArtwork(item,bridge.baseLayerIds.motifs);
+      if(!bridge.layerIsRenderable(layer,true))continue;
+      const asset=bridge.assetOf(item);
+      const alpha=asset?.alphaInfo||(asset?.img&&window.PatternForgeAlpha?.analyse(asset.img));
+      if(alpha?.transparent===false)opaqueAssets.add(asset.name||"Unnamed imported image");
+    }
+    if(opaqueAssets.size)checks.push({id:"opaque-sources",state:"fail",label:"Opaque imported motifs",detail:[...opaqueAssets].slice(0,4).join(", ")+(opaqueAssets.size>4?" and "+(opaqueAssets.size-4)+" more":"")+" include a solid/baked-in background. Use Images → Remove solid background when offered, or reimport genuine transparent artwork. No automatic pixel removal is performed."});
     if(!bridge.isDoodle()&&counts.total){
       const seams=seamMetrics(),pass=seams.leftRight.pass&&seams.topBottom.pass;
       checks.push({id:"seams",state:pass?"pass":"fail",label:"Seam continuity",detail:pass?"Opposite-edge pixel continuity is within tolerance in both directions.":"A strong discontinuity was detected at "+(!seams.leftRight.pass&&!seams.topBottom.pass?"both tile seams":!seams.leftRight.pass?"the left/right seam":"the top/bottom seam")+". Inspect the repeat before sale.",metrics:seams});
