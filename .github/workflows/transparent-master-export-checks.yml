@@ -10,6 +10,7 @@ on:
       - tests/transparent-master-export-browser.mjs
       - tests/etsy-oversize-png.test.mjs
       - tests/etsy-two-zip-browser.mjs
+      - tests/etsy-multipart-browser.mjs
       - .github/workflows/transparent-master-export-checks.yml
 
 permissions:
@@ -32,6 +33,8 @@ jobs:
           node --check tests/transparent-master-export-browser.mjs
           node --check tests/etsy-oversize-png.test.mjs
           node --check tests/etsy-two-zip-browser.mjs
+          node --check app/js/etsy-multipart.js
+          node --check tests/etsy-multipart-browser.mjs
           node --test tests/etsy-oversize-png.test.mjs
       - name: Install browser test package
         run: |
@@ -47,3 +50,5 @@ jobs:
         run: node tests/transparent-master-export-browser.mjs
       - name: Verify two real Etsy customer ZIPs from Android-size browser export
         run: node tests/etsy-two-zip-browser.mjs
+      - name: Restore identical full-resolution PNG from Etsy-sized multipart ZIPs
+        run: node tests/etsy-multipart-browser.mjs
