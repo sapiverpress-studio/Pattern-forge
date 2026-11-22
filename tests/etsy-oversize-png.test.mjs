@@ -75,7 +75,7 @@ test('consented fallback keeps full-resolution JPG, includes a fitting PNG and t
   assert.ok(result.buyerPackages.every(file=>file.size<=20_000_000));
   assert.ok(result.buyerFiles.some(file=>file.name==='sapiver-test-seamless-master.jpg'));
   assert.ok(result.buyerFiles.some(file=>file.name.endsWith(result.pngDimensions.width+'x'+result.pngDimensions.height+'.png')));
-  const readme=zipped.flat().find(file=>file.name==='README.txt');
+  const readme=zipped.flat().filter(file=>file.name==='README.txt').at(-1);
   assert.ok(readme);
   const content=readme.blob.parts.join('');
   assert.match(content,new RegExp('PNG seamless tile: '+result.pngDimensions.width+' × '+result.pngDimensions.height+' px'));
