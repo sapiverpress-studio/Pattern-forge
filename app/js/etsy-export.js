@@ -187,6 +187,19 @@
       "Sapiver Prints"
     ].join("\n");
   }
+  function aboutSapiverPrints(){
+    return [
+      "ABOUT SAPIVER PRINTS",
+      "",
+      "Sapiver Prints creates digital pattern artwork for use in personal and commercial projects.",
+      "The seamless pattern files and permitted uses are described in README.txt and LICENSE.txt.",
+      "",
+      "This is a digital product. No physical goods are supplied.",
+      "For order questions, contact the seller through your Etsy order.",
+      "",
+      "Sapiver Prints"
+    ].join("\n");
+  }
   function reportText(checks){
     return ["PATTERN FORGE — ETSY EXPORT QUALITY REPORT","Generated: "+new Date().toISOString(),"",...checks.map(c=>"["+c.state.toUpperCase()+"] "+c.label+" — "+c.detail)].join("\n");
   }
@@ -254,7 +267,9 @@
         if(hasSvg)files.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
         files.push({name:"README.txt",blob:new Blob([instructions(jpg.spec,hasSvg,asset.spec)],{type:"text/plain"})});
         files.push({name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})});
-        files.push({name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})});
+        files.push({name:"ABOUT-SAPIVER-PRINTS.txt",blob:new Blob([aboutSapiverPrints()],{type:"text/plain"})});
+        // Keep the detailed quality report in the outer seller kit only. The
+        // uploader permits repeated buyer documents, not repeated seller reports.
         return files;
       }
       async function packagePng(asset,smaller){
