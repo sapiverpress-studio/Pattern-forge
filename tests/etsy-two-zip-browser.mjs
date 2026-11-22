@@ -18,7 +18,7 @@ try{
   });
   await page.waitForFunction(()=>window.PatternForgeEtsyBridge.state.items.length===1);
   // Even with the normal PNG toggle OFF, the Etsy master must be genuinely transparent.
-  await page.locator('#exportTransparent').uncheck();
+  await page.locator('#exportTransparent').evaluate(el=>{el.checked=false;el.dispatchEvent(new Event('change',{bubbles:true}));});
   assert.equal(await page.locator('#exportTransparent').isChecked(),false);
   const preflight=await page.evaluate(()=>window.PatternForgeEtsy.check());
   assert.equal(preflight.find(c=>c.id==='transparency')?.state,'pass','Etsy must verify clear pixels independently of the ordinary export setting');
