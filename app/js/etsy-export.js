@@ -285,7 +285,7 @@
         {name:stem+"-seamless-master.jpg",blob:jpg.blob},
         {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
       ];
-      if(hasSvg)artwork.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
+      if(hasSvg)artwork.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob({transparent:true})});
       const makeDocuments=count=>[
         {name:"README.txt",blob:new Blob([instructions(jpg.spec,hasSvg,png.spec,count)],{type:"text/plain"})},
         {name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})},
