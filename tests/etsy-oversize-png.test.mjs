@@ -23,7 +23,7 @@ async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMul
     layerIsRenderable:()=>true,assetOf:()=>({vector:false}),baseLayerIds:{motifs:'m',drawing:'d'},
     makeTileCanvas:(w,h)=>canvas(w,h),renderPNGBlob:async options=>{
       renderCalls.push(options);
-      return {spec:{wPx:5000,hPx:5000,dpi:300},blob:{size:originalPng}};
+      return {spec:{wPx:5000,hPx:5000,dpi:300},blob:{size:originalPng},alphaStats:{clear:10000,partial:0,total:36864,clearPercent:27.1}};
     },
     renderSVGBlob:()=>({size:1000}),makeZip:async files=>{
       groups.push(files);return {size:files.reduce((n,f)=>n+f.blob.size+200,22)};
@@ -52,14 +52,14 @@ test('ordinary PNG is delivered complete at 5000 px in exactly two ZIPs',async()
   assert.equal(result.buyerPackages.length,2);
   assert.ok(result.buyerFiles.some(f=>f.name==='sapiver-train-seamless-master.png'));
   assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
-  assert.deepEqual(renderCalls,[undefined]);
+  assert.deepEqual(renderCalls,[{backgroundMode:'transparent'}]);
 });
 
 test('oversized original PNG cannot be silently reduced or repackaged without consent',async()=>{
   const {result,renderCalls}=await prepareFixture();
   assert.equal(result.success,false);
   assert.match(result.error,/Enable .*Preserve original PNG/);
-  assert.deepEqual(renderCalls,[undefined]);
+  assert.deepEqual(renderCalls,[{backgroundMode:'transparent'}]);
 });
 
 test('approved multipart export keeps all bytes, exact pixel size and includes recovery tool',async()=>{
@@ -84,7 +84,7 @@ test('approved multipart export keeps all bytes, exact pixel size and includes r
     for(const doc of ['README.txt','LICENSE.txt','ABOUT-SAPIVER-PRINTS.txt'])assert.ok(group.some(f=>f.name===doc));
     assert.ok(!group.some(f=>f.name==='QUALITY-CHECK.txt'));
   }
-  assert.deepEqual(renderCalls,[undefined],'PNG must not be re-rendered smaller');
+  assert.deepEqual(renderCalls,[{backgroundMode:'transparent'}],'PNG must not be re-rendered smaller');
   assert.equal(result.designUnchanged,true);
 });
 
@@ -92,4 +92,11 @@ test('oversized mandatory JPG still blocks the package',async()=>{
   const {result}=await prepareFixture({allowMultipartPng:true,jpgSize:21_000_000});
   assert.equal(result.success,false);
   assert.match(result.error,/JPG-and-extras ZIP exceeds Etsy/);
+});
+
+test('Etsy renderer requests actual transparency independently of the normal Export PNG switch',async()=>{
+  const {result,renderCalls}=await prepareFixture({originalPng:7_000_000});
+  assert.equal(result.success,true);
+  assert.equal(result.alphaStats.clearPercent,27.1);
+  assert.deepEqual(renderCalls,[{backgroundMode:'transparent'}]);
 });
