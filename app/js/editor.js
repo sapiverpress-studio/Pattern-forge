@@ -2431,13 +2431,13 @@
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function renderSVGBlob(){
+  function renderSVGBlob(options={}){
     const spec=getExportSpec();
     const W=spec.wPx,H=spec.hPx,sx=5000/TILE,sy=5000/TILE,uniform=Math.sqrt(sx*sy),clipW=W/sx,clipH=H/sy;
     const itemBasis=repeatBasis(5000,5000),markBasis=repeatBasis();
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
-    if(!exportHasTransparency()) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
+    if(!options?.transparent&&!exportHasTransparency()) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     let gradientId=0;
     let maskIndex=0;
     let clipBaseSvg="";
