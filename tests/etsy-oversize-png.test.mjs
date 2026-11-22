@@ -11,10 +11,10 @@ class FakeBlob {
   }
 }
 
-async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMultipartPng=false}={}){
+async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMultipartPng=false,opaqueSample=false}={}){
   const groups=[],renderCalls=[],statuses=[];
   const canvas=(w=1,h=1)=>({width:w,height:h,
-    getContext(){return {fillRect(){},drawImage(){},createPattern(){return null},getImageData:()=>({data:new Uint8Array(this.width*this.height*4)})};},
+    getContext(){return {fillRect(){},drawImage(){},createPattern(){return null},getImageData:()=>{const data=new Uint8Array(this.width*this.height*4);if(opaqueSample)for(let i=3;i<data.length;i+=4)data[i]=255;return {data};}};},
     toBlob(callback,type){callback({size:type==='image/jpeg'?(this.width===5000?jpgSize:300_000):250_000});}
   });
   const state={items:[{id:'a',scale:1}],marks:[],layers:[{id:'layer'}],assets:[{id:'a',src:'data:png',w:5000,h:5000,vector:false}],project:null,templateGuide:null};
@@ -99,4 +99,12 @@ test('Etsy renderer requests actual transparency independently of the normal Exp
   assert.equal(result.success,true);
   assert.equal(result.alphaStats.clearPercent,27.1);
   assert.deepEqual(renderCalls,[{backgroundMode:'transparent'}]);
+});
+
+test('opaque tile with no clear background is blocked before any PNG is encoded',async()=>{
+ const {result,renderCalls}=await prepareFixture({originalPng:7_000_000,opaqueSample:true});
+ assert.equal(result.success,false);
+ assert.equal(renderCalls.length,0);
+ assert.equal(result.checks.find(c=>c.id==='transparency')?.state,'fail');
+ assert.match(result.checks.find(c=>c.id==='transparency')?.detail,/background may be baked|opaque motifs/i);
 });
