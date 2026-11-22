@@ -136,7 +136,7 @@
     }
     repeatTile.width=1;repeatTile.height=1;tileTile.width=1;tileTile.height=1;detailTile.width=1;detailTile.height=1;return out;
   }
-  function instructions(spec,hasSvg,pngSpec=spec){
+  function instructions(spec,hasSvg,pngSpec=spec,multipartCount=0){
     const style=bridge.getRepeatStyle();
     return [
       "SAPIVER PRINTS — DIGITAL SEAMLESS PATTERN",
@@ -144,11 +144,12 @@
       "Thank you for purchasing this digital pattern.",
       "",
       "WHAT IS INCLUDED",
-      "- PNG seamless tile: "+pngSpec.wPx+" × "+pngSpec.hPx+" px.",
+      multipartCount?"- PNG seamless master: "+pngSpec.wPx+" × "+pngSpec.hPx+" px, original bytes recovered from "+multipartCount+" numbered ZIP parts.":"- PNG seamless tile: "+pngSpec.wPx+" × "+pngSpec.hPx+" px.",
       "- JPG seamless master tile: "+spec.wPx+" × "+spec.hPx+" px with a flattened background.",
       "- 3 × 3 repeat preview JPG for checking the seamless repeat.",
       hasSvg?"- SVG vector repeat file for resolution-independent scaling.":"- SVG is not included because this design contains raster artwork.",
       "- Licence terms.",
+      ...(multipartCount?["","REBUILDING YOUR ORIGINAL FULL-RESOLUTION PNG","Download all Etsy ZIP files for this order. In the ZIP labelled JPG-and-extras, extract and open REBUILD-PNG.html in your browser. Select every ZIP labelled png-part (do not select JPG-and-extras), then press Restore original PNG. Save the complete PNG to your device. The tool works offline and verifies that the original file has not changed. Each numbered part on its own is not an image."]:[]),
       "",
       "SIZE AND SCALING",
       "This design is not tied to a physical product size. The pixel dimensions above describe the raster master file only.",
@@ -203,7 +204,7 @@
   function reportText(checks){
     return ["PATTERN FORGE — ETSY EXPORT QUALITY REPORT","Generated: "+new Date().toISOString(),"",...checks.map(c=>"["+c.state.toUpperCase()+"] "+c.label+" — "+c.detail)].join("\n");
   }
-  function sellerChecklist(packages,listing,smallerPngUsed,pngSpec,originalSpec){
+  function sellerChecklist(packages,listing,multipartCount,pngSpec,originalSpec){
     return [
       "SAPIVER PRINTS — ETSY SELLER CHECKLIST",
       "",
@@ -219,7 +220,7 @@
       ...packages.map(p=>"- "+p.name+" — "+mb(p.blob.size)),
       "",
       "PNG included: "+pngSpec.wPx+" × "+pngSpec.hPx+" px.",
-      ...(smallerPngUsed?["Seller note: the original "+originalSpec.wPx+" × "+originalSpec.hPx+" px PNG did not fit Etsy; this kit includes the approved smaller PNG. Use Export PNG separately to retain the full-resolution original. The buyer README lists only supplied formats."]:[]),
+      ...(multipartCount?["Seller note: exact original "+originalSpec.wPx+" × "+originalSpec.hPx+" px PNG (not resized) is divided into "+multipartCount+" buyer ZIPs and restored using the bundled offline HTML tool. Buyers must download all parts. Clearly disclose this extra step in the Etsy listing."]:[]),
       "",
       "LISTING IMAGES",
       listing.length+" design-only listing images generated at "+LISTING_W+" × "+LISTING_H+" px. They show the pattern itself only; no product mockups are included."
@@ -256,53 +257,49 @@
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),pngOriginalName=stem+"-seamless-master.png";
-      let buyerFiles=[],packages=[],selectedPng=png,smallerPngUsed=false;
-      function filesForPng(asset,smaller){
-        const name=smaller?stem+"-seamless-tile-"+asset.spec.wPx+"x"+asset.spec.hPx+".png":pngOriginalName;
-        const files=[
-          {name,blob:asset.blob},
-          {name:stem+"-seamless-master.jpg",blob:jpg.blob},
-          {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
-        ];
-        if(hasSvg)files.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
-        files.push({name:"README.txt",blob:new Blob([instructions(jpg.spec,hasSvg,asset.spec)],{type:"text/plain"})});
-        files.push({name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})});
-        files.push({name:"ABOUT-SAPIVER-PRINTS.txt",blob:new Blob([aboutSapiverPrints()],{type:"text/plain"})});
-        // Keep the detailed quality report in the outer seller kit only. The
-        // uploader permits repeated buyer documents, not repeated seller reports.
-        return files;
-      }
-      async function packagePng(asset,smaller){
-        const files=filesForPng(asset,smaller);
-        return {files,packages:await buyerPackages(files,stem)};
-      }
-      bridge.setStatus("Etsy export: checking Etsy package sizes…");
+      let buyerFiles=[],packages=[],multipartCount=0,originalBytes=png.blob.size;
+      const artwork=[
+        {name:pngOriginalName,blob:png.blob},
+        {name:stem+"-seamless-master.jpg",blob:jpg.blob},
+        {name:stem+"-repeat-preview-3x3.jpg",blob:preview.blob}
+      ];
+      if(hasSvg)artwork.push({name:stem+"-seamless-vector.svg",blob:bridge.renderSVGBlob()});
+      const makeDocuments=count=>[
+        {name:"README.txt",blob:new Blob([instructions(jpg.spec,hasSvg,png.spec,count)],{type:"text/plain"})},
+        {name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})},
+        {name:"ABOUT-SAPIVER-PRINTS.txt",blob:new Blob([aboutSapiverPrints()],{type:"text/plain"})}
+      ];
+      bridge.setStatus("Etsy export: checking full-resolution PNG…");
       try{
-        const packed=await packagePng(png,false);buyerFiles=packed.files;packages=packed.packages;
+        buyerFiles=[...artwork,...makeDocuments(0)];
+        packages=await buyerPackages(buyerFiles,stem);
       }catch(error){
-        const pngOversize=String(error?.message||"").includes(pngOriginalName+" cannot fit");
-        if(!pngOversize)throw error;
-        if(options.allowSmallerPng!==true)
-          throw new Error("The full-resolution PNG ("+mb(png.blob.size)+") is too large for Etsy. Tick ‘Allow smaller PNG when necessary’, then build the kit again. The full-resolution PNG remains available through Export PNG.");
-        const originalSide=Math.max(png.spec.wPx,png.spec.hPx);
-        const estimated=Math.floor(Math.min(originalSide-100,originalSide*Math.sqrt((ETSY_MAX_BYTES-500000)/Math.max(1,png.blob.size))*.92)/100)*100;
-        let nextSide=Math.max(1000,estimated),lastError=error;
-        while(nextSide>=1000){
-          bridge.setStatus("Etsy export: trying a "+nextSide+" px PNG while keeping the full-size JPG…");
-          const candidate=await bridge.renderPNGBlob({maxSide:nextSide});
-          if(!candidate)throw new Error("PNG rendering was cancelled.");
-          try{
-            const packed=await packagePng(candidate,true);
-            selectedPng=candidate;buyerFiles=packed.files;packages=packed.packages;smallerPngUsed=true;break;
-          }catch(candidateError){
-            const candidateName=stem+"-seamless-tile-"+candidate.spec.wPx+"x"+candidate.spec.hPx+".png";
-            if(!String(candidateError?.message||"").includes(candidateName+" cannot fit"))throw candidateError;
-            lastError=candidateError;
-          }
-          nextSide=Math.floor(nextSide*.8/100)*100;
+        const oversize=String(error?.message||"").includes(pngOriginalName+" cannot fit");
+        if(!oversize)throw error;
+        if(options.allowMultipartPng!==true)
+          throw new Error("The full-resolution PNG ("+mb(originalBytes)+") exceeds Etsy's 20 MB per-file limit. Enable 'Preserve original PNG across Etsy ZIPs' to package every byte without resizing.");
+        if(!window.PatternForgeMultipart)throw new Error("Lossless multipart export is unavailable. Refresh Pattern Forge and retry.");
+        bridge.setStatus("Etsy export: dividing original full-resolution PNG into verified parts (no resizing)…");
+        const split=await window.PatternForgeMultipart.makeParts(png.blob,pngOriginalName,png.spec);
+        multipartCount=split.parts.length;
+        const documents=makeDocuments(multipartCount);
+        const additional=[
+          ...artwork.slice(1),
+          {name:"PNG-REASSEMBLY.json",blob:new Blob([JSON.stringify(split.manifest,null,2)],{type:"application/json"})},
+          {name:"REBUILD-PNG.html",blob:split.html}
+        ];
+        buyerFiles=[...split.parts.map(p=>({name:p.name,blob:p.blob})),...additional,...documents];
+        packages=[];
+        for(let i=0;i<split.parts.length;i++){
+          const files=[{name:split.parts[i].name,blob:split.parts[i].blob},...documents];
+          const archive=await bridge.makeZip(files);
+          if(archive.size>ETSY_MAX_BYTES)throw new Error("Numbered PNG ZIP "+(i+1)+" exceeded Etsy's 20 MB cap. Original PNG was not altered.");
+          packages.push({name:(stem+"-buyer-"+String(i+1).padStart(2,"0")+"-png-part.zip").slice(0,70),blob:archive});
         }
-        if(!smallerPngUsed)throw new Error("No practical PNG size could fit an Etsy buyer ZIP while retaining the other required files. "+lastError.message);
-        checks.push({id:"etsy-png-size",state:"warn",label:"Approved smaller PNG",detail:"Buyer PNG is "+selectedPng.spec.wPx+" × "+selectedPng.spec.hPx+" px instead of "+png.spec.wPx+" × "+png.spec.hPx+" px; the full-resolution JPG is retained. Use Export PNG separately for the original."});
+        const extraArchive=await bridge.makeZip([...additional,...documents]);
+        if(extraArchive.size>ETSY_MAX_BYTES)throw new Error("JPG-and-extras ZIP exceeds Etsy's 20 MB cap; full original PNG was not altered.");
+        packages.push({name:(stem+"-buyer-"+String(packages.length+1).padStart(2,"0")+"-jpg-and-extras.zip").slice(0,70),blob:extraArchive});
+        checks.push({id:"etsy-original-png",state:"warn",label:"Original full-resolution PNG retained",detail:"The "+mb(originalBytes)+" original PNG is split losslessly across "+multipartCount+" numbered ZIPs. Buyer must use the included offline HTML tool to restore the identical file."});
       }
       const sizeOk=packages.length<=ETSY_MAX_FILES&&packages.every(p=>p.blob.size<=ETSY_MAX_BYTES);
       checks.push({id:"etsy-package",state:sizeOk?"pass":"fail",label:"Etsy buyer package",detail:sizeOk?packages.length+" upload ZIP"+(packages.length===1?"":"s")+" prepared; largest is "+mb(Math.max(...packages.map(p=>p.blob.size)))+".":"Generated buyer files exceed Etsy's upload limits."});
@@ -315,13 +312,14 @@
       const kitFiles=[
         ...packages.map(p=>({name:"UPLOAD-TO-ETSY/"+p.name,blob:p.blob})),
         ...listing.map(file=>({name:"LISTING-IMAGES/"+stem+"-"+file.name,blob:file.blob})),
-        {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerChecklist(packages,listing,smallerPngUsed,selectedPng.spec,png.spec)],{type:"text/plain"})},
+        {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerChecklist(packages,listing,multipartCount,png.spec,png.spec)],{type:"text/plain"})},
         {name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})}
       ];
       const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
+      if(kit.size>100_000_000)throw new Error("The complete seller kit exceeds the uploader\u0027s 100 MB limit. No image was resized.");
       if(download)bridge.downloadBlob(kit,kitName);
       bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
-      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,smallerPngUsed,pngDimensions:{width:selectedPng.spec.wPx,height:selectedPng.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
+      return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,multipartPngUsed:multipartCount>0,multipartCount,pngDimensions:{width:png.spec.wPx,height:png.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},originalPngBytes:originalBytes,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
       return {success:false,checks,blockers:blocking(checks),error:message};
