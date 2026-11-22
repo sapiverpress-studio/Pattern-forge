@@ -11,7 +11,7 @@ class FakeBlob {
   }
 }
 
-async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMultipartPng=false,opaqueSample=false}={}){
+async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMultipartPng=false,opaqueSample=false,opaqueAsset=false}={}){
   const groups=[],renderCalls=[],statuses=[];
   const canvas=(w=1,h=1)=>({width:w,height:h,
     getContext(){return {fillRect(){},drawImage(){},createPattern(){return null},getImageData:()=>{const data=new Uint8Array(this.width*this.height*4);if(opaqueSample)for(let i=3;i<data.length;i+=4)data[i]=255;return {data};}};},
@@ -20,7 +20,7 @@ async function prepareFixture({originalPng=24_000_000,jpgSize=6_000_000,allowMul
   const state={items:[{id:'a',scale:1}],marks:[],layers:[{id:'layer'}],assets:[{id:'a',src:'data:png',w:5000,h:5000,vector:false}],project:null,templateGuide:null};
   const bridge={state,getSpec:()=>({wPx:5000,hPx:5000,dpi:300}),getRepeatStyle:()=> 'straight',
     getMultipliers:()=>({x:1,y:1}),isDoodle:()=>false,layerForArtwork:()=>({id:'layer'}),
-    layerIsRenderable:()=>true,assetOf:()=>({vector:false}),baseLayerIds:{motifs:'m',drawing:'d'},
+    layerIsRenderable:()=>true,assetOf:()=>({vector:false,name:'train-motif.png',...(opaqueAsset?{alphaInfo:{transparent:false,type:'opaque'}}:{})}),baseLayerIds:{motifs:'m',drawing:'d'},
     makeTileCanvas:(w,h)=>canvas(w,h),renderPNGBlob:async options=>{
       renderCalls.push(options);
       return {spec:{wPx:5000,hPx:5000,dpi:300},blob:{size:originalPng},alphaStats:{clear:10000,partial:0,total:36864,clearPercent:27.1}};
@@ -107,4 +107,12 @@ test('opaque tile with no clear background is blocked before any PNG is encoded'
  assert.equal(renderCalls.length,0);
  assert.equal(result.checks.find(c=>c.id==='transparency')?.state,'fail');
  assert.match(result.checks.find(c=>c.id==='transparency')?.detail,/background may be baked|opaque motifs/i);
+});
+
+test('opaque imported motif is rejected even if the tile contains clear gaps',async()=>{
+ const {result,renderCalls}=await prepareFixture({originalPng:7_000_000,opaqueAsset:true});
+ assert.equal(result.success,false);
+ assert.equal(renderCalls.length,0);
+ assert.equal(result.checks.find(c=>c.id==='opaque-sources')?.state,'fail');
+ assert.match(result.checks.find(c=>c.id==='opaque-sources')?.detail,/train-motif\.png/);
 });
