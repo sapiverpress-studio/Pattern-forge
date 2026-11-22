@@ -17,7 +17,11 @@ try{
     buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="27" fill="#327c8c"/></svg>')
   });
   await page.waitForFunction(()=>window.PatternForgeEtsyBridge.state.items.length===1);
+  // Even with the normal PNG toggle OFF, the Etsy master must be genuinely transparent.
+  await page.locator('#exportTransparent').uncheck();
+  assert.equal(await page.locator('#exportTransparent').isChecked(),false);
   const preflight=await page.evaluate(()=>window.PatternForgeEtsy.check());
+  assert.equal(preflight.find(c=>c.id==='transparency')?.state,'pass','Etsy must verify clear pixels independently of the ordinary export setting');
   assert.ok(preflight.every(c=>c.state!=='fail'),'Preflight failed: '+JSON.stringify(preflight.filter(c=>c.state==='fail')));
   const downloadPromise=page.waitForEvent('download',{timeout:120000});
   const result=await page.evaluate(async()=>window.PatternForgeEtsy.prepare({download:true,allowSmallerPng:false}));
@@ -27,6 +31,15 @@ try{
   assert.equal(result.multipartPngUsed,false,'Small clean sample must retain full-resolution PNG in the usual two ZIPs');
   assert.deepEqual(result.pngDimensions,{width:5000,height:5000});
   assert.equal(result.designUnchanged,true,'Editable design was changed');
+  assert.ok(result.alphaStats?.clearPercent>=1,'The actual full-resolution PNG must have genuinely clear pixels');
+  const actualCorner=await page.evaluate(async()=>{
+    const rendered=await window.PatternForgeEtsyBridge.renderPNGBlob({backgroundMode:'transparent'});
+    const bitmap=await createImageBitmap(rendered.blob),canvas=document.createElement('canvas');
+    canvas.width=1;canvas.height=1;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,1,1,0,0,1,1);
+    const alpha=ctx.getImageData(0,0,1,1).data[3];bitmap.close();canvas.width=0;canvas.height=0;return alpha;
+  });
+  assert.equal(actualCorner,0,'The output PNG itself must contain clear transparent pixels, not only an RGBA channel');
   const download=await downloadPromise;
   const bytes=await readFile(await download.path());
   assert.equal(download.suggestedFilename(),result.kitName);
