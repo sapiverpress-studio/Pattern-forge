@@ -2260,16 +2260,38 @@
     return label.replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"pattern";
   }
   function exportFileStem(){return isDoodleProject()?"artwork":"seamless";}
+  function renderedAlphaStats(canvas){
+    // Sample the *actual full-resolution render* through a small scratch canvas;
+    // no full-image RGBA readback on memory-constrained Android browsers.
+    const sample=document.createElement("canvas"),size=192;
+    sample.width=size;sample.height=size;
+    try{
+      const ctx=sample.getContext("2d",{willReadFrequently:true});
+      if(!ctx)throw Error("Could not verify PNG transparency on this device.");
+      ctx.drawImage(canvas,0,0,size,size);
+      const data=ctx.getImageData(0,0,size,size).data;
+      let clear=0,partial=0;
+      for(let i=3;i<data.length;i+=4){if(data[i]<=12)clear++;else if(data[i]<250)partial++;}
+      const total=size*size;
+      return {clear,partial,total,clearPercent:Math.round(clear/total*1000)/10};
+    }finally{sample.width=0;sample.height=0;}
+  }
   async function renderPNGBlob(options={}){
     const original=getExportSpec(),requested=Number(options?.maxSide)||0;
     const factor=requested>0?Math.min(1,requested/Math.max(original.wPx,original.hPx)):1;
     const spec=factor===1?original:{...original,wPx:Math.max(1,Math.round(original.wPx*factor)),hPx:Math.max(1,Math.round(original.hPx*factor))};
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
+    const forceTransparent=options?.backgroundMode==="transparent";
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
-    const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true);
-    try{const blob=await canvasToPngBlobWithDpi(out,spec.dpi);return {blob,spec};}
-    finally{out.width=0;out.height=0;}
+    const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,forceTransparent?"transparent":null);
+    try{
+      const alphaStats=forceTransparent?renderedAlphaStats(out):null;
+      if(forceTransparent&&alphaStats.clear/alphaStats.total<.01)
+        throw Error("Etsy master is still opaque: less than 1% of the rendered image is fully transparent. The artwork may have white/background pixels baked into imported motifs. Open Images to inspect or remove simple solid backgrounds, or replace the source with genuine transparent PNGs. Nothing was modified.");
+      const blob=await canvasToPngBlobWithDpi(out,spec.dpi);
+      return {blob,spec,...(alphaStats?{alphaStats}: {})};
+    }finally{out.width=0;out.height=0;}
   }
   let backgroundExportPending=null;
   function sizeMB(bytes){return (bytes/1e6).toFixed(2)+" MB";}
@@ -2409,13 +2431,13 @@
   }
 
   function svgEscape(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function renderSVGBlob(){
+  function renderSVGBlob(options={}){
     const spec=getExportSpec();
     const W=spec.wPx,H=spec.hPx,sx=5000/TILE,sy=5000/TILE,uniform=Math.sqrt(sx*sy),clipW=W/sx,clipH=H/sy;
     const itemBasis=repeatBasis(5000,5000),markBasis=repeatBasis();
     let body="",gradientDefs="",assetDefs="";
     const embeddedAssets=new Map();
-    if(!exportHasTransparency()) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
+    if(!options?.transparent&&!exportHasTransparency()) body+=`<rect width="${W}" height="${H}" fill="${$("bg").value}"/>`;
     let gradientId=0;
     let maskIndex=0;
     let clipBaseSvg="";
