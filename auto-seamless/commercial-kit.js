@@ -10,30 +10,33 @@
  }
  function listingDetails(){
   const name=String(byId('metaName')?.value||'').trim();
-  const main=String(byId('metaMain')?.value||'').trim();
   const desc=String(byId('metaDesc')?.value||'').trim();
-  const extras=String(byId('metaTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(!name||name.length>100||!main||extras.length!==14||!desc)
-   throw Error('Automatic title, tags and description must be ready. Check the listing fields before exporting.');
-  if(!/\bAI\b/i.test(desc))throw Error('The listing description must disclose AI assistance.');
-  const tagCandidates=[main,...extras],tags=[],used=new Set();
-  for(const raw of tagCandidates){
-   if(!raw||raw.length>20||/[<>\x00-\x1f]/.test(raw))continue;
-   const key=raw.toLowerCase();if(used.has(key))continue;
-   tags.push(raw);used.add(key);if(tags.length===13)break;
-  }
-  if(tags.length<5)throw Error('The artwork needs at least five relevant Etsy tags of 20 characters or fewer. Edit the generated tag fields and retry.');
+  const tags=String(byId('metaEtsyTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!name||name.length>100||!desc||!/\\bAI\\b/i.test(desc))
+   throw Error('Complete the artwork analysis and AI disclosure before exporting.');
+  // This is never a truncated Redbubble tag list.
+  if(tags.length!==13||new Set(tags.map(t=>t.toLocaleLowerCase('en'))).size!==13||
+     tags.some(t=>t.length<3||t.length>20||/[<>\x00-\x1f]/.test(t))||
+     tags.filter(t=>t.split(/\s+/).length>=2).length<11)
+   throw Error('Review exactly 13 different Etsy buyer-search phrases, mostly multi-word and no longer than 20 characters. Do not use the Redbubble tags.');
+  const altIds=['metaEtsyAlt1','metaEtsyAlt2','metaEtsyAlt3','metaEtsyAlt4'];
+  const imageNames=['01-pattern.jpg','02-repeat.jpg','03-cushion-visualisation.jpg','04-files-and-detail.jpg'];
+  const alts=altIds.map(id=>String(byId(id)?.value||'').trim());
+  const lead=String(byId('metaEtsyCleanAlt')?.value||'').trim();
+  if([lead,...alts].some(t=>t.length<35||t.length>250||/[<>\x00-\x1f]/.test(t)))
+   throw Error('Review each image-specific Etsy alt description (35–250 characters) before export.');
+  const imageAltTextByFilename=Object.fromEntries(imageNames.map((name,i)=>[name,alts[i]]));
   const rawPrice=String(priceInput?.value||'').trim(),price=Number(rawPrice);
   if(!rawPrice||!/^\d+(?:\.\d{1,2})?$/.test(rawPrice)||!Number.isFinite(price)||price<0.2||price>10000)
    throw Error('Enter your approved GBP selling price (at least £0.20, no more than two decimal places).');
   return {
    format:'sapiver-seamless-seller-kit',version:1,
-   product:{type:'digital',kind:'pattern',name,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true},
-   listingSource:'AI visual description; keyword demand and search volumes are not measured.',
+   product:{type:'digital',kind:'pattern',name,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true,imageAltTextByFilename,cleanLeadAltText:lead},
+   listingSource:'Etsy buyer-intent candidate phrases from one visual AI analysis; live search demand and keyword volume are not measured.',
    reviewRequired:true
   };
  }
- const encoder=new TextEncoder(), MAX=20000000;
+  const encoder=new TextEncoder(), MAX=20000000;
  const crcTable=Array.from({length:256},(_,i)=>{let c=i;for(let n=0;n<8;n++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
  const encode=s=>encoder.encode(s),binary=v=>typeof v==='string'?encode(v):v;
  const w16=(v,p,n)=>v.setUint16(p,n,true), w32=(v,p,n)=>v.setUint32(p,n>>>0,true);
