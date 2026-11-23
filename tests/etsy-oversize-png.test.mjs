@@ -109,10 +109,10 @@ test('opaque tile with no clear background is blocked before any PNG is encoded'
  assert.match(result.checks.find(c=>c.id==='transparency')?.detail,/background may be baked|opaque motifs/i);
 });
 
-test('opaque imported motif is rejected even if the tile contains clear gaps',async()=>{
+test('opaque imported motif warns without blocking a tile with actual clear background',async()=>{
  const {result,renderCalls}=await prepareFixture({originalPng:7_000_000,opaqueAsset:true});
- assert.equal(result.success,false);
- assert.equal(renderCalls.length,0);
- assert.equal(result.checks.find(c=>c.id==='opaque-sources')?.state,'fail');
+ assert.equal(result.success,true);
+ assert.equal(renderCalls.length,1);
+ assert.equal(result.checks.find(c=>c.id==='opaque-sources')?.state,'warn');
  assert.match(result.checks.find(c=>c.id==='opaque-sources')?.detail,/train-motif\.png/);
 });

@@ -93,7 +93,7 @@
       const alpha=asset?.alphaInfo||(asset?.img&&window.PatternForgeAlpha?.analyse(asset.img));
       if(alpha?.transparent===false)opaqueAssets.add(asset.name||"Unnamed imported image");
     }
-    if(opaqueAssets.size)checks.push({id:"opaque-sources",state:"fail",label:"Opaque imported motifs",detail:[...opaqueAssets].slice(0,4).join(", ")+(opaqueAssets.size>4?" and "+(opaqueAssets.size-4)+" more":"")+" include a solid/baked-in background. Use Images → Remove solid background when offered, or reimport genuine transparent artwork. No automatic pixel removal is performed."});
+    if(opaqueAssets.size)checks.push({id:"opaque-sources",state:"warn",label:"Opaque imported motifs",detail:[...opaqueAssets].slice(0,4).join(", ")+(opaqueAssets.size>4?" and "+(opaqueAssets.size-4)+" more":"")+" might contain a solid or white background inside the motif. The transparent canvas is still allowed. Check all three coloured previews for visible rectangles; background colours cannot replace white baked into an image. No pixel removal is performed."});
     if(!bridge.isDoodle()&&counts.total){
       const seams=seamMetrics(),pass=seams.leftRight.pass&&seams.topBottom.pass;
       checks.push({id:"seams",state:pass?"pass":"fail",label:"Seam continuity",detail:pass?"Opposite-edge pixel continuity is within tolerance in both directions.":"A strong discontinuity was detected at "+(!seams.leftRight.pass&&!seams.topBottom.pass?"both tile seams":!seams.leftRight.pass?"the left/right seam":"the top/bottom seam")+". Inspect the repeat before sale.",metrics:seams});
@@ -269,12 +269,146 @@
     }
     return packages;
   }
+
+  function fourVariantInstructions(png,versions,partCount){
+    const details=versions.map((v,i)=>"- Background "+(i+1)+": "+v.colour+
+      " — "+v.assets.map(a=>a.spec.wPx+" × "+a.spec.hPx+" px PNG").join(" and "));
+    return [
+      "SAPIVER PRINTS — FOUR SEAMLESS PATTERN BACKGROUNDS","",
+      "Includes ONE transparent seamless PNG master and THREE coloured background versions.",
+      "The original transparent artwork remains "+png.spec.wPx+" × "+png.spec.hPx+" px at "+png.spec.dpi+" DPI; it is NEVER downscaled or re-encoded during Etsy splitting.",
+      ...details,"",
+      ...(partCount?[
+        "RESTORE THE TRANSPARENT ORIGINAL",
+        "The full-size original PNG is too large for Etsy's single-file limit.",
+        "Download every Etsy ZIP named png-part, plus the ZIP containing REBUILD-PNG.html.",
+        "Extract REBUILD-PNG.html, open it in your browser, select all numbered png-part ZIPs, and press Restore original PNG.",
+        "The tool verifies the full SHA-256 checksum before providing an exact original PNG.",
+        ""
+      ]:[]),
+      "HOW TO USE",
+      "The three colour versions are ready-to-use, opaque PNG files in two explicitly named pixel sizes.",
+      "Repeat any complete tile edge-to-edge; do not crop or distort the artwork.",
+      "The transparent original is intended for adding your own custom backgrounds.",
+      "White or opaque details already part of imported illustrations remain part of the design.",
+      "Printing and usable scale depend on the actual pixel dimensions and your print provider.",
+      "This is a digital product, not a physical print.",
+      "See LICENSE.txt for commercial-use terms.","","Sapiver Prints"
+    ].join("\n");
+  }
+  async function fourVariantListingImages(versions){
+    const variants=[{colour:null,index:0},...versions.map((v,i)=>({colour:v.colour,index:i+1}))],out=[];
+    for(const variant of variants){
+      const mult=bridge.getMultipliers(),side=540;
+      const tile=bridge.makeTileCanvas(side*mult.x,side*mult.y,side,side,bridge.getRepeatStyle(),true,
+        variant.colour?"solid":"transparent",variant.colour||null);
+      const canvas=document.createElement("canvas");
+      canvas.width=LISTING_W;canvas.height=LISTING_H;
+      try{
+        const ctx=canvas.getContext("2d");
+        if(!variant.colour){
+          // Clear areas appear as checkerboard ONLY in this listing preview.
+          ctx.fillStyle="#f0f0f0";ctx.fillRect(0,0,LISTING_W,LISTING_H);
+          ctx.fillStyle="#ffffff";
+          for(let y=0;y<LISTING_H;y+=80)for(let x=0;x<LISTING_W;x+=80)
+            if(((x/80)+(y/80))%2===0)ctx.fillRect(x,y,80,80);
+        }
+        ctx.fillStyle=ctx.createPattern(tile,"repeat");ctx.fillRect(0,0,LISTING_W,LISTING_H);
+        const name=variant.colour?"0"+(variant.index+1)+"-colour-"+variant.colour.slice(1)+".jpg":"01-transparent-checker-preview.jpg";
+        out.push({name,blob:await blobFromCanvas(canvas,"image/jpeg",.86),width:LISTING_W,height:LISTING_H});
+      }finally{tile.width=1;tile.height=1;canvas.width=1;canvas.height=1;}
+    }
+    return out;
+  }
+  async function prepareFourVariants(options,png,checks,before,download,includeListing){
+    if(!window.PatternForgeFourVariants)throw Error("Four-background Etsy packaging is unavailable. Refresh the app.");
+    const colours=Array.isArray(options.colours)?options.colours.map(x=>String(x).toLowerCase()):[];
+    const sizes=Array.isArray(options.sizes)?options.sizes.map(Number):[];
+    if(colours.length!==3||new Set(colours).size!==3||colours.some(c=>!/^#[a-f0-9]{6}$/.test(c)))
+      throw Error("Select three DIFFERENT valid background colours.");
+    if(sizes.length!==2||!Number.isInteger(sizes[0])||!Number.isInteger(sizes[1])||
+       sizes[0]<=sizes[1]||sizes[1]<500||sizes[0]>5000)
+      throw Error("Choose two different named PNG sizes, between 500 and 5000 pixels.");
+    if(!png.alphaStats||png.alphaStats.clear/png.alphaStats.total<.01)
+      throw Error("The transparent master has no usable clear area. No Etsy kit was created.");
+    const stem=cleanStem(),masterName=stem+"-seamless-master.png",versions=[];
+    for(let i=0;i<colours.length;i++){
+      const colour=colours[i],assets=[];
+      for(const maxSide of sizes){
+        bridge.setStatus("Etsy: rendering colour "+(i+1)+" of 3, "+maxSide+" px…");
+        const rendered=await bridge.renderPNGBlob({backgroundMode:"solid",backgroundColor:colour,maxSide});
+        if(!rendered)throw Error("Colour variant rendering was cancelled.");
+        const name=stem+"-colour-"+String(i+1)+"-"+colour.slice(1)+"-"+rendered.spec.wPx+"x"+rendered.spec.hPx+".png";
+        assets.push({name,blob:rendered.blob,spec:rendered.spec});
+      }
+      versions.push({colour,assets});
+    }
+    const makeDocuments=count=>[
+      {name:"README.txt",blob:new Blob([fourVariantInstructions(png,versions,count)],{type:"text/plain"})},
+      {name:"LICENSE.txt",blob:new Blob([licence()],{type:"text/plain"})},
+      {name:"ABOUT-SAPIVER-PRINTS.txt",blob:new Blob([aboutSapiverPrints()],{type:"text/plain"})}
+    ];
+    bridge.setStatus("Etsy: fitting four artwork variants within five buyer files…");
+    const packed=await window.PatternForgeFourVariants.build({
+      base:stem,transparent:{...png,name:masterName},versions,makeZip:bridge.makeZip,makeDocuments,
+      splitter:options.allowMultipartPng===true?window.PatternForgeMultipart?.makeParts:null
+    });
+    const packages=packed.packages;
+    const sizeOk=packages.length<=ETSY_MAX_FILES&&packages.every(x=>x.blob.size<=ETSY_MAX_BYTES);
+    if(!sizeOk)throw Error("The requested background PNG versions exceed Etsy's five-file, 20 MB-per-file allowance.");
+    checks.push({id:"etsy-variants",state:"pass",label:"Four background versions",detail:
+      "One full-resolution transparent PNG plus three coloured designs, each in two sizes; "+
+      packages.length+" Etsy buyer ZIPs prepared."});
+    if(packed.multipartCount)checks.push({id:"etsy-original-png",state:"warn",label:"Original PNG preserved",detail:
+      "The "+mb(png.blob.size)+" transparent original is preserved in "+packed.multipartCount+
+      " exact-byte parts. A buyer reconstruction step is required."});
+    if(packed.groupedColours)checks.push({id:"etsy-grouped-colours",state:"info",label:"Coloured ZIP grouping",detail:
+      "Two background colour pairs share one buyer ZIP to stay within Etsy's five-file limit. All six coloured PNGs are included."});
+    const listing=includeListing?await fourVariantListingImages(versions):[];
+    const unchanged=before===stateFingerprint();
+    if(!unchanged)throw Error("Editable artwork changed during Etsy packaging. No ZIP was downloaded.");
+    checks.push({id:"editable-design",state:"pass",label:"Editable design unchanged",detail:"The four exported versions do not modify the project."});
+    const sellerMessage=[
+      "SAPIVER PRINTS — ETSY FOUR-BACKGROUND SELLER KIT","",
+      "Import THIS OUTER ZIP as one digital product in the Sapiver Prints uploader.",
+      "The uploader extracts the "+packages.length+" customer ZIPs under UPLOAD-TO-ETSY.",
+      "Transparent master: "+png.spec.wPx+" × "+png.spec.hPx+" px; "+mb(png.blob.size)+".",
+      "Colour version PNG sizes: "+sizes.join(" px and ")+" px (longest side).",
+      "Selected colours: "+colours.join(", ")+".",
+      ...(packed.multipartCount?["The original transparent master is in "+packed.multipartCount+" numbered ZIPs; buyers reconstruct it using REBUILD-PNG.html."]:[]),
+      ...(packed.groupedColours?["Two colour sets may share one ZIP; each design still has both PNG sizes."]:[]),
+      ...packages.map(p=>p.name+" — "+mb(p.blob.size)),
+      "Check every preview, particularly any imported image with a baked-in white rectangle.",
+      "Verify the Etsy listing clearly describes the colours, resolutions and optional reconstruction step.",
+      "Review before publishing. No live listing was created by Pattern Forge."
+    ].join("\n");
+    const kitFiles=[
+      ...packages.map(p=>({name:"UPLOAD-TO-ETSY/"+p.name,blob:p.blob})),
+      ...listing.map(img=>({name:"LISTING-IMAGES/"+stem+"-"+img.name,blob:img.blob})),
+      {name:"SELLER-CHECKLIST.txt",blob:new Blob([sellerMessage],{type:"text/plain"})},
+      {name:"QUALITY-CHECK.txt",blob:new Blob([reportText(checks)],{type:"text/plain"})}
+    ];
+    const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-four-background-etsy-kit.zip").slice(0,70);
+    if(kit.size>100_000_000)throw Error("The "+mb(kit.size)+" seller kit exceeds the uploader's 100 MB safety cap. Choose smaller coloured PNG sizes or fewer listing previews; your transparent original has not been resized.");
+    if(download)bridge.downloadBlob(kit,kitName);
+    bridge.setStatus("Etsy four-background kit ready: "+packages.length+" buyer ZIPs and "+listing.length+" listing previews.");
+    return {success:true,checks,blockers:[],kitName,kitSize:kit.size,fourVariantsUsed:true,
+      buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),
+      buyerFiles:packed.buyerFiles.map(f=>({name:f.name,size:f.blob.size})),
+      listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),
+      variantColours:colours,colourSizes:packed.colourSizes,groupedColours:packed.groupedColours,
+      alphaStats:png.alphaStats,multipartPngUsed:packed.multipartCount>0,multipartCount:packed.multipartCount,
+      pngDimensions:{width:png.spec.wPx,height:png.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},
+      originalPngBytes:png.blob.size,designUnchanged:true};
+  }
+
   async function prepare(options={}){
     const download=options.download!==false,includeListing=options.listingImages!==false,before=stateFingerprint(),checks=check();
     if(blocking(checks).length){bridge.setStatus("Etsy export blocked: "+blocking(checks)[0].detail);return {success:false,checks,blockers:blocking(checks)};}
     try{
       bridge.setStatus("Etsy export: rendering seamless PNG…");
       const png=await bridge.renderPNGBlob({backgroundMode:"transparent"});if(!png)throw new Error("PNG rendering was cancelled.");
+      if(options.fourVariants===true)return await prepareFourVariants(options,png,checks,before,download,includeListing);
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),pngOriginalName=stem+"-seamless-master.png";
