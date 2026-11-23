@@ -2282,9 +2282,11 @@
     const spec=factor===1?original:{...original,wPx:Math.max(1,Math.round(original.wPx*factor)),hPx:Math.max(1,Math.round(original.hPx*factor))};
     if(spec.wPx*spec.hPx>100_000_000 && !confirm("This export is over 100 megapixels and may exceed your browser's memory. Continue?")) return null;
     const forceTransparent=options?.backgroundMode==="transparent";
+    const solidColour=options?.backgroundMode==="solid"?String(options.backgroundColor||""):"";
+    if(solidColour&&!/^#[0-9a-f]{6}$/i.test(solidColour))throw Error("Choose a valid background colour for this PNG.");
     setStatus(`Rendering ${spec.wPx} × ${spec.hPx}px PNG…`);
     await new Promise(r=>setTimeout(r,40));
-    const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,forceTransparent?"transparent":null);
+    const out=makeTileCanvas(spec.wPx,spec.hPx,5000,5000,projectRepeatStyle(),true,forceTransparent?"transparent":solidColour?"solid":null,solidColour||null);
     try{
       const alphaStats=forceTransparent?renderedAlphaStats(out):null;
       if(forceTransparent&&alphaStats.clear/alphaStats.total<.01)
