@@ -63,7 +63,10 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert product['kind']=='pattern' and product['sectionTitle']=='Digital Downloads'
     assert product['description'].endswith('aid of AI.')
     assert product['useEmbeddedText'] and product['seamlessConfirmed']
-    assert len(product['tags'])==13\n    assert len(product['imageAltTextByFilename'])==4\n    assert all(35<=len(v)<=250 for v in product['imageAltTextByFilename'].values())\n    assert 35<=len(product['cleanLeadAltText'])<=250
+    assert len(product['tags'])==13
+    assert len(product['imageAltTextByFilename'])==4
+    assert all(35<=len(v)<=250 for v in product['imageAltTextByFilename'].values())
+    assert 35<=len(product['cleanLeadAltText'])<=250
     assert len({t.lower() for t in product['tags']})==len(product['tags'])
     assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]
