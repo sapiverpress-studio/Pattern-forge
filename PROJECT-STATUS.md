@@ -1,3 +1,14 @@
+## DEVELOPMENT — 23 November 2026: Separate Etsy buyer-intent tags and seller-photo descriptions (NOT RELEASED)
+- Request: Auto Seamless exported 13 truncated Redbubble descriptive tags rather than distinct Etsy buyer-intent search phrases. Its ZIP also lacked four image-specific alt text records.
+- Work branch: `fix/etsy-buyer-tags-image-alts-20261123`, based on `main`. Existing production remains unchanged; all work commits include [skip netlify].
+- Changed: `netlify/functions/auto-seamless-listing.mjs` returns a separate 13-tag Etsy candidate set alongside the legacy 15 Redbubble tags in the SAME existing image AI request; no additional image analysis request or claim of live search volume. Validates 13 distinct <=20-character phrases, mostly multiword. `auto-seamless/metadata.js` displays and permits editing Etsy tags and five role-specific alt descriptions. `auto-seamless/index.html` adds the commercial review controls. `auto-seamless/commercial-kit.js` exports actual reviewed Etsy tags, concise digital-paper title and `imageAltTextByFilename`/optional clean lead into LISTING-METADATA.json, without rewriting PNGs, JPGs, buyer archives, licence or prices.
+- Tests staged: six existing mock AI/browser fixtures updated; ZIP browser test asserts image alt payload and 13 Etsy tags; automated CI pending. This is source implementation, NOT live deployment or a completed Android test.
+- Risk: Buyer-intent AI phrases are suggestions, not proven Etsy search-volume data; GPT vision may still need human edits. Single AI response is slightly larger (max_tokens 1600), but not another paid request. Failure blocks Etsy kit export rather than silently substituting old Redbubble tags.
+- Paired uploader work: Poster_gen branch `fix/etsy-seller-kit-alt-review-20261123`; it must ship in the same approved release window before a new kit is used.
+- No current seller listing, Etsy media, PrintShrimp, SKUs, inventory or Netlify site has been modified. No Work credits. Release, merge and production deployment remain owner-gated.
+- Next: CI and mobile-sized browser tests; inspect ZIP, image ordering and buyer file hashes; then owner-approved coordinated release of both websites.
+
+---
 ## VERIFIED PRODUCTION — 22 November 2026 20:02 GMT: alpha-transparent Etsy masters
 - Evidence: User uploaded Christmas train Etsy kit whose reconstructed original 5000 × 5000 RGBA PNG is entirely opaque (alpha 255 at all 25,000,000 pixels), even though SHA-256 and multipart packaging succeeded. Do not list the old kit as transparent artwork.
 - Released PR #48: squash commit `21012ca675c3b2d3f7142cd4c593b61b9b315569` to main; Netlify production deploy `6b034a40457f622dbef1281f` READY, matching commit and no error. Coordinated Sapiver Prints uploader PR #115 production commit `e09126e61a4a7d23ceabe62b98d088e4e78d1541`, Netlify `6b034a282c6990ddec0c53e5` READY.
