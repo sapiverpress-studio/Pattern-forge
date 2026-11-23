@@ -61,7 +61,7 @@ try{
  assert.equal(sample.solid[3],255,'Solid variant must have opaque background');
  const dl=await downloadPromise,bytes=await readFile(await dl.path());
  assert.equal(dl.suggestedFilename(),result.kitName);
- const python=String.raw\`
+ const python=String.raw`
 import io,sys,zipfile,struct,hashlib,json
 outer=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read()))
 assert outer.testzip() is None
@@ -79,7 +79,7 @@ assert len(allpng)==7,[n for n,b in allpng]
 assert sum(n.endswith('-seamless-master.png') for n,b in allpng)==1
 sizes=[]
 for n,png in allpng:
- assert png[:8]==b'\\x89PNG\\r\\n\\x1a\\n'
+ assert png[:8]==b'\x89PNG\r\n\x1a\n'
  sizes.append((n,struct.unpack('>II',png[16:24])))
 original=next(s for n,s in sizes if n.endswith('-seamless-master.png'))
 assert original==(5000,5000),original
@@ -96,8 +96,8 @@ assert len(manifest['backgrounds'])==3
 assert manifest['transparent']['width']==5000
 assert len([f for f in buyers if len(outer.read(f))<=20000000])==4
 print('PASS: 1 original transparent 5000px PNG and 3 colour variants with 2 exact labelled sizes each in four Etsy buyer ZIPs.')
-\`;
- const script=python.replaceAll('\\\\', '\\');
+`;
+ const script=python;
  const verified=spawnSync('python3',['-c',script],{input:bytes,encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
  assert.equal(verified.status,0,verified.stderr||verified.stdout||'ZIP extraction failed');
  assert.equal(pageErrors.length,0,pageErrors.join(' | '));
