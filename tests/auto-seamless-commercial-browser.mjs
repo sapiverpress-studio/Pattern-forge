@@ -11,6 +11,7 @@ page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/auto-seamless-listing',route=>route.fulfill({
  status:200,contentType:'application/json',
  body:JSON.stringify({title:'Blue Grid Textile Pattern',main_tag:'geometric',
+ etsy_tags:["seamless pattern","knit digital paper","sweater texture","winter craft paper","scrapbook design","cable knit print","fabric print design","warm neutral paper","rust cream pattern","gift wrap pattern","textile digital art","cozy craft print","knit repeat tile"],
  other_tags:['blue grid','blue textile','fabric texture','blue squares','woven pattern',
  'home decor','soft blue','square design','modern','blue repeat','textile',
  'cerulean','indigo','checkerboard'],
@@ -62,7 +63,10 @@ with zipfile.ZipFile(sys.argv[1]) as envelope:
     assert product['kind']=='pattern' and product['sectionTitle']=='Digital Downloads'
     assert product['description'].endswith('aid of AI.')
     assert product['useEmbeddedText'] and product['seamlessConfirmed']
-    assert 5<=len(product['tags'])<=13
+    assert len(product['tags'])==13
+    assert len(product['imageAltTextByFilename'])==4
+    assert all(35<=len(v)<=250 for v in product['imageAltTextByFilename'].values())
+    assert 35<=len(product['cleanLeadAltText'])<=250
     assert len({t.lower() for t in product['tags']})==len(product['tags'])
     assert all(len(t)<=20 for t in product['tags'])
     buyers=[n for n in names if n.startswith('UPLOAD-TO-ETSY/') and n.endswith('.zip')]

@@ -4,7 +4,8 @@ import {analyzeImage,validateListing,handleRequest,config} from "../netlify/func
 const base="http://localhost:4185/api/auto-seamless-listing";
 const tiny="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+p4QAAAABJRU5ErkJggg==";
 const tags=["knitted texture","chunky knit","braided wool","cable stitch","cream","rust","sweater texture","soft wool","cozy","cosy","winter warmth","neutral tones","classic knit","aran style"];
-const valid={title:"Cream and Rust Cable Knit Texture",main_tag:"cable knit",other_tags:tags,description:"Warm braided wool texture with cream and rust cable stitches. Created with the aid of AI.",visual_subject:"cable knit"};
+const etsyTags=["seamless pattern","knit digital paper","sweater texture","winter craft paper","scrapbook design","cable knit print","fabric print design","warm neutral paper","rust cream pattern","gift wrap pattern","textile digital art","cozy craft print","knit repeat tile"];
+const valid={title:"Cream and Rust Cable Knit Texture",main_tag:"cable knit",other_tags:tags,etsy_tags:etsyTags,description:"Warm braided wool texture with cream and rust cable stitches. Created with the aid of AI.",visual_subject:"cable knit"};
 function mock(content=valid){
  const seen=[];
  return {seen,chat:{completions:{create:async q=>{seen.push(q);return {choices:[{message:{content:JSON.stringify(content)}}]}}}}};
@@ -18,6 +19,8 @@ test("vision prompt receives thumbnail and returns 15 buyer-language tags",async
  assert.equal(result.title,valid.title);
  assert.equal(result.main_tag,"cable knit");
  assert.equal(result.other_tags.length,14);
+ assert.deepEqual(result.etsy_tags,etsyTags);
+ assert.equal(result.etsy_source,"buyer-intent-suggestions-not-live-keyword-research");
  assert.equal(new Set([result.main_tag,...result.other_tags]).size,15);
  assert.match(result.description,/aid of AI/);
  assert.equal(result.live_search_volume,false);
@@ -34,6 +37,9 @@ test("AI descriptions always disclose assistance",()=>{
 test("rejects incomplete and generic false keywords",()=>{
  assert.throws(()=>validateListing({...valid,other_tags:["surface pattern design",...tags.slice(1)]}));
  assert.throws(()=>validateListing({...valid,other_tags:tags.slice(0,8)}));
+ assert.throws(()=>validateListing({...valid,etsy_tags:etsyTags.slice(0,12)}));
+ assert.throws(()=>validateListing({...valid,etsy_tags:[...etsyTags.slice(0,12),etsyTags[0]]}));
+ assert.throws(()=>validateListing({...valid,etsy_tags:[...etsyTags.slice(0,12),"a tag exceeding 20 characters"]}));
 });
 test("valid same-site POST works without exposing credentials",async()=>{
  const answer=await handleRequest(req({imageDataUrl:tiny,filename:"IMG_0019.png"}),mock());

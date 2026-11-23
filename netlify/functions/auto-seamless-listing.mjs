@@ -18,19 +18,30 @@ export function validateListing(raw){
     if(!tag||seen.has(key)||disallowed.test(tag))continue;
     tags.push(tag);seen.add(key);
   }
-  if(!title||tags.length!==15)throw Error("AI returned incomplete or irrelevant tags");
+  if(!title||tags.length!==15)throw Error("AI returned incomplete or irrelevant Redbubble tags");
+  // Separate Etsy buyer-intent tags, not a truncated copy of Redbubble descriptors.
+  const etsyTags=Array.isArray(raw.etsy_tags)?raw.etsy_tags.map(clean):[];
+  const etsySeen=new Set(etsyTags.map(t=>t.toLocaleLowerCase("en")));
+  if(etsyTags.length!==13||etsySeen.size!==13||
+     etsyTags.some(t=>t.length<3||t.length>20||/[<>\x00-\x1f]/.test(t))||
+     etsyTags.filter(t=>t.split(/\s+/).length>=2).length<11)
+    throw Error("AI did not supply thirteen distinct, usable Etsy buyer-search phrases");
   const suffix=" Created with the aid of AI.";
   let description=clean(raw.description);
   if(!/\bcreated with the aid of AI\b/i.test(description))description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(description.length>250)description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(!description)throw Error("Missing description");
-  return {title,main_tag:tags[0],other_tags:tags.slice(1),description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",live_search_volume:false};
+  return {title,main_tag:tags[0],other_tags:tags.slice(1),etsy_tags:etsyTags,description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",etsy_source:"buyer-intent-suggestions-not-live-keyword-research",live_search_volume:false};
 }
 const INSTRUCTIONS=[
  "You write accurate, buyer-facing Redbubble listings from the image you are shown. The filename is a weak clue only.",
- "Return one JSON object with: title (string), main_tag (string), other_tags (array of exactly 14 unique strings), description (string), visual_subject (string).",
+ "Return one JSON object with: title (string), main_tag (string), other_tags (array of exactly 14 unique Redbubble strings), etsy_tags (array of exactly 13 unique Etsy strings), description (string), visual_subject (string).",
  "Identify the visible subject, imagery, motif, colours, material appearance, style and mood. Distinguish woven cloth, cable knits, Fair Isle motifs, photos and abstract patterns.",
- "Use natural shopper vocabulary that actually describes this image. If it shows cable knitting, terms such as cable knit, braided knit, knitted texture, chunky knit, sweater texture, cream, rust, cosy and cozy can be relevant.",
+ "For Redbubble use natural shopper vocabulary describing the visible artwork; keep main_tag and other_tags as before.",
+ "For etsy_tags target buyers of a DIGITAL SEAMLESS SURFACE DESIGN, not buyers seeking a knitting tutorial, physical fabric or finished cushion. Include a range of natural phrases about the downloadable item, craft use, relevant intended applications and distinctive visible subject/style, not 13 variations of the same phrase.",
+ "Use exactly 13 different Etsy phrases, each 3 to 20 characters long; at least 11 should contain two or more words. Examples only when truthful: seamless pattern, floral digital paper, scrapbook background, fabric print design, gift wrap pattern, berry repeat tile, cottagecore floral. Do not copy those if the image lacks the subject.",
+ "Avoid promising commercial rights, vector/SVG files, editable patterns, physical goods, seasonal occasions or colourways unless established by visible artwork and supported product information. Never say 'knitting pattern' or 'crochet pattern' unless it actually teaches a stitch.",
+ "These etsy_tags are research-informed candidate search phrases, not measured Etsy searches or verified demand.",
  "Never fill tag slots with technical maker language such as seamless repeat, repeating pattern, surface pattern design, repeat print, decorative repeat, textile print or all over pattern.",
  "Use only observable details: never invent animals, snowflakes, seasons, brands, holidays or symbols that are not depicted. Do not make claims about demand, ranking, search volumes or past sales.",
  "No hashtags. Do not insert product categories like phone case, t-shirt or pillow into the tags: the platform handles product filtering.",
@@ -40,7 +51,7 @@ const INSTRUCTIONS=[
 export async function analyzeImage(imageDataUrl,filename="",client=null){
   const api=client??new OpenAI({maxRetries:0,timeout:30000});
   const result=await api.chat.completions.create({
-    model:MODEL,temperature:0.2,max_tokens:850,response_format:{type:"json_object"},
+    model:MODEL,temperature:0.2,max_tokens:1600,response_format:{type:"json_object"},
     messages:[
       {role:"system",content:INSTRUCTIONS},
       {role:"user",content:[

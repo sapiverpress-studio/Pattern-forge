@@ -11,6 +11,7 @@ let mode="success";
 const response={
  title:"Cream and Rust Cable Knit Texture",
  main_tag:"cable knit",
+ etsy_tags:["seamless pattern","knit digital paper","sweater texture","winter craft paper","scrapbook design","cable knit print","fabric print design","warm neutral paper","rust cream pattern","gift wrap pattern","textile digital art","cozy craft print","knit repeat tile"],
  other_tags:["knitted texture","chunky knit","braided wool","aran knit","cable stitch","cream","rust","sweater texture","soft wool","cozy","cosy","winter warmth","warm neutrals","textured yarn"],
  description:"A cosy cable-knit texture with warm rust and creamy knitted stitches. Created with the aid of AI.",
  visual_subject:"cream and rust cable knitted stitches",source:"visual-ai",live_search_volume:false
@@ -40,6 +41,7 @@ const fields={
 assert.equal(fields.name,response.title);
 assert.equal(fields.main,response.main_tag);
 assert.equal(fields.tags.split(",").length,14);
+assert.equal((await page.locator("#metaEtsyTags").inputValue()).split(",").length,13);
 assert.ok(fields.description.includes("aid of AI"));
 assert.equal(await page.locator("#copy-all").isDisabled(),false);
 assert.equal(await page.locator("#download5000").isDisabled(),false,"Existing pattern export must survive");

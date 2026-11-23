@@ -71,6 +71,22 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <label for="commercialPrice" style="display:block;margin:14px 0 6px;font-weight:700">Etsy digital selling price (£ GBP)</label>
  <input id="commercialPrice" type="number" min="0.20" max="10000" step="0.01" inputmode="decimal" placeholder="Set your digital selling price once" style="max-width:100%;width:230px;margin-bottom:4px">
  <p class="info">Your chosen price is remembered on this device for future seller ZIPs. It is written into the listing manifest; Poster Gen will not ask you to type it again.</p>
+ <div class="metaField wide" id="etsy-seamless-metadata" style="margin:14px 0">
+  <h3>Etsy SEO and image descriptions — review before export</h3>
+  <p class="info">These 13 search phrases are separate from the Redbubble tags. They combine what the product is, how buyers may use it and what the design shows. They are suggestions, not verified search-volume data. No extra AI request is made for Etsy.</p>
+  <label for="metaEtsyTags">Exactly 13 Etsy buyer-search phrases (comma-separated, up to 20 characters each)</label>
+  <textarea rows="4" id="metaEtsyTags" aria-describedby="metaEtsyStatus" placeholder="Generated from the same artwork analysis; edit before export"></textarea>
+  <p id="metaEtsyStatus" class="info" role="status">Waiting for image analysis. The seller ZIP will use these Etsy phrases, not the Redbubble tags.</p>
+  <details>
+   <summary>Review individual Etsy image alt text</summary>
+   <p class="info">Descriptions should match the actual picture. These apply to the four seller preview photos and any extra clean artwork image added by Poster Gen.</p>
+   <label for="metaEtsyCleanAlt">Additional clean artwork image (only if generated)</label><textarea rows="2" maxlength="250" id="metaEtsyCleanAlt"></textarea>
+   <label for="metaEtsyAlt1">01 — Full pattern</label><textarea rows="2" maxlength="250" id="metaEtsyAlt1"></textarea>
+   <label for="metaEtsyAlt2">02 — 2 × 2 repeat preview</label><textarea rows="2" maxlength="250" id="metaEtsyAlt2"></textarea>
+   <label for="metaEtsyAlt3">03 — Illustrative cushion mock-up</label><textarea rows="2" maxlength="250" id="metaEtsyAlt3"></textarea>
+   <label for="metaEtsyAlt4">04 — Files and detail panel</label><textarea rows="2" maxlength="250" id="metaEtsyAlt4"></textarea>
+  </details>
+ </div>
  <label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0"><input id="commercialReviewConfirmed" type="checkbox" style="margin-top:4px"><span>I have inspected the 3 × 3 preview and confirmed that the repeat and artwork are suitable for sale.</span></label>
  <div id="commercialOversizeOptions" hidden>
   <p class="info" id="oversizeNotice">If your original is too large for Etsy, you can approve an alternative before export.</p>

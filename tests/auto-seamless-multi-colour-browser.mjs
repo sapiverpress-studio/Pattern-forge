@@ -36,7 +36,8 @@ try{
  ready.on('pageerror',e=>errors.push('ready '+e.message));
  await ready.route('**/api/auto-seamless-listing',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
   title:'Two Colour Celestial Circles',main_tag:'geometric',
-  other_tags:['circles','space pattern','blue motif','blue fabric','navy','abstract tile',
+  etsy_tags:["seamless pattern","knit digital paper","sweater texture","winter craft paper","scrapbook design","cable knit print","fabric print design","warm neutral paper","rust cream pattern","gift wrap pattern","textile digital art","cozy craft print","knit repeat tile"],
+ other_tags:['circles','space pattern','blue motif','blue fabric','navy','abstract tile',
    'repeat pattern','art print','surface design','digital image','blue repeat','printable','colourway','pattern'],
   description:'Circular motif in coordinated colours, created with the aid of AI.',
   visual_subject:'circles',source:'visual-ai',live_search_volume:false
