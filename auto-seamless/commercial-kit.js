@@ -31,7 +31,7 @@
    throw Error('Enter your approved GBP selling price (at least £0.20, no more than two decimal places).');
   return {
    format:'sapiver-seamless-seller-kit',version:1,
-   product:{type:'digital',kind:'pattern',name,subject:name,description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true,imageAltTextByFilename,cleanLeadAltText:lead},
+   product:{type:'digital',kind:'pattern',name,subject:name,etsyTitle:(name+(/seamless/i.test(name)?' – Digital Paper Download':' – Seamless Digital Paper')).slice(0,140),description:desc,price,sectionTitle:'Digital Downloads',tags,seamlessConfirmed:true,useEmbeddedText:true,aiAssisted:true,imageAltTextByFilename,cleanLeadAltText:lead},
    listingSource:'Etsy buyer-intent candidate phrases from one visual AI analysis; live search demand and keyword volume are not measured.',
    reviewRequired:true
   };
