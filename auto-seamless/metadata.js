@@ -3,7 +3,18 @@
 (function(){
 const E=id=>document.getElementById(id);
 const ENDPOINT="/api/auto-seamless-listing";
-const fields=["metaName","metaMain","metaTags","metaDesc"];
+const fields=["metaName","metaMain","metaTags","metaDesc","metaEtsyTags","metaEtsyAlt1","metaEtsyAlt2","metaEtsyAlt3","metaEtsyAlt4","metaEtsyCleanAlt"];
+const altSentence=text=>String(text||"").replace(/[<>\x00-\x1f]/g," ").replace(/\s+/g," ").trim().slice(0,245).replace(/[.\s]+$/,"")+".";
+function makeEtsyAltTexts(subject){
+ const name=String(subject||"design").replace(/[<>\x00-\x1f]/g," ").replace(/\s+/g," ").trim().slice(0,115);
+ return [
+  altSentence("Clean front view of "+name+" seamless digital pattern artwork"),
+  altSentence("Full view of "+name+" shown as a digital pattern"),
+  altSentence("Two by two repeat preview of "+name+" showing the repeated artwork across tile boundaries"),
+  altSentence("Illustrative cushion mock-up displaying "+name+" print; cushion is not included with this digital download"),
+  altSentence("Digital download information panel with a detail of "+name+" and the included artwork files")
+ ];
+}
 const copyActions=["name","main","tags","desc","all"];
 let currentFile=null,sequence=0,active=null,ready=false;
 function status(message,loading=false){
@@ -17,6 +28,7 @@ function clear(){
   copyActions.forEach(id=>E("copy-"+id).disabled=true);
   E("saveMeta").disabled=true;
   E("metaCount").textContent="Waiting for automatic image analysis";
+  E("metaEtsyStatus").textContent="Waiting for image analysis. Etsy tags are not copied from Redbubble.";
 }
 function smallPreview(){
   if(!state.source||!sourceCanvas.width||!sourceCanvas.height)throw Error("No uploaded artwork available");
@@ -49,19 +61,25 @@ async function analyse(file){
     if(!result.ok)throw Error(data.error||"Image analysis is unavailable");
     const title=String(data.title||"").trim(),main=String(data.main_tag||"").trim(),
       tags=Array.isArray(data.other_tags)?data.other_tags.map(x=>String(x).trim()):[],
-      description=String(data.description||"").trim();
-    if(!title||!main||tags.length!==14||!description||!/\bcreated with the aid of AI\b/i.test(description))
+      description=String(data.description||"").trim(),
+      etsyTags=Array.isArray(data.etsy_tags)?data.etsy_tags.map(x=>String(x).trim()):[];
+    if(!title||!main||tags.length!==14||etsyTags.length!==13||!description||!/\bcreated with the aid of AI\b/i.test(description))
       throw Error("The analysis returned incomplete listing information");
     E("metaName").value=title;E("metaMain").value=main;
     E("metaTags").value=tags.join(", ");E("metaDesc").value=description.slice(0,250);
+    E("metaEtsyTags").value=etsyTags.join(", ");
+    const alts=makeEtsyAltTexts(data.visual_subject||title);
+    ["metaEtsyCleanAlt","metaEtsyAlt1","metaEtsyAlt2","metaEtsyAlt3","metaEtsyAlt4"].forEach((key,i)=>E(key).value=alts[i]);
+    E("metaEtsyStatus").textContent="13 editable Etsy search phrases generated. Check customer use and image accuracy; search demand is not measured.";
     ready=true;copyActions.forEach(id=>E("copy-"+id).disabled=false);
     E("saveMeta").disabled=false;
     E("metaCount").textContent="14 additional tags · 15 total · "+E("metaDesc").value.length+"/250 description characters";
-    status("Automatically generated from the image. Check accuracy before publishing; live keyword volumes were not checked.");
+    status("Separate Etsy and Redbubble tags generated from one image analysis. Review both before publishing.");
   }catch(error){
     if(token!==sequence)return;
     const message=error?.name==="AbortError"?"AI analysis timed out.":
       error?.message||"Automatic image analysis failed.";
+    E("metaEtsyStatus").textContent="Etsy listing wording unavailable; analyse the artwork before commercial export.";
     status(message+" Tap Analyse image again to retry; no generic placeholder tags were inserted.");
   }finally{
     clearTimeout(timer);
