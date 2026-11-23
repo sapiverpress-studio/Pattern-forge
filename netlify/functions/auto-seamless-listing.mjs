@@ -23,8 +23,8 @@ export function validateListing(raw){
   const etsyTags=Array.isArray(raw.etsy_tags)?raw.etsy_tags.map(clean):[];
   const etsySeen=new Set(etsyTags.map(t=>t.toLocaleLowerCase("en")));
   if(etsyTags.length!==13||etsySeen.size!==13||
-     etsyTags.some(t=>t.length<3||t.length>20||/[<>\\x00-\\x1f]/.test(t))||
-     etsyTags.filter(t=>t.split(/\\s+/).length>=2).length<11)
+     etsyTags.some(t=>t.length<3||t.length>20||/[<>\x00-\x1f]/.test(t))||
+     etsyTags.filter(t=>t.split(/\s+/).length>=2).length<11)
     throw Error("AI did not supply thirteen distinct, usable Etsy buyer-search phrases");
   const suffix=" Created with the aid of AI.";
   let description=clean(raw.description);
