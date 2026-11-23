@@ -1,3 +1,12 @@
+## PRODUCTION RELEASE VERIFIED — 23 November 2026 11:49 GMT: Etsy tags and seller ZIP photo alts
+- Owner explicitly authorised production release ("Just deploy it"); no Work credits used. [PR #50](https://github.com/sapiverpress-studio/Pattern-forge/pull/50) squash-merged to `main` as commit `a398e6350c75812256b23329d4a7136edafd1aef`.
+- Netlify production deploy `6b04282d879fb38200c48ee6` READY, exact commit `a398e6350c75812256b23329d4a7136edafd1aef`, branch main, production context, no reported error, published 2026-11-23 11:49:27 UTC.
+- Latest browser CI run `45151037642` succeeded; earlier full success run `45150710421`: 13 Node tests, browser-sized mobile export, preserved 5000px seller ZIP source and buyer documents, four 2400px previews, oversize PNG/WebP and background variants. Redbubble 15 tags remain separate. Etsy receives 13 reviewed, distinct buyer-intent candidate phrases from the same existing AI request plus editable image-specific alt descriptions embedded by filename in LISTING-METADATA.json.
+- Paired Poster Gen [PR #117](https://github.com/sapiverpress-studio/Poster_gen/pull/117) released beforehand to production as commit `425b30b4217100cfc374d69ce1eb3031d28f461c`, Netlify deploy `6b042804a1e3ff15b9145518` READY.
+- No existing Etsy listing or supplier record was changed by release; the normal owner's new-listing approval remains required. Search demand not validated from live Etsy search-volume data. Real Android use and one approved live Etsy listing readback remain unverified; CI and Netlify-ready are not substitutes.
+- Documentation commit is [skip netlify] to prevent a further billed build.
+
+---
 ## DEVELOPMENT — 23 November 2026: Separate Etsy buyer-intent tags and seller-photo descriptions (NOT RELEASED)
 - Request: Auto Seamless exported 13 truncated Redbubble descriptive tags rather than distinct Etsy buyer-intent search phrases. Its ZIP also lacked four image-specific alt text records.
 - Work branch: `fix/etsy-buyer-tags-image-alts-20261123`, based on `main`. Existing production remains unchanged; all work commits include [skip netlify].
