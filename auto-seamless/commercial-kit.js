@@ -12,7 +12,7 @@
   const name=String(byId('metaName')?.value||'').trim();
   const desc=String(byId('metaDesc')?.value||'').trim();
   const tags=String(byId('metaEtsyTags')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(!name||name.length>100||!desc||!/\\bAI\\b/i.test(desc))
+  if(!name||name.length>100||!desc||!/\bAI\b/i.test(desc))
    throw Error('Complete the artwork analysis and AI disclosure before exporting.');
   // This is never a truncated Redbubble tag list.
   if(tags.length!==13||new Set(tags.map(t=>t.toLocaleLowerCase('en'))).size!==13||
