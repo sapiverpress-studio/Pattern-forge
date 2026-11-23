@@ -81,7 +81,7 @@
        " remaining download slots. Choose smaller explicit colour PNG sizes (for example 1800/900). The full-resolution transparent master has NOT been resized.");
    const colourGroups=chosen.map((v,i)=>({
      name:safe(base,"-buyer-"+String(transparentGroups.length+i+1).padStart(2,"0")+"-colours-"+v.indexes.map(n=>n+1).join("")+".zip"),
-     blob:v.blob,files:v.files
+     blob:v.blob,files:v.files,indexes:v.indexes
    }));
    const packages=[...transparentGroups,...colourGroups];
    if(packages.length>MAX_FILES||packages.some(p=>p.blob.size>MAX_BYTES))throw Error("Generated buyer ZIPs exceed Etsy file limits.");
