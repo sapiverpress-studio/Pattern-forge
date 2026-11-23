@@ -69,7 +69,8 @@ try{
  await ready.route('**/api/auto-seamless-listing',route=>route.fulfill({
   status:200,contentType:'application/json',
   body:JSON.stringify({title:'Blue Cosmic Circle Pattern',main_tag:'geometric',
-   other_tags:['blue textile','circle pattern','graphic art','blue motif','abstract tile','repeat pattern',
+   etsy_tags:["seamless pattern","knit digital paper","sweater texture","winter craft paper","scrapbook design","cable knit print","fabric print design","warm neutral paper","rust cream pattern","gift wrap pattern","textile digital art","cozy craft print","knit repeat tile"],
+ other_tags:['blue textile','circle pattern','graphic art','blue motif','abstract tile','repeat pattern',
    'fabric design','navy decor','textile design','digital pattern','blue repeat','printable','background','geometric decor'],
    description:'A blue geometric circular repeating pattern. Created with the aid of AI.',
    visual_subject:'blue circle',source:'visual-ai',live_search_volume:false})
