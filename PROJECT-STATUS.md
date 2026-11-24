@@ -1,3 +1,11 @@
+## DEVELOPMENT — 24 November 2026: PrintKK nail product read-only probe (NOT DEPLOYED)
+- Owner requested initial read-only integration; production release not authorised. Branch `feature/printkk-readonly-probe`; commits b795b02dca6396753a72eadb83b99c57521bf528 and 5d8a3d630c6229166633294c84a66d6b166cbe64.
+- Netlify production project sapiver-pattern-forge is password-protected, current deploy 6b04282d879fb38200c48ee6 ready at inspection. PRINTKK_API_KEY name confirmed present; secret value not retrieved or exposed.
+- Public PrintKK product page confirms MQNBX3, 10 nail designs per set, 100 decals per sheet, 150 DPI minimum; exact individual print areas remain unknown. Official API reference did not render. Provisional GET endpoint and Api-Key header are from a secondary reference; live authentication and response schema unverified.
+- Added isolated `netlify/functions/printkk-nails.mjs` (route /api/printkk-nails) and `tests/printkk-nails.test.mjs`; no editor or Etsy changes. Local Node 22 equivalent tests passed 9/9 with mock fetch, including write rejection, cross-origin rejection, missing credential, upstream error, unexpected product and credential echo. No live API test or full CI performed.
+- All commits skip Netlify. No production merge, deploy, order, design upload or spending; no Work credits. Next: approve one production deployment after confirming the official API auth contract, then invoke the protected probe and inspect the actual print-area and variant data.
+
+---
 ## PRODUCTION RELEASE VERIFIED — 23 November 2026 11:49 GMT: Etsy tags and seller ZIP photo alts
 - Owner explicitly authorised production release ("Just deploy it"); no Work credits used. [PR #50](https://github.com/sapiverpress-studio/Pattern-forge/pull/50) squash-merged to `main` as commit `a398e6350c75812256b23329d4a7136edafd1aef`.
 - Netlify production deploy `6b04282d879fb38200c48ee6` READY, exact commit `a398e6350c75812256b23329d4a7136edafd1aef`, branch main, production context, no reported error, published 2026-11-23 11:49:27 UTC.
