@@ -401,6 +401,17 @@
       smallerAlternative:preparedParts.some(part=>part.smallerAlternative)};
    }else prepared=await prepareCustomerArtwork(files,documents);
    const {accepted,converted=false,smallerAlternative=false}=prepared;
+   // Inspect exact encoded buyer files, not reduced previews.
+   const seamReports=[];
+   for(const asset of accepted.filter(f=>/\.(png|jpe?g|webp)$/i.test(f.name))){
+    status.textContent='Checking native-resolution seams: '+asset.name+'…';
+    try{
+     const mime=/\.png$/i.test(asset.name)?'image/png':/\.webp$/i.test(asset.name)?'image/webp':'image/jpeg';
+     const result=await window.PatternForgeSeams.inspectBlob(new Blob([asset.data],{type:mime}));
+     seamReports.push({name:asset.name,pass:result.pass,detail:window.PatternForgeSeams.describe(result)});
+    }catch(error){seamReports.push({name:asset.name,pass:false,detail:'Check unavailable: '+String(error.message||error)+'. Inspect actual file.'});}
+   }
+   const seamWarnings=seamReports.filter(r=>!r.pass).length;
    if(state.mode==='ready'){
     const dimensions=asset=>String(asset.width||state.tile.w)+'x'+String(asset.height||state.tile.h);
     const sizes=new Set(accepted.filter(f=>/\.(png|jpg|webp)$/i.test(f.name)).map(dimensions));
@@ -490,7 +501,7 @@
    }
    seller.push({name:'LISTING-METADATA.json',data:encode(JSON.stringify(listing,null,2)+'\n')});
    const quality=[
-    'QUALITY CHECK - automated packaging checks only',
+    'QUALITY CHECK - automated packaging and native-resolution seam diagnostics',
     'Seller kit: '+stem,
     'Buyer ZIP files: '+pieces.length+' (each at or below 20,000,000 bytes)',
     'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt'+(paired?' and CONTENTS.txt':''),
@@ -500,6 +511,8 @@
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
     'Background variants: '+(paired?'transparent original and '+listing.product.backgroundColours.length+' solid colour(s): '+listing.product.backgroundColours.join(', ')+(listing.product.backgroundColours.length===1?'; four images required':'; '+accepted.length+' images required'):'single image background'),
+    ...seamReports.map(r=>'['+(r.pass?'PASS':'WARN')+'] Native seam check: '+r.name+' — '+r.detail),
+    'Native checks are heuristic; a pass does not guarantee visual seamlessness. Warnings require review, not automatic pixel changes.',
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'
@@ -519,7 +532,7 @@
    saveBlob(complete,stem+'-commercial-seller-kit.zip');
    status.textContent='Seller ZIP downloaded with '+pieces.length+' separate Etsy buyer ZIP(s), '+(paired?'original and colour options grouped separately':'all images documented')+
     ', and four listing previews. '+(paired?'Do not use Poster Gen until its multi-attachment importer is updated. ':'')+
-    (converted?'Approved image format changes must be reviewed. ':'')+'No Etsy listing created.';
+    (converted?'Approved image format changes must be reviewed. ':'')+(seamWarnings?seamWarnings+' file(s) have seam warnings; inspect QUALITY-CHECK.txt before sale. ':'')+'No Etsy listing created.';
   }catch(error){console.error(error);status.textContent='Export stopped: '+(error.message||'Unknown error')+'. No listing created.';}
   finally{if(big)big.width=big.height=0;if(small)small.width=small.height=0;if(prev)prev.width=prev.height=0;running=false;refresh();}
  }
