@@ -115,6 +115,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  <p class="metaRef">AI analyses what is visible; this is not live search-volume research. Always check accuracy before uploading to Redbubble. <a target="_blank" rel="noopener noreferrer" href="https://help.redbubble.com/hc/en-us/articles/360047166432-How-do-I-tag-my-designs">Redbubble tagging guidance</a>.</p>
 </section>
 </main>
+<script src="/app/js/seam-validation.js"></script>
 <script src="/auto-seamless/background-pair.js"></script>
 <script>
 'use strict';
@@ -266,7 +267,13 @@ function useOriginal(){
  state.tile={w,h};state.crop={x:0,y:0,w,h};state.match=0;
  const sourceMegabytes=(state.originalBytes.byteLength/1e6).toFixed(2);
  $('oversizeNotice').textContent=state.originalBytes.byteLength>=19_900_000?'Original file: '+sourceMegabytes+' MB. Etsy permits up to 20 MB per buyer ZIP. The exact original will be tried first; tick below to allow an alternative only if needed.':'Your full-resolution original will be supplied unchanged if it fits. You may optionally permit an alternative only if a future file is too large.';
- $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Skipped';
+ $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Checking';
+ try{
+  const result=window.PatternForgeSeams.inspectImage(tileCanvas);
+  $('scoreFact').textContent=result.pass?'Edges: pass':'Inspect joins';
+  $('scoreFact').title=window.PatternForgeSeams.describe(result);
+ }catch(error){$('scoreFact').textContent='Check unavailable';$('scoreFact').title=String(error.message||error);}
+ 
  paintPreview();paintSource();busy(false);
  setStatus(state.backgroundPair?'Original transparent pattern and '+(state.backgroundPair.variations?.length||1)+' solid colour version(s) retained unchanged. Each treatment will be prepared in two sizes. Buyer ZIPs will separate original files from background variations. Inspect the repeat preview before exporting.':'Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
  window.dispatchEvent(new Event('sapiver:tile-ready'));
