@@ -13,24 +13,33 @@ function layout(width,repeatCount){if(!Number.isFinite(repeatCount)||repeatCount
 function squareGrid(w,h,size){
  if(!Number.isInteger(w)||!Number.isInteger(h)||w<1||h<1)throw Error("Invalid repeat dimensions");
  for(let across=1;across<=25;across++)for(let down=1;down<=25;down++)
-  if(size%across===0&&size%down===0&&w*across===h*down)return {across,down,tileWidth:size/across,tileHeight:size/down};
+  if(w*across===h*down){
+   let gcd=(x,y)=>y?gcd(y,x%y):x,unit=across*down/gcd(across,down);
+   const renderSize=Math.max(unit,Math.round(size/unit)*unit);
+   return {across,down,tileWidth:renderSize/across,tileHeight:renderSize/down,renderSize};
+  }
  throw Error("This rectangular repeat cannot fill a square at this resolution without changing its proportions. Use the existing rectangular master export or prepare a square repeat first.");
 }
 function squareTile(source,size){
- const g=squareGrid(source.width,source.height,size),{c,ctx}=canvas(size,size);
+ const g=squareGrid(source.width,source.height,size),{c,ctx}=canvas(g.renderSize,g.renderSize);
  const {c:cell,ctx:cc}=canvas(g.tileWidth,g.tileHeight);
- try{cc.drawImage(source,0,0,cell.width,cell.height);for(let y=0;y<g.down;y++)for(let x=0;x<g.across;x++)ctx.drawImage(cell,x*cell.width,y*cell.height);return c;}
- catch(e){free(c);throw e;}finally{free(cell);}
+ try{
+  cc.drawImage(source,0,0,cell.width,cell.height);
+  for(let y=0;y<g.down;y++)for(let x=0;x<g.across;x++)ctx.drawImage(cell,x*cell.width,y*cell.height);
+  if(g.renderSize===size)return c;
+  const {c:final,ctx:fc}=canvas(size,size);
+  try{fc.drawImage(c,0,0,size,size);return final;}catch(e){free(final);throw e;}finally{free(c);}
+ }catch(e){free(c);throw e;}finally{free(cell);}
 }
 function solid(tile,colour){const {c,ctx}=canvas(tile.width,tile.height,true);ctx.fillStyle=colour;ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(tile,0,0);return c;}
 function wallpaper(tile,w,h,colour,repeats){
- const {c,ctx}=canvas(w,h,true),n=layout(w,repeats),{c:cell,ctx:cc}=canvas(n,n);
+ const {c,ctx}=canvas(w,h,true),n=layout(w,repeats),m=Math.max(1,Math.round(n*tile.height/tile.width)),{c:cell,ctx:cc}=canvas(n,m);
  try{
-  cc.drawImage(tile,0,0,n,n);
+  cc.drawImage(tile,0,0,n,m);
   ctx.fillStyle=colour;ctx.fillRect(0,0,w,h);
   // One resampling step. All repeats share identical integer pixel boundaries.
   const x0=-Math.floor((Math.ceil(w/n)*n-w)/2),y0=0;
-  for(let y=y0;y<h;y+=n)for(let x=x0;x<w;x+=n)ctx.drawImage(cell,x,y);
+  for(let y=y0;y<h;y+=m)for(let x=x0;x<w;x+=n)ctx.drawImage(cell,x,y);
   return c;
  }catch(e){free(c);throw e;}finally{free(cell);}
 }
@@ -99,7 +108,7 @@ async function previews(kind,tile,settings){
   await add("04-files-and-detail.jpg","Included file guide for "+n+", with transparent and solid background PNGs in two sizes.",ctx=>{paintHeader(ctx,"FOUR PNG FILES","300 DPI metadata - digital design asset");ctx.fillStyle=colour;ctx.fillRect(150,400,1050,1050);ctx.drawImage(tile,150,400,1050,1050);ctx.fillStyle="#253331";ctx.textAlign="left";ctx.font="bold 60px system-ui";["Transparent background","5000 x 5000","2500 x 2500","Solid background","5000 x 5000","2500 x 2500"].forEach((s,i)=>ctx.fillText(s,1300,500+i*180,990));});
  }else{
   await add("01-wallpaper.jpg","One "+n+" wallpaper design shown in an illustrative portrait phone frame.",ctx=>{paintHeader(ctx,"PHONE WALLPAPER","One design - four screen sizes");phoneFrame(ctx,tile,775,260,850,1889,colour,settings.repeats);});
-  await add("02-wallpaper-detail.jpg","A close view of the artwork and colours used in the "+n+" phone wallpaper.",ctx=>{ctx.fillStyle=colour;ctx.fillRect(0,0,2400,2400);ctx.drawImage(tile,0,0,2400,2400);});
+  await add("02-wallpaper-detail.jpg","A close view of the artwork and colours used in the "+n+" phone wallpaper.",ctx=>{const detail=wallpaper(tile,2400,2400,colour,1);try{ctx.drawImage(detail,0,0);}finally{free(detail);}});
   await add("03-phone-sizes.jpg","Four supplied portrait image resolutions for the single "+n+" wallpaper design.",ctx=>{paintHeader(ctx,"INCLUDED SIZES","Choose the best fit - device cropping may vary");phoneFrame(ctx,tile,170,390,700,1556,colour,settings.repeats);ctx.textAlign="left";ctx.fillStyle="#253331";ctx.font="bold 72px system-ui";PHONE_SIZES.forEach((s,i)=>ctx.fillText(s.join(" x "),1080,640+i*290,1150));});
  }
  return {out,alts};
@@ -134,7 +143,7 @@ async function prepare(kind,source,settings,status){
     for(const f of art.slice(-2)){status("Checking "+f.name+"…");checks.push(await seamReport(f));}
    }
   }else{
-   tile=await source.makeTile(2500);
+   tile=await (source.makePhoneTile||source.makeTile)(2500);
    for(const [w,h] of PHONE_SIZES){
     status("Rendering wallpaper "+w+" x "+h+"…");
     const c=wallpaper(tile,w,h,settings.colour,settings.repeats);
@@ -166,9 +175,9 @@ async function prepare(kind,source,settings,status){
   }
   if(packages.length>5||packages.some(p=>p.blob.size>LIMIT))throw Error("These files cannot fit Etsy's five attachments without altering the artwork. No image has been reduced.");
   status("Building listing images and documents…");
-  small=await source.makeTile(1000);
+  small=await (wall?(source.makePhoneTile||source.makeTile):source.makeTile)(1000);
   const p=await previews(kind,small,settings),m=manifest(kind,settings,p.alts,split);
-  const outer=await zipStored([...packages.map(f=>file("UPLOAD-TO-ETSY/"+f.name,f.blob)),...p.out,txt("LISTING-METADATA.json",JSON.stringify(m)),txt("QUALITY-CHECK.txt",["SAPIVER PRINTS - "+kind+" quality report",...checks,...packages.map(f=>f.name+" - "+f.blob.size+" bytes"),"Seam diagnostics are heuristic. Inspect the delivered artwork and listing before publishing."].join("\n")),txt("SELLER-CHECKLIST.txt","Review the listing title, price, tags, actual artwork and quality report in Poster Gen before approval. Only the nested buyer ZIPs are customer files.")]);
+  const outer=await zipStored([...packages.map(f=>file("UPLOAD-TO-ETSY/"+f.name,f.blob)),...p.out,txt("LISTING-METADATA.json",JSON.stringify(m)),txt("QUALITY-CHECK.txt",["SAPIVER PRINTS - "+kind+" quality report",...checks,...(source.note?[source.note]:[]),...packages.map(f=>f.name+" - "+f.blob.size+" bytes"),"Seam diagnostics are heuristic. Inspect the delivered artwork and listing before publishing."].join("\n")),txt("SELLER-CHECKLIST.txt","Review the listing title, price, tags, actual artwork and quality report in Poster Gen before approval. Only the nested buyer ZIPs are customer files.")]);
   if(outer.size>OUTER_LIMIT)throw Error("Seller kit exceeds the uploader's 100 MB limit.");
   return {name:stem+"-"+(wall?"phone-wallpaper":"seamless")+"-seller-kit.zip",blob:outer,checks,packages:packages.length};
  }finally{free(tile);free(small);}
@@ -207,8 +216,8 @@ function open(source){
  d.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>run(b.dataset.action));
  q("[data-close]").onclick=()=>{if(!working)d.close();};d.addEventListener("cancel",e=>{if(working)e.preventDefault();});d.addEventListener("close",()=>{free(previewTile);for(const url of urls)URL.revokeObjectURL(url);d.remove();});
  d.showModal();for(const b of d.querySelectorAll("[data-action]"))b.disabled=true;
- Promise.resolve().then(()=>source.makeTile(400)).then(c=>{if(!d.isConnected){free(c);return;}previewTile=c;draw();for(const b of d.querySelectorAll("[data-action]"))b.disabled=false;}).catch(e=>status(e.message));
+ Promise.resolve().then(()=>(source.makePhoneTile||source.makeTile)(400)).then(c=>{if(!d.isConnected){free(c);return;}previewTile=c;draw();for(const b of d.querySelectorAll("[data-action]"))b.disabled=false;}).catch(e=>status(e.message));
 }
-const api={PHONE_SIZES,layout,squareGrid,squareTile,groupFiles,zipStored,tagsFor,manifest,prepare,open};
+const api={PHONE_SIZES,layout,squareGrid,squareTile,wallpaper,groupFiles,zipStored,tagsFor,manifest,prepare,open};
 if(typeof module==="object"&&module.exports)module.exports=api;else root.PatternForgeTwoPacks=api;
 })(typeof globalThis!=="undefined"?globalThis:this);
