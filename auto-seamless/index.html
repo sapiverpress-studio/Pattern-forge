@@ -95,7 +95,8 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
    <span><strong>Allow an Etsy-compatible version only if the original cannot fit.</strong> First try the full-size PNG re-encoded without resizing; otherwise use a high-quality full-resolution WebP (lossy, preserving transparency where present) and, where possible, a smaller PNG. Your original on this device is not changed. The listing will name the actual delivered files.</span>
   </label>
  </div>
- <button id="downloadCommercial" class="primary" disabled style="width:100%">Download Commercial Seller Kit ZIP</button>
+ <button id="downloadTwoProducts" class="primary" disabled style="width:100%;margin-bottom:8px">Download both seller packs</button>
+ <button id="downloadCommercial" class="secondary" disabled style="width:100%">Legacy commercial seller kit ZIP</button>
  <p id="commercialExportStatus" class="status" role="status" aria-live="polite" style="margin-top:12px">Review the repeating preview and confirm before export.</p>
  <p class="info">Customer ZIPs are packaged within Etsy's file limits without reducing image dimensions. Inspect the included-files preview and the buyer ZIPs before publishing.</p>
 </section>
@@ -116,6 +117,8 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 </section>
 </main>
 <script src="/app/js/seam-validation.js"></script>
+<script src="/app/js/etsy-multipart.js"></script>
+<script src="/app/js/two-product-export.js"></script>
 <script src="/auto-seamless/background-pair.js"></script>
 <script>
 'use strict';
@@ -419,5 +422,31 @@ setMode(savedMode);
 </script>
 <script src="/auto-seamless/metadata.js"></script>
 <script src="/auto-seamless/commercial-kit.js?v=20261119-background-pair"></script>
+<script>
+(function(){
+ const button=$('downloadTwoProducts');
+ const refresh=()=>{button.disabled=!state.tile||state.busy;};
+ window.addEventListener('sapiver:tile-ready',refresh);
+ $('upload').addEventListener('change',()=>{button.disabled=true;});
+ button.addEventListener('click',()=>{
+  if(!state.tile||state.busy)return;
+  const pair=state.backgroundPair,api=window.PatternForgeTwoPacks;
+  if(!api){setStatus('Refresh the app to load the two-product exporter.','warn');return;}
+  api.open({
+   name:$('metaName')?.value||state.fileName,colour:pair?.backgroundColor||'#ffffff',ai:true,
+   tags:String($('metaEtsyTags')?.value||'').split(','),
+   makeTile:async size=>{
+    let bitmap=null;
+    try{
+     if(pair?.transparent?.bytes)bitmap=await createImageBitmap(new Blob([pair.transparent.bytes],{type:'image/png'}));
+     return api.squareTile(bitmap||tileCanvas,size);
+    }finally{bitmap?.close?.();}
+   },
+   png:async c=>taggedDPI(new Uint8Array(await (await asBlob(c)).arrayBuffer()))
+  });
+ });
+ refresh();
+})();
+</script>
 </body>
 </html>
