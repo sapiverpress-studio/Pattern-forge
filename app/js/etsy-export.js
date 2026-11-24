@@ -320,6 +320,14 @@
     }
     return out;
   }
+  async function checkExportedSeam(name,blob,checks){
+    try{
+      const result=await window.PatternForgeSeams.inspectBlob(blob);
+      checks.push({id:"native-seam-"+name,state:result.pass?"pass":"warn",label:"Native seam check: "+name,detail:window.PatternForgeSeams.describe(result),metrics:result});
+    }catch(error){
+      checks.push({id:"native-seam-"+name,state:"warn",label:"Native seam check: "+name,detail:"Unable to check actual exported pixels: "+error.message+". Inspect the file before sale."});
+    }
+  }
   async function prepareFourVariants(options,png,checks,before,download,includeListing){
     if(!window.PatternForgeFourVariants)throw Error("Four-background Etsy packaging is unavailable. Refresh the app.");
     const colours=Array.isArray(options.colours)?options.colours.map(x=>String(x).toLowerCase()):[];
@@ -339,6 +347,7 @@
         const rendered=await bridge.renderPNGBlob({backgroundMode:"solid",backgroundColor:colour,maxSide});
         if(!rendered)throw Error("Colour variant rendering was cancelled.");
         const name=stem+"-colour-"+String(i+1)+"-"+colour.slice(1)+"-"+rendered.spec.wPx+"x"+rendered.spec.hPx+".png";
+        await checkExportedSeam(name,rendered.blob,checks);
         assets.push({name,blob:rendered.blob,spec:rendered.spec});
       }
       versions.push({colour,assets});
@@ -391,7 +400,7 @@
     const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-four-background-etsy-kit.zip").slice(0,70);
     if(kit.size>100_000_000)throw Error("The "+mb(kit.size)+" seller kit exceeds the uploader's 100 MB safety cap. Choose smaller coloured PNG sizes or fewer listing previews; your transparent original has not been resized.");
     if(download)bridge.downloadBlob(kit,kitName);
-    bridge.setStatus("Etsy four-background kit ready: "+packages.length+" buyer ZIPs and "+listing.length+" listing previews.");
+    bridge.setStatus("Etsy four-background kit ready: "+packages.length+" buyer ZIPs and "+listing.length+" listing previews."+(checks.some(c=>c.id.startsWith("native-seam-")&&c.state==="warn")?" Seam warnings: inspect QUALITY-CHECK.txt before sale.":""));
     return {success:true,checks,blockers:[],kitName,kitSize:kit.size,fourVariantsUsed:true,
       buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),
       buyerFiles:packed.buyerFiles.map(f=>({name:f.name,size:f.blob.size})),
@@ -408,8 +417,10 @@
     try{
       bridge.setStatus("Etsy export: rendering seamless PNG…");
       const png=await bridge.renderPNGBlob({backgroundMode:"transparent"});if(!png)throw new Error("PNG rendering was cancelled.");
+      await checkExportedSeam("transparent master PNG",png.blob,checks);
       if(options.fourVariants===true)return await prepareFourVariants(options,png,checks,before,download,includeListing);
       bridge.setStatus("Etsy export: rendering flattened JPG…");const jpg=await jpegTile();
+      await checkExportedSeam("flattened master JPG",jpg.blob,checks);
       bridge.setStatus("Etsy export: rendering 3 × 3 repeat preview…");const preview=await repeatPreview();
       const stem=cleanStem(),hasSvg=vectorEligible(),pngOriginalName=stem+"-seamless-master.png";
       if(!png.alphaStats||png.alphaStats.clear/png.alphaStats.total<.01)throw new Error("The master PNG has no verified transparent background. Packaging was stopped.");
@@ -474,7 +485,7 @@
       const kit=await bridge.makeZip(kitFiles),kitName=(stem+"-etsy-kit.zip").slice(0,70);
       if(kit.size>100_000_000)throw new Error("The complete seller kit exceeds the uploader\u0027s 100 MB limit. No image was resized.");
       if(download)bridge.downloadBlob(kit,kitName);
-      bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images.");
+      bridge.setStatus("Etsy kit ready: one adaptable seamless design, "+packages.length+" buyer ZIP"+(packages.length===1?"":"s")+" plus "+listing.length+" design-only listing images."+(checks.some(c=>c.id.startsWith("native-seam-")&&c.state==="warn")?" Seam warnings: inspect QUALITY-CHECK.txt before sale.":""));
       return {success:true,checks,blockers:[],kitName,kitSize:kit.size,buyerPackages:packages.map(p=>({name:p.name,size:p.blob.size})),buyerFiles:buyerFiles.map(f=>({name:f.name,size:f.blob.size})),listingImages:listing.map(f=>({name:stem+"-"+f.name,size:f.blob.size,width:f.width,height:f.height})),vectorIncluded:hasSvg,alphaStats:png.alphaStats,multipartPngUsed:multipartCount>0,multipartCount,pngDimensions:{width:png.spec.wPx,height:png.spec.hPx},masterDimensions:{width:png.spec.wPx,height:png.spec.hPx},originalPngBytes:originalBytes,repeatPreview:{width:preview.width,height:preview.height},rules:{verified:RULES_VERIFIED,maxFiles:ETSY_MAX_FILES,maxBytes:ETSY_MAX_BYTES},designUnchanged:unchanged};
     }catch(error){
       const message=error instanceof Error?error.message:String(error);checks.push({id:"package-build",state:"fail",label:"Package build",detail:message});bridge.setStatus("Etsy export blocked: "+message);
