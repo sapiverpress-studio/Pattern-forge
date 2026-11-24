@@ -427,6 +427,7 @@ setMode(savedMode);
  const button=$('downloadTwoProducts');
  const refresh=()=>{button.disabled=!state.tile||state.busy;};
  window.addEventListener('sapiver:tile-ready',refresh);
+ window.addEventListener('sapiver:source-changed',refresh);
  $('upload').addEventListener('change',()=>{button.disabled=true;});
  button.addEventListener('click',()=>{
   if(!state.tile||state.busy)return;
