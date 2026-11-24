@@ -3132,6 +3132,7 @@
     getMultipliers:exportMultipliers,
     makeTileCanvas,
     renderPNGBlob,
+    canvasToPngBlobWithDpi,
     renderSVGBlob,
     makeZip,
     downloadBlob,
