@@ -1,19 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleRequest} from '../netlify/functions/printkk-nails.mjs';
+import {sign,handleRequest} from '../netlify/functions/printkk-nails.mjs';
+const key='mock-access-key',secret='mock-secret-key',now=()=>1750233945814;
 const req=(method='GET',origin)=>new Request('https://example.netlify.app/api/printkk-nails',{method,headers:origin?{origin}:{}});
-const key='mock-secret-only';
-const data={productCode:'MQNBX3',printAreas:[{example:'mock'}],specifications:[]};
-const ok=()=>Response.json({success:true,data});
-const cases=[
- ['only fixed GET with key and redirect blocked', async()=>{const r=await handleRequest(req(),{key,fetcher:async(url,opts)=>{assert.equal(url,'https://api.printkk.com/pkk-openapi/api/v1/product/MQNBX3');assert.equal(opts.method,'GET');assert.equal(opts.headers['Api-Key'],key);assert.equal(opts.redirect,'error');return ok()}});assert.equal(r.status,200);assert.deepEqual(await r.json(),data);assert.equal(r.headers.get('cache-control'),'no-store')}],
- ['no mutation',async()=>assert.equal((await handleRequest(req('POST'),{key,fetcher:()=>assert.fail()})).status,405)],
- ['cross origin blocked',async()=>assert.equal((await handleRequest(req('GET','https://other.example'),{key,fetcher:()=>assert.fail()})).status,403)],
- ['missing key',async()=>assert.equal((await handleRequest(req(),{key:'',fetcher:()=>assert.fail()})).status,503)],
- ['upstream auth failure',async()=>{const r=await handleRequest(req(),{key,fetcher:()=>new Response(key,{status:401})});assert.equal(r.status,502);assert.equal((await r.json()).upstreamStatus,401)}],
- ['application failure',async()=>assert.equal((await handleRequest(req(),{key,fetcher:()=>Response.json({success:false,msg:key})})).status,502)],
- ['wrong product',async()=>assert.equal((await handleRequest(req(),{key,fetcher:()=>Response.json({success:true,data:{productCode:'wrong'}})})).status,502)],
- ['unexpected echoed secret blocked',async()=>assert.equal((await handleRequest(req(),{key,fetcher:()=>Response.json({success:true,data:{...data,printAreas:[key]}})})).status,502)],
- ['network error sanitised',async()=>{const r=await handleRequest(req(),{key,fetcher:()=>{throw Error(key)}});assert.equal(r.status,502);assert.equal((await r.text()).includes(key),false)}]
-];
-for(const [name,run] of cases)test(name,run);
+const ok=data=>Response.json({code:200,success:true,data});
+const product={productCode:'MQNBX3',printAreas:[{width:10}],variants:[{id:1}]};
+const run=(fetcher,request=req(),overrides={})=>handleRequest(request,{key,secret,now,fetcher,...overrides});
+test('independent Python HMAC fixture and ordering',()=>assert.equal(sign(secret,'/api/v1/general/ping',{timestamp:now(),recvWindow:5000,signature:'ignore',file:'ignore',empty:'',nil:null}), '4e712c1c231b73143ee222ade2b34bf090ed22b1aefa4fd1f6be1e631a3b9d5f'));
+test('signed ping and product GET, independent path signatures',async()=>{let calls=0;const r=await run((url,opts)=>{calls++;const u=new URL(url);assert.equal(u.origin,'https://api.printkk.com');assert.equal(opts.method,'GET');assert.equal(opts.headers['api-key'],key);assert.equal(opts.redirect,'error');assert.equal(u.searchParams.get('timestamp'),String(now()));assert.equal(u.searchParams.get('signature'),sign(secret,u.pathname.replace('/pkk-openapi',''),{timestamp:now(),recvWindow:5000}));assert.ok(!url.includes(secret));return ok(calls===1?{}:product)});assert.equal(calls,2);assert.equal(r.status,200);assert.deepEqual((await r.json()).product,product);});
+test('404 fallback uses same host and canonical path',async()=>{let calls=[];const r=await run(url=>{calls.push(new URL(url).pathname);return calls.length===1?new Response('',{status:404}):ok(calls.length===2?{}:product)});assert.equal(r.status,200);assert.deepEqual(calls,['/pkk-openapi/api/v1/general/ping','/api/v1/general/ping','/api/v1/product/MQNBX3']);});
+test('both routes 404 reported',async()=>{const r=await run(()=>new Response('',{status:404}));assert.equal(r.status,502);assert.equal((await r.json()).attempts.length,2)});
+test('reject writes',async()=>assert.equal((await run(()=>assert.fail(),req('POST'))).status,405));
+test('reject cross origin',async()=>assert.equal((await run(()=>assert.fail(),req('GET','https://other.example'))).status,403));
+test('missing secret',async()=>assert.equal((await run(()=>assert.fail(),req(),{secret:''})).status,503));
+test('authentication rejection no retries or credential leak',async()=>{let n=0;const r=await run(()=>{n++;return Response.json({code:401,msg:key},{status:401})});assert.equal(n,1);assert.equal(r.status,502);assert.ok(!(await r.text()).includes(key))});
+test('application-level failure no product call',async()=>{let n=0;const r=await run(()=>{n++;return Response.json({success:false,code:403,msg:secret})});assert.equal(n,1);assert.equal(r.status,502);assert.ok(!(await r.text()).includes(secret))});
+test('product 404 isolated',async()=>{let n=0;const r=await run(()=>++n===1?ok({}):new Response('',{status:404}));assert.equal((await r.json()).stage,'product')});
+test('wrong product rejected',async()=>{let n=0;const r=await run(()=>ok(++n===1?{}:{productCode:'wrong'}));assert.equal(r.status,502)});
+test('echoed secret rejected',async()=>{let n=0;const r=await run(()=>ok(++n===1?{}:{...product,printAreas:[secret]}));assert.equal(r.status,502);assert.ok(!(await r.text()).includes(secret))});
+test('network error sanitised',async()=>{const r=await run(()=>{throw Error(secret)});assert.equal(r.status,502);assert.ok(!(await r.text()).includes(secret))});

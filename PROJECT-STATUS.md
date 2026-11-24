@@ -1,3 +1,10 @@
+## RELEASE — 24 November 2026: Signed PrintKK diagnostic
+- User's live original probe returned upstream HTTP 404. User supplied official PrintKK signature guide dated 2026-07-30 and confirmed saving PRINTKK_SECRET_KEY; both variable names verified in Netlify without accessing values.
+- Corrected server-side HMAC-SHA256 of GET, canonical /api/v1/ path and sorted scalar timestamp/recvWindow query parameters. Key header, lowercase hex signature query, no secret sent. Signed ping precedes fixed product lookup. Secondary reference suggests /pkk-openapi prefix; retry same host without prefix only on HTTP 404. Exact live base, authentication and schema remain unverified.
+- Local Node 22 tests 13/13 passed including independent Python HMAC fixture, same-host fallback, no writes, no redirect, missing secret and credential echo rejection. No full CI or live authentication claim. Existing editor and Etsy functions unchanged.
+- Owner requested carry on after saving secret; single atomic release to main intended to avoid duplicate preview deploys. No order, design or payment operations; no Work credits. Verify published commit then ask owner only to open existing protected diagnostic if inaccessible externally.
+
+---
 ## PRODUCTION — 24 November 2026 08:05 GMT: PrintKK diagnostic deployed; live supplier request pending
 - Owner explicitly authorised one production deploy. PR #51 squash merged as 2c6711b55c39822044c20117ec9b4ecdf8450ed9. Branch comparison showed three files only; 9/9 local mock tests re-run on Node 22, no full CI claimed.
 - Netlify production deploy 6b0545469b2e66660bd536ba READY, exact matching commit, published 08:05:40 UTC, no error. Both printkk-nails GET /api/printkk-nails and existing auto-seamless-listing POST route present. Netlify also automatically generated preview deploy 6b05453e011bd93772ac9b7b from PR creation; no additional manual deploy requested.
