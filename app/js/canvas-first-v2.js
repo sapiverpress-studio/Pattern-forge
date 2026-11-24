@@ -710,7 +710,8 @@
         if(!bridge||!api||bridge.isDoodle()){bridge?.setStatus("Open a pattern project and refresh the app.");return;}
         if(!bridge.state.items.length&&!bridge.state.marks.length){bridge.setStatus("Add artwork before export.");return;}
         const mult=bridge.getMultipliers(),style=bridge.getRepeatStyle();
-        api.open({name:$('projectTitleInput')?.value||bridge.safeName(),colour:$('bg')?.value||'#ffffff',ai:false,
+        const quality=window.PatternForgeEtsy?.check?.().find(c=>c.id==='source-quality');
+        api.open({name:$('projectTitleInput')?.value||bridge.safeName(),colour:$('bg')?.value||'#ffffff',ai:false,note:quality?quality.state.toUpperCase()+' source quality: '+quality.detail:'Review source detail at full resolution.',
           makeTile:size=>{const base=size/Math.max(mult.x,mult.y);return bridge.makeTileCanvas(size,size,base,base,style,true,"transparent");},
           png:c=>bridge.canvasToPngBlobWithDpi(c,300)
         });
