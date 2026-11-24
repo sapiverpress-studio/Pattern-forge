@@ -1,3 +1,11 @@
+## PRODUCTION — 24 November 2026 08:05 GMT: PrintKK diagnostic deployed; live supplier request pending
+- Owner explicitly authorised one production deploy. PR #51 squash merged as 2c6711b55c39822044c20117ec9b4ecdf8450ed9. Branch comparison showed three files only; 9/9 local mock tests re-run on Node 22, no full CI claimed.
+- Netlify production deploy 6b0545469b2e66660bd536ba READY, exact matching commit, published 08:05:40 UTC, no error. Both printkk-nails GET /api/printkk-nails and existing auto-seamless-listing POST route present. Netlify also automatically generated preview deploy 6b05453e011bd93772ac9b7b from PR creation; no additional manual deploy requested.
+- Public secondary reference corroborates provisional Api-Key header and product GET route; official API reference returned no readable lines. PrintKK key remains secret. No actual supplier response verified: local runner DNS resolution unavailable and production site password-protected.
+- Next: owner opens https://sapiver-pattern-forge.netlify.app/api/printkk-nails in authenticated browser and shares returned JSON (not the key). Inspect exact print-area geometry and variants; if failure, diagnose before any further build.
+- No order/design/payment mutations, no Work credits. This documentation-only update skips Netlify.
+
+---
 ## DEVELOPMENT — 24 November 2026: PrintKK nail product read-only probe (NOT DEPLOYED)
 - Owner requested initial read-only integration; production release not authorised. Branch `feature/printkk-readonly-probe`; commits b795b02dca6396753a72eadb83b99c57521bf528 and 5d8a3d630c6229166633294c84a66d6b166cbe64.
 - Netlify production project sapiver-pattern-forge is password-protected, current deploy 6b04282d879fb38200c48ee6 ready at inspection. PRINTKK_API_KEY name confirmed present; secret value not retrieved or exposed.
