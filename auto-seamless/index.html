@@ -432,16 +432,23 @@ setMode(savedMode);
   if(!state.tile||state.busy)return;
   const pair=state.backgroundPair,api=window.PatternForgeTwoPacks;
   if(!api){setStatus('Refresh the app to load the two-product exporter.','warn');return;}
+  async function fromSource(draw){
+   let bitmap=null;
+   try{
+    if(pair?.transparent?.bytes)bitmap=await createImageBitmap(new Blob([pair.transparent.bytes],{type:'image/png'}));
+    return draw(bitmap||tileCanvas);
+   }finally{bitmap?.close?.();}
+  }
   api.open({
    name:$('metaName')?.value||state.fileName,colour:pair?.backgroundColor||'#ffffff',ai:true,
    tags:String($('metaEtsyTags')?.value||'').split(','),
-   makeTile:async size=>{
-    let bitmap=null;
-    try{
-     if(pair?.transparent?.bytes)bitmap=await createImageBitmap(new Blob([pair.transparent.bytes],{type:'image/png'}));
-     return api.squareTile(bitmap||tileCanvas,size);
-    }finally{bitmap?.close?.();}
-   },
+   note:'Source repeat: '+state.tile.w+' x '+state.tile.h+' pixels. Output dimensions and DPI do not create new source detail. Review sharpness at full size.',
+   makeTile:size=>fromSource(source=>api.squareTile(source,size)),
+   makePhoneTile:size=>fromSource(source=>{
+    const factor=size/Math.max(source.width,source.height),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(source.width*factor));c.height=Math.max(1,Math.round(source.height*factor));
+    const ctx=c.getContext('2d');ctx.imageSmoothingQuality='high';ctx.drawImage(source,0,0,c.width,c.height);return c;
+   }),
    png:async c=>taggedDPI(new Uint8Array(await (await asBlob(c)).arrayBuffer()))
   });
  });
