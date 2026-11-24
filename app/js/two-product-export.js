@@ -32,10 +32,11 @@ function squareTile(source,size){
  }catch(e){free(c);throw e;}finally{free(cell);}
 }
 function solid(tile,colour){const {c,ctx}=canvas(tile.width,tile.height,true);ctx.fillStyle=colour;ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(tile,0,0);return c;}
-function wallpaper(tile,w,h,colour,repeats){
+function wallpaper(tile,w,h,colour,repeats,onCell){
  const {c,ctx}=canvas(w,h,true),n=layout(w,repeats),m=Math.max(1,Math.round(n*tile.height/tile.width)),{c:cell,ctx:cc}=canvas(n,m);
  try{
   cc.drawImage(tile,0,0,n,m);
+  if(onCell)onCell(cell);
   ctx.fillStyle=colour;ctx.fillRect(0,0,w,h);
   // One resampling step. All repeats share identical integer pixel boundaries.
   const x0=-Math.floor((Math.ceil(w/n)*n-w)/2),y0=0;
@@ -121,6 +122,13 @@ function manifest(kind,settings,alts,split){
  else {p.seamlessConfirmed=true;p.cleanLeadAltText="A clean view of the "+name+" seamless design, showing the original pattern artwork.";}
  return {format:wall?"sapiver-wallpaper-seller-kit":"sapiver-seamless-seller-kit",version:1,reviewRequired:true,product:p,listingSource:"Draft buyer-intent tags; review in the uploader before publication."};
 }
+async function verifyPng(blob,w,h){
+ const b=new Uint8Array(await blob.slice(0,128).arrayBuffer()),v=new DataView(b.buffer);
+ if(b.length<54||v.getUint32(0)!==0x89504e47||v.getUint32(4)!==0x0d0a1a0a||v.getUint32(8)!==13||v.getUint32(12)!==0x49484452||v.getUint32(16)!==w||v.getUint32(20)!==h)throw Error("Encoded PNG dimensions differ from the requested size.");
+ // Both existing DPI encoders insert pHYs immediately after IHDR.
+ if(v.getUint32(33)!==9||v.getUint32(37)!==0x70485973||v.getUint32(41)!==11811||v.getUint32(45)!==11811||b[49]!==1)throw Error("Encoded PNG is missing verified 300 DPI metadata.");
+ return blob;
+}
 async function seamReport(f){
  try{const r=await root.PatternForgeSeams.inspectBlob(f.blob);return (r.pass?"PASS ":"WARN ")+f.name+" — "+root.PatternForgeSeams.describe(r);}catch(e){return "WARN "+f.name+" — check unavailable: "+e.message;}
 }
@@ -135,9 +143,9 @@ async function prepare(kind,source,settings,status){
     if(!alphaOK(tile))throw Error("The source has no genuine transparent background. Use transparent motifs or upload the original transparent PNG. Nothing was removed automatically.");
     let coloured=null;
     try{
-     const a=file(stem+(size===5000?"-seamless-master.png":"-transparent-2500px.png"),await source.png(tile));
+     const a=file(stem+(size===5000?"-seamless-master.png":"-transparent-2500px.png"),await verifyPng(await source.png(tile),size,size));
      coloured=solid(tile,settings.colour);
-     const b=file(stem+"-solid-"+size+"px.png",await source.png(coloured));
+     const b=file(stem+"-solid-"+size+"px.png",await verifyPng(await source.png(coloured),size,size));
      art.push(a,b);
     }finally{free(coloured);free(tile);tile=null;}
     for(const f of art.slice(-2)){status("Checking "+f.name+"…");checks.push(await seamReport(f));}
@@ -146,8 +154,15 @@ async function prepare(kind,source,settings,status){
    tile=await (source.makePhoneTile||source.makeTile)(2500);
    for(const [w,h] of PHONE_SIZES){
     status("Rendering wallpaper "+w+" x "+h+"…");
-    const c=wallpaper(tile,w,h,settings.colour,settings.repeats);
-    try{art.push(file(stem+"-wallpaper-"+w+"x"+h+".png",await source.png(c)));checks.push("PASS dimensions "+w+" x "+h+" — one opaque continuous canvas; no separately positioned image objects.");}finally{free(c);}
+    let seamCheck="WARN repeat-cell seam check unavailable";
+    const c=wallpaper(tile,w,h,settings.colour,settings.repeats,cell=>{
+     try{const r=root.PatternForgeSeams.inspectImage(cell);seamCheck=(r.pass?"PASS ":"WARN ")+root.PatternForgeSeams.describe(r);}catch(e){seamCheck="WARN "+e.message;}
+    });
+    try{
+     art.push(file(stem+"-wallpaper-"+w+"x"+h+".png",await verifyPng(await source.png(c),w,h)));
+     checks.push("PASS encoded dimensions "+w+" x "+h+" — one opaque canvas using integer repeat positions.");
+     checks.push(seamCheck+" (scaled repeat for "+w+" x "+h+")");
+    }finally{free(c);}
    }
    free(tile);tile=null;
   }
@@ -218,6 +233,6 @@ function open(source){
  d.showModal();for(const b of d.querySelectorAll("[data-action]"))b.disabled=true;
  Promise.resolve().then(()=>(source.makePhoneTile||source.makeTile)(400)).then(c=>{if(!d.isConnected){free(c);return;}previewTile=c;draw();for(const b of d.querySelectorAll("[data-action]"))b.disabled=false;}).catch(e=>status(e.message));
 }
-const api={PHONE_SIZES,layout,squareGrid,squareTile,wallpaper,groupFiles,zipStored,tagsFor,manifest,prepare,open};
+const api={PHONE_SIZES,layout,squareGrid,squareTile,wallpaper,groupFiles,zipStored,tagsFor,manifest,verifyPng,prepare,open};
 if(typeof module==="object"&&module.exports)module.exports=api;else root.PatternForgeTwoPacks=api;
 })(typeof globalThis!=="undefined"?globalThis:this);
