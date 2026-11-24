@@ -1,3 +1,8 @@
+## PRODUCTION — 24 November 2026 08:18 GMT: PrintKK signed diagnostic published
+- Netlify production deploy 6b054840c6651f4abb87e1a0 READY, matching commit a0e5dd7b6e5444d9486948e76d5cd55737cd8c4d, published 08:18:26 UTC, no error. Both existing auto-seamless-listing and printkk-nails functions present. Only one production deployment for this correction; no PR preview.
+- Local tested files matched GitHub blob hashes exactly; all 13 local Node tests passed. Live PrintKK response still pending authenticated browser test. Next: open https://sapiver-pattern-forge.netlify.app/api/printkk-nails and inspect result; never share credentials. No further build until actual response assessed. Documentation-only commit skips Netlify.
+
+---
 ## RELEASE — 24 November 2026: Signed PrintKK diagnostic
 - User's live original probe returned upstream HTTP 404. User supplied official PrintKK signature guide dated 2026-07-30 and confirmed saving PRINTKK_SECRET_KEY; both variable names verified in Netlify without accessing values.
 - Corrected server-side HMAC-SHA256 of GET, canonical /api/v1/ path and sorted scalar timestamp/recvWindow query parameters. Key header, lowercase hex signature query, no secret sent. Signed ping precedes fixed product lookup. Secondary reference suggests /pkk-openapi prefix; retry same host without prefix only on HTTP 404. Exact live base, authentication and schema remain unverified.
