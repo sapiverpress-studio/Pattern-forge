@@ -1,3 +1,9 @@
+## PRODUCTION — 24 November 2026 08:32 GMT: PrintKK credential refresh
+- User reported replacing PRINTKK_API_KEY production value after supplier returned HTTP 403, invalid or expired key. Secret key unchanged. No credential value accessed.
+- Empty-tree-change commit 4e8b1aba748ec3ed0627de01fc8af4fe21a08734 triggered one production rebuild, deploy 6b054b8e44881e24dbacc650 READY at 08:32:29 UTC, matching commit, no error. Existing functions auto-seamless-listing and printkk-nails present. No source code modifications or Work credits.
+- Live authentication not yet verified; next action is authenticated browser request to /api/printkk-nails. Documentation-only commit skips Netlify.
+
+---
 ## PRODUCTION — 24 November 2026 08:26 GMT: PrintKK error diagnostic published
 - Netlify deploy 6b054a3c011bd93772aec84a READY, exact release commit 81eda350686b08af123f0e5340770b2f6b7fcda4, published 08:26:56 UTC; no build error. Both auto-seamless-listing and printkk-nails deployed. One production build, no preview. Local Node tests 20/20 passed and both tested file hashes matched GitHub blobs before release.
 - Live supplier rejection reason remains pending authenticated browser request. Next: owner opens existing /api/printkk-nails URL and shares safe result; no additional credentials, configuration, order writes or Work credits. Documentation-only commit skips Netlify.
