@@ -1,3 +1,8 @@
+## PRODUCTION — 24 November 2026 08:26 GMT: PrintKK error diagnostic published
+- Netlify deploy 6b054a3c011bd93772aec84a READY, exact release commit 81eda350686b08af123f0e5340770b2f6b7fcda4, published 08:26:56 UTC; no build error. Both auto-seamless-listing and printkk-nails deployed. One production build, no preview. Local Node tests 20/20 passed and both tested file hashes matched GitHub blobs before release.
+- Live supplier rejection reason remains pending authenticated browser request. Next: owner opens existing /api/printkk-nails URL and shares safe result; no additional credentials, configuration, order writes or Work credits. Documentation-only commit skips Netlify.
+
+---
 ## RELEASE — 24 November 2026: PrintKK rejection diagnostic
 - Live signed request: obsolete prefixed ping returned 404, canonical ping returned HTTP 403/code 403. Owner dashboard confirms unrestricted IP, read-only permissions and unexpired key; official docs confirm /api/v1/general/ping and response msg field.
 - Removed obsolete prefix and added fixed reason categories and vocabulary-filtered error text; arbitrary upstream strings, credentials and signature must not be returned. Existing HMAC and fixed product lookup preserved. No write requests.
