@@ -92,7 +92,7 @@ try{
  const readyStatus=await ready.locator('#status').textContent();
  assert.match(readyStatus,/^Original transparent pattern/,readyStatus+'; JS errors: '+errors.join(' | '));
  assert.equal(await ready.locator('#readyMode').getAttribute('aria-pressed'),'true');
- assert.equal(await ready.locator('#scoreFact').textContent(),'Skipped');
+ assert.equal(await ready.locator('#scoreFact').textContent(),'Edges: pass','The ready-mode fixture must undergo the native seam check');
  await ready.waitForFunction(()=>document.querySelector('#metaName')?.value,null,{timeout:30000});
  await ready.locator('#commercialPrice').fill('3.95');
  await ready.locator('#commercialReviewConfirmed').check();

@@ -7,6 +7,8 @@ on:
       - auto-seamless/**
       - app/js/editor.js
       - app/index.html
+      - app/js/seam-validation.js
+      - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
@@ -19,6 +21,8 @@ on:
       - auto-seamless/**
       - app/js/editor.js
       - app/index.html
+      - app/js/seam-validation.js
+      - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
       - netlify/functions/**
@@ -51,7 +55,7 @@ jobs:
           node --check auto-seamless/commercial-kit.js
           node --check auto-seamless/background-pair.js
           node --check app/js/editor.js
-          node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs
+          node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs tests/seam-validation.test.cjs
       - name: Serve static application
         run: |
           python3 -m http.server 4185 --bind 127.0.0.1 >/tmp/auto-seamless-test-http.log 2>&1 &
