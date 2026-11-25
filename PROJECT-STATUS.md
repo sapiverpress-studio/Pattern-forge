@@ -1,3 +1,15 @@
+## CI CHECKPOINT — 25 November 2026: Recovery/browser ZIP checks passed; old assertion corrected
+- GitHub run `45567056875`, job `139044311194`, passed all 32 Node 22 tests, the mobile metadata failure/retry/real-handler correction flow, actual 5000px seller ZIP readback, unchanged original-byte export, Android file-provider revocation and oversize PNG/WebP exports.
+- The subsequent background-pair check failed at its pre-existing `scoreFact === 'Skipped'` assertion. PR #52 already replaced skipped validation with a native-resolution seam check; the actual fixture correctly reports `Edges: pass`. Updated that assertion to require the passing native check, without changing application/export code. The rest of the pair and multicolour checks were not reached in the first run; rerun required before claiming full CI success.
+- Next: publish this test correction and status checkpoint to PR #54 with `[skip netlify]`, inspect the new CI run, then request production approval. No deployment performed.
+
+---
+## BRANCH / PR — 25 November 2026: Repair ready for browser CI
+- Repair published through the connected GitHub API as commit `079d4a7fc7fd3b3766141b5bfc1efc5942453c20`, branch `fix/vision-listing-validation-20261125`, draft [PR #54](https://github.com/sapiverpress-studio/Pattern-forge/pull/54). Remote tree `636688f2723bd49aaa77a4abe1ab2cce65ab2de4` exactly matches the locally tested files. The initial local commit `1911f72` has the same tree; direct git push lacked credentials, so no token was requested or exposed.
+- Commit and PR title contain `[skip netlify]`. Main was not changed and no production or staging deployment was requested. Browser CI is pending; do not describe this correction as live or verified with the owner's actual AI response.
+- Next: inspect GitHub browser results and recheck the published Netlify commit. Explicit production approval is still required by AGENTS.md.
+
+---
 ## LOCAL VERIFICATION — 25 November 2026: Listing recovery tests
 - Node 24.22.3 targeted tests passed 32/32: analyser validation/recovery, provider errors, buyer documents, original ZIP byte preservation, all phone dimensions, integer repeat geometry, attachment limits and seller manifests. Syntax checks passed for the changed function and browser metadata module. Provider responses were controlled test fixtures, not live paid AI calls.
 - Local browser execution is blocked by the environment: `/usr/bin/chromium` points to a missing executable; Playwright browser download was rejected by network policy (HTTP 403/400). No application/browser failure can be inferred from that startup error. Use the existing GitHub Chromium workflow before release; it exercises metadata failure/retry/correction plus actual seller ZIP and background regressions.
