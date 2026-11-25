@@ -7,9 +7,28 @@ const MAX_DATA_URL = 800000;
 const disallowed = /\b(surface pattern design|continuous pattern|repeat print|decorative repeat|all over pattern|textile print|bestseller|best seller|trending)\b/i;
 const respond=(body,status=200)=>Response.json(body,{status,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 const clean=x=>String(x??"").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ").trim();
+const validationReasons={
+  metadata_object:"Return a JSON object with the requested listing fields.",
+  title_missing:"Supply a descriptive title.",
+  redbubble_tags:"Supply one main tag and exactly 14 different supporting tags; avoid duplicates and prohibited generic terms.",
+  etsy_count:"Supply exactly 13 Etsy tags.",
+  etsy_duplicates:"Make all 13 Etsy tags distinct, ignoring case.",
+  etsy_length:"Keep every Etsy tag between 3 and 20 characters, counting spaces; rewrite long phrases rather than truncating them.",
+  etsy_characters:"Remove markup and control characters from Etsy tags.",
+  etsy_phrases:"Use two or more words in at least 11 Etsy tags.",
+  description_missing:"Supply a concise description of the visible artwork.",
+  response_format:"Return the complete listing as valid JSON, without surrounding commentary."
+};
+class ListingValidationError extends Error{
+  constructor(issues){
+    super(issues.map(code=>validationReasons[code]).join(" "));
+    this.name="ListingValidationError";this.issues=issues;
+  }
+}
 
 export function validateListing(raw){
-  if(!raw||typeof raw!=="object")throw Error("Invalid metadata object");
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new ListingValidationError(["metadata_object"]);
+  const issues=[];
   const title=clean(raw.title).slice(0,110);
   const words=[raw.main_tag,...(Array.isArray(raw.other_tags)?raw.other_tags:[])];
   const tags=[],seen=new Set();
@@ -18,19 +37,22 @@ export function validateListing(raw){
     if(!tag||seen.has(key)||disallowed.test(tag))continue;
     tags.push(tag);seen.add(key);
   }
-  if(!title||tags.length!==15)throw Error("AI returned incomplete or irrelevant Redbubble tags");
+  if(!title)issues.push("title_missing");
+  if(tags.length!==15)issues.push("redbubble_tags");
   // Separate Etsy buyer-intent tags, not a truncated copy of Redbubble descriptors.
   const etsyTags=Array.isArray(raw.etsy_tags)?raw.etsy_tags.map(clean):[];
   const etsySeen=new Set(etsyTags.map(t=>t.toLocaleLowerCase("en")));
-  if(etsyTags.length!==13||etsySeen.size!==13||
-     etsyTags.some(t=>t.length<3||t.length>20||/[<>\x00-\x1f]/.test(t))||
-     etsyTags.filter(t=>t.split(/\s+/).length>=2).length<11)
-    throw Error("AI did not supply thirteen distinct, usable Etsy buyer-search phrases");
+  if(etsyTags.length!==13)issues.push("etsy_count");
+  if(etsySeen.size!==etsyTags.length)issues.push("etsy_duplicates");
+  if(etsyTags.some(t=>t.length<3||t.length>20))issues.push("etsy_length");
+  if(etsyTags.some(t=>/[<>\x00-\x1f]/.test(t)))issues.push("etsy_characters");
+  if(etsyTags.filter(t=>t.split(/\s+/).length>=2).length<11)issues.push("etsy_phrases");
   const suffix=" Created with the aid of AI.";
   let description=clean(raw.description);
+  if(!description)issues.push("description_missing");
   if(!/\bcreated with the aid of AI\b/i.test(description))description=description.slice(0,250-suffix.length).trimEnd()+suffix;
   if(description.length>250)description=description.slice(0,250-suffix.length).trimEnd()+suffix;
-  if(!description)throw Error("Missing description");
+  if(issues.length)throw new ListingValidationError(issues);
   return {title,main_tag:tags[0],other_tags:tags.slice(1),etsy_tags:etsyTags,description,visual_subject:clean(raw.visual_subject).slice(0,100),source:"visual-ai",etsy_source:"buyer-intent-suggestions-not-live-keyword-research",live_search_volume:false};
 }
 const INSTRUCTIONS=[
@@ -50,19 +72,40 @@ const INSTRUCTIONS=[
 ].join(" ");
 export async function analyzeImage(imageDataUrl,filename="",client=null){
   const api=client??new OpenAI({maxRetries:0,timeout:30000});
-  const result=await api.chat.completions.create({
-    model:MODEL,temperature:0.2,max_tokens:1600,response_format:{type:"json_object"},
-    messages:[
+  // Both attempts share the original 30-second budget, below the browser's 40s deadline.
+  const signal=AbortSignal.timeout(30000);
+  const messages=[
       {role:"system",content:INSTRUCTIONS},
       {role:"user",content:[
         {type:"text",text:"Analyse the visible artwork and generate the listing. Filename hint: "+clean(filename).slice(0,120)},
         {type:"image_url",image_url:{url:imageDataUrl,detail:"low"}}
       ]}
-    ]
-  });
-  const text=result?.choices?.[0]?.message?.content;
-  if(typeof text!=="string"||text.length>10000)throw Error("Invalid model response");
-  return validateListing(JSON.parse(text));
+    ];
+  for(let attempt=0;attempt<2;attempt++){
+    signal.throwIfAborted();
+    // Provider/auth/quota failures are not retried. Only invalid listing output gets one correction.
+    const result=await api.chat.completions.create({
+      model:MODEL,temperature:0.2,max_tokens:1600,response_format:{type:"json_object"},messages:[...messages]
+    },{signal});
+    signal.throwIfAborted();
+    if(result?.choices?.[0]?.message?.refusal)throw Error("Image analysis unavailable");
+    const text=result?.choices?.[0]?.message?.content;
+    try{
+      if(typeof text!=="string"||!text.trim()||text.length>10000)
+        throw new ListingValidationError(["response_format"]);
+      let raw;
+      try{raw=JSON.parse(text)}catch{throw new ListingValidationError(["response_format"])}
+      return validateListing(raw);
+    }catch(error){
+      if(!(error instanceof ListingValidationError)||attempt===1)throw error;
+      console.warn("Vision listing correction",JSON.stringify({issues:error.issues}));
+      messages.push(
+        {role:"assistant",content:typeof text==="string"?text.slice(0,10000):"{}"},
+        {role:"user",content:"Correct the previous listing. These checks failed: "+error.message+
+          " Keep the same visible subject and return all requested fields. Do not invent details or use placeholder tags."}
+      );
+    }
+  }
 }
 export async function handleRequest(request,client=null){
   if(request.method!=="POST")return respond({error:"Method not allowed"},405);
@@ -81,8 +124,20 @@ export async function handleRequest(request,client=null){
   try{
     return respond(await analyzeImage(preview,data.filename,client));
   }catch(e){
-    console.error("Vision listing failure",e?.name??"Error",e?.status??"unknown");
-    return respond({error:"Automatic image analysis failed. Retry the image; no generic tags were substituted."},502);
+    const status=Number(e?.status)||0;
+    const timeout=["AbortError","TimeoutError","APIConnectionTimeoutError","APIUserAbortError"].includes(e?.name);
+    const code=e instanceof ListingValidationError?"listing_validation_failed":
+      timeout?"analysis_timeout":[401,403].includes(status)?"analysis_auth_failed":
+      status===429?"analysis_usage_limit":"analysis_upstream_failed";
+    // Log fixed categories only: no image, filename, model output, keys or upstream error text.
+    console.error("Vision listing failure",JSON.stringify({code,status:status||null,
+      issues:e instanceof ListingValidationError?e.issues:[]}));
+    const message=code==="listing_validation_failed"?"The AI could not produce valid listing details after one correction attempt.":
+      timeout?"Image analysis timed out.":
+      code==="analysis_auth_failed"?"The image-analysis service needs its connection checked.":
+      code==="analysis_usage_limit"?"The image-analysis service is busy or has reached its usage limit.":
+      "Automatic image analysis failed.";
+    return respond({error:message+" No generic tags were substituted.",code},status===429?503:502);
   }
 }
 export default request=>handleRequest(request);

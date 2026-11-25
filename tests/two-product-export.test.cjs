@@ -1,6 +1,10 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {PHONE_SIZES,layout,squareGrid,groupFiles,zipStored,manifest,wallpaper}=require('../app/js/two-product-export.js');
+// Load the browser bundle with its explicit CommonJS test target. The repository
+// is type:module, so require(.js) otherwise returns an empty ES module namespace.
+const bundle={exports:{}};
+new Function('module',require('node:fs').readFileSync(require('node:path').join(__dirname,'../app/js/two-product-export.js'),'utf8'))(bundle);
+const {PHONE_SIZES,layout,squareGrid,groupFiles,zipStored,manifest,wallpaper}=bundle.exports;
 const settings={name:'Space',colour:'#111122',repeats:2,patternPrice:3.49,wallPrice:1.49,ai:false,tags:[]};
 test('square and rectangular complete cells retain aspect',()=>{
  assert.deepEqual(squareGrid(5000,5000,5000),{across:1,down:1,tileWidth:5000,tileHeight:5000,renderSize:5000});
