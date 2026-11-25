@@ -8,6 +8,10 @@ on:
       - app/js/editor.js
       - app/index.html
       - app/js/seam-validation.js
+      - app/js/etsy-multipart.js
+      - tests/auto-seamless-joins-browser.mjs
+      - tests/auto-seamless-multipart-browser.mjs
+      - tests/auto-seamless-uploader-compat.mjs
       - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
@@ -22,6 +26,10 @@ on:
       - app/js/editor.js
       - app/index.html
       - app/js/seam-validation.js
+      - app/js/etsy-multipart.js
+      - tests/auto-seamless-joins-browser.mjs
+      - tests/auto-seamless-multipart-browser.mjs
+      - tests/auto-seamless-uploader-compat.mjs
       - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
@@ -55,6 +63,8 @@ jobs:
           node --check auto-seamless/commercial-kit.js
           node --check auto-seamless/background-pair.js
           node --check app/js/editor.js
+          node --check app/js/seam-validation.js
+          node --check app/js/etsy-multipart.js
           node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs tests/seam-validation.test.cjs
       - name: Serve static application
         run: |
@@ -66,12 +76,33 @@ jobs:
           cat /tmp/auto-seamless-test-http.log
           exit 1
       - name: "Android-sized browser: upload, AI metadata, copy, failure, retry"
+        run: node tests/auto-seamless-vision-browser.mjs
+      - name: Actual 5000px and original-preserving commercial downloads
+        run: node tests/auto-seamless-commercial-browser.mjs
+      - name: Oversize ready-made PNG and WebP companions
+        run: node tests/auto-seamless-oversize-browser.mjs
+      - name: Transparent and colour background pair
+        run: node tests/auto-seamless-background-pair-browser.mjs
+      - name: Multiple background colours
+        run: node tests/auto-seamless-multi-colour-browser.mjs
+      - name: Internal join warnings and preview-only guides
+        run: node tests/auto-seamless-joins-browser.mjs
+      - name: Complete oversized PNG and offline customer restoration
+        run: PF_KIT_OUTPUT=/tmp/pf-full-png-seller-kit.zip node tests/auto-seamless-multipart-browser.mjs
+      - name: Check the downloaded kit against the reviewed uploader source
+        uses: actions/checkout@v4
+        with:
+          repository: sapiverpress-studio/Poster_gen
+          ref: 6364793ef864c25dfa3bd259cd3f054d2d37494f
+          path: uploader-compat
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate actual PNG delivery without merchant writes
         run: |
-          node tests/auto-seamless-vision-browser.mjs
-          node tests/auto-seamless-commercial-browser.mjs
-          node tests/auto-seamless-oversize-browser.mjs
-          node tests/auto-seamless-background-pair-browser.mjs
-          node tests/auto-seamless-multi-colour-browser.mjs
+          npm ci --ignore-scripts --no-audit --no-fund --prefix uploader-compat
+          node tests/auto-seamless-uploader-compat.mjs /tmp/pf-full-png-seller-kit.zip uploader-compat/lib/seller-kit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

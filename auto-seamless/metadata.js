@@ -68,7 +68,8 @@ async function analyse(file){
     E("metaName").value=title;E("metaMain").value=main;
     E("metaTags").value=tags.join(", ");E("metaDesc").value=description.slice(0,250);
     E("metaEtsyTags").value=etsyTags.join(", ");
-    const alts=makeEtsyAltTexts(data.visual_subject||title);
+    // The bounded, complete design title avoids a clipped model subject ending mid-clause.
+    const alts=makeEtsyAltTexts(title);
     ["metaEtsyCleanAlt","metaEtsyAlt1","metaEtsyAlt2","metaEtsyAlt3","metaEtsyAlt4"].forEach((key,i)=>E(key).value=alts[i]);
     E("metaEtsyStatus").textContent="13 editable Etsy search phrases generated. Check customer use and image accuracy; search demand is not measured.";
     ready=true;copyActions.forEach(id=>E("copy-"+id).disabled=false);

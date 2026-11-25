@@ -85,8 +85,14 @@ async function makeParts(originalBlob,originalName,spec){
   if(bytes.length<24||bytes[0]!==137||bytes[1]!==80||bytes[2]!==78||bytes[3]!==71)throw Error("Original PNG is invalid.");
   const wholeSha=await sha256(bytes);
   const stem=originalName.slice(0,-4),parts=[];
-  for(let start=0;start<bytes.length;start+=MAX_PNG_PART_BYTES){
-    const data=bytes.subarray(start,Math.min(bytes.length,start+MAX_PNG_PART_BYTES));
+  const requested=spec.partCount;
+  if(requested!==undefined&&(!Number.isInteger(requested)||requested<2||requested>4||requested<Math.ceil(bytes.length/MAX_PNG_PART_BYTES)))throw Error('Invalid PNG part count.');
+  for(let start=0;start<bytes.length;){
+    // Extra small final chunks leave room for companion images without adding
+    // an unsupported second extras ZIP. Existing callers retain their layout.
+    const reserve=requested?Math.max(0,requested-parts.length-1)*Math.min(1_000_000,Math.floor(bytes.length/requested)):0;
+    const end=Math.min(bytes.length,start+MAX_PNG_PART_BYTES,bytes.length-reserve);
+    const data=bytes.subarray(start,end);start=end;
     const name=stem+"-png-part-"+String(parts.length+1).padStart(2,"0")+".pngpart";
     parts.push({name,blob:new Blob([data],{type:"application/octet-stream"}),bytes:data.length,sha256:await sha256(data)});
   }

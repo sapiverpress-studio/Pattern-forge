@@ -65,6 +65,15 @@
  }
  async function getBytes(blob){return new Uint8Array(await blob.arrayBuffer());}
  function toBlob(canvas,kind,quality){return new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('Image export failed; check device memory.')),kind,quality));}
+ async function jpegCompanion(canvas){
+  // JPEG is the lossy companion, never a substitute for the complete PNG.
+  // Retain all 5000px and reserve room for documents/restoration metadata.
+  for(const quality of [.96,.92,.88,.84]){
+   const data=await getBytes(await toBlob(canvas,'image/jpeg',quality));
+   if(data.length<=MAX-100000)return {data,jpegQuality:quality};
+  }
+  throw Error('The full-size JPG companion cannot fit its Etsy ZIP. The 5000px PNG has not been reduced or omitted.');
+ }
  function render(width){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=width;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas rendering unavailable');
@@ -272,7 +281,7 @@
    const smaller=await readySmallerArtwork(stem,documents,renderCanvas);
    return {accepted:[webp,smaller.asset],omitted:[],converted:true,smallerAlternative:smaller.smallerAlternative};
   }
-  const accepted=[],omitted=[];
+  const accepted=[],omitted=[];let multipart=null;
   for(const file of files){
    let selected=file;
    if(packedSize([selected,...documents])>MAX){
@@ -284,17 +293,49 @@
     // A full-size JPEG, a smaller PNG and the usable seamless tile are all required.
     // Do not silently shrink pixels or corrupt the full PNG by splitting raw bytes.
     if(/-5000px-300dpi-repeat\.png$/i.test(file.name)){
-     omitted.push(file.name);continue;
+     if(!window.PatternForgeMultipart)throw Error('Full-size PNG packaging is unavailable. Refresh the app and retry.');
+     if(file.data.length<MAX)throw Error('The full-size PNG leaves no room for its required licence documents. Use the direct 5000px PNG download; no file was omitted.');
+     status.textContent='Preserving every byte of the 5000px PNG across numbered ZIPs…';
+     multipart=await window.PatternForgeMultipart.makeParts(new Blob([file.data],{type:'image/png'}),file.name,{wPx:5000,hPx:5000,dpi:300});
+     accepted.push({...file,multipart:true});continue;
     }
     throw Error(file.name+' remains above Etsy’s 20 MB cap even after ZIP compression. The design has not been downscaled; export needs a different file format or less complex artwork.');
    }
    accepted.push(selected);
   }
-  if(!accepted.some(f=>/-5000px-repeat\.jpg$/i.test(f.name))||
+  if(!accepted.some(f=>/-5000px-300dpi-repeat\.png$/i.test(f.name))||
+     !accepted.some(f=>/-5000px-repeat\.jpg$/i.test(f.name))||
      !accepted.some(f=>/-2500px-300dpi-repeat\.png$/i.test(f.name))||
      !accepted.some(f=>/-seamless-tile-300dpi\.png$/i.test(f.name)))
     throw Error('Required customer formats are missing. Nothing was downloaded.');
-  return {accepted,omitted};
+  return {accepted,omitted,multipart};
+ }
+ async function planMultipartArtwork(accepted,documents,split){
+  const instructions='\nFULL-SIZE PNG IN NUMBERED ZIP PARTS\nDownload every ZIP ending in -png-part.zip and the jpg-and-extras ZIP from your Etsy order. Extract the extras ZIP, open REBUILD-PNG.html in current Chrome, select all numbered PNG ZIPs and save the restored PNG. It restores the exact original PNG locally, with SHA-256 verification; nothing is uploaded. The JPG and smaller PNG files are ready to use directly.\n';
+  const docs=documents.map(doc=>doc.name==='README.txt'?{...doc,data:encode(new TextDecoder().decode(doc.data)+instructions)}:doc);
+  const parts=[];
+  for(let i=0;i<split.parts.length;i++)parts.push({role:'png-part',number:i+1,entries:[{name:split.parts[i].name,data:await getBytes(split.parts[i].blob)},...docs]});
+  const extras={role:'extras',number:1,entries:[
+   {name:'PNG-REASSEMBLY.json',data:encode(JSON.stringify(split.manifest,null,2)+'\n')},
+   {name:'REBUILD-PNG.html',data:await getBytes(split.html)},...docs
+  ]};
+  // Keep one numbered chunk per ZIP. Use space beside the final chunk for
+  // companion images so the established uploader's parts-plus-one contract holds.
+  for(const asset of accepted.filter(f=>!f.multipart).sort((a,b)=>(b.packedData?.length??b.data.length)-(a.packedData?.length??a.data.length))){
+   const group=[extras,...parts].find(p=>packedSize([...p.entries,asset])<=MAX);
+   if(!group){
+    if(split.parts.length<4){
+     const master=accepted.find(f=>f.multipart);
+     const retry=await window.PatternForgeMultipart.makeParts(new Blob([master.data],{type:'image/png'}),master.name,{wPx:5000,hPx:5000,dpi:300,partCount:split.parts.length+1});
+     Object.assign(split,retry);
+     return planMultipartArtwork(accepted,documents,split);
+    }
+    throw Error('The complete 5000px PNG and companion images do not fit the five Etsy ZIPs. No image was omitted or reduced.');
+   }
+   group.entries.push(asset);
+  }
+  if(parts.length+1>5||[...parts,extras].some(p=>packedSize(p.entries)>MAX))throw Error('Full-size PNG delivery exceeds Etsy attachment limits. No file was omitted.');
+  return [...parts,extras];
  }
  function includedArtworkLabels(accepted){
   // Customer-facing descriptions are derived from buyer ZIP contents only.
@@ -311,7 +352,7 @@
   });
   const formats=[
    [/-5000px-repeat\.jpg$/i,'5000 x 5000 JPG image'],
-   [/-5000px-300dpi-repeat\.png$/i,'5000 x 5000 PNG image'],
+   [/-5000px-300dpi-repeat\.png$/i,accepted.some(f=>f.multipart)?'5000 x 5000 PNG (restore numbered ZIPs)':'5000 x 5000 PNG image'],
    [/-2500px-300dpi-repeat\.png$/i,'2500 x 2500 PNG image'],
    [/-seamless-tile-300dpi\.png$/i,'Seamless tile PNG']
   ];
@@ -361,7 +402,7 @@
    }else{
     big=render(5000);
     files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
-    files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
+    files.push({name:stem+'-5000px-repeat.jpg',...await jpegCompanion(big)});
     big.width=big.height=0;big=null;
     small=render(2500);
     files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
@@ -400,7 +441,7 @@
       converted:preparedParts.some(part=>part.converted),
       smallerAlternative:preparedParts.some(part=>part.smallerAlternative)};
    }else prepared=await prepareCustomerArtwork(files,documents);
-   const {accepted,converted=false,smallerAlternative=false}=prepared;
+   const {accepted,converted=false,smallerAlternative=false,multipart=null}=prepared;
    // Inspect exact encoded buyer files, not reduced previews.
    const seamReports=[];
    for(const asset of accepted.filter(f=>/\.(png|jpe?g|webp)$/i.test(f.name))){
@@ -450,9 +491,13 @@
    const planned=paired?[
     ...pack(originalAssets,reserve).map((group,i)=>({role:'original',number:i+1,artwork:group.slice(0,-reserve.length)})),
     ...pack(colourAssets,reserve).map((group,i)=>({role:'colours',number:i+1,artwork:group.slice(0,-reserve.length)}))
-   ]:pack(accepted,documents).map((group,i)=>({role:'standard',number:i+1,entries:group}));
+   ]:multipart?await planMultipartArtwork(accepted,documents,multipart):pack(accepted,documents).map((group,i)=>({role:'standard',number:i+1,entries:group}));
    if(planned.length>5)throw Error('These image sizes and colours require '+planned.length+
      ' Etsy download ZIPs. Etsy accepts five. Remove a colour variation or approve a permitted alternative.');
+   if(multipart){
+    listing.product.description+=' The full 5000 x 5000 PNG is supplied in '+multipart.parts.length+' numbered ZIP parts with an included offline restore tool. Download every attachment to restore the exact PNG. The JPG and smaller PNG images can be used directly.';
+    listing.product.pngDelivery='lossless-numbered-parts';
+   }
    const pieces=[],seller=[],buyerMap=[];
    for(const part of planned){
     const entries=paired?[
@@ -471,7 +516,7 @@
     ]:part.entries;
     const buyer=zip(entries);
     if(buyer.size>MAX)throw Error('The '+part.role+' buyer ZIP exceeds Etsy’s 20 MB limit with its licence documents.');
-    const filename=paired?stem.slice(0,41)+'-'+(part.role==='original'?'01-original':'02-colour-variations')+'-part-'+part.number+'.zip':
+    const filename=multipart?(part.role==='png-part'?stem.slice(0,42)+'-'+String(part.number).padStart(2,'0')+'-png-part.zip':stem.slice(0,42)+'-jpg-and-extras.zip'):paired?stem.slice(0,41)+'-'+(part.role==='original'?'01-original':'02-colour-variations')+'-part-'+part.number+'.zip':
       stem.slice(0,49)+'-part-'+part.number+'.zip';
     const path='UPLOAD-TO-ETSY/'+filename;
     seller.push({name:path,data:await getBytes(buyer)});
@@ -507,12 +552,14 @@
     'Every buyer ZIP includes LICENSE.txt, README.txt and ABOUT-SAPIVER-PRINTS.txt'+(paired?' and CONTENTS.txt':''),
     'Listing images: four 2400 x 2400 JPGs (artwork, 2x2 repeat, illustrative mock-up, included files/detail)',
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
-    'Ready-made master conversion: '+(converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
+    'Ready-made master conversion: '+(state.mode!=='ready'?'not applicable — generated repeat images':converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
+    '5000px PNG delivery: '+(multipart?'complete original PNG restored from '+multipart.parts.length+' numbered ZIP parts; SHA-256 verified':'complete PNG supplied directly when generated'),
+    'JPG companion: '+(state.mode==='ready'?'original format retained or approved conversion disclosed':'5000x5000 lossy JPEG, encoder quality '+files.find(f=>f.jpegQuality)?.jpegQuality+'; the complete PNG is unchanged'),
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
     'Background variants: '+(paired?'transparent original and '+listing.product.backgroundColours.length+' solid colour(s): '+listing.product.backgroundColours.join(', ')+(listing.product.backgroundColours.length===1?'; four images required':'; '+accepted.length+' images required'):'single image background'),
     ...seamReports.map(r=>'['+(r.pass?'PASS':'WARN')+'] Native seam check: '+r.name+' — '+r.detail),
-    'Native checks are heuristic; a pass does not guarantee visual seamlessness. Warnings require review, not automatic pixel changes.',
+    'Checks cover native outer edges and possible straight joins inside the image. A pass does not guarantee visual seamlessness. Warnings require review, not automatic pixel changes.',
     'Owner instruction: examine the actual delivered image at 3 x 3 before publishing; re-encoding can introduce small repeat-boundary changes.',
     'Seamless repeat and print results: require owner visual review; not guaranteed by export',
     'Etsy publication: NOT automatic; Poster Gen approval required'

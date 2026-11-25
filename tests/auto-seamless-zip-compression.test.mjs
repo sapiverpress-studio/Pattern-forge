@@ -13,10 +13,12 @@ const d=source.indexOf('\n function refresh(){',c);
 assert.ok(a>=0&&b>a&&c>b&&d>c,'Source packaging functions must be present');
 // Execute the actual browser writer and lossless preflight from the page with Node22 web streams.
 const status={textContent:''},requestAnimationFrame=fn=>fn();
-const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,includedArtworkLabels}=new Function(
- 'status','requestAnimationFrame','CompressionStream','Blob','Response',
- source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,includedArtworkLabels};'
-)(status,requestAnimationFrame,CompressionStream,Blob,Response);
+const window={};
+new Function('window',readFileSync(new URL('../app/js/etsy-multipart.js',import.meta.url),'utf8'))(window);
+const {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,planMultipartArtwork,includedArtworkLabels}=new Function(
+ 'status','requestAnimationFrame','CompressionStream','Blob','Response','window','getBytes',
+ source.slice(a,b)+'\n'+source.slice(c,d)+'\nreturn {zip,pack,packedSize,tryLosslessZipCompression,prepareCustomerArtwork,planMultipartArtwork,includedArtworkLabels};'
+)(status,requestAnimationFrame,CompressionStream,Blob,Response,window,async blob=>new Uint8Array(await blob.arrayBuffer()));
 const docs=['LICENSE.txt','README.txt','ABOUT-SAPIVER-PRINTS.txt'].map(name=>({name,data:new TextEncoder().encode('This document accompanies each buyer ZIP. Permission and instructions remain identical across downloads.')}));
 const asset=(name,data)=>({name,data});
 
@@ -45,26 +47,45 @@ test('real ZIP method 8 compresses a 20MB+ patterned file without changing one b
  assert.equal(python.status,0,python.stderr||python.stdout||'Python ZIP validation failed');
 });
 
-test('uncompressible over-limit 5000px PNG is omitted transparently, while full-size JPG and two PNGs remain',async()=>{
+test('uncompressible over-limit 5000px PNG is retained byte-for-byte in numbered buyer ZIPs',async()=>{
  const noise=new Uint8Array(20_000_300);randomFillSync(noise);
+ noise.set([137,80,78,71,13,10,26,10]);
  const images=[
   asset('test-5000px-300dpi-repeat.png',noise),
   asset('test-5000px-repeat.jpg',new Uint8Array(500_000)),
   asset('test-2500px-300dpi-repeat.png',new Uint8Array(320_000)),
   asset('test-seamless-tile-300dpi.png',new Uint8Array(240_000))
  ];
- const {accepted,omitted}=await prepareCustomerArtwork(images,docs);
- assert.deepEqual(omitted,['test-5000px-300dpi-repeat.png']);
- assert.equal(accepted.length,3);
- const groups=pack(accepted,docs);
- assert.ok(groups.length>=1&&groups.length<=5);
- for(const group of groups){
-  assert.ok(packedSize(group)<=20_000_000);
-  for(const doc of docs)assert.ok(group.some(item=>item.name===doc.name));
+ const {accepted,omitted,multipart}=await prepareCustomerArtwork(images,docs);
+ assert.deepEqual(omitted,[]);
+ assert.equal(accepted.length,4);
+ assert.equal(multipart.parts.length,2);
+ const groups=await planMultipartArtwork(accepted,docs,multipart);
+ assert.equal(groups.length,multipart.parts.length+1,'Existing importer expects numbered ZIPs plus one extras ZIP');
+ for(const {entries} of groups){
+  assert.ok(packedSize(entries)<=20_000_000);
+  for(const doc of docs)assert.ok(entries.some(item=>item.name===doc.name));
+  assert.match(new TextDecoder().decode(entries.find(e=>e.name==='README.txt').data),/REBUILD-PNG/);
  }
+ const parts=groups.filter(g=>g.role==='png-part').flatMap(g=>g.entries.filter(e=>e.name.endsWith('.pngpart')).map(e=>Buffer.from(e.data)));
+ assert.deepEqual(Buffer.concat(parts),Buffer.from(noise),'Full PNG recovery must preserve every byte');
+ assert.equal(groups.flatMap(g=>g.entries).filter(e=>e.name==='REBUILD-PNG.html').length,1);
+ assert.equal(groups.flatMap(g=>g.entries).filter(e=>e.name==='PNG-REASSEMBLY.json').length,1);
  assert.ok(accepted.some(f=>f.name.endsWith('5000px-repeat.jpg')));
  assert.ok(accepted.some(f=>f.name.endsWith('2500px-300dpi-repeat.png')));
  assert.ok(accepted.some(f=>f.name.endsWith('seamless-tile-300dpi.png')));
+ // Companion images may use spare space beside a numbered chunk. No extra
+ // attachment or image-quality reduction is needed even with >20 MB extras.
+ const largeCompanions=accepted.map(f=>f.name.endsWith('.jpg')?{...f,data:new Uint8Array(15_000_000)}:f.name.includes('2500px')?{...f,data:new Uint8Array(6_500_000)}:f.name.includes('seamless-tile')?{...f,data:new Uint8Array(2_000_000)}:f);
+ const full=await planMultipartArtwork(largeCompanions,docs,multipart);
+ assert.equal(full.length,3);
+ assert.equal(full.flatMap(g=>g.entries).filter(e=>/\.(png|jpg)$/.test(e.name)).length,3);
+ assert.ok(full.every(g=>packedSize(g.entries)<=20_000_000));
+ const tight=accepted.map(f=>/5000px-repeat\.jpg$|2500px-300dpi-repeat\.png$/.test(f.name)?{...f,data:new Uint8Array(18_800_000)}:f.name.includes('seamless-tile')?{...f,data:new Uint8Array(2_000_000)}:f);
+ const more=await planMultipartArtwork(tight,docs,multipart);
+ assert.equal(multipart.parts.length,3,'Additional small PNG chunks free room for large companion images');
+ assert.equal(more.length,4);
+ assert.ok(more.every(g=>packedSize(g.entries)<=20_000_000));
 });
 
 test('an oversized required JPG cannot be silently removed or downscaled',async()=>{

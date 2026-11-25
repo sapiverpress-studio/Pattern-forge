@@ -57,7 +57,9 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 <section class="stack" aria-label="Pattern previews">
  <div class="panel">
    <div class="preview-head"><h2>3. Check the repeating preview</h2><span class="tag" id="previewTag">3 × 3 preview</span></div>
-   <p>Look across the joins. The tile boundaries are intentionally not marked.</p>
+   <p>Check the motifs and fabric across the whole repeat. A matching outer edge does not prove the artwork is seamless.</p>
+   <div class="status" id="seamCheck" role="status" aria-live="polite">Upload artwork to check outer edges and possible joins inside the image.</div>
+   <label class="hint" style="display:block;margin:10px 0"><input type="checkbox" id="showSeamGuides" checked> Show suspected joins on this preview only</label>
    <div class="canvaswrap checker"><canvas id="preview" width="900" height="900" aria-label="Three by three repeated preview"></canvas></div>
  </div>
  <div class="panel"><div class="preview-head"><h2>Chosen crop from the original</h2><p>Outline shows the larger motif crop; inspect it before exporting</p></div><div class="canvaswrap mini"><canvas id="sourcePreview" width="400" height="400" aria-label="Source image with detected crop"></canvas></div></div>
@@ -97,7 +99,7 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
  </div>
  <button id="downloadCommercial" class="primary" disabled style="width:100%">Download Commercial Seller Kit ZIP</button>
  <p id="commercialExportStatus" class="status" role="status" aria-live="polite" style="margin-top:12px">Review the repeating preview and confirm before export.</p>
- <p class="info">Customer ZIPs are packaged within Etsy's file limits without reducing image dimensions. Inspect the included-files preview and the buyer ZIPs before publishing.</p>
+ <p class="info">Customer ZIPs are packaged within Etsy's file limits without reducing image dimensions. Large 5000px PNGs use numbered ZIP parts and an included offline restore tool; the listing and buyer instructions explain this. Inspect the included-files preview and the buyer ZIPs before publishing.</p>
 </section>
 <section class="panel metaCard" id="redbubble-metadata" aria-label="Automatic Redbubble title and tags">
  <div class="eyebrow">Sales listing · Redbubble</div>
@@ -116,11 +118,12 @@ button,.btn{font:700 14px system-ui;border:0;border-radius:10px;padding:12px 14p
 </section>
 </main>
 <script src="/app/js/seam-validation.js"></script>
+<script src="/app/js/etsy-multipart.js"></script>
 <script src="/auto-seamless/background-pair.js"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const state={source:null,originalFile:null,originalBytes:null,backgroundPair:null,fileName:'pattern',tile:null,crop:null,match:0,busy:false,mode:'auto'};
+const state={source:null,originalFile:null,originalBytes:null,backgroundPair:null,fileName:'pattern',tile:null,crop:null,seamReport:null,match:0,busy:false,mode:'auto'};
 const sourceCanvas=document.createElement('canvas');
 const tileCanvas=document.createElement('canvas');
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -134,7 +137,7 @@ async function loadFile(file,pair=null){
  if(!file)return;
  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){setStatus('Please select a PNG, JPG or WebP image.','error');return}
  if(file.size>70*1024*1024){setStatus('This image is too large for reliable mobile processing. Try a file under 70 MB.','error');return}
- busy(true);state.source=null;state.tile=null;state.crop=null;state.originalFile=null;state.originalBytes=null;state.backgroundPair=pair;window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
+ busy(true);state.source=null;state.tile=null;state.crop=null;state.seamReport=null;state.originalFile=null;state.originalBytes=null;state.backgroundPair=pair;$('seamCheck').textContent='Checking the new artwork…';window.dispatchEvent(new Event('sapiver:source-changed'));setStatus('Reading image…');
  try{
   // Keep a local byte-for-byte copy while Android's content-provider access is valid.
   // The later seller export must not have to read the original File handle again.
@@ -268,15 +271,9 @@ function useOriginal(){
  const sourceMegabytes=(state.originalBytes.byteLength/1e6).toFixed(2);
  $('oversizeNotice').textContent=state.originalBytes.byteLength>=19_900_000?'Original file: '+sourceMegabytes+' MB. Etsy permits up to 20 MB per buyer ZIP. The exact original will be tried first; tick below to allow an alternative only if needed.':'Your full-resolution original will be supplied unchanged if it fits. You may optionally permit an alternative only if a future file is too large.';
  $('facts').hidden=false;$('sizeFact').textContent=w+' × '+h;$('scoreFact').textContent='Checking';
- try{
-  const result=window.PatternForgeSeams.inspectImage(tileCanvas);
-  $('scoreFact').textContent=result.pass?'Edges: pass':'Inspect joins';
-  $('scoreFact').title=window.PatternForgeSeams.describe(result);
- }catch(error){$('scoreFact').textContent='Check unavailable';$('scoreFact').title=String(error.message||error);}
- 
- paintPreview();paintSource();busy(false);
+ paintSource();busy(false);
  setStatus(state.backgroundPair?'Original transparent pattern and '+(state.backgroundPair.variations?.length||1)+' solid colour version(s) retained unchanged. Each treatment will be prepared in two sizes. Buyer ZIPs will separate original files from background variations. Inspect the repeat preview before exporting.':'Full original retained. No detection, crop, blending or reconstruction applied. Inspect the 3 × 3 preview before preparing the listing.','good');
- window.dispatchEvent(new Event('sapiver:tile-ready'));
+ checkTileJoins();paintPreview();window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
 async function autoDetect(){
  if(!state.source)return;
@@ -331,15 +328,47 @@ function buildTile(){
  for(let row=0;row<h;row++)for(let ch=0;ch<4;ch++)pixels[((row*w+w-1)<<2)+ch]=pixels[(row*w<<2)+ch];
  for(let col=0;col<w;col++)for(let ch=0;ch<4;ch++)pixels[(((h-1)*w+col)<<2)+ch]=pixels[(col<<2)+ch];
  cx.putImageData(out,0,0);
- state.tile={w,h};paintPreview();paintSource();
+ state.tile={w,h};checkTileJoins();paintPreview();paintSource();
  $('downloadTile').disabled=false;$('download5000').disabled=false;window.dispatchEvent(new Event('sapiver:tile-ready'));
 }
+function checkTileJoins(){
+ try{
+  const result=window.PatternForgeSeams.inspectImage(tileCanvas);state.seamReport=result;
+  const places=[['horizontal',result.interior.horizontal],['vertical',result.interior.vertical]]
+   .filter(([,lines])=>lines.length).map(([axis,lines])=>axis+' at '+lines.map(l=>l.position+' px').join(', ')).join('; ');
+  const edgeFlag=result.leftRight.suspicious||result.topBottom.suspicious;
+  const text=result.pass?'No strong join flags found. Check the motifs and the full repeat visually before sale.':
+   'Review required: '+(places?'possible joins inside the artwork — '+places+'. ':'')+(edgeFlag?'Possible outer-edge breaks. ':'')+'Orange guides mark suspected joins only; intentional straight shapes can also trigger a flag.';
+  $('seamCheck').textContent=text;$('seamCheck').className='status'+(result.pass?'':' warn');
+  if(!result.pass){$('scoreFact').textContent='Inspect joins';setStatus((state.mode==='ready'?'Full original retained. No detection, crop, blending or reconstruction applied. ':'')+'Possible broken joins detected. Review the marked preview before exporting.','warn');}
+  else if(state.mode==='ready')$('scoreFact').textContent='No join flags';
+  $('scoreFact').title=window.PatternForgeSeams.describe(result);
+ }catch(error){
+  state.seamReport=null;$('scoreFact').textContent='Check unavailable';$('scoreFact').title=String(error.message||error);
+  $('seamCheck').textContent='Join checks could not finish. Review the complete repeat visually before sale.';$('seamCheck').className='status warn';
+  setStatus('Join checks unavailable. Visual review is required.','warn');
+ }
+ // Any changed crop/blend needs a fresh owner review.
+ const review=$('commercialReviewConfirmed');if(review)review.checked=false;
+}
+$('showSeamGuides').addEventListener('change',paintPreview);
 function paintPreview(){
  const t=state.tile;if(!t)return;
  const cv=$('preview');cv.width=900;cv.height=Math.max(150,Math.round(900*t.h/t.w));
  const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);ctx.imageSmoothingQuality='high';
  const ww=cv.width/3,hh=cv.height/3;
  for(let r=0;r<3;r++)for(let c=0;c<3;c++)ctx.drawImage(tileCanvas,c*ww,r*hh,ww,hh);
+ if($('showSeamGuides').checked&&state.seamReport){
+  const result=state.seamReport;ctx.save();ctx.strokeStyle='#ff914d';ctx.lineWidth=2;ctx.setLineDash([8,5]);
+  const line=(x1,y1,x2,y2)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();};
+  for(let n=0;n<3;n++){
+   for(const mark of result.interior.horizontal){const y=n*hh+mark.position/t.h*hh;line(0,y,cv.width,y);}
+   for(const mark of result.interior.vertical){const x=n*ww+mark.position/t.w*ww;line(x,0,x,cv.height);}
+  }
+  if(result.leftRight.suspicious)for(let n=1;n<3;n++)line(n*ww,0,n*ww,cv.height);
+  if(result.topBottom.suspicious)for(let n=1;n<3;n++)line(0,n*hh,cv.width,n*hh);
+  ctx.restore();
+ }
 }
 function paintSource(){
  const s=state.source,t=state.crop;if(!s||!t)return;

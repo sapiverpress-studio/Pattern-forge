@@ -17,9 +17,13 @@ try{
    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="27" fill="#3b6a71"/></svg>')
  });
  await page.waitForFunction(()=>window.PatternForgeEtsyBridge.state.items.length===1);
- const before=await page.evaluate(()=>JSON.stringify({
-   items:window.PatternForgeEtsyBridge.state.items,project:window.PatternForgeEtsyBridge.state.project
- }));
+ const designSnapshot=()=>page.evaluate(()=>{
+   const {updatedAt,...project}=window.PatternForgeEtsyBridge.state.project;
+   return JSON.stringify({items:window.PatternForgeEtsyBridge.state.items,project});
+ });
+ // The pending autosave can advance updatedAt while read-only checks run.
+ // Compare every editable design field rather than that save timestamp.
+ const before=await designSnapshot();
  const preflight=await page.evaluate(()=>window.PatternForgeEtsy.check());
  assert.ok(preflight.every(c=>c.state!=='fail'),JSON.stringify(preflight.filter(c=>c.state==='fail')));
  const downloadPromise=page.waitForEvent('download',{timeout:180000});
@@ -37,9 +41,7 @@ try{
  assert.equal(result.multipartPngUsed,false);
  assert.equal(result.designUnchanged,true);
  assert.equal(result.listingImages.length,4);
- const after=await page.evaluate(()=>JSON.stringify({
-   items:window.PatternForgeEtsyBridge.state.items,project:window.PatternForgeEtsyBridge.state.project
- }));
+ const after=await designSnapshot();
  assert.equal(after,before,'Packaging must preserve original editable design');
  const sample=await page.evaluate(async()=>{
    const bridge=window.PatternForgeEtsyBridge;
