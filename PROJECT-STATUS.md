@@ -1,3 +1,35 @@
+## LIVE VERIFIED — 25 November 2026: Internal join warnings and complete 5000px PNG delivery
+- Pattern Forge PR #57 is LIVE: release `45a6e4f7596f86e23b37b5bf64d409d99d047531`, READY production/main deploy `6b06fbaf9ed5a4dcad3d1885`, published 2026-11-25T15:16:20.212Z, error null. Release tree exactly matches reviewed head `e74065d7ce057fce8a281a94c8dcfa8ee8d309b4` / `555a0567f50a8af46acbe4798f455b8606ea11b2`.
+- Compatible uploader PR #136 is LIVE: release `09b9b1df1ec82372541ee687524c1e774b83e6eb`, READY deploy `6b06fb567234de1af9e7dff6`, published 2026-11-25T15:14:46.833Z. One existing production build per affected app; development and documentation commits skip Netlify.
+- Authenticated live browser UI verified after publication: new interior-join check text and preview-guide checkbox present; 5000x5000 PNG / 300 DPI export present; phone seller-pack control absent. Preserved the live app tab for review. No sign-in credential was requested/read, no new live AI request was made, and no production artwork was uploaded during this final UI check.
+- Evidence: 39 Node checks and all seven Auto Seamless browser suites plus actual downloaded-ZIP uploader validation passed in run `45642354919` / job `139304110797`. Exact 30,785,768-byte 5000px PNG recovered through both archive levels and the offline buyer HTML, with matching SHA-256, 2500px PNG and other companions retained, three <=20 MB buyer ZIPs with documents. Uploader full suite: 674 passing local/CI checks. Related transparent-master/four-background, mobile remix and motif alpha workflows passed; existing magnetic browser-install failure remains outside this repair.
+- The supplied woodland original and native tile separately trigger their known internal horizontal cut positions. Checks are heuristic warnings requiring visual review; they do not regenerate artwork or guarantee every possible defect. No customer image was repaired or listed. Full generated PNG bytes/dimensions are preserved, with restoration disclosed for oversized delivery; JPEG-only compression may adjust to meet limits.
+- No existing listing, SKU, fulfilment identity, order, saved project, access control, automation, APK or source artwork was changed. Physical Android acceptance remains unverified; mobile-sized Chromium and actual file validation were executed.
+- Owner next action: refresh Auto Seamless and upload the design again to see join flags. This completes the app repair. Continuity aftercare is documentation only and skips Netlify.
+
+---
+
+## PATTERN FORGE RELEASE MERGED — 25 November 2026: Final hosting verification pending
+- Compatible uploader is LIVE: READY Netlify deploy `6b06fb567234de1af9e7dff6`, exact release `09b9b1df1ec82372541ee687524c1e774b83e6eb`, published 2026-11-25T15:14:46.833Z.
+- Pattern Forge PR #57 squash-merged to main as `45a6e4f7596f86e23b37b5bf64d409d99d047531`, tree `555a0567f50a8af46acbe4798f455b8606ea11b2`, exactly matching reviewed/tested head `e74065d7ce057fce8a281a94c8dcfa8ee8d309b4`. An explicit release message triggers one existing production build; no staging or phone build.
+- Final Pattern Forge hosting/UI readback is pending. No customer listing, original artwork, saved project, security setting, supplier order or automation has been changed.
+
+---
+
+## UPLOADER RELEASE MERGED — 25 November 2026: Hosting verification pending
+- Poster Gen PR #136 squash-merged to its actual production branch as `09b9b1df1ec82372541ee687524c1e774b83e6eb` with an explicit release message to trigger one existing Netlify build. The reviewed source is `6364793`, with 674 checks and the actual Pattern Forge kit import passing.
+- Netlify READY/published verification is pending. Pattern Forge PR #57 has not yet been merged; release it only after the compatible uploader is published. No merchant listing, order, customer artwork or project data was changed by this software merge.
+
+---
+
+## CI VERIFIED — 25 November 2026: Join detection and full-PNG delivery ready for release
+- Reviewed app head `e74065d7ce057fce8a281a94c8dcfa8ee8d309b4`, tree `555a0567f50a8af46acbe4798f455b8606ea11b2`, PR #57. Auto Seamless run `45642354919`, job `139304110797`, SUCCESS: 39 Node checks, all seven browser suites, and the exact downloaded kit through pinned uploader PR #136 source.
+- Real browser-generated 5000x5000 PNG: 30,785,768 bytes. Three Etsy-compliant buyer ZIPs retain every byte, all documents and companion images. Python CRC/SHA/dimension checks, actual offline customer HTML restoration, missing-part rejection, and the actual uploader's complete validation all passed. The 2500px PNG, native tile and 5000px JPG remain included. The full PNG matches the direct download byte for byte.
+- Interior warning UI, clean control, both preparation modes, preview-only guides and renewed review on changed crop/blend passed. Actual owner's source and native tile separately flag the exact known horizontal defects. Source art was not uploaded to GitHub or regenerated.
+- Other final-head workflows: transparent master/export (including 63 MB offline reconstruction and four backgrounds), mobile remix and motif alpha SUCCESS. Magnetic alignment remains unexecuted because its existing Chromium-install step fails; no magnetic implementation changed and no passing claim is made.
+- Uploader PR #136 independently passed all 674 local/CI checks; target production branch remains `feature/canva-oauth-callback` at `3aa0e28`. Current Pattern Forge main remains `16a1b18`; both current Netlify deploys remain the old READY versions. Next: release the backwards-compatible uploader correction first, verify its new deploy, then release Pattern Forge and verify the new live UI. Existing authentication, project storage, merchant publication approval and phone removal remain unchanged.
+
+---
 ## BROWSER ROUND-TRIP FOLLOW-UP — 25 November 2026: Exact PNG recovery completed
 - Latest Auto Seamless run `45641844713`, job `139302298586`, passed the six preceding mobile/browser suites. The new oversized-kit browser completed archive CRC/document/size checks, exact reconstruction of the 30,785,768-byte 5000px PNG, actual offline HTML recovery and missing-part rejection. The final page-error assertion then caught the TEST's still-running export-status monitor dereferencing its old element after navigation to the offline HTML document. Added a null-safe selector to that monitor; the application and strict page-error assertion remain unchanged.
 - Do not describe this run as fully passing: the final test assertion failed and uploader-integration step was skipped. Re-run the unchanged application with the corrected test, including the actual downloaded ZIP through pinned uploader source, before production release.
@@ -820,8 +852,8 @@ Availability is different from physical Android validation.
 
 | Feature | Where the user finds it | Source / browser status |
 | --- | --- | --- |
-| Interior join warnings and preview guides | Auto Seamless → repeating preview; seller kit QUALITY-CHECK.txt | Implemented on `fix/seam-quality-full-png-20261125`; 39 Node checks and actual woodland-line diagnostic pass; browser verification pending; not live |
-| Preserve oversized generated 5000px PNG | Auto Seamless → commercial seller kit | Implemented locally using verified numbered PNG parts; listing/buyer instructions disclose restoration; uploader compatibility/browser verification pending; not live |
+| Interior join warnings and preview guides | Auto Seamless → repeating preview; seller kit QUALITY-CHECK.txt | LIVE production `45a6e4f` / deploy `6b06fbaf9ed5a4dcad3d1885`; actual woodland diagnostic and mobile browser cases pass; physical Android unverified |
+| Preserve oversized generated 5000px PNG | Auto Seamless → commercial seller kit | LIVE production `45a6e4f`; exact 30,785,768-byte PNG restored and imported through compatible uploader in three compliant ZIPs |
 | Knitted Fabric (standalone) | Home → New Knitted Fabric, editor's New Design → Knitted Fabric, `/knit/` | **LIVE production** 6 November 2026; independent Chromium seam + export checks passed; physical Android not tested |
 | Consistent saved favourite tools | Tools menu; choose quick tools | Implemented; reload and workspace-switch coverage |
 | Imported image drag and selection | Import image or add another from library → automatically Select; drag image body or Move handle | **New fix on `feature/responsive-image-drag-20261012`; tested 7/7 browser flows + 31/31 regression, NOT deployed** |
