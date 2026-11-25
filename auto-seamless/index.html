@@ -340,7 +340,7 @@ function checkTileJoins(){
   const text=result.pass?'No strong join flags found. Check the motifs and the full repeat visually before sale.':
    'Review required: '+(places?'possible joins inside the artwork — '+places+'. ':'')+(edgeFlag?'Possible outer-edge breaks. ':'')+'Orange guides mark suspected joins only; intentional straight shapes can also trigger a flag.';
   $('seamCheck').textContent=text;$('seamCheck').className='status'+(result.pass?'':' warn');
-  if(!result.pass){$('scoreFact').textContent='Inspect joins';setStatus('Possible broken joins detected. Review the marked preview before exporting.','warn');}
+  if(!result.pass){$('scoreFact').textContent='Inspect joins';setStatus((state.mode==='ready'?'Full original retained. No detection, crop, blending or reconstruction applied. ':'')+'Possible broken joins detected. Review the marked preview before exporting.','warn');}
   else if(state.mode==='ready')$('scoreFact').textContent='No join flags';
   $('scoreFact').title=window.PatternForgeSeams.describe(result);
  }catch(error){

@@ -1,3 +1,14 @@
+## CI FOLLOW-UP — 25 November 2026: Initial browser result and compatibility checks
+- PR #57 run `45639403636`, job `139293528430`: all 39 Node checks passed, mobile metadata/retry passed, and the actual Auto Seamless 5000px seller ZIP passed both archive levels. The finished-pattern browser then timed out on its old `Edges: pass` label assertion at line 135; later suites did not run. Updated that assertion to the new non-approval wording `No join flags`, and retained original-file preservation information beside ready-mode warnings. This is not yet a complete browser pass.
+- The corresponding uploader compatibility change has passed all 674 Node 24 tests locally, including real >20 MB opaque repeat reconstruction and the negative transparent-master test. The production-compatible branch and exact public CI integration remain to be reviewed/published. No live listing or customer upload was attempted.
+
+---
+## BRANCH / PR — 25 November 2026: Join and full-PNG repair awaiting browser verification
+- Published [PR #57](https://github.com/sapiverpress-studio/Pattern-forge/pull/57), head `904ac17e67e67b6b101a3d9903249fdf8d67b63d`, tree `a2196f28d7997cdec073fdfd7dcbd71aaf426669`, exactly matching local committed files. Development commit and PR title skip Netlify; no production deployment was requested by this push.
+- All 39 local Node checks passed again after the adaptive PNG-chunk packing change. Added two real-browser suites covering actual image/ZIP downloads and customer restoration; their CI result remains pending. Local Chromium launch failed because `/usr/lib/chromium/chromium` is absent, not because an application check ran and passed.
+- Existing analysis endpoint and removed phone feature remain unchanged. Source artwork is not bundled in the public regression fixtures. Next: inspect CI and complete the corresponding uploader contract verification before release.
+
+---
 ## IMPLEMENTED LOCALLY — 25 November 2026: Owner-requested app repair under verification
 - Jim instructed “Just fix the app” after the confirmed false reassurance. Active repair branch: `fix/seam-quality-full-png-20261125`, based on independently rechecked main `16a1b18`; current Netlify deploy remains `6b06df3e0b702e3b738137b4` ready, password protection retained. This continues the requested live app repair; no phone feature or artwork regeneration is included.
 - Implemented a read-only interior straight-cut scan at every native row/column, sampling at most 768 positions along a line, with one- and four-pixel contexts. Original outside-edge checks remain. Auto Seamless checks the actual resulting tile in both modes and shows explicit review warnings plus optional orange guides on the preview only. Changed crops/blends reset the owner's commercial-review checkbox. An absence of flags explicitly requires visual review.
