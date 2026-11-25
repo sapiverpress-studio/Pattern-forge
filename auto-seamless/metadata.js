@@ -74,11 +74,12 @@ async function analyse(file){
     ready=true;copyActions.forEach(id=>E("copy-"+id).disabled=false);
     E("saveMeta").disabled=false;
     E("metaCount").textContent="14 additional tags · 15 total · "+E("metaDesc").value.length+"/250 description characters";
-    status("Separate Etsy and Redbubble tags generated from one image analysis. Review both before publishing.");
+    status("Separate Etsy and Redbubble tags generated from the image. Review both before publishing.");
   }catch(error){
     if(token!==sequence)return;
     const message=error?.name==="AbortError"?"AI analysis timed out.":
       error?.message||"Automatic image analysis failed.";
+    E("metaCount").textContent="Image analysis did not finish.";
     E("metaEtsyStatus").textContent="Etsy listing wording unavailable; analyse the artwork before commercial export.";
     status(message+" Tap Analyse image again to retry; no generic placeholder tags were inserted.");
   }finally{

@@ -2,12 +2,14 @@ import {chromium} from "playwright";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
+import {handleRequest} from "../netlify/functions/auto-seamless-listing.mjs";
 
 const browser=await chromium.launch({executablePath:process.env.PF_CHROME||undefined,headless:true,args:["--no-sandbox"]});
 const page=await browser.newPage({viewport:{width:390,height:844},acceptDownloads:true});
 const errors=[],calls=[];
 page.on("pageerror",e=>errors.push(e.message));
 let mode="success";
+const correctedCalls=[];
 const response={
  title:"Cream and Rust Cable Knit Texture",
  main_tag:"cable knit",
@@ -19,7 +21,16 @@ const response={
 await page.route("**/api/auto-seamless-listing",async route=>{
  const data=route.request().postDataJSON();
  calls.push(data);
- if(mode==="fail")await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"AI Gateway temporarily unavailable"})});
+ if(mode==="repair"){
+  const client={chat:{completions:{create:async q=>{
+   correctedCalls.push(q);
+   const listing=correctedCalls.length===1?{...response,etsy_tags:[...response.etsy_tags.slice(0,12),"an overlong digital paper tag"]}:response;
+   return {choices:[{message:{content:JSON.stringify(listing)}}]};
+  }}}};
+  const result=await handleRequest(new Request(route.request().url(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)}),client);
+  await route.fulfill({status:result.status,contentType:"application/json",body:await result.text()});
+ }
+ else if(mode==="fail")await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"AI Gateway temporarily unavailable"})});
  else await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(response)});
 });
 await page.goto("http://127.0.0.1:4185/auto-seamless/",{waitUntil:"load"});
@@ -59,10 +70,20 @@ await page.locator("#metaGenerate").click();
 await page.waitForFunction(()=>document.querySelector("#metaNotice")?.textContent.includes("temporarily unavailable"),null,{timeout:10000});
 assert.equal(await page.locator("#metaName").inputValue(),"","No made-up fallback on AI failure");
 assert.equal(await page.locator("#copy-all").isDisabled(),true);
+assert.equal(await page.locator("#metaCount").textContent(),"Image analysis did not finish.");
 mode="success";
 await page.locator("#metaGenerate").click();
 await page.waitForFunction(()=>document.querySelector("#metaMain")?.value==="cable knit",null,{timeout:15000});
 assert.equal(calls.length,3,"One initial request and two explicit retries");
+mode="repair";
+await page.locator("#metaGenerate").click();
+await page.waitForFunction(()=>document.querySelector("#metaMain")?.value==="cable knit",null,{timeout:15000});
+assert.equal(calls.length,4,"Automatic correction uses one browser request");
+assert.equal(correctedCalls.length,2,"The real handler corrects the invalid tag once");
+assert.equal((await page.locator("#metaEtsyTags").inputValue()).split(",").length,13);
+assert.equal(await page.locator("#copy-all").isDisabled(),false);
+assert.equal(await page.locator("#downloadTwoProducts").count(),0,"Phone seller packs must remain removed");
+assert.equal(await page.locator("#download5000").isDisabled(),false,"Preserve the 5000px export after correction");
 assert.deepEqual(errors,[],"No browser JS errors");
 await browser.close();
 console.log("PASS: mobile upload -> AI -> 15 metadata tags -> TXT; error and retry; pre-existing image export remains available.");
