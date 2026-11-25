@@ -65,6 +65,15 @@
  }
  async function getBytes(blob){return new Uint8Array(await blob.arrayBuffer());}
  function toBlob(canvas,kind,quality){return new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('Image export failed; check device memory.')),kind,quality));}
+ async function jpegCompanion(canvas){
+  // JPEG is the lossy companion, never a substitute for the complete PNG.
+  // Retain all 5000px and reserve room for documents/restoration metadata.
+  for(const quality of [.96,.92,.88,.84]){
+   const data=await getBytes(await toBlob(canvas,'image/jpeg',quality));
+   if(data.length<=MAX-100000)return {data,jpegQuality:quality};
+  }
+  throw Error('The full-size JPG companion cannot fit its Etsy ZIP. The 5000px PNG has not been reduced or omitted.');
+ }
  function render(width){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=width;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas rendering unavailable');
@@ -393,7 +402,7 @@
    }else{
     big=render(5000);
     files.push({name:stem+'-5000px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(big,'image/png'))))});
-    files.push({name:stem+'-5000px-repeat.jpg',data:await getBytes(await toBlob(big,'image/jpeg',0.96))});
+    files.push({name:stem+'-5000px-repeat.jpg',...await jpegCompanion(big)});
     big.width=big.height=0;big=null;
     small=render(2500);
     files.push({name:stem+'-2500px-300dpi-repeat.png',data:await getBytes(taggedDPI(await getBytes(await toBlob(small,'image/png'))))});
@@ -545,6 +554,7 @@
     'Buyer artwork files: '+includedArtworkLabels(accepted).join(' | '),
     'Ready-made master conversion: '+(state.mode!=='ready'?'not applicable — generated repeat images':converted?'YES — replacement delivery formats disclosed to buyers':'NO — original files preserved'),
     '5000px PNG delivery: '+(multipart?'complete original PNG restored from '+multipart.parts.length+' numbered ZIP parts; SHA-256 verified':'complete PNG supplied directly when generated'),
+    'JPG companion: '+(state.mode==='ready'?'original format retained or approved conversion disclosed':'5000x5000 lossy JPEG, encoder quality '+files.find(f=>f.jpegQuality)?.jpegQuality+'; the complete PNG is unchanged'),
     'Ready-made second size: '+(state.mode==='ready'?(smallerAlternative?'smaller WebP (lossy, approved)':'smaller PNG (lossless)'):'standard 2500px PNG'),
     'Two distinct ready-made image sizes: '+(state.mode==='ready'?'required and validated':'not applicable'),
     'Background variants: '+(paired?'transparent original and '+listing.product.backgroundColours.length+' solid colour(s): '+listing.product.backgroundColours.join(', ')+(listing.product.backgroundColours.length===1?'; four images required':'; '+accepted.length+' images required'):'single image background'),

@@ -1,3 +1,9 @@
+## LARGE-FILE FOLLOW-UP — 25 November 2026: Complete PNG retained; oversized JPG companion corrected
+- PR #57 run `45641276260`, job `139300263204`, passed all 39 Node checks, six existing/new browser workflows through internal join warnings, and generated a real 30,785,768-byte direct 5000px PNG. The seller-kit regression correctly stopped because its 0.96-quality JPG companion exceeded 20 MB, not because the PNG was missing or resized. Earlier missing-download timeouts are now attributed to this observed export error, not to an assumed source or provider problem.
+- Implemented bounded JPEG-only encoding retries at 0.96/0.92/0.88/0.84 until the 5000x5000 companion fits with packaging headroom. The complete lossless PNG bytes are untouched; no pixel dimensions are reduced. Quality report discloses the JPEG encoder setting. If none fits, export stops explicitly with no omissions.
+- Shared transparent-master/four-background workflow `45641276300` now passes after the save-timestamp-only test correction. Full Auto Seamless browser/download/import verification must pass after this last encoding correction before release.
+
+---
 ## REGRESSION FOLLOW-UP — 25 November 2026: Preserve meaningful editor checks
 - Shared-export browser verification on PR #57 passed transparent 5000px PNG export, real two-ZIP delivery and exact offline recovery of a 63,353,192-byte PNG. The four-background test failed solely because pending autosave advanced `project.updatedAt`; every editable project/item field was identical. Its snapshot now excludes only that save timestamp and still compares every design field, in addition to the exporter's `designUnchanged` assertion.
 - Magnetic-remix verification could not install/start Chromium, matching the recorded infrastructure failure; do not claim its browser checks passed. No magnetic/editor implementation was changed.
