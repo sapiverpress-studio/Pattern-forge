@@ -34,9 +34,14 @@ try{
  const directWait=page.waitForEvent('download',{timeout:120000});await page.locator('#download5000').click();
  const direct=await directWait,original=await readFile(await direct.path());
  assert.ok(original.length>20_000_000,'Real browser-generated PNG must exercise multipart delivery: '+original.length);
+ console.log('Actual direct 5000px PNG bytes: '+original.length);
  const expected=createHash('sha256').update(original).digest('hex');
  await page.locator('#commercialPrice').fill('2.99');await page.locator('#commercialReviewConfirmed').check();
- const kitWait=page.waitForEvent('download',{timeout:180000});await page.locator('#downloadCommercial').click();
+ const kitWait=Promise.race([
+  page.waitForEvent('download',{timeout:180000}),
+  page.waitForFunction(()=>document.querySelector('#commercialExportStatus').textContent.startsWith('Export stopped:'),null,{timeout:180000})
+   .then(async()=>{throw Error(await page.locator('#commercialExportStatus').textContent());})
+ ]);await page.locator('#downloadCommercial').click();
  const kit=await kitWait,kitPath=await kit.path();
  const verify=String.raw`
 import io,sys,zipfile,json,hashlib,struct,pathlib

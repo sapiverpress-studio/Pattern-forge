@@ -76,14 +76,19 @@ jobs:
           cat /tmp/auto-seamless-test-http.log
           exit 1
       - name: "Android-sized browser: upload, AI metadata, copy, failure, retry"
-        run: |
-          node tests/auto-seamless-vision-browser.mjs
-          node tests/auto-seamless-commercial-browser.mjs
-          node tests/auto-seamless-oversize-browser.mjs
-          node tests/auto-seamless-background-pair-browser.mjs
-          node tests/auto-seamless-multi-colour-browser.mjs
-          node tests/auto-seamless-joins-browser.mjs
-          PF_KIT_OUTPUT=/tmp/pf-full-png-seller-kit.zip node tests/auto-seamless-multipart-browser.mjs
+        run: node tests/auto-seamless-vision-browser.mjs
+      - name: Actual 5000px and original-preserving commercial downloads
+        run: node tests/auto-seamless-commercial-browser.mjs
+      - name: Oversize ready-made PNG and WebP companions
+        run: node tests/auto-seamless-oversize-browser.mjs
+      - name: Transparent and colour background pair
+        run: node tests/auto-seamless-background-pair-browser.mjs
+      - name: Multiple background colours
+        run: node tests/auto-seamless-multi-colour-browser.mjs
+      - name: Internal join warnings and preview-only guides
+        run: node tests/auto-seamless-joins-browser.mjs
+      - name: Complete oversized PNG and offline customer restoration
+        run: PF_KIT_OUTPUT=/tmp/pf-full-png-seller-kit.zip node tests/auto-seamless-multipart-browser.mjs
       - name: Check the downloaded kit against the reviewed uploader source
         uses: actions/checkout@v4
         with:
