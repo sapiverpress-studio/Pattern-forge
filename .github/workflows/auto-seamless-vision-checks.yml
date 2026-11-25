@@ -8,6 +8,9 @@ on:
       - app/js/editor.js
       - app/index.html
       - app/js/seam-validation.js
+      - app/js/etsy-multipart.js
+      - tests/auto-seamless-joins-browser.mjs
+      - tests/auto-seamless-multipart-browser.mjs
       - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
@@ -22,6 +25,9 @@ on:
       - app/js/editor.js
       - app/index.html
       - app/js/seam-validation.js
+      - app/js/etsy-multipart.js
+      - tests/auto-seamless-joins-browser.mjs
+      - tests/auto-seamless-multipart-browser.mjs
       - tests/seam-validation.test.cjs
       - tests/auto-seamless-background-pair-browser.mjs
       - tests/auto-seamless-multi-colour-browser.mjs
@@ -55,6 +61,8 @@ jobs:
           node --check auto-seamless/commercial-kit.js
           node --check auto-seamless/background-pair.js
           node --check app/js/editor.js
+          node --check app/js/seam-validation.js
+          node --check app/js/etsy-multipart.js
           node --test tests/auto-seamless-listing.test.mjs tests/auto-seamless-commercial-kit.test.mjs tests/auto-seamless-zip-compression.test.mjs tests/seam-validation.test.cjs
       - name: Serve static application
         run: |
@@ -72,6 +80,8 @@ jobs:
           node tests/auto-seamless-oversize-browser.mjs
           node tests/auto-seamless-background-pair-browser.mjs
           node tests/auto-seamless-multi-colour-browser.mjs
+          node tests/auto-seamless-joins-browser.mjs
+          node tests/auto-seamless-multipart-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
