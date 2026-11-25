@@ -1,3 +1,28 @@
+## PRODUCTION VERIFIED — 25 November 2026 12:48 GMT: Phone option removed
+- Owner-requested revert PR #55 is LIVE. Netlify deploy `6b06d90c21f9c388a66c76ef` READY, production/main, exact release commit `53733792f67597ea24ad957bcaa855e9b14ce739`, published 12:48:56 UTC, error null. One normal production build was used; development commits/PR previews were skipped. This documentation-only update also skips Netlify.
+- Source verification after release: every application/function file under `app/`, `auto-seamless/` and `netlify/` is byte-identical to pre-phone commit `716005dccdd3f91f94343d54c53e35c3419c7846` (24 November 11:59 release). The phone seller-pack script, buttons and overrides are removed; the original commercial seller-kit flow returns. Native seam checks, transparent/solid colours, full-resolution artwork and earlier Etsy metadata remain.
+- Verification evidence: 20 Node tests plus all five Auto Seamless mobile/export browser scripts passed before release (`45616901461`). Mobile remix, alpha and transparent-master workflows also passed. The magnetic-alignment workflow could not install/start its browser; its product checks remain unexecuted. These are controlled-provider Chromium checks, not physical Android or live AI-provider proof.
+- Live browser confirmation: Netlify deploy details visibly show **Published deploy**, production/main and `5373379`, matching connector metadata. The app URL still correctly requires the existing site password in this independent browser; no password was requested/read and no visitor-access setting changed. Protected app controls were not independently opened after release. Jim can refresh his existing app session to receive the restored version.
+- Unreleased image-analysis recovery PR #54 is closed as superseded; its branch remains for reference. The published analyser is unchanged from before the phone option, so this revert is not verified to fix the original image-analysis error. No paid provider test, marketplace update, project-data change, APK or staging deployment was performed.
+- Next: owner refreshes Pattern Forge. Investigate any continuing image-analysis failure separately against the restored version; do not reintroduce phone export or merge the closed recovery PR without a new request.
+
+---
+## RELEASE MERGED — 25 November 2026: Pre-phone version awaiting Netlify verification
+- Owner-authorised [PR #55](https://github.com/sapiverpress-studio/Pattern-forge/pull/55) squash merged to main as `53733792f67597ea24ad957bcaa855e9b14ce739`, with an explicit non-skip release message to trigger one existing production build. No force push or deployment-settings change.
+- Verified application/function source matches historical release `716005d`; 20 Node tests and all five Auto Seamless browser scripts passed before merge. Published deploy/actual UI still require verification; do not yet describe the restored version as live.
+
+---
+## RELEASE VERIFICATION — 25 November 2026: Restored app ready for authorised deploy
+- Auto Seamless run `45616901461`, job `139214516990`, SUCCESS at 12:47 UTC: all 20 Node 22 tests and all five browser scripts passed, including mobile metadata/copy/retry, actual 5000px seller/buyer ZIPs, original-byte preservation, oversize PNG/WebP, transparent/solid pair and multicolour packages with size/document checks.
+- Three additional PR workflows passed: mobile remix mapping `45616901411`, motif alpha verification `45616901301`, transparent master export `45616901299`. Magnetic alignment/remix run `45616901436` did not execute product checks: its browser installation failed and every browser script reported a missing Chromium executable. This infrastructure limitation is recorded; it is not evidence of an app regression or a passed magnet test. Do not broaden the requested historical-source restoration to unrelated workflow repairs.
+- PR #55 head `25a4bc463ada3fc3a693cff8bd356fc101ce6a0b` and main `9b16d5c7abaa22be917608eafbcb1c0647639afe` rechecked before release. All app/function bytes match `716005d`. Next: owner-authorised squash merge with an explicit non-skip message, then verify ONE production deployment and the restored UI.
+
+---
+## BRANCH / PR — 25 November 2026: Authorised pre-phone revert under verification
+- Published commit `25a4bc463ada3fc3a693cff8bd356fc101ce6a0b` to `revert/phone-packs-20261125`, [PR #55](https://github.com/sapiverpress-studio/Pattern-forge/pull/55). Tree `2f133f673c17c7398b9959c3e32c5c0693e3bd1d` exactly matches the locally verified source. Commit and PR title skip Netlify to avoid preview builds.
+- Owner has authorised this revert and deployment; no further approval is needed. Next: inspect the browser CI result, then merge with an explicit release message for one production build. Production has not yet changed.
+
+---
 ## LOCAL VERIFICATION — 25 November 2026: Pre-phone source restored
 - All 20 targeted checks passed on Node 24.22.3: 13 metadata/ZIP tests and seven native seam fixtures. Syntax checks passed for the editor, canvas-first module and analyser. `git diff --exit-code 716005d -- app auto-seamless netlify` returned zero differences, proving all application/function files exactly match the pre-phone release.
 - Differences from the historical release are limited to PROJECT-STATUS.md, test-loader/assertion corrections and the existing verification workflow running those seam fixtures. No source artwork, saved project, marketplace listing or service credential was changed. Browser checks still pending; no deployment yet.
@@ -14,8 +39,8 @@
 
 | Feature | Location after revert | Verified status |
 | --- | --- | --- |
-| Phone wallpaper seller packs | Removed from editor and Auto Seamless | Restored source; not yet deployed |
-| Seamless commercial seller kit | Existing editor/export and Auto Seamless | Restored source; local/CI verification pending |
+| Phone wallpaper seller packs | Removed from editor and Auto Seamless | Removed from published source; READY deploy 6b06d90c |
+| Seamless commercial seller kit | Existing editor/export and Auto Seamless | Published source and browser export checks verified |
 
 - Next: finish targeted tests, verify every application/function byte against `716005d`, run the browser export checks, merge the owner-authorised revert, and verify one production deploy and published UI.
 
