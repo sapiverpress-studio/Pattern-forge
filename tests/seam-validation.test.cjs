@@ -1,6 +1,9 @@
 const {test}=require("node:test");
 const assert=require("node:assert/strict");
-const {inspectAxis}=require("../app/js/seam-validation.js");
+// Load this browser bundle explicitly as CommonJS under the type:module package.
+const bundle={exports:{}};
+new Function("module",require("node:fs").readFileSync(require("node:path").join(__dirname,"../app/js/seam-validation.js"),"utf8"))(bundle);
+const {inspectAxis}=bundle.exports;
 const px=(v,a=255)=>[v,v,v,a],flat=px(90),bright=px(255),clear=px(90,0);
 test("uniform",()=>assert.equal(inspectAxis(5000,()=>[flat,flat,flat,flat,flat,flat]).suspicious,false));
 test("continuous gradient",()=>assert.equal(inspectAxis(5000,()=>[px(90),px(92),px(94),px(88),px(86),px(84)]).suspicious,false));

@@ -1,3 +1,25 @@
+## LOCAL VERIFICATION — 25 November 2026: Pre-phone source restored
+- All 20 targeted checks passed on Node 24.22.3: 13 metadata/ZIP tests and seven native seam fixtures. Syntax checks passed for the editor, canvas-first module and analyser. `git diff --exit-code 716005d -- app auto-seamless netlify` returned zero differences, proving all application/function files exactly match the pre-phone release.
+- Differences from the historical release are limited to PROJECT-STATUS.md, test-loader/assertion corrections and the existing verification workflow running those seam fixtures. No source artwork, saved project, marketplace listing or service credential was changed. Browser checks still pending; no deployment yet.
+
+---
+## OWNER-REQUESTED REVERT — 25 November 2026: Remove phone seller packs
+- Jim requested reverting to the version before the phone-screen option and deploying that older version. This authorises removing PR #53 and publishing the restored source. Active work branch: `revert/phone-packs-20261125`; current production/main was independently rechecked as `9b16d5c7abaa22be917608eafbcb1c0647639afe` / Netlify `6b05b819da2962b89815eeb2`.
+- Target is the immediately preceding production release, `716005dccdd3f91f94343d54c53e35c3419c7846`, originally published 24 November 11:59:37 UTC as READY deploy `6b057c1c012f174ad1d365a2`. It retains native seam diagnostics, transparent/colour packaging and the earlier Etsy metadata work.
+- Implementation: reverted only PR #53. Before adding this ledger/test aftercare, the complete restored tree was `d6d74499d1e7e2b8370ad0483cedb164c0a8d370`, exactly equal to the target commit's tree. Phone export script, entry buttons, editor overrides and its test are removed; existing commercial export button/flow restored. Application and function files must remain byte-identical to that target; later changes in this revert are documentation and test assertions only.
+- Test aftercare: preserved the current commercial-browser native-seam assertion and corrected the background-pair assertion to expect `Edges: pass`, matching the seam checker already present in the target version. These tests previously expected `Skipped`; no application feature is added by this correction.
+- Initial local verification passed the 13 existing metadata/ZIP checks, but all seven seam fixtures could not load the UMD browser bundle through `require(.js)` under the repository's ES module package. Corrected only the test loader and included those fixtures in the existing verification workflow; application seam code remains byte-identical to the target release. Rerun pending.
+- Known limitation: the pre-phone release uses exactly the same image analyser as the currently failing deployment. Removing phone export is not verified to resolve automatic image analysis. Recovery PR #54 remains unpublished and will be closed as superseded after this revert releases; retain its branch for reference.
+- Publication path: connected Netlify tools cannot restore a deploy and dashboard is not signed in. Restore the source through a new GitHub revert commit and use ONE existing Git-CD production deployment; no force push, credential retrieval, account changes, APK or marketplace operations. Branch/PR work skips Netlify; the approved release merge must use an explicit non-skip message.
+
+| Feature | Location after revert | Verified status |
+| --- | --- | --- |
+| Phone wallpaper seller packs | Removed from editor and Auto Seamless | Restored source; not yet deployed |
+| Seamless commercial seller kit | Existing editor/export and Auto Seamless | Restored source; local/CI verification pending |
+
+- Next: finish targeted tests, verify every application/function byte against `716005d`, run the browser export checks, merge the owner-authorised revert, and verify one production deploy and published UI.
+
+---
 ## PRODUCTION — 24 November 2026 08:32 GMT: PrintKK credential refresh
 - User reported replacing PRINTKK_API_KEY production value after supplier returned HTTP 403, invalid or expired key. Secret key unchanged. No credential value accessed.
 - Empty-tree-change commit 4e8b1aba748ec3ed0627de01fc8af4fe21a08734 triggered one production rebuild, deploy 6b054b8e44881e24dbacc650 READY at 08:32:29 UTC, matching commit, no error. Existing functions auto-seamless-listing and printkk-nails present. No source code modifications or Work credits.
