@@ -39,7 +39,7 @@ try{
  await page.locator('#commercialPrice').fill('2.99');await page.locator('#commercialReviewConfirmed').check();
  const kitWait=Promise.race([
   page.waitForEvent('download',{timeout:180000}),
-  page.waitForFunction(()=>document.querySelector('#commercialExportStatus').textContent.startsWith('Export stopped:'),null,{timeout:180000})
+  page.waitForFunction(()=>document.querySelector('#commercialExportStatus')?.textContent?.startsWith('Export stopped:')||false,null,{timeout:180000})
    .then(async()=>{throw Error(await page.locator('#commercialExportStatus').textContent());})
  ]);await page.locator('#downloadCommercial').click();
  const kit=await kitWait,kitPath=await kit.path();
